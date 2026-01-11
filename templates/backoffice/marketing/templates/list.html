@@ -1,0 +1,92 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Plantillas de Email</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Gestiona tus diseños de correo</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="font-bold text-lg text-slate-900">Mis Plantillas</h2>
+        <a href="{% url 'marketing_template_create' %}"
+            class="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors">
+            Crear Nueva
+        </a>
+    </div>
+
+    {% if templates %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {% for t in templates %}
+        <div
+            class="group relative bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+            <!-- Thumbnail / Preview -->
+            <div class="h-40 bg-slate-100 relative flex items-center justify-center overflow-hidden">
+                {% if t.thumbnail %}
+                <img src="{{ t.thumbnail.url }}"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                {% else %}
+                <div class="text-slate-300">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                </div>
+                {% endif %}
+
+                <!-- Actions Overlay -->
+                <div
+                    class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
+                    <a href="{% url 'marketing_template_editor' t.pk %}" title="Editar"
+                        class="p-2 bg-white rounded-xl hover:bg-blue-50 text-slate-900 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                            </path>
+                        </svg>
+                    </a>
+                    <a href="{% url 'marketing_template_delete' t.pk %}" title="Eliminar"
+                        onclick="return confirm('¿Estás seguro de eliminar esta plantilla?')"
+                        class="p-2 bg-white rounded-xl hover:bg-red-50 text-red-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                            </path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-slate-900 truncate pr-4">{{ t.name }}</h3>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Editado: {{ t.updated_at|date:"d M, Y" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                </path>
+            </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900 mb-2">No tienes plantillas</h3>
+        <p class="text-slate-500 max-w-sm mx-auto mb-6">Empieza creando diseños profesionales para tus campañas.</p>
+        <a href="{% url 'marketing_template_create' %}"
+            class="inline-block px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+            Crear Primera Plantilla
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

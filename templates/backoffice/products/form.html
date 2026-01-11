@@ -1,0 +1,229 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Gestión de producto</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-5xl mx-auto">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- LEFT COLUMN: Main Info -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2">Información Básica</h3>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre del Producto</label>
+                    <input type="text" name="name" id="id_name" maxlength="100" required
+                        value="{{ form.name.value|default:'' }}"
+                        class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                    {{ form.name.errors }}
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">SKU / Código Barras</label>
+                        {{ form.sku }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría</label>
+                        {{ form.category }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Descripción</label>
+                    {{ form.description }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Imagen</label>
+                    <input type="file" name="image"
+                        class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
+                </div>
+            </div>
+
+            <!-- Pricing Card -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2 flex justify-between items-center">
+                    Precios y Margen
+                    <span id="marginBadge" class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full">Margen:
+                        0%</span>
+                </h3>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Coste (Sin IVA)</label>
+                        {{ form.cost_price }}
+                        <p class="text-[10px] text-slate-400 mt-1">Precio que pagas al proveedor.</p>
+                    </div>
+
+                    <div class="p-3 bg-green-50 rounded-xl border border-green-200">
+                        <label class="block text-xs font-bold text-green-700 uppercase mb-1">Precio Venta (Base)</label>
+                        {{ form.base_price }}
+                        <p class="text-[10px] text-green-600/70 mt-1">Precio antes de impuestos al cliente.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Impuestos (%)</label>
+                        {{ form.tax_rate }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Estrategia</label>
+                        {{ form.price_strategy }}
+                    </div>
+                </div>
+
+                <!-- Final Price Preview -->
+                <div
+                    class="bg-slate-900 rounded-xl p-4 flex items-center justify-between shadow-lg shadow-slate-900/10 text-white">
+                    <div>
+                        <span class="font-bold block">PVP Final</span>
+                        <span class="text-slate-400 text-xs text-opacity-80">Precio en etiqueta</span>
+                    </div>
+                    <div class="text-2xl font-bold">
+                        <span id="finalPriceDisplay">0.00</span>€
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Stock & Supplier -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2">Inventario</h3>
+
+                <div class="flex items-center justify-between py-2">
+                    <label class="text-sm font-medium text-slate-700">Controlar Stock</label>
+                    {{ form.track_stock }}
+                </div>
+
+                <div id="stockFields" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Stock Actual</label>
+                        {{ form.stock_quantity }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alerta Mínimo</label>
+                        {{ form.low_stock_threshold }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2">Proveedor</h3>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre Proveedor</label>
+                    {{ form.supplier_name }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Referencia</label>
+                    {{ form.supplier_reference }}
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2">Visibilidad</h3>
+
+                <div class="flex items-center gap-3">
+                    {{ form.is_active }}
+                    <label class="text-sm">Activo / POS</label>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    {{ form.is_visible_online }}
+                    <label class="text-sm">Venta Online</label>
+                </div>
+            </div>
+
+            <button type="submit" style="background-color: #0f172a;"
+                class="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-xl shadow-slate-900/20">
+                Guardar Producto
+            </button>
+
+            <a href="{% url 'product_list' %}"
+                class="block text-center w-full py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</a>
+        </div>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const costInput = document.querySelector('[name="cost_price"]');
+        const basePriceInput = document.querySelector('[name="base_price"]');
+        const taxRateSelect = document.querySelector('[name="tax_rate"]');
+        const strategySelect = document.querySelector('[name="price_strategy"]');
+        const finalPriceDisplay = document.getElementById('finalPriceDisplay');
+        const marginBadge = document.getElementById('marginBadge');
+
+        function extractRate(text) {
+            const match = text.match(/(\d+(?:[\.,]\d+)?)%/);
+            if (match) {
+                return parseFloat(match[1].replace(',', '.')) / 100;
+            }
+            return 0;
+        }
+
+        function calculate() {
+            const cost = parseFloat(costInput.value) || 0;
+            const basePrice = parseFloat(basePriceInput.value) || 0;
+            const strategy = strategySelect.value;
+
+            let rate = 0;
+            if (taxRateSelect.selectedIndex > -1) {
+                const selectedText = taxRateSelect.options[taxRateSelect.selectedIndex].text;
+                rate = extractRate(selectedText);
+            }
+
+            // Calc Final Price
+            let finalPrice = basePrice;
+            if (strategy === 'TAX_EXCLUDED') {
+                finalPrice = basePrice * (1 + rate);
+            }
+            finalPriceDisplay.textContent = finalPrice.toFixed(2);
+
+            // Calc Margin
+            // Margin = (BasePrice - Cost) / BasePrice * 100
+            // Assuming tax is not part of your profit
+            if (basePrice > 0) {
+                const profit = basePrice - cost;
+                const margin = (profit / basePrice) * 100;
+
+                let colorClass = 'bg-slate-100 text-slate-500';
+                if (margin > 30) colorClass = 'bg-green-100 text-green-700';
+                else if (margin > 0) colorClass = 'bg-yellow-100 text-yellow-700';
+                else colorClass = 'bg-red-100 text-red-700';
+
+                marginBadge.className = `${colorClass} text-xs px-2 py-1 rounded-full font-bold`;
+                marginBadge.textContent = `Margen: ${margin.toFixed(1)}%`;
+            }
+        }
+
+        costInput.addEventListener('input', calculate);
+        basePriceInput.addEventListener('input', calculate);
+        taxRateSelect.addEventListener('change', calculate);
+        strategySelect.addEventListener('change', calculate);
+
+        calculate();
+
+        // Stock toggle
+        const stockToggle = document.querySelector('[name="track_stock"]');
+        const stockFields = document.getElementById('stockFields');
+
+        function toggleStock() {
+            stockFields.style.opacity = stockToggle.checked ? '1' : '0.5';
+            stockFields.style.pointerEvents = stockToggle.checked ? 'auto' : 'none';
+            if (!stockToggle.checked) {
+                // optional: clear values
+            }
+        }
+        stockToggle.addEventListener('change', toggleStock);
+        toggleStock();
+    });
+</script>
+{% endblock %}

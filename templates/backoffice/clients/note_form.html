@@ -1,0 +1,43 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}Editar Nota{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white border border-slate-200 rounded-3xl p-8">
+        <h2 class="text-xl font-bold text-slate-900 mb-6">Editar Nota</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Tipo de Nota</label>
+                    {{ form.type }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Contenido</label>
+                    {{ form.text }}
+                </div>
+
+                <div class="flex items-center gap-2">
+                    {{ form.is_popup }}
+                    <label class="text-sm text-slate-700">Mostrar como alerta (Popup)</label>
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-end mt-8 border-t border-slate-100 pt-6">
+                <a href="{% url 'client_detail' client_id %}"
+                    class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="px-6 py-2 text-sm font-medium text-slate-500 bg-white border border-slate-200 hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] rounded-xl transition-colors shadow-sm">
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

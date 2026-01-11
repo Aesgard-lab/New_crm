@@ -1,0 +1,570 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}Ficha de Cliente{% endblock %}
+
+{% block header_right %}
+<a href="{% url 'clients' %}" class="text-sm font-medium text-slate-500 hover:text-slate-800 mr-4">
+    Volver
+</a>
+<!-- Acciones -->
+<a href="{% url 'client_edit' client.id %}"
+    class="bg-white text-slate-500 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors shadow-sm">
+    Editar
+</a>
+<a href="{% url 'pos_home' %}?client_id={{ client.id }}"
+    class="bg-[var(--brand-color)] text-white border border-transparent px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+        </path>
+    </svg>
+    Cobrar
+</a>
+<button
+    class="bg-white text-slate-500 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors shadow-sm">
+    Check-in
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Columna Izquierda: Perfil -->
+    <div class="space-y-6">
+        <!-- Card Principal -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 text-center">
+            <div class="relative w-24 h-24 mx-auto mb-4">
+                {% if client.photo %}
+                <img class="w-full h-full rounded-full object-cover border-4 border-slate-50"
+                    src="{{ client.photo.url }}">
+                {% else %}
+                <div
+                    class="w-full h-full rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl font-bold uppercase border-4 border-slate-50">
+                    {{ client.first_name|slice:":2" }}
+                </div>
+                {% endif %}
+
+                <div class="absolute bottom-0 right-0 w-6 h-6 rounded-full border-4 border-white
+                {% if client.status == 'ACTIVE' %}bg-emerald-500
+                {% elif client.status == 'INACTIVE' %}bg-slate-400
+                {% elif client.status == 'BLOCKED' %}bg-red-500
+                {% else %}bg-blue-500{% endif %}">
+                </div>
+            </div>
+
+            <h2 class="text-xl font-bold text-slate-900">
+                <a href="{% url 'client_edit' client.id %}"
+                    class="hover:text-[var(--brand-color)] transition-colors inline-flex items-center gap-2 group"
+                    title="Editar perfil">
+                    {{ client.first_name }} {{ client.last_name }}
+                    <svg class="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                </a>
+            </h2>
+            <p class="text-sm text-slate-500 mb-4">{{ client.email|default:"Sin email" }}</p>
+
+            <div class="flex flex-wrap gap-2 justify-center mb-6">
+                <!-- Groups (Hierarchy) -->
+                {% for group in client.groups.all %}
+                <span class="text-[10px] px-2 py-0.5 rounded-md border bg-slate-100 text-slate-600 border-slate-200">
+                    {{ group }}
+                </span>
+                {% endfor %}
+
+                <!-- Tags -->
+                {% for tag in client.tags.all %}
+                <span class="text-[10px] px-2 py-0.5 rounded-md border"
+                    style="background-color: {{ tag.color }}10; border-color: {{ tag.color }}30; color: {{ tag.color }}">
+                    {{ tag.name }}
+                </span>
+                {% endfor %}
+            </div>
+
+            <div class="border-t border-slate-100 pt-4 text-left space-y-3">
+                <div>
+                    <span class="text-xs text-slate-400 block uppercase tracking-wide">Teléfono</span>
+                    <span class="text-sm font-medium text-slate-700">{{ client.phone_number|default:"--" }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 block uppercase tracking-wide">DNI</span>
+                    <span class="text-sm font-medium text-slate-700">{{ client.dni|default:"--" }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 block uppercase tracking-wide">Dirección</span>
+                    <span class="text-sm font-medium text-slate-700">{{ client.address|default:"--" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notas -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Notas Internas</h3>
+            <div class="space-y-4 max-h-80 overflow-y-auto mb-4 pr-1">
+                {% for note in notes %}
+                <div class="p-3 rounded-xl border relative group
+                    {% if note.type == 'VIP' %}bg-amber-50 border-amber-200
+                    {% elif note.type == 'WARNING' %}bg-yellow-50 border-yellow-200
+                    {% elif note.type == 'DANGER' %}bg-red-50 border-red-200
+                    {% else %}bg-slate-50 border-slate-100{% endif %}">
+
+                    <p
+                        class="text-sm {% if note.type == 'DANGER' %}text-red-800{% else %}text-slate-600{% endif %} mb-1">
+                        {% if note.type == 'VIP' %}⭐ {% endif %}
+                        {% if note.type == 'DANGER' %}🔥 {% endif %}
+                        {{ note.text }}
+                    </p>
+                    <div class="text-xs text-slate-400 flex justify-between items-center mt-2">
+                        <span>{{ note.author.first_name|default:"Staff" }} · {{ note.created_at|date:"d M" }}</span>
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <!-- Edit Action -->
+                            <a href="{% url 'client_edit_note' note.id %}"
+                                class="text-slate-400 hover:text-[var(--brand-color)] transition-colors" title="Editar">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                    </path>
+                                </svg>
+                            </a>
+                            <!-- Delete Action -->
+                            <form action="{% url 'client_delete_note' note.id %}" method="post"
+                                onsubmit="return confirm('¿Borrar nota?');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-red-400 hover:text-red-600 transition-colors"
+                                    title="Borrar">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                        </path>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-slate-400 text-sm py-4">No hay notas</div>
+                {% endfor %}
+            </div>
+
+            <!-- Note Form -->
+            <form action="{% url 'client_add_note' client.id %}" method="post"
+                class="mt-2 pt-2 border-t border-slate-100">
+                {% csrf_token %}
+                {{ note_form.type }}
+                {{ note_form.text }}
+                <div class="flex items-center justify-between mt-2">
+                    <label class="flex items-center text-xs text-slate-500 gap-2">
+                        {{ note_form.is_popup }}
+                        Alert Popup
+                    </label>
+                    <button type="submit"
+                        class="bg-white text-slate-500 border border-slate-200 px-3 py-1 rounded-lg text-xs font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors">
+                        Añadir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Historial -->
+    <div class="lg:col-span-2 space-y-6">
+
+        <!-- Gestión Documental -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Documentos y Contratos</h3>
+                <!-- Add Document Logic could be a modal, for now inline toggle or similar is simpler, leaving as title action -->
+                <button onclick="document.getElementById('add-doc-form').classList.toggle('hidden')"
+                    class="text-xs font-medium text-[var(--brand-color)] hover:underline">+ Subir Documento</button>
+            </div>
+
+            <!-- Hidden Form -->
+            <div id="add-doc-form" class="hidden bg-slate-50 p-4 border-b border-slate-100">
+                <form action="{% url 'client_add_document' client.id %}" method="post" enctype="multipart/form-data"
+                    class="flex flex-col gap-3">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>{{ document_form.name }}</div>
+                        <div>{{ document_form.file }}</div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs text-slate-600 flex items-center gap-2">
+                            {{ document_form.is_signed }}
+                            ¿Está firmado ya?
+                        </label>
+                        <button type="submit"
+                            class="bg-slate-800 text-white px-3 py-1 rounded-lg text-xs hover:bg-slate-700">Subir</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="p-0">
+                {% if client.documents.exists %}
+                <table class="w-full text-sm text-left text-slate-500">
+                    <thead class="text-xs text-slate-400 uppercase bg-slate-50">
+                        <tr>
+                            <th class="px-6 py-3">Documento</th>
+                            <th class="px-6 py-3">Estado</th>
+                            <th class="px-6 py-3 text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for doc in client.documents.all %}
+                        <tr>
+                            <td class="px-6 py-3 font-medium text-slate-700">{{ doc.name }}</td>
+                            <td class="px-6 py-3">
+                                {% if doc.is_signed %}
+                                <span class="text-emerald-600 text-xs font-semibold flex items-center gap-1">
+                                    ✓ Firmado
+                                    {% if doc.signed_at %}
+                                    <span class="text-slate-400 font-normal">({{ doc.signed_at|date:"d/m/y"
+                                        }})</span>
+                                    {% endif %}
+                                </span>
+                                {% else %}
+                                <span class="text-amber-500 text-xs font-semibold">Pendiente Firma</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-right">
+                                {% if doc.file %}
+                                <a href="{{ doc.file.url }}" target="_blank"
+                                    class="text-[var(--brand-color)] hover:underline text-xs">Ver PDF</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-6">No hay documentos adjuntos.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Métodos de Pago (Stripe & Redsys) -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="stripeCardHandler()">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Métodos de Pago</h3>
+                <div class="flex gap-2">
+                    <!-- Stripe Button -->
+                    {% if stripe_public_key %}
+                    <button @click="openModal()"
+                        class="text-xs font-medium text-[var(--brand-color)] hover:underline flex items-center gap-1">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.16 0 9.613 0 7.559.664 6.132 1.943c-1.408 1.259-2.091 2.924-2.091 4.965 0 3.012 1.916 5.093 5.376 6.37 2.457.904 3.065 1.488 3.065 2.505 0 .972-.787 1.572-2.147 1.572-1.957 0-4.632-1.028-6.495-2.067l-.959 5.485c2.022.75 4.881 1.226 7.425 1.226 2.822 0 4.895-.824 6.22-2.225 1.25-1.328 1.838-3.033 1.838-4.992 0-3.321-2.147-5.467-5.399-6.632" />
+                        </svg>
+                        Stripe
+                    </button>
+                    {% endif %}
+
+                    <!-- Redsys Button -->
+                    {% if redsys_enabled %}
+                    <a href="{% url 'redsys_authorize_start' client.id %}"
+                        class="text-xs font-medium text-red-600 hover:underline flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                            </path>
+                        </svg>
+                        Redsys
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="p-6">
+                {% if payment_methods or redsys_tokens %}
+                <ul class="space-y-3">
+                    <!-- Redsys Tokens -->
+                    {% for token in redsys_tokens %}
+                    <li class="flex items-center justify-between p-3 border border-red-100 rounded-xl bg-red-50/20">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white p-2 rounded-lg border border-red-200 text-red-600">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-700 capitalize">
+                                    {{ token.card_brand }} <span class="text-slate-400">•••• {{
+                                        token.card_number|slice:"-4:" }}</span>
+                                    <span class="text-[10px] bg-red-100 text-red-600 px-1 rounded ml-1">Redsys</span>
+                                </div>
+                                <div class="text-xs text-slate-400">Expira: {{ token.expiration }}</div>
+                            </div>
+                        </div>
+                        <span
+                            class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">Guardada</span>
+                    </li>
+                    {% endfor %}
+
+                    <!-- Stripe Cards -->
+                    {% for pm in payment_methods %}
+                    <li class="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50/50">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white p-2 rounded-lg border border-slate-200 text-slate-600">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-700 capitalize">
+                                    {{ pm.card.brand }} <span class="text-slate-400">•••• {{ pm.card.last4 }}</span>
+                                    <span
+                                        class="text-[10px] bg-indigo-100 text-indigo-600 px-1 rounded ml-1">Stripe</span>
+                                </div>
+                                <div class="text-xs text-slate-400">Expira: {{ pm.card.exp_month }}/{{ pm.card.exp_year
+                                    }}</div>
+                            </div>
+                        </div>
+                        <span
+                            class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">Guardada</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">No hay tarjetas vinculadas.</p>
+                {% endif %}
+            </div>
+
+            <!-- Stripe Modal -->
+            <div x-show="isOpen" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto"
+                aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+                        @click="closeModal()"></div>
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div
+                        class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">Vincular Nueva
+                                Tarjeta</h3>
+
+                            <!-- Stripe Element Container -->
+                            <div id="payment-element" class="mb-4 min-h-[50px]">
+                                <!-- Stripe.js injects the Element here -->
+                            </div>
+
+                            <div id="error-message" class="text-red-500 text-sm mb-4 hidden"></div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button @click="confirmSetup()" id="submit-button" type="button"
+                                class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-2 bg-slate-900 text-base font-medium text-white hover:bg-slate-800 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                                <span x-show="!isLoading">Guardar Tarjeta</span>
+                                <span x-show="isLoading">Procesando...</span>
+                            </button>
+                            <button @click="closeModal()" type="button"
+                                class="mt-3 w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script src="https://js.stripe.com/v3/"></script>
+            <script>
+                function stripeCardHandler() {
+                    return {
+                        isOpen: false,
+                        isLoading: false,
+                        stripe: null,
+                        elements: null,
+                        clientSecret: null,
+
+                        initStripe() {
+                            if (!this.stripe) {
+                                this.stripe = Stripe('{{ stripe_public_key }}');
+                            }
+                        },
+
+                        async openModal() {
+                            this.isOpen = true;
+                            this.initStripe();
+
+                            // Fetch SetupIntent
+                            try {
+                                const response = await fetch("{% url 'client_get_stripe_setup' client.id %}");
+                                const data = await response.json();
+
+                                if (data.error) {
+                                    alert('Error: ' + data.error);
+                                    this.isOpen = false;
+                                    return;
+                                }
+
+                                this.clientSecret = data.client_secret;
+                                const appearance = { theme: 'stripe' };
+                                this.elements = this.stripe.elements({ clientSecret: this.clientSecret, appearance });
+                                const paymentElement = this.elements.create('payment');
+                                paymentElement.mount('#payment-element');
+
+                            } catch (e) {
+                                console.error(e);
+                                alert('Error de conexión con Stripe');
+                            }
+                        },
+
+                        closeModal() {
+                            this.isOpen = false;
+                            this.elements = null;
+                            document.getElementById('payment-element').innerHTML = ''; // Clean up
+                        },
+
+                        async confirmSetup() {
+                            if (this.isLoading) return;
+                            this.isLoading = true;
+                            document.getElementById('error-message').classList.add('hidden');
+
+                            const { error } = await this.stripe.confirmSetup({
+                                elements: this.elements,
+                                confirmParams: {
+                                    return_url: window.location.href, // Reload page on success (redirect)
+                                },
+                                redirect: 'if_required'
+                            });
+
+                            if (error) {
+                                const messageContainer = document.querySelector('#error-message');
+                                messageContainer.textContent = error.message;
+                                messageContainer.classList.remove('hidden');
+                                this.isLoading = false;
+                            } else {
+                                // Success!
+                                window.location.reload();
+                            }
+                        }
+                    }
+                }
+            </script>
+        </section>
+
+        <!-- Suscripciones -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Suscripciones</h3>
+                <button class="text-xs font-medium text-[var(--brand-color)] hover:underline">+ Nueva</button>
+            </div>
+            <div class="p-6">
+                {% if memberships %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-500">
+                        <thead class="text-xs text-slate-400 uppercase">
+                            <tr>
+                                <th class="pb-3">Plan</th>
+                                <th class="pb-3">Fechas</th>
+                                <th class="pb-3 text-right">Precio</th>
+                                <th class="pb-3 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for mem in memberships %}
+                            <tr>
+                                <td class="py-3 font-medium text-slate-800">{{ mem.name }}</td>
+                                <td class="py-3">{{ mem.start_date|date:"d/M/y" }} - {{
+                                    mem.end_date|date:"d/M/y"|default:"∞" }}</td>
+                                <td class="py-3 text-right">{{ mem.price }}€</td>
+                                <td class="py-3 text-center">
+                                    {% if mem.status == 'ACTIVE' %}
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Activa</span>
+                                    {% elif mem.status == 'EXPIRED' %}
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">Caducada</span>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">{{
+                                        mem.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">No tiene suscripciones activas ni pasadas.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Visitas y Reservas -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Historial de Accesos</h3>
+            </div>
+            <div class="p-6">
+                {% if visits %}
+                <div class="space-y-4">
+                    {% for visit in visits|slice:":5" %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500">
+                                {% if visit.status == 'SCHEDULED' %}📅{% else %}📍{% endif %}
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-slate-800">{{ visit.concept|default:"Acceso
+                                    General" }}</div>
+                                <div class="text-xs text-slate-400">{{ visit.date|date:"l d M, Y" }} · {{
+                                    visit.check_in_time|time:"H:i"|default:"--" }}</div>
+                            </div>
+                        </div>
+                        <div class="text-xs font-medium 
+                            {% if visit.status == 'ATTENDED' %}text-emerald-600
+                            {% elif visit.status == 'NOSHOW' %}text-red-500
+                            {% else %}text-blue-500{% endif %}">
+                            {{ visit.get_status_display }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">Sin registro de visitas todavía.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Compras (Orders) -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Historial de Ventas</h3>
+            </div>
+            <div class="p-6">
+                {% if client.orders.exists %}
+                <ul class="divide-y divide-slate-100">
+                    {% for order in client.orders.all %}
+                    <li
+                        class="py-3 flex justify-between text-sm group hover:bg-slate-50 -mx-6 px-6 transition-colors cursor-default">
+                        <div>
+                            <div class="font-medium text-slate-800">
+                                Ticket #{{ order.id }}
+                                {% if order.invoice_number %}<span class="text-xs text-slate-500">({{
+                                    order.invoice_number }})</span>{% endif %}
+                            </div>
+                            <div class="text-xs text-slate-400">{{ order.created_at|date:"d M Y · H:i" }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-slate-900">{{ order.total_amount }}€</div>
+                            <div class="text-[10px] uppercase font-bold tracking-wider
+                                {% if order.status == 'PAID' %}text-emerald-500{% else %}text-slate-400{% endif %}">
+                                {{ order.get_status_display }}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">No hay ventas registradas.</p>
+                {% endif %}
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock %}

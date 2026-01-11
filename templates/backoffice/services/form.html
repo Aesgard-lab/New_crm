@@ -1,0 +1,188 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Configuración del servicio</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-4xl mx-auto">
+    {% csrf_token %}
+
+    <div class="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm space-y-8">
+        <!-- Main -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre del Servicio</label>
+                <!-- Manual input to avoid shadowing issues -->
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría</label>
+                {{ form.category }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sala Preferida (Opcional)</label>
+                {{ form.default_room }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Color en Calendario</label>
+                <div class="w-full">
+                    {{ form.color }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing & Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Precio Base (€)</label>
+                {{ form.base_price }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Impuestos</label>
+                {{ form.tax_rate }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Estrategia Precio</label>
+                {{ form.price_strategy }}
+            </div>
+
+            <!-- Final Price Preview -->
+            <div
+                class="md:col-span-3 bg-slate-50 rounded-xl p-4 flex items-center justify-between border border-slate-200">
+                <div class="text-sm text-slate-600">
+                    <span class="font-bold">Precio Final (Estimado):</span>
+                    <span class="text-xs text-slate-400 block">Este es el precio que verá el cliente.</span>
+                </div>
+                <div class="text-2xl font-bold text-slate-900">
+                    <span id="finalPriceDisplay">0.00</span>€
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Duración (min)</label>
+                {{ form.duration }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Asistentes Máx.</label>
+                {{ form.max_attendees }}
+            </div>
+        </div>
+
+        <!-- Visibility Switches -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+            <div class="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="flex h-5 items-center">
+                    {{ form.is_active }}
+                </div>
+                <div class="text-sm">
+                    <label for="{{ form.is_active.id_for_label }}" class="font-medium text-slate-900">Activo /
+                        POS</label>
+                    <p class="text-slate-500 text-xs">Si desactivas esto, el servicio no aparecerá en el punto de venta
+                        ni se podrá agendar internamente.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div class="flex h-5 items-center">
+                    {{ form.is_visible_online }}
+                </div>
+                <div class="text-sm">
+                    <label for="{{ form.is_visible_online.id_for_label }}"
+                        class="font-medium text-blue-900 flex items-center gap-2">
+                        Venta Online / App
+                        <span class="bg-blue-200 text-blue-800 text-[10px] px-1.5 py-0.5 rounded-full">App</span>
+                    </label>
+                    <p class="text-blue-600/80 text-xs">Activa esto para que los clientes puedan comprar/reservar este
+                        servicio desde la App o Web.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="pt-4 border-t border-slate-100 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Descripción <span
+                        class="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full ml-1">App</span>
+                </label>
+                {{ form.description }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Imagen <span
+                        class="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full ml-1">App</span>
+                </label>
+                <input type="file" name="image"
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
+            </div>
+        </div>
+    </div>
+
+    <div class="flex gap-4 mt-6 justify-end">
+        <a href="{% url 'service_list' %}"
+            class="px-6 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</a>
+        <button type="submit" style="background-color: #0f172a;"
+            class="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20">
+            Guardar Servicio
+        </button>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const basePriceInput = document.querySelector('[name="base_price"]');
+        const taxRateSelect = document.querySelector('[name="tax_rate"]');
+        const strategySelect = document.querySelector('[name="price_strategy"]');
+        const finalPriceDisplay = document.getElementById('finalPriceDisplay');
+
+        // Create a map of tax rates from the select options
+        // We need the rate value/text to extract percentage if possible
+        // Or we assume standard logic? 
+        // Best approach: Parse the option text if it contains the % or pass it from context.
+        // For now, let's try to extract from option text (e.g. "IVA 21%")
+
+        function extractRate(text) {
+            const match = text.match(/(\d+(?:[\.,]\d+)?)%/);
+            if (match) {
+                return parseFloat(match[1].replace(',', '.')) / 100;
+            }
+            return 0;
+        }
+
+        function calculateFinalPrice() {
+            const basePrice = parseFloat(basePriceInput.value) || 0;
+            const strategy = strategySelect.value;
+
+            let rate = 0;
+            if (taxRateSelect.selectedIndex > -1) {
+                const selectedText = taxRateSelect.options[taxRateSelect.selectedIndex].text;
+                rate = extractRate(selectedText);
+            }
+
+            let finalPrice = basePrice;
+            if (strategy === 'TAX_EXCLUDED') {
+                finalPrice = basePrice * (1 + rate);
+            }
+            // If TAX_INCLUDED, base_price IS the final price roughly, or we might want to show breakdowns.
+            // Usually "Final Price" implies what the customer pays.
+            // If Tax Included -> Final = Base
+            // If Tax Excluded -> Final = Base + Tax
+
+            finalPriceDisplay.textContent = finalPrice.toFixed(2);
+        }
+
+        basePriceInput.addEventListener('input', calculateFinalPrice);
+        taxRateSelect.addEventListener('change', calculateFinalPrice);
+        strategySelect.addEventListener('change', calculateFinalPrice);
+
+        // Initial calc
+        calculateFinalPrice();
+    });
+</script>
+{% endblock %}

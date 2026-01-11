@@ -1,0 +1,67 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Salas</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Gestión de espacios y aforos</div>
+{% endblock %}
+
+{% block content %}
+{% include "backoffice/activities/tabs.html" %}
+
+<div class="mb-6 flex justify-between items-center">
+    <div class="flex gap-2"></div>
+    {% load gym_tags %}
+    {% has_gym_perm 'activities.add_room' as can_add %}
+    {% if can_add %}
+    <a href="{% url 'room_create' %}"
+        class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nueva Sala
+    </a>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for room in rooms %}
+    <div
+        class="bg-white rounded-2xl p-6 border border-slate-100 hover:shadow-lg transition-all group relative overflow-hidden">
+        <div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <a href="{% url 'room_edit' room.pk %}" class="text-slate-400 hover:text-[var(--brand-color)]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                    </path>
+                </svg>
+            </a>
+        </div>
+
+        <div class="flex items-center gap-4 mb-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                    </path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900 text-lg">{{ room.name }}</h3>
+                <div class="text-xs text-slate-500">Aforo: <span class="font-bold text-slate-700">{{ room.capacity
+                        }}</span> pax</div>
+            </div>
+        </div>
+
+        <!-- Mini Preview of Layout (Placeholder) -->
+        <div
+            class="h-24 bg-slate-50 rounded-lg border border-slate-200 border-dashed flex items-center justify-center text-xs text-slate-400">
+            Vista Previa Diseño
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full py-12 text-center text-slate-400">
+        <p>No hay salas configuradas.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

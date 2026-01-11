@@ -1,0 +1,113 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Configuración de la actividad</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-4xl mx-auto">
+    {% csrf_token %}
+
+    <div class="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm space-y-8">
+        <!-- Basic Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre de la Clase</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría</label>
+                {{ form.category }}
+                {{ form.category.errors }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Color en Calendario</label>
+                <div class="flex items-center gap-3">
+                    <div class="w-full">
+                        {{ form.color }}
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Política de Cancelación</label>
+                {{ form.cancellation_policy }}
+                <p class="text-[10px] text-slate-400 mt-1">Define reglas de penalización por no-show.</p>
+                {{ form.cancellation_policy.errors }}
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Duración (min)</label>
+                {{ form.duration }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Aforo Base</label>
+                {{ form.base_capacity }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Intensidad</label>
+                {{ form.intensity_level }}
+            </div>
+        </div>
+
+        <!-- Media & Desc -->
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Descripción
+                    <span
+                        class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full lowercase font-normal">App</span>
+                </label>
+                {{ form.description }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">
+                        Imagen de Portada
+                        <span
+                            class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full lowercase font-normal">App</span>
+                    </label>
+                    <input type="file" name="image"
+                        class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Video URL (Demo)</label>
+                    {{ form.video_url }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff -->
+        <div class="pt-6 border-t border-slate-100">
+            <h3 class="font-bold text-slate-900 mb-4">Staff Cualificado</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {% for checkbox in form.eligible_staff %}
+                <label
+                    class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-[var(--brand-color)] hover:bg-slate-50 transition-colors">
+                    {{ checkbox.tag }}
+                    <span class="text-sm font-medium text-slate-700">{{ checkbox.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Solo el staff seleccionado podrá impartir esta clase.</p>
+        </div>
+    </div>
+
+    <div class="flex gap-4 mt-6 justify-end">
+        <a href="{% url 'activity_list' %}"
+            class="px-6 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</a>
+        <button type="submit"
+            class="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20">
+            Guardar Actividad
+        </button>
+    </div>
+</form>
+{% endblock %}

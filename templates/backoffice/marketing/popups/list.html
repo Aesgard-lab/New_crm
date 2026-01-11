@@ -1,0 +1,78 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div>
+        <div class="text-2xl font-bold text-slate-800">Popups</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">Mensajes dentro de la app</div>
+    </div>
+    <a href="{% url 'marketing_popup_create' %}"
+        class="bg-slate-900 text-white px-4 py-2 rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Crear Popup
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if popups %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for popup in popups %}
+    <div
+        class="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow group relative">
+        <div class="h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+            {% if popup.image %}
+            <img src="{{ popup.image.url }}" class="w-full h-full object-cover">
+            {% else %}
+            <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
+                </path>
+            </svg>
+            {% endif %}
+
+            {% if popup.is_active %}
+            <span
+                class="absolute top-3 right-3 bg-green-100 text-green-700 px-2 py-1 rounded-lg text-xs font-bold shadow-sm">Activo</span>
+            {% else %}
+            <span
+                class="absolute top-3 right-3 bg-slate-100 text-slate-500 px-2 py-1 rounded-lg text-xs font-bold shadow-sm">Inactivo</span>
+            {% endif %}
+        </div>
+
+        <div class="p-5">
+            <h3 class="font-bold text-slate-800 text-lg mb-1 truncate">{{ popup.title }}</h3>
+            <p class="text-xs text-slate-500 uppercase tracking-wide font-bold mb-4">{{ popup.get_target_group_display
+                }}</p>
+
+            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
+                <a href="{% url 'marketing_popup_edit' popup.pk %}"
+                    class="text-sm font-medium text-slate-600 hover:text-[var(--brand-color)]">Editar</a>
+                <a href="{% url 'marketing_popup_delete' popup.pk %}" onclick="return confirm('¿Eliminar este popup?')"
+                    class="text-sm font-medium text-red-500 hover:text-red-700">Eliminar</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed">
+    <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
+            </path>
+        </svg>
+    </div>
+    <h3 class="text-lg font-bold text-slate-900 mb-2">No hay popups activos</h3>
+    <p class="text-slate-500 mb-6 max-w-sm mx-auto">Crea mensajes emergentes para comunicar novedades a tus clientes o
+        staff.</p>
+    <a href="{% url 'marketing_popup_create' %}"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20">
+        Crear Primer Popup
+    </a>
+</div>
+{% endif %}
+{% endblock %}

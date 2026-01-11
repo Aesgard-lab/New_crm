@@ -1,0 +1,100 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Actividades</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Gestión de clases y servicios grupales</div>
+{% endblock %}
+
+{% block content %}
+{% include "backoffice/activities/tabs.html" %}
+
+<div class="mb-6 flex justify-between items-center">
+    <div class="flex gap-2"></div>
+    {% load gym_tags %}
+    {% has_gym_perm 'activities.add_activity' as can_add %}
+    {% if can_add %}
+    <a href="{% url 'activity_create' %}"
+        class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nueva Clase
+    </a>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for activity in activities %}
+    <div
+        class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all group overflow-hidden flex flex-col h-full">
+        <!-- Image Header -->
+        <div class="h-32 bg-slate-100 relative">
+            {% if activity.image %}
+            <img src="{{ activity.image.url }}" alt="{{ activity.name }}" class="w-full h-full object-cover">
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center text-slate-300">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                    </path>
+                </svg>
+            </div>
+            {% endif %}
+
+            <div class="absolute top-2 right-2">
+                <a href="{% url 'activity_edit' activity.pk %}"
+                    class="bg-white/90 p-2 rounded-lg text-slate-600 hover:text-[var(--brand-color)] shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                        </path>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="absolute bottom-2 left-2">
+                <span class="px-2 py-1 bg-black/50 backdrop-blur-sm text-white text-xs font-bold rounded-md">
+                    {{ activity.duration }} min
+                </span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-4 flex-1 flex flex-col">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <h3 class="font-bold text-slate-900 leading-tight">{{ activity.name }}</h3>
+                    <div class="text-xs text-slate-500 mt-0.5">{{ activity.category.name|default:"General" }}</div>
+                </div>
+            </div>
+
+            <div class="mt-auto pt-4 flex items-center justify-between text-xs text-slate-500 border-t border-slate-50">
+                <div class="flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    <span>{{ activity.get_intensity_level_display }}</span>
+                </div>
+                <div class="font-medium text-slate-700">
+                    {{ activity.base_capacity }} pax
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full py-12 text-center text-slate-400">
+        <div class="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                </path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <p>No hay clases definidas.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

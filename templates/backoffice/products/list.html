@@ -1,0 +1,99 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Inventario</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Gestión de productos y stock</div>
+{% endblock %}
+
+{% block content %}
+{% include "backoffice/products/tabs.html" %}
+
+<div class="mb-6 flex justify-between items-center mt-6">
+    <div class="flex gap-2"></div>
+    {% load gym_tags %}
+    {% has_gym_perm 'products.add_product' as can_add %}
+    {% if can_add %}
+    <a href="{% url 'product_create' %}"
+        class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-opacity flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nuevo Producto
+    </a>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for product in products %}
+    <div
+        class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition-shadow group relative">
+        <div class="absolute top-4 right-4">
+            <a href="{% url 'product_edit' product.pk %}"
+                class="text-slate-300 hover:text-[var(--brand-color)] transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                    </path>
+                </svg>
+            </a>
+        </div>
+
+        <div class="flex items-start gap-4">
+            {% if product.image %}
+            <img src="{{ product.image.url }}" class="w-16 h-16 rounded-xl object-cover bg-slate-100">
+            {% else %}
+            <div class="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                </svg>
+            </div>
+            {% endif %}
+
+            <div class="w-full">
+                <h3 class="font-bold text-slate-900 pr-6">{{ product.name }}</h3>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    {% if product.category %}
+                    <span class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">{{ product.category.name
+                        }}</span>
+                    {% endif %}
+                    {% if product.sku %}
+                    <span class="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">{{ product.sku
+                        }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center justify-between mt-4 pb-2 border-b border-slate-50">
+                    <span class="font-bold text-slate-800">{{ product.base_price }}€</span>
+
+                    {% if product.track_stock %}
+                    <span
+                        class="text-xs font-medium px-2 py-1 rounded-full 
+                            {% if product.stock_quantity <= product.low_stock_threshold %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                        Stock: {{ product.stock_quantity }}
+                    </span>
+                    {% else %}
+                    <span class="text-xs text-slate-400">Infinito</span>
+                    {% endif %}
+                </div>
+
+                <div class="mt-2 text-xs text-slate-400">
+                    Proveedor: {{ product.supplier_name|default:"-" }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full py-12 text-center">
+        <div class="bg-slate-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-slate-300">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+        </div>
+        <h3 class="text-slate-900 font-medium">Inventario vacío</h3>
+        <p class="text-slate-500 text-sm mt-1">Da de alta tu primer producto, toalla o suplemento.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

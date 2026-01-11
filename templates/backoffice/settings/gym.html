@@ -1,0 +1,188 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <div>
+        <div>Configuración del Gimnasio</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">Datos fiscales, branding y contacto</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <form method="post" enctype="multipart/form-data" class="p-8">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-6">
+                <p class="font-bold">Por favor corrige los siguientes errores:</p>
+                {{ form.errors }}
+            </div>
+            {% endif %}
+
+            <!-- Branding Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01">
+                        </path>
+                    </svg>
+                    Identidad Visual & General
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Nombre Comercial</label>
+                        {{ form.commercial_name }}
+                        <p class="text-xs text-slate-400 mt-1">Este es el nombre que verán tus clientes.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Color Corporativo</label>
+                        <div class="flex items-center gap-3">
+                            {{ form.brand_color }}
+                            <span class="text-sm text-slate-500">Color principal de tu marca</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Logotipo</label>
+                        {{ form.logo }}
+                        {% if request.gym.logo %}
+                        <div class="mt-2">
+                            <p class="text-xs text-slate-500 mb-1">Logo actual:</p>
+                            <img src="{{ request.gym.logo.url }}"
+                                class="h-12 object-contain bg-slate-50 rounded p-1 border border-slate-200">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-100 my-8"></div>
+
+            <!-- Fiscal Data Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    Datos Fiscales (Facturación)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Razón Social</label>
+                        {{ form.legal_name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">NIF / CIF</label>
+                        {{ form.tax_id }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-100 my-8"></div>
+
+            <!-- Address & Contact -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Ubicación y Contacto
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Dirección</label>
+                        {{ form.address }}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Ciudad</label>
+                        {{ form.city }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Provincia</label>
+                        {{ form.province }}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Código Postal</label>
+                        {{ form.zip_code }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">País</label>
+                        {{ form.country }}
+                    </div>
+
+                    <div class="md:col-span-2 border-t border-slate-50 my-2"></div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Teléfono</label>
+                        {{ form.phone }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Email Contacto</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Sitio Web</label>
+                        {{ form.website }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-100 my-8"></div>
+
+            <!-- Social Media -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+                        </path>
+                    </svg>
+                    Redes Sociales
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Instagram</label>
+                        {{ form.instagram }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Facebook</label>
+                        {{ form.facebook }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">TikTok</label>
+                        {{ form.tiktok }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">YouTube</label>
+                        {{ form.youtube }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4">
+                <button type="submit"
+                    class="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20">
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

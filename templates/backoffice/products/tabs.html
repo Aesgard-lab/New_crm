@@ -1,0 +1,32 @@
+<nav class="-mb-px flex space-x-8" aria-label="Tabs">
+    <!-- Products -->
+    <a href="{% url 'product_list' %}" class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              {% if request.resolver_match.url_name == 'product_list' or 'product_c' in request.resolver_match.url_name and 'category' not in request.resolver_match.url_name %}
+                  border-[var(--brand-color)] text-[var(--brand-color)]
+              {% else %}
+                  border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300
+              {% endif %}">
+        <svg class="mr-2 h-5 w-5 {% if request.resolver_match.url_name == 'product_list' %}text-[var(--brand-color)]{% else %}text-slate-400 group-hover:text-slate-500{% endif %}"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+        </svg>
+        Productos
+    </a>
+
+    <!-- Categories -->
+    <a href="{% url 'product_category_list' %}" class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              {% if 'category' in request.resolver_match.url_name %}
+                  border-[var(--brand-color)] text-[var(--brand-color)]
+              {% else %}
+                  border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300
+              {% endif %}">
+        <svg class="mr-2 h-5 w-5 {% if 'category' in request.resolver_match.url_name %}text-[var(--brand-color)]{% else %}text-slate-400 group-hover:text-slate-500{% endif %}"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+            </path>
+        </svg>
+        Categorías
+    </a>
+</nav>

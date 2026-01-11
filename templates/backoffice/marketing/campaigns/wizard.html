@@ -1,0 +1,304 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Nueva Campaña</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Configura y envía tu campaña de email</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="campaignWizard()" class="max-w-4xl mx-auto">
+
+    <!-- Stepper -->
+    <div class="flex items-center justify-between mb-8 relative">
+        <div class="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-200 -z-10"></div>
+
+        <template x-for="(stepStr, index) in steps" :key="index">
+            <div class="flex flex-col items-center bg-white px-2">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors duration-300"
+                    :class="step > index + 1 ? 'bg-green-500 text-white' : (step === index + 1 ? 'bg-[var(--brand-color)] text-white' : 'bg-slate-200 text-slate-500')">
+                    <span x-show="step <= index + 1" x-text="index + 1"></span>
+                    <svg x-show="step > index + 1" class="w-4 h-4" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <span class="text-xs font-medium mt-2"
+                    :class="step === index + 1 ? 'text-[var(--brand-color)]' : 'text-slate-500'"
+                    x-text="stepStr"></span>
+            </div>
+        </template>
+    </div>
+
+    <!-- Wizard Content -->
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-xl overflow-hidden relative min-h-[400px]">
+
+        <!-- Step 1: Details -->
+        <div x-show="step === 1" x-transition.opacity class="p-8">
+            <h2 class="text-xl font-bold text-slate-900 mb-6">Detalles de la Campaña</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Interno</label>
+                    <input type="text" x-model="form.name"
+                        class="w-full rounded-xl border-slate-200 p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Ej: Newsletter Abril">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Asunto del Correo</label>
+                    <input type="text" x-model="form.subject"
+                        class="w-full rounded-xl border-slate-200 p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Lo que verán tus clientes">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Programar Envío (Opcional)</label>
+                    <input type="datetime-local" x-model="form.scheduled_at"
+                        class="w-full rounded-xl border-slate-200 p-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-xs text-slate-500 mt-1">Deja vacío para guardar como borrador o enviar manualmente
+                        luego.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Audience -->
+        <div x-show="step === 2" x-transition.opacity class="p-8" style="display: none;">
+            <h2 class="text-xl font-bold text-slate-900 mb-6">Selecciona tu Audiencia</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div @click="form.audience_type = 'ALL_ACTIVE'"
+                    class="cursor-pointer p-4 rounded-xl border-2 transition-all hover:bg-slate-50"
+                    :class="form.audience_type === 'ALL_ACTIVE' ? 'border-[var(--brand-color)] bg-blue-50/50' : 'border-slate-100'">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">Socios Activos</div>
+                            <div class="text-xs text-slate-500">Miembros con cuota vigente</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div @click="form.audience_type = 'ALL_CLIENTS'"
+                    class="cursor-pointer p-4 rounded-xl border-2 transition-all hover:bg-slate-50"
+                    :class="form.audience_type === 'ALL_CLIENTS' ? 'border-[var(--brand-color)] bg-blue-50/50' : 'border-slate-100'">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">Todos los Clientes</div>
+                            <div class="text-xs text-slate-500">Base de datos completa</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div @click="form.audience_type = 'INACTIVE'"
+                    class="cursor-pointer p-4 rounded-xl border-2 transition-all hover:bg-slate-50"
+                    :class="form.audience_type === 'INACTIVE' ? 'border-[var(--brand-color)] bg-blue-50/50' : 'border-slate-100'">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">Inactivos / Expirados</div>
+                            <div class="text-xs text-slate-500">Recuperación de clientes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Template -->
+        <div x-show="step === 3" x-transition.opacity class="p-8" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-900">Elige un Diseño</h2>
+                <a href="{% url 'marketing_template_create' %}" target="_blank"
+                    class="text-sm font-bold text-[var(--brand-color)] hover:underline">Crear nueva plantilla</a>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2">
+                {% for t in templates %}
+                <div @click="selectTemplate({{ t.id }}, '{{ t.name|escapejs }}')"
+                    class="cursor-pointer rounded-xl border-2 overflow-hidden group transition-all"
+                    :class="form.template_id === {{ t.id }} ? 'border-[var(--brand-color)] ring-2 ring-blue-100' : 'border-slate-100 hover:border-slate-300'">
+                    <div class="h-32 bg-slate-100 relative">
+                        {% if t.thumbnail %}
+                        <img src="{{ t.thumbnail.url }}" class="w-full h-full object-cover">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-slate-400">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        {% endif %}
+
+                        <div x-show="form.template_id === {{ t.id }}"
+                            class="absolute inset-0 bg-[var(--brand-color)]/20 flex items-center justify-center">
+                            <div
+                                class="w-8 h-8 bg-[var(--brand-color)] rounded-full flex items-center justify-center text-white shadow-lg">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        <div class="text-sm font-bold text-slate-900 truncate">{{ t.name }}</div>
+                        <div class="text-xs text-slate-500 mt-1">{{ t.updated_at|date:"d M" }}</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-3 text-center py-12 bg-slate-50 rounded-xl">
+                    <p class="text-slate-500 mb-4">No tienes plantillas creadas.</p>
+                    <a href="{% url 'marketing_template_create' %}"
+                        class="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold">Crear Plantilla</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Step 4: Summary -->
+        <div x-show="step === 4" x-transition.opacity class="p-8" style="display: none;">
+            <h2 class="text-xl font-bold text-slate-900 mb-6">Resumen y Confirmación</h2>
+
+            <div class="bg-slate-50 rounded-2xl p-6 space-y-4">
+                <div class="flex justify-between border-b border-slate-200 pb-4">
+                    <span class="text-slate-500">Nombre</span>
+                    <span class="font-bold text-slate-900" x-text="form.name"></span>
+                </div>
+                <div class="flex justify-between border-b border-slate-200 pb-4">
+                    <span class="text-slate-500">Asunto</span>
+                    <span class="font-bold text-slate-900" x-text="form.subject"></span>
+                </div>
+                <div class="flex justify-between border-b border-slate-200 pb-4">
+                    <span class="text-slate-500">Audiencia</span>
+                    <span class="font-bold text-slate-900" x-text="getAudienceLabel()"></span>
+                </div>
+                <div class="flex justify-between border-b border-slate-200 pb-4">
+                    <span class="text-slate-500">Plantilla</span>
+                    <span class="font-bold text-slate-900" x-text="form.template_name"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Programación</span>
+                    <span class="font-bold text-slate-900"
+                        x-text="form.scheduled_at ? formatDateTime(form.scheduled_at) : 'Inmediato / Borrador'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <button x-show="step > 1" @click="step--"
+                class="px-6 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors">
+                Atrás
+            </button>
+            <div x-show="step === 1" class="flex-1"></div> <!-- Spacer -->
+
+            <button x-show="step < 4" @click="nextStep()"
+                class="ml-auto px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">
+                Siguiente
+            </button>
+
+            <button x-show="step === 4" @click="submitCampaign()" :disabled="loading"
+                class="ml-auto px-8 py-3 bg-[var(--brand-color)] text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-xl shadow-blue-500/20 flex items-center gap-2">
+                <span x-show="!loading">Confirmar y Crear</span>
+                <span x-show="loading">Procesando...</span>
+                <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('campaignWizard', () => ({
+            step: 1,
+            steps: ['Detalles', 'Audiencia', 'Diseño', 'Resumen'],
+            loading: false,
+            form: {
+                name: '',
+                subject: '',
+                audience_type: 'ALL_ACTIVE',
+                template_id: null,
+                template_name: '',
+                scheduled_at: ''
+            },
+
+            nextStep() {
+                if (this.step === 1) {
+                    if (!this.form.name || !this.form.subject) return alert('Completa nombre y asunto');
+                }
+                if (this.step === 3) {
+                    if (!this.form.template_id) return alert('Selecciona una plantilla');
+                }
+                this.step++;
+            },
+
+            selectTemplate(id, name) {
+                this.form.template_id = id;
+                this.form.template_name = name;
+            },
+
+            getAudienceLabel() {
+                const map = {
+                    'ALL_ACTIVE': 'Socios Activos',
+                    'ALL_CLIENTS': 'Todos los Clientes',
+                    'INACTIVE': 'Inactivos / Expirados'
+                };
+                return map[this.form.audience_type] || this.form.audience_type;
+            },
+
+            formatDateTime(str) {
+                if (!str) return '';
+                const d = new Date(str);
+                return d.toLocaleString();
+            },
+
+            submitCampaign() {
+                this.loading = true;
+                fetch("{% url 'marketing_campaign_create_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(this.form)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            window.location.href = "{% url 'marketing_dashboard' %}";
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    })
+                    .catch(err => {
+                        alert('Error de conexión');
+                        console.error(err);
+                    })
+                    .finally(() => {
+                        this.loading = false;
+                    });
+            }
+        }));
+    });
+</script>
+{% endblock %}

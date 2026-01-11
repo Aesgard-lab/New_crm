@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosco Staff - Check-in</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Deshabilitar zoom en input al hacer tap en móviles */
+        input {
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 h-screen flex items-center justify-center overflow-hidden">
+
+    <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 text-center mx-4">
+
+        <!-- Estado (Mensajes) -->
+        <div id="status-message"
+            class="hidden absolute top-0 left-0 w-full h-full bg-white/95 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-10 transition-all">
+            <div id="status-icon" class="text-6xl mb-4">👋</div>
+            <h2 id="status-title" class="text-2xl font-bold text-slate-800 mb-2"></h2>
+            <p id="status-text" class="text-slate-500"></p>
+        </div>
+
+        <div class="mb-8">
+            <h1 class="text-xl font-bold text-slate-700 uppercase tracking-widest">Control de Acceso</h1>
+            <p class="text-slate-400 text-sm mt-1">Introduce tu PIN de empleado</p>
+        </div>
+
+        <!-- PIN Display -->
+        <div class="mb-8">
+            <div class="flex justify-center gap-3" id="pin-display">
+                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
+                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
+                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
+                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
+            </div>
+            <input type="password" id="pin-input" class="opacity-0 absolute w-0 h-0" maxlength="6" inputmode="numeric">
+        </div>
+
+        <!-- Numpad -->
+        <div class="grid grid-cols-3 gap-4 max-w-xs mx-auto mb-6">
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="1">1</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="2">2</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="3">3</button>
+
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="4">4</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="5">5</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="6">6</button>
+
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="7">7</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="8">8</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="9">9</button>
+
+            <button class="text-slate-300 active:text-slate-500 w-16 h-16 flex items-center justify-center"
+                onclick="clearPin()">C</button>
+            <button
+                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                data-val="0">0</button>
+            <button class="text-slate-300 active:text-slate-500 w-16 h-16 flex items-center justify-center"
+                onclick="backspace()">⌫</button>
+        </div>
+
+        <button id="submit-btn"
+            class="w-full bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg opacity-50 cursor-not-allowed transition-all"
+            disabled>
+            ENTRAR
+        </button>
+
+        <div class="mt-8 text-xs text-slate-300">
+            TechGym CRM System
+        </div>
+    </div>
+
+    <script>
+        const dots = document.querySelectorAll('.pin-dot');
+        const submitBtn = document.getElementById('submit-btn');
+        let currentPin = "";
+        const MAX_PIN = 4;
+
+        document.querySelectorAll('.numpad-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (currentPin.length < MAX_PIN) {
+                    currentPin += btn.dataset.val;
+                    updateUI();
+                }
+            });
+        });
+
+        function clearPin() {
+            currentPin = "";
+            updateUI();
+        }
+
+        function backspace() {
+            currentPin = currentPin.slice(0, -1);
+            updateUI();
+        }
+
+        function updateUI() {
+            dots.forEach((dot, index) => {
+                if (index < currentPin.length) {
+                    dot.classList.add('bg-slate-800');
+                    dot.classList.remove('bg-slate-200');
+                } else {
+                    dot.classList.remove('bg-slate-800');
+                    dot.classList.add('bg-slate-200');
+                }
+            });
+
+            if (currentPin.length >= 4) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        submitBtn.addEventListener('click', submitPin);
+
+        function submitPin() {
+            const formData = new FormData();
+            formData.append('pin', currentPin);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch("{% url 'staff_checkin' %}", {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data);
+                    clearPin();
+                })
+                .catch(error => {
+                    showStatus({ status: 'error', message: 'Error de conexión' });
+                });
+        }
+
+        function showStatus(data) {
+            const modal = document.getElementById('status-message');
+            const icon = document.getElementById('status-icon');
+            const title = document.getElementById('status-title');
+            const text = document.getElementById('status-text');
+
+            modal.classList.remove('hidden');
+
+            if (data.status === 'success') {
+                icon.textContent = data.action === 'checkin' ? '👋' : '🏁';
+                title.textContent = data.action === 'checkin' ? '¡Hola ' + data.staff_name + '!' : '¡Adiós ' + data.staff_name + '!';
+            } else {
+                icon.textContent = '❌';
+                title.textContent = 'Error';
+            }
+
+            text.textContent = data.message;
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>

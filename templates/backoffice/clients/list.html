@@ -1,0 +1,123 @@
+{% extends "backoffice/base.html" %}
+{% load gym_tags %}
+
+{% block page_title %}Clientes{% endblock %}
+
+{% block content %}
+<div class="bg-white border border-slate-200 rounded-3xl p-6">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-lg font-semibold">Listado de Clientes</h2>
+      <div class="text-sm text-slate-500">Gestiona los socios de este gimnasio</div>
+    </div>
+
+    {% has_gym_perm 'clients.create' as can_create %}
+    {% if can_create %}
+    <a href="{% url 'client_create' %}"
+      class="bg-white text-slate-500 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors">
+      + Nuevo Cliente
+    </a>
+    {% endif %}
+  </div>
+
+  {% if clients %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-500">
+      <thead class="text-xs uppercase bg-slate-50 text-slate-700">
+        <tr>
+          <th scope="col" class="px-6 py-3 rounded-l-xl">Cliente</th>
+          <th scope="col" class="px-6 py-3">Estado</th>
+          <th scope="col" class="px-6 py-3">Etiquetas</th>
+          <th scope="col" class="px-6 py-3 rounded-r-xl">Email / Tlf</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in clients %}
+        <tr class="bg-white border-b hover:bg-slate-50 transition-colors last:border-b-0">
+          <!-- Nombre y Foto -->
+          <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap flex items-center gap-3">
+            {% if client.photo %}
+            <img class="w-10 h-10 rounded-full object-cover" src="{{ client.photo.url }}" alt="{{ client.first_name }}">
+            {% else %}
+            <div
+              class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 text-xs font-bold uppercase">
+              {{ client.first_name|slice:":2" }}
+            </div>
+            {% endif %}
+
+            <div>
+              <a href="{% url 'client_detail' client.id %}"
+                class="font-semibold hover:text-[var(--brand-color)] transition-colors">{{ client.first_name }} {{
+                client.last_name }}</a>
+              <div class="text-xs text-slate-400 font-normal">DNI: {{ client.dni|default:"--" }}</div>
+            </div>
+          </td>
+
+          <!-- Estado -->
+          <td class="px-6 py-4">
+            {% if client.status == 'ACTIVE' %}
+            <span
+              class="bg-emerald-100 text-emerald-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-emerald-200">Activo</span>
+            {% elif client.status == 'LEAD' %}
+            <span
+              class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-blue-200">Prospecto</span>
+            {% elif client.status == 'INACTIVE' %}
+            <span
+              class="bg-slate-100 text-slate-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-slate-200">Inactivo</span>
+            {% elif client.status == 'BLOCKED' %}
+            <span
+              class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-red-200">Bloqueado</span>
+            {% elif client.status == 'PAUSED' %}
+            <span
+              class="bg-amber-100 text-amber-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-amber-200">Excedencia</span>
+            {% endif %}
+          </td>
+
+          <!-- Tags -->
+          <td class="px-6 py-4">
+            <div class="flex flex-wrap gap-1">
+              {% for tag in client.tags.all %}
+              <span class="text-[10px] px-2 py-0.5 rounded-md border"
+                style="background-color: {{ tag.color }}20; border-color: {{ tag.color }}40; color: {{ tag.color }}">
+                {{ tag.name }}
+              </span>
+              {% empty %}
+              <span class="text-xs text-slate-400">-</span>
+              {% endfor %}
+            </div>
+          </td>
+
+          <!-- Contacto -->
+          <td class="px-6 py-4">
+            <div class="flex flex-col">
+              <span>{{ client.email|default:"" }}</span>
+              <span class="text-xs text-slate-400">{{ client.phone_number }}</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-12 text-center text-slate-500 border-2 border-dashed border-slate-100 rounded-2xl">
+    <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+      </path>
+    </svg>
+    <h3 class="text-lg font-medium text-slate-900">No hay clientes aún</h3>
+    <p class="mt-1 text-sm text-slate-500">Empieza registrando un nuevo socio o prospecto.</p>
+
+    {% if can_create %}
+    <div class="mt-6">
+      <a href="{% url 'client_create' %}"
+        class="bg-white text-slate-500 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors shadow-sm inline-block">
+        Crear primer cliente
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

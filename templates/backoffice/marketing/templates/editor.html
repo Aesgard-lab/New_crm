@@ -1,0 +1,313 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="{% url 'marketing_template_list' %}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
+            </path>
+        </svg>
+    </a>
+    <div>
+        <div>Editor de Plantilla</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">{{ template.name }}</div>
+    </div>
+    <div class="ml-auto">
+        <button id="save-btn"
+            class="px-6 py-2 bg-[var(--brand-color)] text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                </path>
+            </svg>
+            <span id="save-text">Guardar Cambios</span>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- GrapesJS Styles -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/grapesjs/0.21.2/css/grapes.min.css">
+<style>
+    /* Custom Editor Overrides */
+    .gjs-cv-canvas {
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .gjs-one-bg {
+        background-color: #1e293b;
+    }
+
+    /* Slate 800 */
+    .gjs-two-color {
+        color: #f1f5f9;
+    }
+
+    .gjs-three-bg {
+        background-color: #0f172a;
+        text-color: white;
+    }
+
+    /* Slate 900 */
+    .gjs-four-color,
+    .gjs-four-color-h:hover {
+        color: #38bdf8;
+    }
+
+    /* Brand Blue */
+
+    #gjs {
+        border: none;
+    }
+
+    /* Custom Block Styles */
+    .gjs-block {
+        width: 100%;
+        min-height: auto;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        background-color: white;
+        border-radius: 0.75rem;
+        transition: all 0.2s;
+        cursor: grab;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 8px !important;
+    }
+
+    .gjs-block:hover {
+        border-color: var(--brand-color);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .gjs-block-label {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #475569;
+        margin-top: 8px;
+    }
+
+    /* Hide MJML warnings if any */
+    .gjs-warnings {
+        display: none;
+    }
+</style>
+
+<div class="flex h-[calc(100vh-140px)] gap-4">
+    <!-- Main Canvas -->
+    <div class="flex-1 bg-slate-900 rounded-2xl overflow-hidden shadow-2xl relative border border-slate-700">
+        <div id="gjs" class="h-full"></div>
+    </div>
+
+    <!-- Right Sidebar (Blocks & Settings) -->
+    <div class="w-80 bg-white rounded-2xl border border-slate-200 flex flex-col shadow-sm">
+        <div class="p-4 border-b border-slate-100 font-bold text-slate-700 bg-slate-50 rounded-t-2xl">
+            Elementos Disponibles
+        </div>
+        <div id="blocks" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+    </div>
+</div>
+
+<!-- GrapesJS Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/grapesjs/0.21.2/grapes.min.js"></script>
+<script src="https://unpkg.com/grapesjs-mjml@1.0.5/dist/grapesjs-mjml.min.js"></script>
+
+{{ template.content_json|json_script:"template-json" }}
+
+<script>
+    const TEMPLATE_ID = "{{ template.id }}";
+    const SAVE_API_URL = "{% url 'marketing_template_save_api' template.id %}";
+
+    // 1. Initialize Editor
+    const editor = grapesjs.init({
+        container: '#gjs',
+        fromElement: false,
+        height: '100%',
+        width: 'auto',
+        storageManager: false,
+        plugins: ['grapesjs-mjml'],
+        pluginsOpts: {
+            'grapesjs-mjml': {
+                resetDevices: false
+            }
+        },
+        blockManager: {
+            appendTo: '#blocks'
+        },
+        deviceManager: {
+            devices: [
+                { name: 'Desktop', width: '' },
+                { name: 'Mobile', width: '320px', widthMedia: '480px' }
+            ]
+        },
+        panels: { defaults: [] }, // Clean panels to avoid default top bar
+    });
+
+    // 2. Define Custom Blocks (AFTER init)
+    const bm = editor.BlockManager;
+
+    // Remove default basic blocks if they clutter (optional, keeping for now)
+
+    // Custom Premium Blocks
+    bm.add('hero-section', {
+        label: '✨ Hero Principal',
+        category: 'Estructura',
+        content: `
+            <mj-section background-color="#ffffff" padding-bottom="0px" padding-top="0">
+                <mj-column width="100%">
+                    <mj-image src="https://placehold.co/600x300/3b82f6/ffffff?text=Tu+Imagen+Aqui" alt="" align="center" border="none" width="600px" padding="0"></mj-image>
+                </mj-column>
+            </mj-section>
+            <mj-section background-color="#ffffff" padding-bottom="20px" padding-top="20px">
+                <mj-column width="100%">
+                    <mj-text align="center" color="#1e293b" font-size="28px" font-family="Helvetica" font-weight="bold">Tu Título Impactante</mj-text>
+                    <mj-text align="center" color="#64748b" font-size="16px" font-family="Helvetica" line-height="1.5">Subtítulo que enganche a tus clientes.</mj-text>
+                    <mj-button background-color="#3b82f6" color="white" font-size="16px" font-weight="bold" border-radius="8px" href="#">Call to Action</mj-button>
+                </mj-column>
+            </mj-section>
+        `,
+        attributes: { class: "gjs-fonts gjs-f-hero" }
+    });
+
+    bm.add('features-2-col', {
+        label: '🍱 2 Columnas',
+        category: 'Contenido',
+        content: `
+            <mj-section background-color="#ffffff" padding="20px">
+                <mj-column>
+                    <mj-image width="200px" src="https://placehold.co/200x150/e2e8f0/64748b?text=Img+1" />
+                    <mj-text align="center" font-weight="bold" font-size="18px" color="#1e293b"> Beneficio 1 </mj-text>
+                    <mj-text align="center" color="#64748b" font-size="14px"> Descripción corta. </mj-text>
+                </mj-column>
+                <mj-column>
+                    <mj-image width="200px" src="https://placehold.co/200x150/e2e8f0/64748b?text=Img+2" />
+                    <mj-text align="center" font-weight="bold" font-size="18px" color="#1e293b"> Beneficio 2 </mj-text>
+                    <mj-text align="center" color="#64748b" font-size="14px"> Descripción corta. </mj-text>
+                </mj-column>
+            </mj-section>
+        `
+    });
+
+    bm.add('text-basic', {
+        label: '📝 Texto Simple',
+        category: 'Básicos',
+        content: '<mj-text font-size="16px" color="#333333" font-family="Helvetica">Escribe tu texto aquí...</mj-text>',
+    });
+
+    bm.add('image-basic', {
+        label: '🖼️ Imagen',
+        category: 'Básicos',
+        content: '<mj-image src="https://placehold.co/600x200" />',
+    });
+
+    bm.add('spacer-block', {
+        label: '➖ Espaciador',
+        category: 'Básicos',
+        content: '<mj-spacer height="20px" />',
+    });
+
+    bm.add('divider-block', {
+        label: '➗ Divisor',
+        category: 'Básicos',
+        content: '<mj-divider border-color="#e2e8f0" />',
+    });
+
+    bm.add('gym-footer', {
+        label: '🦶 Footer Gimnasio',
+        category: 'Estructura',
+        content: `
+             <mj-section background-color="#0f172a" padding="20px">
+                <mj-column>
+                    <mj-text align="center" color="#94a3b8" font-size="12px" line-height="1.5">
+                        © {{ gym.name }}<br>
+                        Recibes este correo porque eres socio de nuestro club.<br>
+                        <a href="#" style="color:white; text-decoration:underline;">Darse de baja</a>
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+        `
+    });
+
+    // 3. Load Content
+    // Parse existing JSON content safely
+    try {
+        const jsonContent = JSON.parse(document.getElementById('template-json').textContent || "null");
+        if (jsonContent && Object.keys(jsonContent).length > 0) {
+            editor.loadProjectData(jsonContent);
+        } else {
+            // Load Default Template explicitly
+            editor.setComponents(`
+                <mjml>
+                    <mj-body background-color="#f8fafc">
+                        <mj-section background-color="#ffffff" padding="20px" border-radius="10px">
+                            <mj-column>
+                                <mj-image width="150px" src="https://placehold.co/150x50?text=LOGO" alt="Logo"></mj-image>
+                                <mj-divider border-color="#e2e8f0"></mj-divider>
+                                <mj-text font-size="20px" color="#0f172a" font-family="helvetica" align="center">Hola, {{ client.first_name }}!</mj-text>
+                                <mj-text color="#64748b" line-height="1.5" align="center">
+                                    Esta es tu nueva plantilla. Arrastra bloques desde la derecha para empezar a diseñar.
+                                </mj-text>
+                                <mj-button background-color="#0f172a" color="white" href="#">Ver Novedades</mj-button>
+                            </mj-column>
+                        </mj-section>
+                    </mj-body>
+                </mjml>
+            `);
+        }
+    } catch (e) {
+        console.error("Error loading JSON:", e);
+    }
+
+    // 4. Save Logic
+    document.getElementById('save-btn').addEventListener('click', function () {
+        const btn = this;
+        const textSpan = document.getElementById('save-text');
+
+        // UI Loading State
+        const originalText = textSpan.innerText;
+        textSpan.innerText = 'Guardando...';
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+
+        // Get Data
+        const componentsInfo = editor.getProjectData();
+        const htmlContent = editor.runCommand('mjml-get-code').html;
+
+        fetch(SAVE_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                components: componentsInfo,
+                html: htmlContent
+            })
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                textSpan.innerText = '¡Guardado!';
+                setTimeout(() => {
+                    textSpan.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75');
+                }, 2000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                textSpan.innerText = 'Error';
+                alert('Error al guardar.');
+                btn.disabled = false;
+            });
+    });
+</script>
+{% endblock %}

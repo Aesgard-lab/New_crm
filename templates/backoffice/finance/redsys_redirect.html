@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Redireccionando al Banco...</title>
+</head>
+
+<body onload="document.getElementById('redsys_form').submit();">
+    <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+        <h3>Redireccionando a la pasarela de pago segura...</h3>
+        <p>Por favor espere.</p>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b3/Redsys_Logotipo.png" alt="Redsys"
+            style="width: 100px; opacity: 0.5;">
+    </div>
+
+    <form id="redsys_form" action="{{ url }}" method="POST">
+        <input type="hidden" name="Ds_SignatureVersion" value="{{ params.Ds_SignatureVersion }}" />
+        <input type="hidden" name="Ds_MerchantParameters" value="{{ params.Ds_MerchantParameters }}" />
+        <input type="hidden" name="Ds_Signature" value="{{ params.Ds_Signature }}" />
+    </form>
+</body>
+
+</html>

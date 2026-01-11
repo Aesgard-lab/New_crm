@@ -1,0 +1,404 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Diseña tu plan de precios</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-6xl mx-auto" novalidate>
+    {% csrf_token %}
+
+    {% if form.errors or formset.errors %}
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-xl">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm leading-5 font-medium text-red-800">
+                    Hay errores en el formulario
+                </h3>
+                <div class="mt-2 text-sm leading-5 text-red-700">
+                    {{ form.errors }}
+                    {{ formset.non_form_errors }}
+                    <ul>
+                        {% for form in formset %}
+                        {% for error in form.errors.values %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm space-y-6 mb-8">
+        <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2">1. Configuración Principal</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre del Plan</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Descripción</label>
+                {{ form.description }}
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Imagen</label>
+                <input type="file" name="image"
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
+            </div>
+        </div>
+
+        <div
+            class="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-xl items-end">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Precio Base (€)</label>
+                {{ form.base_price }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Impuestos (%)</label>
+                {{ form.tax_rate }}
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Estrategia Precio</label>
+                {{ form.price_strategy }}
+            </div>
+
+            <div
+                class="bg-slate-900 rounded-xl p-3 flex flex-col justify-center shadow-lg shadow-slate-900/10 text-white h-[42px] relative top-[1px]">
+                <div class="flex items-baseline justify-between gap-2">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">PVP Final</span>
+                    <div class="text-lg font-bold leading-none">
+                        <span id="finalPriceDisplay">0.00</span>€
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-bold text-blue-900 text-sm">Recurrencia (Suscripción)</span>
+                    {{ form.is_recurring }}
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Cada...</label>
+                        {{ form.frequency_amount }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Unidad</label>
+                        {{ form.frequency_unit }}
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2 border-t border-blue-200/50">
+                    {{ form.prorate_first_month }}
+                    <label class="text-xs text-slate-600">Prorratear primer ciclo</label>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    {{ form.is_membership }}
+                    <label class="text-xs text-blue-800 font-bold">Contabiliza como SOCIO</label>
+                </div>
+            </div>
+
+            <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-bold text-amber-900 text-sm">Bonos / Packs</span>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Días de Validez</label>
+                        {{ form.pack_validity_days }}
+                        <p class="text-[10px] text-amber-700 mt-1">Dejar vacío para sin caducidad.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-6 pt-4">
+            <div class="flex items-center gap-3">
+                {{ form.is_active }}
+                <label class="text-sm font-medium">Activo</label>
+            </div>
+            <div class="flex items-center gap-3">
+                {{ form.is_visible_online }}
+                <label class="text-sm font-medium">Venta Online</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACCESS RULES SECTION -->
+    <div class="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm space-y-6">
+        <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between">
+            <span>2. Reglas de Acceso</span>
+            <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-normal">Define qué incluye esta
+                cuota</span>
+        </h3>
+
+        <div class="space-y-4 overflow-x-auto">
+            {{ formset.management_form }}
+
+            <table class="w-full text-sm text-left min-w-[800px]">
+                <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                    <tr>
+                        <th class="px-3 py-2 w-1/4">Actividad (Cat / Específica)</th>
+                        <th class="px-3 py-2 w-1/4">Servicio (Cat / Específico)</th>
+                        <th class="px-3 py-2 w-24">Cant.</th>
+                        <th class="px-3 py-2">Periodo</th>
+                        <th class="px-3 py-2 w-10">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody id="access-rules-body">
+                    <!-- Contract -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">Contrato y Términos</h3>
+
+                        <div class="mb-4">
+                            <label
+                                class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                {{ form.contract_required }}
+                                <span class="text-sm font-medium text-slate-700">Requiere firma de contrato al
+                                    contratar</span>
+                            </label>
+                        </div>
+
+                        <div x-show="true" class="space-y-2">
+                            <label class="block text-sm font-bold text-slate-700">Contenido del Contrato</label>
+                            {{ form.contract_content }}
+                            <p class="text-xs text-slate-500">Este texto se mostrará al cliente y deberá
+                                aceptarlo/firmarlo para completar la contratación.</p>
+                        </div>
+                    </div>
+
+                    <!-- Access Rules (Dynamic Formset) -->
+                    {% for rule_form in formset %}
+                    <tr class="border-b border-slate-100 rule-row {% if rule_form.DELETE.value %}hidden{% endif %}">
+                        <td class="px-3 py-3 space-y-2">
+                            {{ rule_form.id }}
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-0.5">Categoría</span>
+                                {{ rule_form.activity_category }}
+                            </div>
+                            <div class="text-center text-[10px] text-slate-300 font-bold">- O -</div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-0.5">Específica</span>
+                                {{ rule_form.activity }}
+                            </div>
+                        </td>
+                        <td class="px-3 py-3 space-y-2">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-0.5">Categoría</span>
+                                {{ rule_form.service_category }}
+                            </div>
+                            <div class="text-center text-[10px] text-slate-300 font-bold">- O -</div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-0.5">Específico</span>
+                                {{ rule_form.service }}
+                            </div>
+                        </td>
+                        <td class="px-3 py-3 align-top pt-8">{{ rule_form.quantity }}</td>
+                        <td class="px-3 py-3 align-top pt-8">{{ rule_form.period }}</td>
+                        <td class="px-3 py-3 align-top pt-8 text-center">
+                            <div class="hidden">
+                                {{ rule_form.DELETE }}
+                            </div>
+                            <button type="button" class="text-red-400 hover:text-red-600 delete-row-btn"
+                                title="Eliminar fila">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="button" id="add-rule-btn"
+                class="mt-4 text-sm font-bold text-[var(--brand-color)] flex items-center gap-2 hover:underline">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Añadir otra regla / concepto
+            </button>
+        </div>
+    </div>
+
+    <div class="flex gap-4 mt-8 justify-end pb-12">
+        <a href="{% url 'membership_plan_list' %}"
+            class="px-6 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</a>
+        <button type="submit" style="background-color: #0f172a;"
+            class="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20">
+            Guardar Plan
+        </button>
+    </div>
+</form>
+
+<!-- Empty Form Template for JS -->
+<table style="display:none">
+    <tbody id="empty-form-row">
+        <tr class="border-b border-slate-100 rule-row bg-slate-50/50">
+            <td class="px-3 py-3 space-y-2">
+                {{ formset.empty_form.id }}
+                <div>
+                    <span class="text-[10px] text-slate-400 block mb-0.5">Categoría</span>
+                    {{ formset.empty_form.activity_category }}
+                </div>
+                <div class="text-center text-[10px] text-slate-300 font-bold">- O -</div>
+                <div>
+                    <span class="text-[10px] text-slate-400 block mb-0.5">Específica</span>
+                    {{ formset.empty_form.activity }}
+                </div>
+            </td>
+            <td class="px-3 py-3 space-y-2">
+                <div>
+                    <span class="text-[10px] text-slate-400 block mb-0.5">Categoría</span>
+                    {{ formset.empty_form.service_category }}
+                </div>
+                <div class="text-center text-[10px] text-slate-300 font-bold">- O -</div>
+                <div>
+                    <span class="text-[10px] text-slate-400 block mb-0.5">Específico</span>
+                    {{ formset.empty_form.service }}
+                </div>
+            </td>
+            <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.quantity }}</td>
+            <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.period }}</td>
+            <td class="px-3 py-3 align-top pt-8 text-center">
+                <button type="button" class="text-red-400 hover:text-red-600 delete-row-btn" title="Eliminar fila">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                        </path>
+                    </svg>
+                </button>
+                <div class="hidden">
+                    {{ formset.empty_form.DELETE }}
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- TAX RATES DATA ---
+        // Create a map of TaxRateID -> RatePercent from the select options
+        // We can't easily rely on text parsing. Better if we had a data object.
+        // But since we are rendering the select options via Django form widget, we can try to parse once on load 
+        // OR better: iterate over the options and build a map.
+        const taxRatesMap = {};
+        const taxSelect = document.querySelector('[name="tax_rate"]');
+        if (taxSelect) {
+            Array.from(taxSelect.options).forEach(opt => {
+                if (opt.value) {
+                    // Try to find percentage in text e.g. "IVA (21%)" or "IVA 21%"
+                    // If not found, default to 0. 
+                    const match = opt.text.match(/(\d+(?:[\.,]\d+)?)%/);
+                    if (match) {
+                        taxRatesMap[opt.value] = parseFloat(match[1].replace(',', '.')) / 100;
+                    } else {
+                        taxRatesMap[opt.value] = 0;
+                    }
+                }
+            });
+        }
+
+        // --- FORMSET LOGIC ---
+        const addBtn = document.getElementById('add-rule-btn');
+        const tbody = document.getElementById('access-rules-body');
+        const emptyRowTemplate = document.getElementById('empty-form-row').firstElementChild;
+        const totalFormsInput = document.getElementById('id_access_rules-TOTAL_FORMS');
+
+        // Helper to attach event listeners to a row
+        function attachRowEvents(row) {
+            const deleteBtn = row.querySelector('.delete-row-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function () {
+                    const deleteInput = row.querySelector('input[name$="-DELETE"]');
+                    if (deleteInput) {
+                        // For existing rows (with ID)
+                        deleteInput.checked = true;
+                        // Usually we hide the row
+                        row.classList.add('hidden');
+                        row.style.display = 'none';
+                    } else {
+                        // For dynamic rows (check if it has an ID field with value)
+                        const idInput = row.querySelector('input[name$="-id"]');
+                        if (idInput && idInput.value) {
+                            // Has DB ID -> Soft Delete
+                            row.style.display = 'none';
+                            // Assuming there's a DELETE input for it too if it has ID?
+                            // Actually django formsets usually render DELETE input for all bound forms.
+                            // If it's a new unsaved row (but has form errors), it might appear bound but not have DB ID.
+                        } else {
+                            row.remove();
+                        }
+                    }
+                });
+            }
+        }
+
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                const formIdx = parseInt(totalFormsInput.value);
+                const newRow = emptyRowTemplate.cloneNode(true);
+                newRow.innerHTML = newRow.innerHTML.replace(/__prefix__/g, formIdx);
+
+                // Attach events
+                attachRowEvents(newRow);
+
+                tbody.appendChild(newRow);
+                totalFormsInput.value = formIdx + 1;
+            });
+        }
+
+        // Attach to existing rows
+        document.querySelectorAll('#access-rules-body .rule-row').forEach(row => {
+            attachRowEvents(row);
+        });
+
+        // --- PRICE CALCULATION LOGIC ---
+        const basePriceInput = document.querySelector('[name="base_price"]');
+        const strategySelect = document.querySelector('[name="price_strategy"]');
+        const finalPriceDisplay = document.getElementById('finalPriceDisplay');
+
+        function calculatePrice() {
+            const basePrice = parseFloat(basePriceInput.value) || 0;
+            const strategy = strategySelect.value;
+            let rate = 0;
+
+            if (taxSelect && taxSelect.value) {
+                rate = taxRatesMap[taxSelect.value] || 0;
+            }
+
+            let finalPrice = basePrice;
+            if (strategy === 'TAX_EXCLUDED') {
+                finalPrice = basePrice * (1 + rate);
+            }
+
+            finalPriceDisplay.textContent = finalPrice.toFixed(2);
+        }
+
+        if (basePriceInput) basePriceInput.addEventListener('input', calculatePrice);
+        if (taxSelect) taxSelect.addEventListener('change', calculatePrice);
+        if (strategySelect) strategySelect.addEventListener('change', calculatePrice);
+
+        // Init
+        calculatePrice();
+    });
+</script>
+{% endblock %}

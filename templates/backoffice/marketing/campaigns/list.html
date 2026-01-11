@@ -1,0 +1,64 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Mis Campañas</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Historial de envíos y programación</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+        <h2 class="font-bold text-lg text-slate-900">Listado de Campañas</h2>
+        <a href="{% url 'marketing_campaign_create' %}"
+            class="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors">
+            Nueva Campaña
+        </a>
+    </div>
+
+    <div class="p-6">
+        {% if campaigns %}
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr>
+                    <th class="text-xs font-bold text-slate-400 uppercase pb-4">Nombre</th>
+                    <th class="text-xs font-bold text-slate-400 uppercase pb-4">Asunto</th>
+                    <th class="text-xs font-bold text-slate-400 uppercase pb-4">Audiencia</th>
+                    <th class="text-xs font-bold text-slate-400 uppercase pb-4">Estado</th>
+                    <th class="text-xs font-bold text-slate-400 uppercase pb-4">Programado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in campaigns %}
+                <tr class="border-t border-slate-50">
+                    <td class="py-4 font-medium text-slate-700">{{ c.name }}</td>
+                    <td class="py-4 text-slate-600">{{ c.subject }}</td>
+                    <td class="py-4 text-slate-500 text-sm">{{ c.get_audience_type_display }}</td>
+                    <td class="py-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-bold 
+                            {% if c.status == 'SENT' %}bg-green-100 text-green-700
+                            {% elif c.status == 'DRAFT' %}bg-slate-100 text-slate-600
+                            {% else %}bg-blue-100 text-blue-700{% endif %}">
+                            {{ c.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="py-4 text-slate-500 text-sm">
+                        {% if c.scheduled_at %}
+                        {{ c.scheduled_at|date:"d M H:i" }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-12">
+            <p class="text-slate-500 mb-4">No has creado ninguna campaña aún.</p>
+            <a href="{% url 'marketing_campaign_create' %}"
+                class="text-[var(--brand-color)] font-bold hover:underline">Crear primera campaña</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

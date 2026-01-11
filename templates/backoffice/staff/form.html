@@ -1,0 +1,117 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{{ title }} - {{ request.gym.name }}{% endblock %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <form method="post" enctype="multipart/form-data"
+        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        {% csrf_token %}
+
+        <div class="p-8">
+            {% if user_form.non_field_errors or profile_form.non_field_errors %}
+            <div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">
+                {{ user_form.non_field_errors }}
+                {{ profile_form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <h2 class="text-lg font-bold text-slate-900 mb-6">Datos Personales (Usuario)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {% for field in user_form %}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <hr class="border-slate-100 my-8">
+
+            <h2 class="text-lg font-bold text-slate-900 mb-6">Ficha de Empleado</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Role -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Rol</label>
+                    {{ profile_form.role }}
+                    {% if profile_form.role.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.role.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- PIN -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">PIN Tablet</label>
+                    <div class="relative">
+                        {{ profile_form.pin_code }}
+                        <div
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            🔢
+                        </div>
+                    </div>
+                    {% if profile_form.pin_code.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.pin_code.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-slate-400 mt-1">Para el Kiosco de fichaje</p>
+                </div>
+
+                <!-- Color -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Color Calendario</label>
+                    <div class="flex items-center gap-3">
+                        {{ profile_form.color }}
+                        <span class="text-xs text-slate-500">Selecciona un color distintivo</span>
+                    </div>
+                    {% if profile_form.color.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.color.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Active -->
+                <div class="flex flex-col mt-6">
+                    <div class="flex items-center">
+                        {{ profile_form.is_active }}
+                        <label class="ml-2 text-sm text-slate-700">Cuenta Activa</label>
+                    </div>
+                    {% if profile_form.is_active.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.is_active.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Bio -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Biografía / Notas</label>
+                    {{ profile_form.bio }}
+                    {% if profile_form.bio.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.bio.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Photo -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Foto de Perfil</label>
+                    {{ profile_form.photo }}
+                    {% if profile_form.photo.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.photo.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-slate-400 mt-1">Se mostrará en la app y web</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 px-8 py-4 flex justify-end gap-3 border-t border-slate-100">
+            <a href="{% url 'staff_list' %}"
+                class="px-6 py-2 rounded-xl text-slate-600 font-medium hover:bg-slate-200 transition-colors">Cancelar</a>
+            <button type="submit"
+                class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-slate-900/20 transition-all transform hover:scale-105">
+                Guardar Empleado
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

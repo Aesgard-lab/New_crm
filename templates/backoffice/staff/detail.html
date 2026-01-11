@@ -1,0 +1,216 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Perfil Staff - {{ request.gym.name }}{% endblock %}
+
+{% block header_title %}Ficha de Empleado{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Columna Izquierda: Perfil -->
+    <div class="space-y-6">
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 text-center">
+            <div
+                class="w-24 h-24 mx-auto rounded-full bg-slate-100 mb-4 overflow-hidden border-4 border-white shadow-lg">
+                {% if profile.photo %}
+                <img src="{{ profile.photo.url }}" class="w-full h-full object-cover">
+                {% else %}
+                <div class="w-full h-full flex items-center justify-center text-3xl font-bold text-slate-400">
+                    {{ profile.user.first_name.0 }}
+                </div>
+                {% endif %}
+            </div>
+            <h2 class="text-xl font-bold text-slate-900">{{ profile.user.first_name }} {{ profile.user.last_name }}</h2>
+            <p class="text-indigo-600 font-medium text-sm mb-4">{{ profile.get_role_display }}</p>
+
+            <div class="flex justify-center gap-2 mb-6">
+                {% if profile.is_active %}
+                <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">Activo</span>
+                {% else %}
+                <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">Inactivo</span>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <a href="{% url 'staff_edit' profile.id %}"
+                    class="block w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition-colors text-sm">
+                    Editar Perfil
+                </a>
+
+                <form action="{% url 'staff_toggle_shift' profile.id %}" method="post">
+                    {% csrf_token %}
+                    {% if is_clocked_in %}
+                    <button type="submit"
+                        class="w-full py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-xl font-bold transition-colors text-sm border border-rose-200 shadow-sm animate-pulse">
+                        🔴 Salir
+                    </button>
+                    {% else %}
+                    <button type="submit"
+                        class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl font-bold transition-colors text-sm border border-emerald-200 shadow-sm">
+                        🟢 Entrar
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <!-- KPIs Mensuales -->
+        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-6 text-white shadow-lg">
+            <h3 class="text-indigo-100 font-medium mb-4">Este Mes</h3>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div class="text-3xl font-bold">{{ total_hours }}h</div>
+                    <div class="text-sm text-indigo-200">Trabajadas</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold">{{ total_commissions }}€</div>
+                    <div class="text-sm text-indigo-200">Comisiones</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Detalles -->
+    <div class="lg:col-span-2 space-y-6">
+
+        <!-- Fichajes Recientes -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Últimos Fichajes</h3>
+                <span class="text-xs text-slate-400">Ver todo</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-slate-500 font-medium">
+                        <tr>
+                            <th class="px-6 py-3">Entrada</th>
+                            <th class="px-6 py-3">Salida</th>
+                            <th class="px-6 py-3">Horas</th>
+                            <th class="px-6 py-3">Método</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for shift in recent_shifts %}
+                        <tr>
+                            <td class="px-6 py-3 text-slate-700">{{ shift.start_time|date:"d/m H:i" }}</td>
+                            <td class="px-6 py-3 text-slate-700">
+                                {% if shift.end_time %}
+                                {{ shift.end_time|date:"H:i" }}
+                                {% else %}
+                                <span class="text-emerald-500 font-bold animate-pulse">Activo</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 font-medium">{{ shift.duration_hours }}h</td>
+                            <td class="px-6 py-3 text-xs text-slate-400">{{ shift.get_method_display }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-slate-400">Sin registros recientes</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tareas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Asignar Tarea -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-bold text-slate-800">Asignar Nueva Tarea</h3>
+                </div>
+                <div class="p-6">
+                    <form action="{% url 'staff_task_add' profile.id %}" method="post" class="space-y-4">
+                        {% csrf_token %}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Título</label>
+                            {{ task_form.title }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Descripción</label>
+                            {{ task_form.description }}
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Fecha Límite</label>
+                                {{ task_form.due_date }}
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Recompensa (€)</label>
+                                {{ task_form.incentive_amount }}
+                            </div>
+                        </div>
+                        <button type="submit"
+                            class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-colors">
+                            Asignar Tarea
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Resumen Tareas Recientes -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800">Tareas Recientes</h3>
+                </div>
+                <div class="divide-y divide-slate-50">
+                    {% for task in recent_tasks %}
+                    <div class="p-4 hover:bg-slate-50 transition-colors">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-slate-700 text-sm">{{ task.title }}</h4>
+                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full 
+                                {% if task.status == 'COMPLETED' %}bg-green-100 text-green-700
+                                {% elif task.status == 'VERIFIED' %}bg-blue-100 text-blue-700
+                                {% else %}bg-slate-100 text-slate-500{% endif %}">
+                                {{ task.get_status_display }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 line-clamp-2 mb-2">{{ task.description }}</p>
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-400">📅 {{ task.due_date|date:"d M" }}</span>
+                            {% if task.incentive_amount > 0 %}
+                            <span class="font-bold text-amber-600">+{{ task.incentive_amount }}€</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="p-8 text-center text-slate-400 text-sm">No hay tareas recientes</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuración Salarial -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mt-6">
+            <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Configuración Salarial</h3>
+            </div>
+            <div class="p-6">
+                <form action="{% url 'staff_detail_salary' profile.id %}" method="post"
+                    class="flex flex-col md:flex-row gap-4 items-end">
+                    {% csrf_token %}
+                    <div class="flex-1 w-full">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Modalidad</label>
+                        {{ salary_form.mode }}
+                    </div>
+                    <div class="flex-1 w-full">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Salario Base (€)</label>
+                        {{ salary_form.base_amount }}
+                    </div>
+                    <button type="submit"
+                        class="w-full md:w-auto px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors">
+                        Actualizar
+                    </button>
+                </form>
+                <p class="text-xs text-slate-400 mt-3">
+                    * El cálculo de nóminas se realiza automáticamente el día 1 de cada mes basándose en esta
+                    configuración y las horas registradas.
+                </p>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

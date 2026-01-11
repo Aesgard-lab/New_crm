@@ -1,0 +1,183 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Configura el diseño y aforo</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {% csrf_token %}
+
+    <!-- Left: Settings -->
+    <div class="lg:col-span-1 space-y-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+            <h3 class="font-bold text-slate-900 mb-4">Datos de la Sala</h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre</label>
+                    {{ form.name }}
+                    {{ form.name.errors }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Aforo Máximo</label>
+                    {{ form.capacity }}
+                    {{ form.capacity.errors }}
+                </div>
+            </div>
+
+            <!-- Palette -->
+            <div class="mt-8 pt-6 border-t border-slate-100">
+                <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Elementos</h4>
+                <p class="text-xs text-slate-500 mb-3">Arrastra al lienzo para colocar.</p>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="draggable-source bg-indigo-100 text-indigo-700 p-3 rounded-lg text-center text-xs font-bold cursor-move select-none border border-indigo-200"
+                        draggable="true" data-type="spot">
+                        🟩 Puesto
+                    </div>
+                    <div class="draggable-source bg-slate-100 text-slate-700 p-3 rounded-lg text-center text-xs font-bold cursor-move select-none border border-slate-200"
+                        draggable="true" data-type="obstacle">
+                        ⬛ Muro/Obj
+                    </div>
+                </div>
+
+                <button type="button" id="clear-canvas"
+                    class="mt-4 w-full py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                    Limpiar Diseño
+                </button>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <a href="{% url 'room_list' %}"
+                class="flex-1 py-3 text-center text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</a>
+            <button type="submit"
+                class="flex-1 py-3 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20">Guardar</button>
+        </div>
+    </div>
+
+    <!-- Right: Editor Canvas -->
+    <div class="lg:col-span-2">
+        <div
+            class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[600px] relative bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNlN9lNzk4MSIvPjwvc3ZnPg==')]">
+            <div id="editor-canvas" class="w-full h-full relative">
+                <!-- Items will be placed here -->
+            </div>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 text-right">
+            Lienzo virtual. Arrastra elementos para posicionarlos.
+        </div>
+    </div>
+
+    {{ form.layout_configuration }}
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const canvas = document.getElementById('editor-canvas');
+        const input = document.getElementById('id_layout_configuration');
+        const sources = document.querySelectorAll('.draggable-source');
+
+        let items = [];
+
+        // Load initial data
+        try {
+            if (input.value) {
+                items = JSON.parse(input.value);
+                renderItems();
+            }
+        } catch (e) { console.error("Invalid JSON layout", e); }
+
+        // Drag & Drop Logic
+        sources.forEach(src => {
+            src.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('type', src.dataset.type);
+                e.dataTransfer.setData('new', 'true');
+            });
+        });
+
+        canvas.addEventListener('dragover', e => e.preventDefault());
+
+        canvas.addEventListener('drop', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const type = e.dataTransfer.getData('type');
+            const isNew = e.dataTransfer.getData('new');
+            const id = e.dataTransfer.getData('id');
+
+            if (isNew === 'true') {
+                // Create new item
+                items.push({
+                    id: Date.now(),
+                    type: type,
+                    x: Math.round(x / 20) * 20, // Snap to grid (20px)
+                    y: Math.round(y / 20) * 20
+                });
+            } else {
+                // Move existing
+                const idx = items.findIndex(i => i.id == id);
+                if (idx > -1) {
+                    items[idx].x = Math.round(x / 20) * 20;
+                    items[idx].y = Math.round(y / 20) * 20;
+                }
+            }
+            renderItems();
+            updateInput();
+        });
+
+        function renderItems() {
+            canvas.innerHTML = '';
+            items.forEach((item, index) => {
+                const el = document.createElement('div');
+                el.draggable = true;
+                el.className = `absolute flex items-center justify-center font-bold text-xs select-none shadow-sm cursor-move transition-transform active:scale-105`;
+
+                // Styles per type
+                if (item.type === 'spot') {
+                    el.className += ' w-10 h-10 bg-indigo-500 text-white rounded-md';
+                    el.innerText = index + 1; // Numbering based on actual index logic? or stored number? For now index.
+                } else {
+                    el.className += ' w-20 h-4 bg-slate-800 rounded-sm'; // Wall
+                }
+
+                el.style.left = item.x + 'px';
+                el.style.top = item.y + 'px';
+
+                // Drag existing
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('id', item.id);
+                    e.dataTransfer.setData('new', 'false');
+                });
+
+                // Right click delete
+                el.addEventListener('contextmenu', e => {
+                    e.preventDefault();
+                    items = items.filter(i => i.id !== item.id);
+                    renderItems();
+                    updateInput();
+                });
+
+                canvas.appendChild(el);
+            });
+        }
+
+        function updateInput() {
+            input.value = JSON.stringify(items);
+        }
+
+        document.getElementById('clear-canvas').addEventListener('click', () => {
+            if (confirm('¿Borrar todo el diseño?')) {
+                items = [];
+                renderItems();
+                updateInput();
+            }
+        });
+    });
+</script>
+{% endblock %}

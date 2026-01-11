@@ -1,0 +1,111 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Equipo - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>Equipo</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Gestión de empleados y colaboradores</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex justify-between items-center">
+  <div class="flex gap-2">
+    <div class="text-xs text-slate-400 mr-2 border border-yellow-200 bg-yellow-50 px-2 py-1 rounded text-yellow-700">
+      Debug: Gym {{ request.gym.id }} ({{ request.gym.name }}) | Count: {{ staff_members.count }}</div>
+    <!-- Filtros podrían ir aquí -->
+  </div>
+  {% load gym_tags %}
+  {% has_gym_perm 'staff.add_staffprofile' as can_add_staff %}
+  {% if can_add_staff %}
+  <a href="{% url 'staff_create' %}"
+    class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+    </svg>
+    Nuevo Empleado
+  </a>
+  {% endif %}
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  <table class="w-full text-left text-sm text-slate-500">
+    <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+      <tr>
+        <th class="px-6 py-4">Empleado</th>
+        <th class="px-6 py-4">Rol</th>
+        <th class="px-6 py-4">Estado</th>
+        <th class="px-6 py-4 text-center">Fichaje</th>
+        <th class="px-6 py-4 text-right">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for member in staff_members %}
+      <tr class="hover:bg-slate-50 transition-colors group">
+        <td class="px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-full bg-[var(--brand-color)]/10 text-[var(--brand-color)] flex items-center justify-center font-bold overflow-hidden">
+              {% if member.photo %}
+              <img src="{{ member.photo.url }}" alt="{{ member.user.first_name }}" class="w-full h-full object-cover">
+              {% else %}
+              {{ member.user.first_name.0 }}{{ member.user.last_name.0 }}
+              {% endif %}
+            </div>
+            <div>
+              <div class="font-bold text-slate-900 group-hover:text-[var(--brand-color)] transition-colors">
+                {{ member.user.first_name }} {{ member.user.last_name }}
+              </div>
+              <div class="text-xs text-slate-400">{{ member.user.email }}</div>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                        {% if member.role == 'MANAGER' %}bg-purple-100 text-purple-800
+                        {% elif member.role == 'TRAINER' %}bg-blue-100 text-blue-800
+                        {% else %}bg-slate-100 text-slate-800{% endif %}">
+            {{ member.get_role_display }}
+          </span>
+        </td>
+        <td class="px-6 py-4">
+          {% if member.is_active %}
+          <span class="text-emerald-600 text-xs font-medium bg-emerald-50 px-2 py-1 rounded-lg">Activo</span>
+          {% else %}
+          <span class="text-slate-400 text-xs font-medium bg-slate-50 px-2 py-1 rounded-lg">Inactivo</span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 text-center">
+          {% if member.is_clocked_in %}
+          <div
+            class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Online
+          </div>
+          {% else %}
+          <span class="text-xs text-slate-400">Offline</span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <a href="{% url 'staff_detail' member.pk %}"
+            class="text-slate-400 hover:text-[var(--brand-color)] font-medium transition-colors">Ver Ficha</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+          <div class="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+              </path>
+            </svg>
+          </div>
+          <p>No hay empleados registrados.</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
