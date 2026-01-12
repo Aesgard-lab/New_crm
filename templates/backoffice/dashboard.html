@@ -9,7 +9,7 @@
   {% csrf_token %}
   <select name="gym_id" class="text-sm rounded-2xl border border-slate-300 px-3 py-2 bg-white">
     {% for m in request.user.gym_memberships.all %}
-    <option value="{{ m.gym_id }}" {% if m.gym_id==request.session.current_gym_id %}selected{% endif %}>
+    <option value="{{ m.gym_id }}" {% if m.gym_id == request.session.current_gym_id %}selected{% endif %}>
       {{ m.gym.name }}
     </option>
     {% endfor %}
@@ -139,8 +139,8 @@
           </thead>
           <tbody class="divide-y divide-slate-100">
             {% for item in risk_clients %}
-            <tr class="hover:bg-slate-50 cursor-pointer"
-              onclick="window.location='{% url 'client_detail' item.client.id %}'">
+            <tr class="hover:bg-slate-50 cursor-pointer" data-url="{% url 'client_detail' item.client.id %}"
+              onclick="window.location=this.dataset.url;">
               <td class="px-4 py-3 font-medium text-slate-900">{{ item.client.first_name }} {{ item.client.last_name }}
               </td>
               <td class="px-4 py-3 text-slate-500">{{ item.reason }}</td>
@@ -173,7 +173,7 @@
         <div class="divide-y divide-slate-100">
           {% for client in top_clients %}
           <div class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer"
-            onclick="window.location='{% url 'client_detail' client.id %}'">
+            data-url="{% url 'client_detail' client.id %}" onclick="window.location=this.dataset.url;">
             <div class="flex items-center gap-3">
               <div
                 class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">

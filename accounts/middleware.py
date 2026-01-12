@@ -1,7 +1,6 @@
 from django.shortcuts import redirect
 from django.urls import reverse
 from accounts.services import user_gym_ids, default_gym_id
-from organizations.models import Gym
 
 EXEMPT_PATH_PREFIXES = (
     "/admin/",
@@ -37,6 +36,7 @@ class CurrentGymMiddleware:
             request.session["current_gym_id"] = current_gym_id
             
         # Attach the actual Gym object to the request
+        from organizations.models import Gym
         try:
             request.gym = Gym.objects.get(pk=current_gym_id)
         except Gym.DoesNotExist:

@@ -10,6 +10,7 @@ from services.models import Service
 from clients.models import Client
 from finance.models import PaymentMethod
 from accounts.decorators import require_gym_permission
+from memberships.models import MembershipPlan
 import json
 import json
 import datetime
@@ -19,15 +20,96 @@ from django.db import transaction
 @require_gym_permission('sales.view_sale')
 def get_client_cards(request, client_id):
     """
-    Returns list of saved cards for a client (Stripe)
+    Returns list of saved cards for a client (Stripe + Redsys)
     """
     gym = request.gym
     client = get_object_or_404(Client, id=client_id, gym=gym)
     
+    cards = []
+    
+    # 1. Stripe Cards
     from finance.stripe_utils import list_payment_methods
-    cards = list_payment_methods(client)
+    try:
+        stripe_cards = list_payment_methods(client)
+        for card in stripe_cards:
+            cards.append({
+                'id': card.id,
+                'provider': 'stripe',
+                'brand': card.card.brand.upper(),
+                'last4': card.card.last4,
+                'display': f"💳 {card.card.brand.upper()} **** {card.card.last4}"
+            })
+    except Exception as e:
+        print(f"Error fetching Stripe cards: {e}")
+    
+    # 2. Redsys Cards
+    from finance.models import ClientRedsysToken
+    for token in client.redsys_tokens.all():
+        last4 = token.card_number[-4:] if token.card_number else '****'
+        cards.append({
+            'id': token.id,
+            'provider': 'redsys',
+            'brand': token.card_brand or 'CARD',
+            'last4': last4,
+            'display': f"💳 {token.card_brand or 'TARJETA'} {token.card_number or '**** ****'}"
+        })
     
     return JsonResponse(cards, safe=False)
+
+@require_gym_permission('sales.view_sale')
+def order_detail_json(request, order_id):
+    """
+    Returns order details as JSON for inline expansion in client profile.
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    
+    items = [{
+        'id': item.id,
+        'description': item.description,
+        'quantity': item.quantity,
+        'unit_price': float(item.unit_price),
+        'discount': float(item.discount_amount),
+        'subtotal': float(item.subtotal),
+        'tax_rate': float(item.tax_rate)
+    } for item in order.items.all()]
+    
+    payments = [{
+        'method': payment.payment_method.name,
+        'amount': float(payment.amount),
+        'transaction_id': payment.transaction_id or ''
+    } for payment in order.payments.all()]
+    
+    return JsonResponse({
+        'id': order.id,
+        'status': order.status,
+        'status_display': order.get_status_display(),
+        'total_amount': float(order.total_amount),
+        'total_discount': float(order.total_discount),
+        'created_at': order.created_at.isoformat(),
+        'invoice_number': order.invoice_number or '',
+        'items': items,
+        'payments': payments
+    })
+
+@require_http_methods(["POST"])
+@require_gym_permission('sales.delete_sale')
+def order_cancel(request, order_id):
+    """
+    Cancels an order (sets status to CANCELLED).
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    
+    if order.status == 'CANCELLED':
+        return JsonResponse({'error': 'Esta venta ya está cancelada'}, status=400)
+    
+    order.status = 'CANCELLED'
+    order.internal_notes += f"\n[Cancelado por {request.user.get_full_name() or request.user.username} el {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}]"
+    order.save()
+    
+    return JsonResponse({'success': True, 'message': 'Venta cancelada correctamente'})
+
 from decimal import Decimal
 
 @require_gym_permission('sales.view_sale')
@@ -206,19 +288,6 @@ def process_sale(request):
         # 4. Create Payments (handle mixed)
         total_paid = Decimal(0)
         
-        # If new 'payments' list is provided
-        if payments:
-            for p in payments:
-             OrderItem.objects.create(
-                order=order,
-                content_type_id=item.get('content_type_id'), # We need to resolve this ID or use explicit fields
-                object_id=item.get('object_id'),
-                description=item.get('name'),
-                quantity=item.get('quantity', 1),
-                unit_price=item.get('price', 0),
-                tax_rate=0 # By default
-             )
-             
         # Process Payments
         total_paid = 0
         payments_valid = True

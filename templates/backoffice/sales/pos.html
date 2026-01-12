@@ -196,7 +196,7 @@
                 <span class="text-3xl font-bold text-slate-900" x-text="formatPrice(finalTotal)"></span>
             </div>
 
-            <button @click="openPaymentModal()" :disabled="cart.length === 0"
+            <button @click="openPaymentModal()" :disabled="cart.length === 0" style="background-color: #0f172a;"
                 class="w-full py-4 bg-[var(--brand-color)] hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 transition-all flex justify-between px-6 items-center">
                 <span>Cobrar</span>
                 <span x-text="formatPrice(finalTotal)"></span>
@@ -404,7 +404,7 @@
             },
 
             get buttonText() {
-                if (this.processing) return '';
+                if (this.processing) return 'Procesando...';
                 if (this.remainingAmount > 0.01) {
                     return 'Faltan ' + this.formatPrice(this.remainingAmount);
                 }
@@ -464,49 +464,26 @@
                 this.showClientSearch = false;
                 this.clientQuery = '';
 
-                // Reset card methods when changing client
-                // Restore default methods
-                this.availableMethods = this.availableMethods.filter(m => !m.is_stripe_card);
+                // Reset saved card methods when changing client
+                this.availableMethods = this.availableMethods.filter(m => !m.is_saved_card);
 
                 if (client) {
-                    // Fetch Client Cards (Stripe)
+                    // Fetch Client Cards (Stripe + Redsys)
                     try {
-                        // We need an endpoint to get cards. 
-                        // Reusing detail view logic via API? Best to create a small API endpoint for this.
-                        // Or injecting it into the search result...
-                        // Let's call a new endpoint: /api/sales/client-cards/<id>/
-                        // For now, simpler approach: client search result includes 'payment_methods' if we update api.py
-                        // UPDATE: We will create a small fetch here assuming endpoint exists or update search_clients
-                        // Let's use `fetch` to `clients/<id>/json/` or similar. 
-                        // To avoid creating new endpoint now, let's assume valid cards are sent in `search_clients` 
-                        // BUT `search_clients` is lightweight.
-                        // Let's do:
-                        const res = await fetch(`/backoffice/clients/${client.id}/stripe-cards/`); // Create this view? 
-                        // Actually, I can create a quick API fetch in `sales/api.py` called `get_client_cards`
-
-                        // Wait, I haven't created that endpoint yet.
-                        // Let's implement fetch later. For now, just placeholder or dynamic 
-
-                        // OK, Plan:
-                        // 1. I need to get the cards.
-                        // 2. I'll add `api_pos_client_cards` to `sales/urls.py` & `views.py`.
-                        // 3. Use it here.
-
-                        // Temporary: Call the endpoint I am about to create
-                        const cardsRes = await fetch(`/backoffice/sales/api/client/${client.id}/cards/`);
+                        const cardsRes = await fetch(`/sales/api/client/${client.id}/cards/`);
                         if (cardsRes.ok) {
                             const cards = await cardsRes.json();
-                            // Append cards to available methods as temporary options
+                            // Append cards to available methods
                             cards.forEach(card => {
                                 this.availableMethods.push({
-                                    id: 'stripe_pm_' + card.id, // Special prefix
-                                    name: `💳 ${card.card.brand.toUpperCase()} **** ${card.card.last4}`,
-                                    is_stripe_card: true,
-                                    stripe_id: card.id
+                                    id: card.provider + '_' + card.id,
+                                    name: card.display,
+                                    is_saved_card: true,
+                                    provider: card.provider,
+                                    token: card.id
                                 });
                             });
                         }
-
                     } catch (e) {
                         console.error("Error loading cards", e);
                     }

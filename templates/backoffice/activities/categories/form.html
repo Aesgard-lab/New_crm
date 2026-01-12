@@ -1,50 +1,31 @@
-{% extends "backoffice/base.html" %}
+{% extends "backoffice/includes/form_base.html" %}
 
-{% block page_title %}
-<div>{{ title }}</div>
-<div class="text-sm font-normal text-slate-500 mt-1">Configuración de categoría</div>
-{% endblock %}
+{% block subtitle %}Configuración de categoría{% endblock %}
 
-{% block content %}
-<form method="post" enctype="multipart/form-data" class="max-w-2xl mx-auto">
-    {% csrf_token %}
+{% block cancel_url %}{% url 'category_list' %}{% endblock %}
 
-    <div class="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm space-y-6">
-        <!-- Manual rendering of Name field to ensure visibility -->
-        <div>
-            <label for="id_name" class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre</label>
-            <input type="text" name="name" id="id_name" maxlength="100" required
-                value="{{ form.name.value|default:'' }}"
-                class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
-                placeholder="Ej: Yoga, Crossfit...">
-            {% if form.name.errors %}
-            <div class="text-red-500 text-xs mt-1">{{ form.name.errors }}</div>
-            {% endif %}
-        </div>
+{% block form_fields %}
+<div>
+    <label for="id_name" class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre</label>
+    <input type="text" name="name" id="id_name" maxlength="100" required value="{{ form.name.value|default:'' }}"
+        class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
+        placeholder="Ej: Yoga, Crossfit...">
+    {% if form.name.errors %}
+    <div class="text-red-500 text-xs mt-1">{{ form.name.errors }}</div>
+    {% endif %}
+</div>
 
-        <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría Padre (Opcional)</label>
-            {{ form.parent }}
-            <p class="text-[10px] text-slate-400 mt-1">Selecciona si esta es una subcategoría.</p>
-            {{ form.parent.errors }}
-        </div>
+<div>
+    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría Padre (Opcional)</label>
+    {{ form.parent }}
+    <p class="text-[10px] text-slate-400 mt-1">Selecciona si esta es una subcategoría.</p>
+    {{ form.parent.errors }}
+</div>
 
-        <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Icono</label>
-            <input type="file" name="icon"
-                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
-            {{ form.icon.errors }}
-        </div>
-    </div>
-
-    <div class="flex gap-4 mt-6 justify-end">
-        <a href="{% url 'category_list' %}"
-            class="px-6 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</a>
-        <!-- Button with explicit dark background -->
-        <button type="submit" style="background-color: #0f172a;"
-            class="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20">
-            Guardar
-        </button>
-    </div>
-</form>
+<div>
+    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Icono</label>
+    <input type="file" name="icon"
+        class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
+    {{ form.icon.errors }}
+</div>
 {% endblock %}

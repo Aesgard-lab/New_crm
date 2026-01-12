@@ -40,7 +40,8 @@ def client_detail(request, client_id):
             "notes__author", 
             "memberships",
             "visits",
-            "sales",
+            "orders__items",
+            "orders__payments__payment_method",
             "documents"
         ), 
         id=client_id, 
@@ -66,10 +67,9 @@ def client_detail(request, client_id):
     # Helper lists (could be filtered/sorted if needed)
     memberships = client.memberships.order_by("-start_date")
     visits = client.visits.order_by("-date")
-    sales = client.sales.order_by("-date")
     notes = client.notes.order_by("-created_at")
     note_form = ClientNoteForm()
-    document_form = ClientDocumentForm() # Assuming ClientDocumentForm is the correct class
+    document_form = ClientDocumentForm()
 
     context = {
         'client': client,
@@ -79,7 +79,6 @@ def client_detail(request, client_id):
         'note_form': note_form,
         'memberships': memberships,
         'visits': visits,
-        'sales': sales, # Retained from original
         'document_form': document_form,
         'stripe_public_key': stripe_public_key,
         'payment_methods': payment_methods,

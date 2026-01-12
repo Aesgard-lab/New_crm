@@ -9,4 +9,8 @@ urlpatterns = [
     path('api/clients/search/', api.search_clients, name='api_pos_clients_search'),
     path('api/sale/process/', api.process_sale, name='api_pos_process_sale'),
     path('api/client/<int:client_id>/cards/', api.get_client_cards, name='api_pos_client_cards'),
+    
+    # Order Management API
+    path('api/order/<int:order_id>/', api.order_detail_json, name='api_order_detail'),
+    path('api/order/<int:order_id>/cancel/', api.order_cancel, name='api_order_cancel'),
 ]

@@ -530,40 +530,214 @@
             </div>
         </section>
 
-        <!-- Compras (Orders) -->
-        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+        <!-- Compras (Orders) - Enhanced with expandable rows -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="purchaseHistory()">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h3 class="font-semibold text-slate-900">Historial de Ventas</h3>
+                <a href="{% url 'pos_home' %}?client_id={{ client.id }}"
+                    class="text-xs font-medium text-[var(--brand-color)] hover:underline flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Nueva Venta
+                </a>
             </div>
-            <div class="p-6">
+            <div class="divide-y divide-slate-100">
                 {% if client.orders.exists %}
-                <ul class="divide-y divide-slate-100">
-                    {% for order in client.orders.all %}
-                    <li
-                        class="py-3 flex justify-between text-sm group hover:bg-slate-50 -mx-6 px-6 transition-colors cursor-default">
-                        <div>
-                            <div class="font-medium text-slate-800">
-                                Ticket #{{ order.id }}
-                                {% if order.invoice_number %}<span class="text-xs text-slate-500">({{
-                                    order.invoice_number }})</span>{% endif %}
+                {% for order in client.orders.all %}
+                <div class="group">
+                    <!-- Order Row (Clickable) -->
+                    <div @click="toggle({{ order.id }})"
+                        class="px-6 py-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-4">
+                            <!-- Status Icon -->
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg
+                                    {% if order.status == 'PAID' %}bg-emerald-100 text-emerald-600
+                                    {% elif order.status == 'CANCELLED' %}bg-red-100 text-red-500
+                                    {% else %}bg-amber-100 text-amber-600{% endif %}">
+                                {% if order.status == 'PAID' %}💰{% elif order.status == 'CANCELLED' %}✕{% else %}⏳
+                                {% endif %}
                             </div>
-                            <div class="text-xs text-slate-400">{{ order.created_at|date:"d M Y · H:i" }}</div>
+                            <div>
+                                <div class="font-semibold text-slate-800 flex items-center gap-2">
+                                    Ticket #{{ order.id }}
+                                    {% if order.invoice_number %}
+                                    <span class="text-xs text-slate-400 font-normal">({{ order.invoice_number }})</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-slate-400">{{ order.created_at|date:"d M Y · H:i" }}</div>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <div class="font-bold text-slate-900">{{ order.total_amount }}€</div>
-                            <div class="text-[10px] uppercase font-bold tracking-wider
-                                {% if order.status == 'PAID' %}text-emerald-500{% else %}text-slate-400{% endif %}">
+                        <div class="flex items-center gap-4">
+                            <!-- Status Pill -->
+                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full
+                                    {% if order.status == 'PAID' %}bg-emerald-100 text-emerald-700
+                                    {% elif order.status == 'CANCELLED' %}bg-red-100 text-red-600
+                                    {% else %}bg-amber-100 text-amber-700{% endif %}">
                                 {{ order.get_status_display }}
+                            </span>
+                            <!-- Amount -->
+                            <div class="text-right min-w-[80px]">
+                                <div class="font-bold text-slate-900">{{ order.total_amount }}€</div>
+                            </div>
+                            <!-- Hover Actions -->
+                            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {% if order.status == 'PAID' %}
+                                <button @click.stop="confirmCancel({{ order.id }})"
+                                    class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Cancelar venta">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                {% endif %}
+                                <button @click.stop="printTicket({{ order.id }})"
+                                    class="p-2 rounded-lg text-slate-400 hover:text-[var(--brand-color)] hover:bg-slate-100 transition-colors"
+                                    title="Imprimir ticket">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                        </path>
+                                    </svg>
+                                </button>
+                                <!-- Expand Indicator -->
+                                <svg class="w-4 h-4 text-slate-300 transition-transform"
+                                    :class="{ 'rotate-180': expanded === {{ order.id }} }" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
                             </div>
                         </div>
-                    </li>
-                    {% endfor %}
-                </ul>
+                    </div>
+
+                    <!-- Expanded Details -->
+                    <div x-show="expanded === {{ order.id }}" x-collapse
+                        class="bg-slate-50 border-t border-slate-100 px-6 py-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Items -->
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Artículos
+                                </h4>
+                                <ul class="space-y-2">
+                                    {% for item in order.items.all %}
+                                    <li class="flex justify-between text-sm">
+                                        <span class="text-slate-700">
+                                            <span class="font-medium">{{ item.quantity }}x</span> {{ item.description }}
+                                        </span>
+                                        <span class="text-slate-600 font-medium">{{ item.subtotal }}€</span>
+                                    </li>
+                                    {% empty %}
+                                    <li class="text-sm text-slate-400">Sin artículos</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <!-- Payments -->
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Pagos</h4>
+                                <ul class="space-y-2">
+                                    {% for payment in order.payments.all %}
+                                    <li class="flex justify-between text-sm">
+                                        <span class="text-slate-700">{{ payment.payment_method.name }}</span>
+                                        <span class="text-slate-600 font-medium">{{ payment.amount }}€</span>
+                                    </li>
+                                    {% empty %}
+                                    <li class="text-sm text-slate-400">Sin pagos registrados</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
                 {% else %}
-                <p class="text-slate-400 text-sm text-center py-4">No hay ventas registradas.</p>
+                <p class="text-slate-400 text-sm text-center py-6">No hay ventas registradas.</p>
                 {% endif %}
             </div>
+
+            <!-- Cancel Confirmation Modal -->
+            <div x-show="showCancelModal" style="display: none;"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+                <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+                    <div class="p-6 text-center">
+                        <div
+                            class="w-12 h-12 rounded-full bg-red-100 text-red-500 mx-auto mb-4 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">¿Cancelar venta?</h3>
+                        <p class="text-sm text-slate-500 mb-6">Esta acción no se puede deshacer. El estado de la venta
+                            cambiará a "Cancelado".</p>
+                        <div class="flex gap-3">
+                            <button @click="showCancelModal = false"
+                                class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-colors">
+                                No, volver
+                            </button>
+                            <button @click="executeCancel()"
+                                class="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors">
+                                Sí, cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
+
+        <script>
+            function purchaseHistory() {
+                return {
+                    expanded: null,
+                    showCancelModal: false,
+                    orderToCancel: null,
+
+                    toggle(orderId) {
+                        this.expanded = this.expanded === orderId ? null : orderId;
+                    },
+
+                    confirmCancel(orderId) {
+                        this.orderToCancel = orderId;
+                        this.showCancelModal = true;
+                    },
+
+                    async executeCancel() {
+                        if (!this.orderToCancel) return;
+
+                        try {
+                            const res = await fetch(`/sales/api/order/${this.orderToCancel}/cancel/`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}'
+                                }
+                            });
+
+                            if (res.ok) {
+                                window.location.reload();
+                            } else {
+                                const data = await res.json();
+                                alert(data.error || 'Error al cancelar la venta');
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert('Error de conexión');
+                        }
+
+                        this.showCancelModal = false;
+                        this.orderToCancel = null;
+                    },
+
+                    printTicket(orderId) {
+                        // TODO: Implement print functionality
+                        alert('Función de impresión próximamente');
+                    }
+                }
+            }
+        </script>
 
     </div>
 </div>
