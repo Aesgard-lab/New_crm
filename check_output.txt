@@ -1,6 +1,0 @@
-System check identified some issues:
-
-WARNINGS:
-?: (staticfiles.W004) The directory 'C:\Users\santi\OneDrive\Escritorio\New_crm\static' in the STATICFILES_DIRS setting does not exist.
-
-System check identified 1 issue (0 silenced).

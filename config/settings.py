@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "memberships",
     "finance",
     "sales",
+    "reporting",
     "marketing",
 ]
 

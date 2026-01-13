@@ -24,4 +24,12 @@ db.sqlite3
 media/
 staticfiles/
 .DS_Store
+.venv/
+env/
+__pycache__/
+*.pyc
+db.sqlite3
 .env
+media/
+staticfiles/
+.vscode/

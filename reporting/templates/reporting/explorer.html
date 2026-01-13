@@ -1,0 +1,212 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}Audiencias y Reportes{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-[calc(100vh-120px)]" x-data="audienceExplorer">
+
+    <!-- HEADER -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-900">Explorador de Audiencias</h2>
+            <div class="flex items-center gap-2 text-sm text-slate-500">
+                <span>{{ total_count }} clientes totales</span>
+                <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span class="text-emerald-600 font-bold">{{ active_count }} activos</span>
+                <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span>Visualizando {{ clients|length }} resultados</span>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button
+                class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Exportar CSV
+            </button>
+            <button
+                class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                    </path>
+                </svg>
+                Crear Campaña
+            </button>
+        </div>
+    </div>
+
+    <div class="flex gap-6 flex-1 overflow-hidden">
+
+        <!-- SIDEBAR FILTERS -->
+        <div class="w-80 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden shrink-0">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 font-bold text-slate-700 flex justify-between">
+                <span>Filtros</span>
+                <a href="." class="text-xs text-indigo-600 hover:underline">Limpiar</a>
+            </div>
+
+            <form id="filterForm" method="GET" class="flex-1 overflow-y-auto p-5 space-y-6">
+                <!-- Search -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Búsqueda</label>
+                    <input type="text" name="q" value="{{ filters.q }}" placeholder="Nombre, email, teléfono..."
+                        class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Estado</label>
+                    <select name="status" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.status=='all' %}selected{% endif %}>Todos</option>
+                        <option value="ACTIVE" {% if filters.status=='ACTIVE' %}selected{% endif %}>Activo</option>
+                        <option value="INACTIVE" {% if filters.status=='INACTIVE' %}selected{% endif %}>Inactivo
+                        </option>
+                        <option value="LEAD" {% if filters.status=='LEAD' %}selected{% endif %}>Prospecto</option>
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Alta</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" name="date_start" value="{{ filters.date_start }}"
+                            class="w-full rounded-lg border-slate-200 text-xs">
+                        <input type="date" name="date_end" value="{{ filters.date_end }}"
+                            class="w-full rounded-lg border-slate-200 text-xs">
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Etiquetas</label>
+                    <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                        {% for tag in tags %}
+                        <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                            <input type="checkbox" name="tags" value="{{ tag.id }}" {% if tag.id in
+                                filters.selected_tags %}checked{% endif %}
+                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full" style="background-color: {{ tag.color }}"></span>
+                                {{ tag.name }}
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Advanced (Mock) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Comportamiento</label>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 text-sm text-slate-600">
+                            <input type="checkbox" class="rounded border-slate-300 text-indigo-600">
+                            <span>Sin asistencia > 30 días</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-slate-600">
+                            <input type="checkbox" class="rounded border-slate-300 text-indigo-600">
+                            <span>Cumpleaños esta semana</span>
+                        </label>
+                    </div>
+                </div>
+
+            </form>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50">
+                <button type="submit" form="filterForm"
+                    class="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg">
+                    Aplicar Filtros
+                </button>
+            </div>
+        </div>
+
+        <!-- RESULTS TABLE -->
+        <div class="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+            <div class="overflow-auto flex-1">
+                <table class="w-full text-left text-sm text-slate-600">
+                    <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-6 py-4">Cliente</th>
+                            <th class="px-6 py-4">Estado</th>
+                            <th class="px-6 py-4">Alta</th>
+                            <th class="px-6 py-4">Ultima Visita</th>
+                            <th class="px-6 py-4 text-right">Gasto Total</th>
+                            <th class="px-6 py-4"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for client in clients %}
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="px-6 py-3 font-medium text-slate-900">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">
+                                        {{ client.first_name|slice:":1" }}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'client_detail' client.id %}"
+                                            class="hover:text-indigo-600 hover:underline">
+                                            {{ client.first_name }} {{ client.last_name }}
+                                        </a>
+                                        <div class="text-xs text-slate-400">{{ client.email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border
+                                    {% if client.status == 'ACTIVE' %}bg-emerald-50 text-emerald-600 border-emerald-100
+                                    {% elif client.status == 'LEAD' %}bg-blue-50 text-blue-600 border-blue-100
+                                    {% else %}bg-slate-50 text-slate-500 border-slate-100{% endif %}">
+                                    {{ client.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-3 text-xs">{{ client.created_at|date:"d/m/Y" }}</td>
+                            <td class="px-6 py-3 text-xs text-slate-400">
+                                {% if client.visits.last %}
+                                {{ client.visits.first.date|date:"d/m/Y" }}
+                                {% else %}
+                                Nunca
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-right font-mono text-slate-900">
+                                <!-- Mock spend, or real if available -->
+                                --
+                            </td>
+                            <td class="px-6 py-3 text-right">
+                                <button
+                                    class="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z">
+                                        </path>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="p-12 text-center text-slate-400">
+                                No se encontraron clientes con estos filtros.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination (Simple) -->
+            <div class="bg-slate-50 p-3 border-t border-slate-200 text-xs text-slate-500 flex justify-center">
+                Mostrando los primeros 100 resultados
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('audienceExplorer', () => ({
+            // Just basic UI state if needed
+        }))
+    })
+</script>
+{% endblock %}

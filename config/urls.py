@@ -16,7 +16,7 @@ urlpatterns = [
     path("sales/", include("sales.urls")),
     path("finance/", include("finance.urls")),
     path("marketing/", include("marketing.urls")),
-    path("marketing/", include("marketing.urls")),
+    path("reporting/", include("reporting.urls")),
 ]
 
 from django.conf import settings
