@@ -4,6 +4,7 @@ from .models import MembershipPlan, PlanAccessRule
 from finance.models import TaxRate
 from activities.models import ActivityCategory, Activity
 from services.models import ServiceCategory, Service
+from organizations.models import Gym
 
 class MembershipPlanForm(forms.ModelForm):
     class Meta:
@@ -13,8 +14,11 @@ class MembershipPlanForm(forms.ModelForm):
             'is_recurring', 'is_membership', 
             'frequency_amount', 'frequency_unit',
             'contract_required', 'contract_content', # Contract
-            'pack_validity_days', 'prorate_first_month',
-            'pack_validity_days', 'prorate_first_month',
+            'prorate_first_month',
+            # Pause fields
+            'allow_pause', 'pause_fee', 'pause_min_days', 'pause_max_days', 
+            'pause_max_per_year', 'pause_advance_notice_days',
+            'pause_allows_gym_access', 'pause_allows_booking', 'pause_extends_end_date',
             'is_active', 'is_visible_online'
         ]
         widgets = {
@@ -34,6 +38,17 @@ class MembershipPlanForm(forms.ModelForm):
             'contract_content': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'rows': 10}),
             'contract_required': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             
+            # Pause Configuration
+            'allow_pause': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'pause_fee': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'step': '0.01'}),
+            'pause_min_days': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'pause_max_days': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'pause_max_per_year': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'pause_advance_notice_days': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'pause_allows_gym_access': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'pause_allows_booking': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'pause_extends_end_date': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            
             # Toggles
             'is_recurring': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_membership': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
@@ -42,11 +57,28 @@ class MembershipPlanForm(forms.ModelForm):
             'is_visible_online': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
         }
     
+    propagate_to_gyms = forms.ModelMultipleChoiceField(
+        queryset=Gym.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+        label="Propagar a otros gimnasios",
+        help_text="Selecciona los gimnasios donde quieres copiar/actualizar este plan."
+    )
+
     def __init__(self, *args, **kwargs):
         gym = kwargs.pop('gym', None)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if gym:
             self.fields['tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
+
+            # Franchise Propagation Logic
+            is_owner = user and gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
+            
+            if is_owner:
+                self.fields['propagate_to_gyms'].queryset = gym.franchise.gyms.all()
+            else:
+                del self.fields['propagate_to_gyms']
 
 class PlanAccessRuleForm(forms.ModelForm):
     class Meta:

@@ -1,0 +1,225 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div>
+        <div class="text-2xl font-bold text-slate-800">📢 Anuncios Publicitarios</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">Carteles y banners para la app del cliente</div>
+    </div>
+    <a href="{% url 'marketing_advertisement_create' %}"
+        class="btn-brand px-4 py-2 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Crear Anuncio
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="text-2xl font-bold text-slate-900">{{ stats.total }}</div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mt-1">Total Anuncios</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="text-2xl font-bold text-green-600">{{ stats.active }}</div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mt-1">Activos</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="text-2xl font-bold text-purple-600">{{ stats.impressions|default:0 }}</div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mt-1">Impresiones</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="text-2xl font-bold text-blue-600">{{ stats.clicks|default:0 }}</div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mt-1">Clicks</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="text-2xl font-bold text-indigo-600">{{ stats.ctr|default:0 }}%</div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mt-1">CTR</div>
+    </div>
+</div>
+
+<!-- Info Banner -->
+<div class="bg-purple-50 border border-purple-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+    <svg class="w-6 h-6 text-purple-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <div>
+        <h3 class="font-bold text-purple-900 mb-1">ℹ️ Diferencia entre Anuncios y Popups</h3>
+        <p class="text-sm text-purple-800">
+            <strong>Anuncios:</strong> Carteles publicitarios fijos en ubicaciones específicas (hero carousel, footer, etc.) para promociones y contenido comercial.<br>
+            <strong>Popups:</strong> Notificaciones emergentes del sistema para comunicados importantes y urgentes.
+        </p>
+    </div>
+</div>
+
+{% if advertisements %}
+<!-- Advertisements Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for ad in advertisements %}
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow group relative">
+        
+        <!-- Status Badge -->
+        <div class="absolute top-3 right-3 z-10">
+            {% if ad.is_active %}
+            <span class="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                ✓ ACTIVO
+            </span>
+            {% else %}
+            <span class="bg-slate-400 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                PAUSADO
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Image Preview -->
+        <div class="h-40 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+            {% if ad.image_desktop %}
+            <img src="{{ ad.image_desktop.url }}" class="w-full h-full object-cover" alt="{{ ad.title }}">
+            {% else %}
+            <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+            </svg>
+            {% endif %}
+            
+            <!-- Position Badge -->
+            <div class="absolute bottom-2 left-2">
+                <span class="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                    {{ ad.get_position_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-5">
+            <div class="flex items-start justify-between mb-2">
+                <h3 class="font-bold text-slate-800 text-lg truncate flex-1">{{ ad.title }}</h3>
+                <span class="text-slate-400 text-xs ml-2">#{{ ad.priority }}</span>
+            </div>
+            
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-lg font-medium">
+                    {{ ad.get_ad_type_display }}
+                </span>
+                {% if ad.cta_text %}
+                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-medium">
+                    CTA: {{ ad.get_cta_action_display }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-3 gap-2 mb-4 pt-3 border-t border-slate-100">
+                <div class="text-center">
+                    <div class="text-lg font-bold text-slate-900">{{ ad.impressions }}</div>
+                    <div class="text-xs text-slate-500">Vistas</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-bold text-slate-900">{{ ad.clicks }}</div>
+                    <div class="text-xs text-slate-500">Clicks</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-bold text-purple-600">{{ ad.ctr }}%</div>
+                    <div class="text-xs text-slate-500">CTR</div>
+                </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="text-xs text-slate-500 mb-4">
+                <div class="flex items-center gap-1 mb-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Inicio: {{ ad.start_date|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% if ad.end_date %}
+                <div class="flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Fin: {{ ad.end_date|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% else %}
+                <div class="text-slate-400 italic">Sin fecha de fin</div>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                <button onclick="toggleAdStatus({{ ad.pk }}, {{ ad.is_active|lower }})" 
+                    class="text-sm font-medium {% if ad.is_active %}text-orange-600 hover:text-orange-700{% else %}text-green-600 hover:text-green-700{% endif %} transition-colors">
+                    {% if ad.is_active %}⏸ Pausar{% else %}▶️ Activar{% endif %}
+                </button>
+                <div class="flex gap-3">
+                    <a href="{% url 'marketing_advertisement_edit' ad.pk %}"
+                        class="text-sm font-medium text-slate-600 hover-brand transition-colors">
+                        Editar
+                    </a>
+                    <a href="{% url 'marketing_advertisement_delete' ad.pk %}" 
+                        onclick="return confirm('¿Eliminar este anuncio?')"
+                        class="text-sm font-medium text-red-500 hover:text-red-700 transition-colors">
+                        Eliminar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="text-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed">
+    <div class="w-20 h-20 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z">
+            </path>
+        </svg>
+    </div>
+    <h3 class="text-lg font-bold text-slate-900 mb-2">No hay anuncios publicitarios</h3>
+    <p class="text-slate-500 mb-6 max-w-sm mx-auto">
+        Crea tu primer anuncio para mostrar promociones, sponsors o contenido educativo en la app del cliente.
+    </p>
+    <a href="{% url 'marketing_advertisement_create' %}"
+        class="btn-brand inline-flex items-center gap-2 px-6 py-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Crear Primer Anuncio
+    </a>
+</div>
+{% endif %}
+
+<script>
+function toggleAdStatus(adId, isActive) {
+    if (!confirm(isActive ? '¿Pausar este anuncio?' : '¿Activar este anuncio?')) {
+        return;
+    }
+    
+    fetch(`/backoffice/marketing/advertisements/${adId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cambiar el estado del anuncio');
+    });
+}
+</script>
+
+{% endblock %}

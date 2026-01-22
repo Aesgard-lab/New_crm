@@ -1,0 +1,133 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block header_right %}
+<a href="{% url 'document_template_list' %}" class="text-sm font-medium text-slate-500 hover:text-slate-800">
+    ← Volver al listado
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <form method="post" class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+        {% csrf_token %}
+
+        <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h3 class="text-lg font-bold text-slate-900">{{ title }}</h3>
+            <p class="text-sm text-slate-500 mt-1">
+                Configura el contenido del documento. Puedes usar variables como
+                <code class="bg-slate-100 px-1 rounded">&#123;&#123;client_name&#125;&#125;</code>,
+                <code class="bg-slate-100 px-1 rounded">&#123;&#123;client_dni&#125;&#125;</code>,
+                <code class="bg-slate-100 px-1 rounded">&#123;&#123;date&#125;&#125;</code>,
+                <code class="bg-slate-100 px-1 rounded">&#123;&#123;gym_name&#125;&#125;</code>.
+            </p>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Nombre y Tipo -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        {{ form.name.label }}
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        {{ form.document_type.label }}
+                    </label>
+                    {{ form.document_type }}
+                </div>
+            </div>
+
+            <!-- Contenido HTML -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    {{ form.content.label }}
+                </label>
+                <p class="text-xs text-slate-500 mb-2">{{ form.content.help_text }}</p>
+                {{ form.content }}
+                {% if form.content.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.content.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Opciones -->
+            <div class="flex flex-wrap gap-8 pt-4 border-t border-slate-100">
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    {{ form.requires_signature }}
+                    <div>
+                        <span class="font-medium text-slate-700 group-hover:text-slate-900">{{ form.requires_signature.label }}</span>
+                        <p class="text-xs text-slate-500">El cliente deberá firmar el documento</p>
+                    </div>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    {{ form.is_active }}
+                    <div>
+                        <span class="font-medium text-slate-700 group-hover:text-slate-900">{{ form.is_active.label }}</span>
+                        <p class="text-xs text-slate-500">Disponible para seleccionar y enviar</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+            <a href="{% url 'document_template_list' %}"
+                class="text-slate-500 hover:text-slate-700 text-sm font-medium">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="bg-[var(--brand-color)] text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors shadow-sm">
+                {% if template %}Guardar Cambios{% else %}Crear Plantilla{% endif %}
+            </button>
+        </div>
+    </form>
+
+    <!-- Preview Section -->
+    <div class="mt-6 bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="{ showPreview: false }">
+        <button @click="showPreview = !showPreview"
+            class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors">
+            <span class="font-semibold text-slate-900">Vista Previa</span>
+            <svg :class="showPreview ? 'rotate-180' : ''" class="w-5 h-5 text-slate-400 transition-transform"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
+        <div x-show="showPreview" x-collapse class="border-t border-slate-100">
+            <div class="p-6 prose prose-sm max-w-none" id="preview-content">
+                <!-- Preview will be rendered here -->
+                <p class="text-slate-400 italic">El contenido se mostrará aquí...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const contentField = document.getElementById('template-content-editor');
+        const previewDiv = document.getElementById('preview-content');
+
+        if (contentField && previewDiv) {
+            const updatePreview = () => {
+                let content = contentField.value;
+                // Replace variables with example values
+                content = content.replace(/\{\{client_name\}\}/g, '<strong>Juan García López</strong>');
+                content = content.replace(/\{\{client_dni\}\}/g, '<strong>12345678A</strong>');
+                content = content.replace(/\{\{date\}\}/g, '<strong>' + new Date().toLocaleDateString('es-ES') + '</strong>');
+                content = content.replace(/\{\{gym_name\}\}/g, '<strong>Mi Gimnasio</strong>');
+                previewDiv.innerHTML = content || '<p class="text-slate-400 italic">El contenido se mostrará aquí...</p>';
+            };
+
+            contentField.addEventListener('input', updatePreview);
+            updatePreview();
+        }
+    });
+</script>
+{% endblock %}

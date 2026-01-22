@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo: Anuncios en App Cliente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-purple-600 text-white p-4 shadow-lg">
+        <div class="container mx-auto">
+            <h1 class="text-2xl font-bold">🏋️ Qombo Arganzuela</h1>
+            <p class="text-sm opacity-90">Hola, Demo Cliente</p>
+        </div>
+    </header>
+
+    <!-- Hero Carousel (Anuncios) -->
+    <section class="container mx-auto mt-4">
+        <div class="swiper hero-carousel rounded-xl overflow-hidden shadow-xl">
+            <div class="swiper-wrapper" id="carousel-container">
+                <!-- Los anuncios se cargarán aquí -->
+                <div class="swiper-slide">
+                    <div class="relative bg-gradient-to-r from-purple-600 to-pink-600 h-64 flex items-center justify-center">
+                        <div class="text-center text-white p-8">
+                            <div class="text-4xl mb-4">🎉</div>
+                            <h2 class="text-3xl font-bold mb-2">Black Friday 50% OFF</h2>
+                            <p class="mb-6">¡Reserva tu clase ahora y ahorra!</p>
+                            <button onclick="handleCTA()" class="bg-white text-purple-600 px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-gray-100 transition">
+                                ¡Reserva Ahora!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="swiper-slide">
+                    <div class="relative bg-gradient-to-r from-blue-600 to-cyan-600 h-64 flex items-center justify-center">
+                        <div class="text-center text-white p-8">
+                            <div class="text-4xl mb-4">🎯</div>
+                            <h2 class="text-3xl font-bold mb-2">Nuevo Catálogo 2026</h2>
+                            <p class="mb-6">Descubre nuestros servicios y productos</p>
+                            <button onclick="viewCatalog()" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-gray-100 transition">
+                                Ver Catálogo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="swiper-pagination"></div>
+        </div>
+    </section>
+
+    <!-- Contenido Principal -->
+    <main class="container mx-auto mt-8 px-4 pb-32">
+        <h2 class="text-2xl font-bold mb-4">📅 Clases Disponibles</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-3xl mb-2">🧘‍♀️</div>
+                <h3 class="font-bold text-lg">Yoga</h3>
+                <p class="text-gray-600 text-sm">Lunes 18:00 - 19:00</p>
+                <button class="mt-4 w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
+                    Reservar
+                </button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-3xl mb-2">💪</div>
+                <h3 class="font-bold text-lg">CrossFit</h3>
+                <p class="text-gray-600 text-sm">Martes 19:00 - 20:00</p>
+                <button class="mt-4 w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
+                    Reservar
+                </button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-3xl mb-2">🏃‍♂️</div>
+                <h3 class="font-bold text-lg">Running</h3>
+                <p class="text-gray-600 text-sm">Miércoles 07:00 - 08:00</p>
+                <button class="mt-4 w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
+                    Reservar
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h3 class="font-bold text-lg mb-4">📊 Analytics del Anuncio</h3>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-purple-600" id="impressions-count">451</div>
+                    <div class="text-sm text-gray-600">Impresiones</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-600" id="clicks-count">36</div>
+                    <div class="text-sm text-gray-600">Clicks</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-blue-600" id="ctr-value">7.98%</div>
+                    <div class="text-sm text-gray-600">CTR</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Sticky Footer Banner -->
+    <div id="footer-banner" class="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-2xl border-t">
+        <div class="relative">
+            <div class="bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="text-2xl">🔥</div>
+                    <div>
+                        <div class="font-bold">¡Oferta Limitada!</div>
+                        <div class="text-sm opacity-90">50% en todas las membresías</div>
+                    </div>
+                </div>
+                <button onclick="handleFooterCTA()" class="bg-white text-orange-600 px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-gray-100 transition">
+                    Ver Ofertas
+                </button>
+                <button onclick="closeBanner()" class="absolute top-2 right-2 w-6 h-6 bg-black/30 rounded-full text-white flex items-center justify-center hover:bg-black/50 transition">
+                    ✕
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Swiper
+        const swiper = new Swiper('.hero-carousel', {
+            modules: [window.Swiper.Autoplay, window.Swiper.Pagination],
+            autoplay: {
+                delay: 5000,
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+            loop: true,
+        });
+
+        // Simular tracking de impresiones
+        console.log('📊 Impresión registrada para Anuncio #1');
+        
+        // Stats
+        let impressions = 451;
+        let clicks = 36;
+
+        function updateStats() {
+            document.getElementById('impressions-count').textContent = impressions;
+            document.getElementById('clicks-count').textContent = clicks;
+            const ctr = (clicks / impressions * 100).toFixed(2);
+            document.getElementById('ctr-value').textContent = ctr + '%';
+        }
+
+        // Handle CTA clicks
+        function handleCTA() {
+            clicks++;
+            updateStats();
+            console.log('🎯 Click registrado en CTA: BOOK_CLASS');
+            alert('¡Click registrado! Redirigiendo a Reservar Clase...\n\n📊 Stats:\n- Clicks: ' + clicks + '\n- CTR: ' + (clicks / impressions * 100).toFixed(2) + '%');
+            // En producción: window.location.href = '/portal/activities/';
+        }
+
+        function viewCatalog() {
+            clicks++;
+            updateStats();
+            console.log('🎯 Click registrado en CTA: VIEW_CATALOG');
+            alert('¡Click registrado! Redirigiendo al Catálogo...');
+        }
+
+        function handleFooterCTA() {
+            console.log('🎯 Click en banner footer');
+            alert('¡Click registrado! Ver Ofertas de Membresías...');
+        }
+
+        function closeBanner() {
+            document.getElementById('footer-banner').style.display = 'none';
+            console.log('Banner cerrado por el usuario');
+        }
+
+        // Simular fetch de API (en producción usa fetch real)
+        console.log('🔌 API Endpoints disponibles:');
+        console.log('GET /marketing/api/advertisements/active/');
+        console.log('POST /marketing/api/advertisements/1/impression/');
+        console.log('POST /marketing/api/advertisements/1/click/');
+    </script>
+</body>
+</html>

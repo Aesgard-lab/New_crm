@@ -1,0 +1,156 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Ranking - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{% url 'public_client_dashboard' slug=settings.public_slug %}" 
+       class="text-sm text-[var(--brand-color)] hover:underline mb-2 inline-block">
+        ← Volver a Mi Perfil
+    </a>
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">🏅 Tabla de Clasificación</h1>
+    <p class="text-slate-600">Compite con otros miembros del gimnasio</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Panel Principal - Ranking -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="p-6 bg-gradient-to-r from-purple-600 to-indigo-700 text-white">
+                <h2 class="text-xl font-bold">Top 100 Miembros</h2>
+                <p class="text-purple-200 text-sm">Los mejores del mes</p>
+            </div>
+            
+            <div class="divide-y divide-slate-100">
+                {% for entry in top_clients %}
+                <div class="p-4 flex items-center gap-4 {% if entry.client.id == client.id %}bg-purple-50{% endif %} hover:bg-slate-50 transition-colors">
+                    <!-- Posición -->
+                    <div class="w-12 text-center">
+                        {% if forloop.counter == 1 %}
+                        <span class="text-3xl">🥇</span>
+                        {% elif forloop.counter == 2 %}
+                        <span class="text-3xl">🥈</span>
+                        {% elif forloop.counter == 3 %}
+                        <span class="text-3xl">🥉</span>
+                        {% else %}
+                        <span class="text-2xl font-bold text-slate-400">#{{ forloop.counter }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Avatar y nombre -->
+                    <div class="flex items-center gap-3 flex-1">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+                            {{ entry.client.first_name|slice:":1" }}{{ entry.client.last_name|slice:":1" }}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">
+                                {{ entry.client.first_name }} {{ entry.client.last_name|slice:":1" }}.
+                                {% if entry.client.id == client.id %}
+                                <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2">Tú</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-slate-500">
+                                {{ entry.get_rank_badge.icon }} {{ entry.get_rank_badge.name }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Nivel y XP -->
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-slate-900">Nivel {{ entry.current_level }}</div>
+                        <div class="text-xs text-slate-500">{{ entry.total_xp|floatformat:0 }} XP</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-12 text-center">
+                    <div class="text-6xl mb-4">🏆</div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">¡Sé el primero!</h3>
+                    <p class="text-slate-600">Asiste a clases para ganar XP y aparecer en el ranking</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar - Mi Progreso -->
+    <div class="space-y-6">
+        <!-- Mi posición -->
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl shadow-lg p-6 text-white">
+            <h3 class="text-lg font-bold mb-4">Tu Posición</h3>
+            
+            <div class="text-center mb-4">
+                <div class="text-6xl font-bold">#{{ my_rank }}</div>
+                <div class="text-purple-200">de {{ top_clients|length }} participantes</div>
+            </div>
+            
+            <div class="border-t border-white/20 pt-4 mt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-purple-200">Tu nivel</span>
+                    <span class="font-bold text-xl">{{ my_progress.current_level }}</span>
+                </div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-purple-200">XP Total</span>
+                    <span class="font-bold">{{ my_progress.total_xp }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-purple-200">Racha actual</span>
+                    <span class="font-bold">🔥 {{ my_progress.current_streak }} días</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cómo ganar XP -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+            <h3 class="text-lg font-bold text-slate-900 mb-4">💡 Cómo ganar XP</h3>
+            
+            <div class="space-y-3 text-sm">
+                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <span class="text-xl">💪</span>
+                    <div>
+                        <div class="font-medium text-slate-900">Asistir a clase</div>
+                        <div class="text-slate-500">+10 XP por sesión</div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <span class="text-xl">📋</span>
+                    <div>
+                        <div class="font-medium text-slate-900">Completar rutina</div>
+                        <div class="text-slate-500">+15 XP por rutina</div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <span class="text-xl">⭐</span>
+                    <div>
+                        <div class="font-medium text-slate-900">Dejar una valoración</div>
+                        <div class="text-slate-500">+10 XP por review</div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <span class="text-xl">👥</span>
+                    <div>
+                        <div class="font-medium text-slate-900">Referir un amigo</div>
+                        <div class="text-slate-500">+100 XP por referido</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ver logros -->
+        <a href="{% url 'public_achievements' slug=settings.public_slug %}" 
+           class="block bg-white rounded-2xl shadow-lg border border-slate-200 p-6 hover:border-purple-500 transition-colors group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900 group-hover:text-purple-600 transition-colors">🏆 Mis Logros</h3>
+                    <p class="text-sm text-slate-500">Ver todos mis achievements</p>
+                </div>
+                <svg class="w-6 h-6 text-slate-400 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

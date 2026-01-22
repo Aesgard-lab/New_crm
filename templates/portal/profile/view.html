@@ -1,0 +1,299 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Mi Perfil - {{ client.gym.name }}{% endblock %}
+{% block page_title %}Mi Perfil{% endblock %}
+
+{% block header_left %}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Profile Card -->
+    <div class="card-modern text-center">
+        <!-- Avatar -->
+        <div class="relative inline-block mb-4">
+            {% if client.photo %}
+            <img src="{{ client.photo.url }}"
+                class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-xl ring-4 ring-slate-100">
+            {% else %}
+            <div
+                class="w-28 h-28 rounded-full bg-brand flex items-center justify-center text-white text-3xl font-bold shadow-xl ring-4 ring-slate-100">
+                {{ client.first_name|slice:":1" }}{{ client.last_name|slice:":1"|default:"" }}
+            </div>
+            {% endif %}
+
+            <!-- Status Badge -->
+            <div
+                class="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-full border-3 border-white shadow-lg">
+                {{ client.get_status_display }}
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-bold text-slate-800">{{ client.first_name }} {{ client.last_name }}</h2>
+        <p class="text-slate-500 text-sm mt-1">{{ client.email }}</p>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-2 gap-4 mt-6">
+            <div class="bg-slate-50 rounded-2xl p-4 hover:bg-slate-100 transition-all">
+                <div class="text-3xl font-bold text-brand">{{ total_visits }}</div>
+                <div class="text-xs text-slate-500 font-medium mt-1">Visitas totales</div>
+            </div>
+            <div class="bg-emerald-50 rounded-2xl p-4 hover:bg-emerald-100 transition-all">
+                <div class="text-3xl font-bold text-emerald-600">{{ this_month_visits }}</div>
+                <div class="text-xs text-slate-500 font-medium mt-1">Este mes</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Membership Card -->
+    {% if membership %}
+    <div class="gradient-brand rounded-3xl p-6 text-white shadow-xl">
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <p class="text-white/80 text-xs font-medium uppercase tracking-wider">Membresía Activa</p>
+                <h3 class="text-2xl font-bold mt-1">{{ membership.name }}</h3>
+            </div>
+            <div class="bg-white/20 backdrop-blur-sm p-3 rounded-2xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                    </path>
+                </svg>
+            </div>
+        </div>
+        <div class="flex justify-between items-center pt-4 border-t border-white/20">
+            <div>
+                <p class="text-white/80 text-xs font-medium">Válida hasta</p>
+                <p class="font-bold text-lg mt-0.5">{{ membership.end_date|date:"d M Y"|default:"Sin fecha" }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-white/80 text-xs font-medium">Precio</p>
+                <p class="font-bold text-lg mt-0.5">{{ membership.price }} €</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-slate-100 rounded-3xl p-8 text-center">
+        <div class="w-16 h-16 bg-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                </path>
+            </svg>
+        </div>
+        <p class="text-slate-500 font-semibold text-lg">Sin membresía activa</p>
+        <p class="text-slate-400 text-sm mt-1">Contacta con recepción para más información</p>
+    </div>
+    {% endif %}
+
+    <!-- Actions Menu -->
+    <div class="card-modern overflow-hidden">
+        <a href="{% url 'portal_profile_edit' %}"
+            class="flex items-center justify-between p-5 hover:bg-slate-50 transition-all border-b border-slate-100 active:scale-[0.98]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">Editar Perfil</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Modifica tus datos personales</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+
+        <a href="{% url 'portal_change_password' %}"
+            class="flex items-center justify-between p-5 hover:bg-slate-50 transition-all border-b border-slate-100 active:scale-[0.98]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">Cambiar Contraseña</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Actualiza tu contraseña de acceso</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+
+        <a href="{% url 'portal_history' %}"
+            class="flex items-center justify-between p-5 hover:bg-slate-50 transition-all border-b border-slate-100 active:scale-[0.98]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">Historial de Asistencias</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Ver todas tus visitas</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+
+        <a href="{% url 'portal_billing' %}"
+            class="flex items-center justify-between p-5 hover:bg-slate-50 transition-all border-b border-slate-100 active:scale-[0.98]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">Mis Pagos</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Historial y próxima cuota</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+
+        <a href="{% url 'portal_payment_methods' %}"
+            class="flex items-center justify-between p-5 hover:bg-slate-50 transition-all border-b border-slate-100 active:scale-[0.98]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 11c0-1.657-1.343-3-3-3H6a3 3 0 00-3 3v1a3 3 0 003 3h3c1.657 0 3-1.343 3-3v-1zM9 8V7a3 3 0 013-3h1a3 3 0 013 3v1m-1 3c0-1.657 1.343-3 3-3h2a3 3 0 013 3v1a3 3 0 01-3 3h-2a3 3 0 01-3-3v-1z" />
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">Mis tarjetas</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Vincula o cambia tu tarjeta</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+
+        <form method="post" action="{% url 'portal_toggle_email_notifications' %}"
+            class="flex items-center justify-between p-5 hover:bg-slate-50 transition-all border-b border-slate-100">
+            {% csrf_token %}
+            <div class="flex items-center gap-4 flex-1">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center
+                    {% if client.email_notifications_enabled %}bg-indigo-100{% else %}bg-slate-100{% endif %}">
+                    <svg class="w-6 h-6 {% if client.email_notifications_enabled %}text-indigo-600{% else %}text-slate-400{% endif %}"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">Notificaciones por Email</p>
+                    <p
+                        class="text-xs {% if client.email_notifications_enabled %}text-emerald-600{% else %}text-slate-400{% endif %} mt-0.5">
+                        {% if client.email_notifications_enabled %}
+                        Actualmente recibiendo emails del gimnasio
+                        {% else %}
+                        No recibes emails del gimnasio
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <button type="submit"
+                class="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95
+                {% if client.email_notifications_enabled %}bg-red-100 text-red-700 hover:bg-red-200{% else %}bg-emerald-100 text-emerald-700 hover:bg-emerald-200{% endif %}">
+                {% if client.email_notifications_enabled %}Desactivar{% else %}Activar{% endif %}
+            </button>
+        </form>
+
+        <a href="{% url 'portal_logout' %}"
+            class="flex items-center justify-between p-5 hover:bg-red-50 transition-all active:scale-[0.98]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-bold text-red-600">Cerrar Sesión</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Salir de tu cuenta</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Contact Info -->
+    <div class="card-modern">
+        <h3 class="font-bold text-slate-800 mb-5 flex items-center gap-2">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Información de Contacto
+        </h3>
+
+        <div class="space-y-4">
+            <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-xs text-slate-500 font-medium">Email</p>
+                    <p class="text-slate-700 font-semibold">{{ client.email|default:"-" }}</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z">
+                        </path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-xs text-slate-500 font-medium">Teléfono</p>
+                    <p class="text-slate-700 font-semibold">{{ client.phone_number|default:"-" }}</p>
+                </div>
+            </div>
+
+            {% if client.address %}
+            <div class="flex items-start gap-4 p-3 bg-slate-50 rounded-2xl">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-xs text-slate-500 font-medium">Dirección</p>
+                    <p class="text-slate-700 font-semibold">{{ client.address }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

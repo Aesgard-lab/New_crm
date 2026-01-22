@@ -1,0 +1,260 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{% if form.instance.pk %}Editar Ejercicio{% else %}Nuevo Ejercicio{% endif %}{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'exercise_list' %}" class="hover:underline">Ejercicios</a> > {% if form.instance.pk %}Editar{% else %}Nuevo{% endif %}
+{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Editar Ejercicio{% else %}Crear Ejercicio{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+    .muscle-badge-CHEST { background: #fee2e2; color: #991b1b; }
+    .muscle-badge-BACK { background: #dbeafe; color: #1e40af; }
+    .muscle-badge-LEGS { background: #fef3c7; color: #92400e; }
+    .muscle-badge-ARMS { background: #f3e8ff; color: #6b21a8; }
+    .muscle-badge-SHOULDERS { background: #fce7f3; color: #9f1239; }
+    .muscle-badge-CORE { background: #d1fae5; color: #065f46; }
+    .muscle-badge-CARDIO { background: #fed7aa; color: #9a3412; }
+    .muscle-badge-FULL_BODY { background: #e0e7ff; color: #3730a3; }
+</style>
+
+<div class="max-w-5xl mx-auto" x-data="videoPreview('{{ form.video_url.value|default:'' }}')" x-init="checkUrl('{{ form.video_url.value|default:'' }}')">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: Form -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Name -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Nombre del Ejercicio
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Muscle Group -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Grupo Muscular</label>
+                        {{ form.muscle_group }}
+                    </div>
+
+                    <!-- Active Toggle -->
+                    <div class="flex items-end pb-2">
+                        <label class="flex items-center cursor-pointer bg-slate-50 px-4 py-3 rounded-lg w-full hover:bg-slate-100 transition-colors">
+                            {{ form.is_active }}
+                            <span class="ml-3 text-sm font-medium text-slate-700">Ejercicio Activo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Video URL -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        URL del Video (YouTube/Vimeo)
+                    </label>
+                    <input type="url" name="video_url" 
+                           class="form-input w-full" 
+                           placeholder="https://youtube.com/watch?v=..."
+                           @input="checkUrl($event.target.value)" 
+                           value="{{ form.video_url.value|default:'' }}">
+                    <p class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        La previsualización aparecerá automáticamente en el panel derecho
+                    </p>
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                        </svg>
+                        Etiquetas (Categorías)
+                    </label>
+                    {{ form.tags_input }}
+                    <p class="text-xs text-slate-500 mt-1.5">{{ form.tags_input.help_text }}</p>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Descripción / Técnica de Ejecución
+                    </label>
+                    {{ form.description }}
+                </div>
+
+                <!-- Actions -->
+                <div class="pt-6 border-t border-slate-100 flex justify-end gap-3">
+                    <a href="{% url 'exercise_list' %}"
+                        class="px-6 py-2.5 text-slate-600 hover:bg-slate-100 font-medium rounded-lg transition-colors">
+                        Cancelar
+                    </a>
+                    <button type="submit"
+                        class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-indigo-200 hover:shadow-xl hover:scale-105 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Guardar Ejercicio
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right: Preview Panel -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden sticky top-4">
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white">
+                    <h3 class="font-bold text-lg flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        Previsualización
+                    </h3>
+                </div>
+
+                <!-- Video Preview -->
+                <div class="relative bg-black" style="aspect-ratio: 16/9;">
+                    <template x-if="embedUrl">
+                        <div>
+                            <div class="group relative overflow-hidden rounded-xl bg-slate-900"
+                                 x-data="{ zoomed: false }"
+                                 @mouseenter="zoomed = true"
+                                 @mouseleave="zoomed = false"
+                                 @touchstart="zoomed = !zoomed">
+                                <iframe :src="embedUrl" 
+                                        class="w-full h-full transition-transform duration-500 ease-out"
+                                        :class="zoomed ? 'scale-110' : 'scale-100'"
+                                        frameborder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowfullscreen
+                                        referrerpolicy="strict-origin-when-cross-origin"
+                                        loading="lazy"></iframe>
+                                <!-- Indicador de zoom con animación -->
+                                <div class="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full transition-all duration-300 transform"
+                                     :class="zoomed ? 'opacity-100 scale-100' : 'opacity-0 scale-90'">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                                        </svg>
+                                        <span class="text-xs text-white font-medium">Zoom</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-xs text-slate-500 leading-snug px-4">
+                                <strong>💡 Nota:</strong> Si aparece el <strong>error 153</strong>, el propietario no permite reproducción incrustada.
+                                <a :href="videoUrl" target="_blank" rel="noopener" class="text-indigo-600 hover:text-indigo-700 underline font-medium">
+                                    Ver en YouTube ↗
+                                </a>
+                            </p>
+                        </div>
+                    </template>
+                    <template x-if="!embedUrl">
+                        <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                            <div class="text-center text-slate-400 p-6">
+                                <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-sm font-medium">Sin Video</p>
+                                <p class="text-xs mt-1">Ingresa una URL válida para ver la vista previa</p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="p-4 space-y-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Estado</label>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full" :class="embedUrl ? 'bg-green-500' : 'bg-slate-300'"></div>
+                            <span class="text-sm font-medium" :class="embedUrl ? 'text-green-700' : 'text-slate-500'" x-text="embedUrl ? 'Video válido' : 'Sin video'"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-3 border-t border-slate-100">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Formato Soportado</label>
+                        <div class="flex gap-2">
+                            <span class="text-xs bg-red-50 text-red-700 px-2 py-1 rounded-full font-medium">YouTube</span>
+                            <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">Vimeo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function videoPreview(initialUrl) {
+        return {
+            embedUrl: '',
+            videoUrl: '',
+            
+            checkUrl(url) {
+                this.videoUrl = url;
+                if (!url) {
+                    this.embedUrl = '';
+                    return;
+                }
+
+                console.log('Checando URL:', url);
+                let embed = '';
+                
+                // YouTube - Extraer video ID de cualquier formato
+                if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    let videoId = '';
+                    
+                    // Formato: https://www.youtube.com/watch?v=VIDEO_ID
+                    const watchMatch = url.match(/[?&]v=([^&]+)/);
+                    if (watchMatch) {
+                        videoId = watchMatch[1];
+                    }
+                    // Formato: https://youtu.be/VIDEO_ID
+                    else if (url.includes('youtu.be/')) {
+                        videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
+                    }
+                    // Formato: https://www.youtube.com/embed/VIDEO_ID
+                    else if (url.includes('/embed/')) {
+                        videoId = url.split('/embed/')[1].split('?')[0].split('&')[0];
+                    }
+                    
+                    if (videoId) {
+                        embed = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&loop=1&playlist=${videoId}`;
+                        console.log('Video ID extraído:', videoId);
+                        console.log('Embed URL generada:', embed);
+                    }
+                }
+
+                // Vimeo
+                if (url.includes('vimeo')) {
+                    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                    if (vimeoMatch && vimeoMatch[1]) {
+                        embed = `https://player.vimeo.com/video/${vimeoMatch[1]}?loop=1`;
+                    }
+                }
+
+                this.embedUrl = embed;
+                console.log('Embed URL final:', embed);
+            }
+        }
+    }
+</script>
+{% endblock %}

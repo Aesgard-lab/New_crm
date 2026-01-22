@@ -1,0 +1,39 @@
+rapidfuzz
+# Django Core
+Django>=4.2,<5.0
+django-environ>=0.11.0
+
+# Database
+psycopg2-binary>=2.9.9
+
+# Image Processing
+Pillow>=10.0.0
+
+# Celery (Background Tasks & Scheduling)
+celery>=5.3.0
+redis>=5.0.0
+django-celery-beat>=2.5.0
+django-celery-results>=2.5.0
+
+# API & Forms
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
+
+
+# Payment Processing
+stripe>=7.0.0
+
+# CSV & Excel Import/Export
+pandas>=2.0.0
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+
+# PDF Generation
+reportlab>=4.0.0
+python-docx>=0.8.11
+
+# Security
+cryptography>=41.0.0
+django-ratelimit>=4.1.0
+python-dotenv>=1.0.0
+

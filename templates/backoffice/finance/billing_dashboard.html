@@ -55,14 +55,35 @@
         </div>
     </div>
 
-    <!-- Date Filter -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-1 flex justify-end">
+    <!-- Date Filter with Quick Buttons -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+        <!-- Quick Filter Buttons -->
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex gap-2">
+                <a href="?range=today&scheduled_range=today&tab=history"
+                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if filters.range == 'today' %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Hoy
+                </a>
+                <a href="?range=week&scheduled_range=week&tab=history"
+                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if filters.range == 'week' %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Semana
+                </a>
+                <a href="?range=month&scheduled_range=month&tab=history"
+                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if filters.range == 'month' %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Mes
+                </a>
+            </div>
+        </div>
+
+        <!-- Custom Date Range -->
         <form method="get" class="flex items-center gap-2">
+            <input type="hidden" name="range" value="custom">
+            <input type="hidden" name="tab" value="history" x-bind:value="currentTab">
             <div class="flex items-center bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
-                <input type="date" name="date_start" value="{{ filters.date_start }}"
+                <input type="date" name="start" value="{{ filters.start }}"
                     class="bg-transparent border-none text-xs font-medium focus:ring-0 p-0 text-slate-600">
                 <span class="text-slate-400 mx-2">-></span>
-                <input type="date" name="date_end" value="{{ filters.date_end }}"
+                <input type="date" name="end" value="{{ filters.end }}"
                     class="bg-transparent border-none text-xs font-medium focus:ring-0 p-0 text-slate-600">
             </div>
             <button type="submit"
@@ -88,27 +109,58 @@
 
     <!-- Tab 1: Historial de Operaciones -->
     <div x-show="currentTab === 'history'" class="space-y-6">
+        <!-- Title -->
+        <div class="pb-2">
+            <h2 class="text-2xl font-bold text-slate-900">Historial de Operaciones</h2>
+            <p class="text-sm text-slate-500 mt-1">Desglose de todas las transacciones</p>
+        </div>
+
         <!-- Chart -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-6">
-            <h3 class="text-lg font-bold text-slate-800 mb-6">Evolución de Ingresos</h3>
-            <div class="h-80 w-full">
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Evolución de Ingresos</h3>
+                    <p class="text-xs text-slate-400 mt-1">Facturación diaria en el período seleccionado</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                        <button @click="chartGranularity = 'daily'"
+                            :class="chartGranularity === 'daily' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                            class="px-4 py-1.5 rounded text-xs font-bold transition-all">
+                            Por Días
+                        </button>
+                        <button @click="chartGranularity = 'monthly'"
+                            :class="chartGranularity === 'monthly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                            class="px-4 py-1.5 rounded text-xs font-bold transition-all">
+                            Por Meses
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded bg-indigo-500"></div>
+                        <span class="text-xs text-slate-600">Ingresos</span>
+                    </div>
+                </div>
+            </div>
+            <div class="h-96 w-full relative bg-gradient-to-b from-slate-50 to-white rounded-2xl p-4">
                 <canvas id="revenueChart"></canvas>
             </div>
         </div>
 
         <!-- Transactions List -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-6">
-            <h3 class="text-lg font-bold text-slate-800 mb-4">Desglose de Operaciones</h3>
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+            <div class="pb-4 mb-6 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800">Desglose de Operaciones</h3>
+            </div>
 
             <!-- Table Filters -->
-            <div class="flex gap-4 mb-4 justify-end">
-                <select x-model="filterMethod" class="rounded-lg border-slate-200 text-xs">
+            <div class="flex gap-4 mb-6 justify-end">
+                <select x-model="filterMethod" class="rounded-lg border-slate-200 text-xs font-medium">
                     <option value="all">Todos los Métodos</option>
                     {% for m in filters.methods %}
                     <option value="{{ m.id }}">{{ m.name }}</option>
                     {% endfor %}
                 </select>
-                <select x-model="filterStatus" class="rounded-lg border-slate-200 text-xs">
+                <select x-model="filterStatus" class="rounded-lg border-slate-200 text-xs font-medium">
                     <option value="all">Todos los Estados</option>
                     <option value="PAID">Pagado</option>
                     <option value="PENDING">Pendiente</option>
@@ -116,22 +168,21 @@
                 </select>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-slate-500">
-                    <thead class="bg-slate-50 text-xs uppercase text-slate-700 font-bold">
-                        <tr>
-                            <th class="px-6 py-4 rounded-l-xl">Fecha / Ticket</th>
-                            <th class="px-6 py-4">Cliente</th>
-                            <th class="px-6 py-4">Detalle</th>
-                            <th class="px-6 py-4">Método</th>
+            <table class="w-full text-left text-sm text-slate-500">
+                <thead class="bg-gradient-to-r from-slate-50 to-slate-100 text-xs uppercase text-slate-700 font-bold border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4">Fecha / Ticket</th>
+                        <th class="px-6 py-4">Cliente</th>
+                        <th class="px-6 py-4">Detalle</th>
+                        <th class="px-6 py-4">Método</th>
                             <th class="px-6 py-4 text-center">Estado</th>
-                            <th class="px-6 py-4 rounded-r-xl text-right">Importe</th>
+                            <th class="px-6 py-4 text-right">Importe</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         {% for order in orders %}
-                        <tr class="hover:bg-slate-50 transition-colors"
-                            x-show="shouldShow('{{ order.payments.first.payment_method.id }}', '{{ order.status }}')">
+                        <tr class="hover:bg-indigo-50 transition-colors cursor-pointer"
+                            @click="openEditModal({{ order.id }}, '{{ order.client.first_name|escapejs }} {{ order.client.last_name|escapejs }}', '{{ order.created_at|date:'Y-m-d' }}', '{{ order.status }}', '{{ order.total_amount }}', {% if order.payments.first.payment_method %}{{ order.payments.first.payment_method.id }}{% else %}null{% endif %})">
                             <td class="px-6 py-4">
                                 <div class="font-bold text-slate-900">{{ order.created_at|date:"d/m/Y H:i" }}</div>
                                 <div class="text-xs text-slate-400 font-mono">#{{ order.id }}</div>
@@ -175,17 +226,21 @@
                         {% endfor %}
                     </tbody>
                 </table>
-            </div>
         </div>
     </div>
 
     <!-- Tab 2: Cobros Futuros / Recurrentes (Scheduled) -->
     <div x-show="currentTab === 'scheduled'" class="space-y-6" x-cloak>
+        <!-- Title -->
+        <div class="pb-2">
+            <h2 class="text-2xl font-bold text-slate-900">Próximos Cobros</h2>
+            <p class="text-sm text-slate-500 mt-1">Membresías activas pendientes de renovación</p>
+        </div>
+
         <div class="bg-white border border-slate-200 rounded-3xl p-6">
             <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-800">Próximos Cobros</h3>
-                    <p class="text-sm text-slate-500">Membresías activas pendientes de renovación</p>
+                <div class="text-sm font-bold text-slate-700">
+                    Total Previsto: <span class="text-indigo-600" x-text="`€${totalScheduled.toFixed(2)}`"></span>
                 </div>
                 <input type="text" x-model="searchScheduled" placeholder="Buscar cliente..."
                     class="rounded-xl border-slate-200 text-sm w-64">
@@ -195,9 +250,9 @@
                 <table class="w-full text-left text-sm text-slate-500">
                     <thead class="bg-slate-50 text-xs uppercase text-slate-700 font-bold">
                         <tr>
-                            <th class="px-6 py-4 rounded-l-xl">Fecha Renovación</th>
-                            <th class="px-6 py-4">Cliente</th>
+                            <th class="px-6 py-4 rounded-l-xl">Cliente</th>
                             <th class="px-6 py-4">Membresía</th>
+                            <th class="px-6 py-4">Fecha Renovación</th>
                             <th class="px-6 py-4 text-center">Estado Pago</th>
                             <th class="px-6 py-4 rounded-r-xl text-right">Acción</th>
                         </tr>
@@ -206,13 +261,6 @@
                         {% for sub in scheduled_payments %}
                         <tr class="hover:bg-slate-50 transition-colors"
                             x-show="matchesSearch('{{ sub.client.first_name }} {{ sub.client.last_name }}')">
-                            <td class="px-6 py-4 font-bold text-slate-700">
-                                {{ sub.end_date|date:"d M Y" }}
-                                {% if sub.end_date < today %} <span
-                                    class="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">
-                                    VENCIDO</span>
-                                    {% endif %}
-                            </td>
                             <td class="px-6 py-4 font-medium text-slate-900">
                                 <div class="flex items-center gap-2">
                                     <div
@@ -222,7 +270,15 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                {{ sub.name }} <span class="text-slate-400">({{ sub.price }}€)</span>
+                                <div class="font-bold text-slate-900">{{ sub.name }}</div>
+                                <div class="text-xs text-slate-400">{{ sub.price }}€</div>
+                            </td>
+                            <td class="px-6 py-4 font-bold text-slate-700">
+                                {{ sub.end_date|date:"d M Y" }}
+                                {% if sub.end_date < today %} <span
+                                    class="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">
+                                    VENCIDO</span>
+                                    {% endif %}
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <span
@@ -265,6 +321,92 @@
     <script type="application/json" id="chart-values-data">
         {{ chart_values|safe }}
     </script>
+
+    <!-- Edit Order Modal -->
+    <div x-show="editModal.open"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak
+        x-transition.opacity>
+        <div
+            class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 p-0 flex flex-col max-h-[90vh]">
+
+            <!-- Header -->
+            <div class="p-6 bg-slate-50 border-b border-slate-100 text-center relative">
+                <button @click="editModal.open = false"
+                    class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+                <h3 class="text-lg font-bold text-slate-900">Editar Operación</h3>
+                <div class="text-sm text-slate-500 mt-1" x-text="`Ticket #${editModal.orderId}`"></div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6 overflow-y-auto space-y-4">
+                <!-- Order Summary -->
+                <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span class="text-slate-500">Cliente</span>
+                            <div class="font-bold text-slate-900" x-text="editModal.clientName"></div>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Fecha</span>
+                            <div class="font-bold text-slate-900" x-text="editModal.date"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editable Fields -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Cantidad / Importe (€)</label>
+                    <input type="number" x-model="editModal.newAmount" step="0.01" 
+                        class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Método de Pago</label>
+                    <select x-model="editModal.newPaymentMethod" class="w-full rounded-lg border-slate-200 text-sm">
+                        <option value="">-- Selecciona un método --</option>
+                        {% for method in filters.methods %}
+                        <option value="{{ method.id }}">{{ method.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status Update -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Cambiar Estado</label>
+                    <select x-model="editModal.newStatus" class="w-full rounded-lg border-slate-200 text-sm">
+                        <option value="PAID">Pagado</option>
+                        <option value="PENDING">Pendiente</option>
+                        <option value="REFUNDED">Reembolsado</option>
+                    </select>
+                </div>
+
+                <!-- Internal Notes -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Notas Internas</label>
+                    <textarea x-model="editModal.newNotes" rows="3"
+                        class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500" placeholder="Añade notas sobre esta operación..."></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button @click="editModal.open = false"
+                    class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-bold hover:bg-slate-100">
+                    Cancelar
+                </button>
+                <button @click="saveEditModal()"
+                    class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Payment Options Modal -->
     <div x-show="paymentModal.open"
@@ -363,9 +505,11 @@
 <script>
     const BILLING_CONFIG = {
         csrfToken: "{{ csrf_token }}",
-        chartLabels: {{ chart.labels| safe }},
-    chartValues: { { chart.values | safe } },
-    posUrl: "{% url 'pos_home' %}"
+        chartLabelsDaily: {{ chart.daily.labels | safe }},
+        chartValuesDaily: {{ chart.daily.values | safe }},
+        chartLabelsMonthly: {{ chart.monthly.labels | safe }},
+        chartValuesMonthly: {{ chart.monthly.values | safe }},
+        posUrl: "{% url 'pos_home' %}"
     };
 
     document.addEventListener('alpine:init', () => {
@@ -374,6 +518,9 @@
             filterMethod: 'all',
             filterStatus: 'all',
             searchScheduled: '',
+            chartGranularity: 'daily',
+            chartInstance: null,
+            totalScheduled: 0,
 
             // Toasts Logic
             toasts: [],
@@ -402,30 +549,114 @@
 
             // Chart
             init() {
+                this.$watch('chartGranularity', () => this.renderChart());
                 this.renderChart();
+                this.calculateScheduledTotal();
+            },
+
+            calculateScheduledTotal() {
+                // Calcula el total de cobros futuros
+                const prices = document.querySelectorAll('[x-show*="matchesSearch"] .text-slate-400');
+                let total = 0;
+                document.querySelectorAll('tbody tr').forEach(row => {
+                    const priceCell = row.querySelector('.text-xs.text-slate-400');
+                    if (priceCell && row.style.display !== 'none') {
+                        const price = parseFloat(priceCell.textContent.replace('€', '').trim());
+                        if (!isNaN(price)) total += price;
+                    }
+                });
+                this.totalScheduled = total;
             },
 
             renderChart() {
-                const ctx = document.getElementById('revenueChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
+                const ctx = document.getElementById('revenueChart');
+                if (!ctx) return;
+                
+                // Destroy previous chart if exists
+                if (this.chartInstance) {
+                    this.chartInstance.destroy();
+                }
+                
+                // Get data based on granularity
+                const isDaily = this.chartGranularity === 'daily';
+                const labels = isDaily ? BILLING_CONFIG.chartLabelsDaily : BILLING_CONFIG.chartLabelsMonthly;
+                const values = isDaily ? BILLING_CONFIG.chartValuesDaily : BILLING_CONFIG.chartValuesMonthly;
+                
+                this.chartInstance = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
                     data: {
-                        labels: BILLING_CONFIG.chartLabels,
+                        labels: labels,
                         datasets: [{
-                            label: 'Facturación (€)',
-                            data: BILLING_CONFIG.chartValues,
-                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                            borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 2,
-                            borderRadius: 4,
-                            maxBarThickness: 40
+                            label: isDaily ? 'Facturación Diaria (€)' : 'Facturación Mensual (€)',
+                            data: values,
+                            borderColor: 'rgb(79, 70, 229)',
+                            backgroundColor: 'rgba(79, 70, 229, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: 'rgb(79, 70, 229)',
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2,
+                            pointHoverRadius: 7,
+                            pointHoverBackgroundColor: 'rgb(79, 70, 229)',
+                            pointHoverBorderWidth: 3,
+                            segment: {
+                                borderDash: (ctx) => ctx.p0DataIndex === ctx.p1DataIndex - 1 ? [0] : [5, 5]
+                            }
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] } }, x: { grid: { display: false } } }
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: { size: 12, weight: '500' },
+                                    color: '#64748b'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleFont: { size: 13, weight: 'bold' },
+                                bodyFont: { size: 12 },
+                                padding: 12,
+                                displayColors: true,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: (context) => {
+                                        return `${context.dataset.label}: €${parseFloat(context.parsed.y).toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    borderDash: [2, 4],
+                                    color: 'rgba(148, 163, 184, 0.1)',
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    font: { size: 11 },
+                                    color: '#94a3b8',
+                                    callback: (value) => '€' + value.toFixed(0)
+                                }
+                            },
+                            x: {
+                                grid: { display: false, drawBorder: false },
+                                ticks: {
+                                    font: { size: 11 },
+                                    color: '#94a3b8'
+                                }
+                            }
+                        }
                     }
                 });
             },
@@ -437,8 +668,84 @@
             },
 
             matchesSearch(clientName) {
-                if (!this.searchScheduled) return true;
-                return clientName.toLowerCase().includes(this.searchScheduled.toLowerCase());
+                const matches = !this.searchScheduled || clientName.toLowerCase().includes(this.searchScheduled.toLowerCase());
+                if (matches) {
+                    this.$nextTick(() => this.calculateScheduledTotal());
+                }
+                return matches;
+            },
+
+            // Edit Order Modal Logic
+            editModal: {
+                open: false,
+                orderId: null,
+                clientName: '',
+                date: '',
+                amount: '',
+                status: '',
+                newStatus: '',
+                newAmount: '',
+                newPaymentMethod: '',
+                newNotes: ''
+            },
+
+            openEditModal(orderId, clientName, date, status, amount, methodId) {
+                this.editModal.orderId = orderId;
+                this.editModal.clientName = clientName;
+                this.editModal.date = date;
+                this.editModal.status = status;
+                this.editModal.newStatus = status;
+                this.editModal.amount = amount;
+                this.editModal.newAmount = amount;
+                this.editModal.newPaymentMethod = methodId || '';
+                this.editModal.newNotes = '';
+                this.editModal.open = true;
+            },
+
+            async saveEditModal() {
+                if (this.editModal.newStatus === this.editModal.status && 
+                    this.editModal.newAmount === this.editModal.amount &&
+                    !this.editModal.newPaymentMethod && !this.editModal.newNotes) {
+                    this.showToast('No hay cambios que guardar', 'info');
+                    return;
+                }
+                
+                try {
+                    const updateData = {
+                        status: this.editModal.newStatus
+                    };
+                    
+                    // Add optional fields only if they changed
+                    if (this.editModal.newAmount !== this.editModal.amount) {
+                        updateData.amount = parseFloat(this.editModal.newAmount);
+                    }
+                    if (this.editModal.newPaymentMethod) {
+                        updateData.payment_method_id = this.editModal.newPaymentMethod;
+                    }
+                    if (this.editModal.newNotes) {
+                        updateData.internal_notes = this.editModal.newNotes;
+                    }
+                    
+                    const res = await fetch(`/sales/api/order/${this.editModal.orderId}/update-status/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': BILLING_CONFIG.csrfToken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    });
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        this.showToast('Operación actualizada correctamente', 'success');
+                        this.editModal.open = false;
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        this.showToast("Error: " + (data.error || 'No se pudo actualizar'), 'error');
+                    }
+                } catch (e) {
+                    this.showToast("Error de conexión", 'error');
+                }
             },
 
             // Payment Modal Logic

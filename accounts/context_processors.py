@@ -24,6 +24,8 @@ def gym_permissions(request):
         "can_view_clients": user_has_gym_permission(request.user, gym_id, "clients.view"),
         "can_view_staff": user_has_gym_permission(request.user, gym_id, "staff.view"),
         "can_view_marketing": user_has_gym_permission(request.user, gym_id, "marketing.view"),
+        "can_view_providers": user_has_gym_permission(request.user, gym_id, "providers.view"),
+        "can_view_purchase_orders": user_has_gym_permission(request.user, gym_id, "providers.purchase_orders.view"),
         "brand_color": brand_color,
         "current_gym": gym,
         "my_gyms": my_gyms,

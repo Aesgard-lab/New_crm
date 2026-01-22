@@ -1,0 +1,249 @@
+{% block camera_modal %}
+<!-- Modal Captura de Cámara -->
+<div id="cameraModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+    <div class="bg-slate-900 text-white p-4 flex justify-between items-center rounded-t-2xl">
+      <h3 class="font-bold text-lg">Capturar Foto</h3>
+      <button onclick="closeCamera()" class="text-white hover:bg-slate-800 p-2 rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="p-6 space-y-4">
+      <!-- Tabs -->
+      <div class="flex gap-2 border-b border-slate-200">
+        <button onclick="switchTab('camera')" id="cameraTab" class="px-4 py-2 font-medium text-slate-700 border-b-2 border-indigo-600 cursor-pointer">
+          📹 Cámara en Vivo
+        </button>
+        <button onclick="switchTab('upload')" id="uploadTab" class="px-4 py-2 font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700 cursor-pointer">
+          📁 Subir Foto
+        </button>
+      </div>
+
+      <!-- Tab Cámara -->
+      <div id="cameraTab-content" class="space-y-4">
+        <div class="relative bg-black rounded-xl overflow-hidden" style="aspect-ratio: 4/3;">
+          <video id="cameraStream" class="w-full h-full object-cover" playsinline></video>
+          <div class="absolute inset-0 border-4 border-indigo-500 opacity-50" style="border-radius: 0; pointer-events: none;"></div>
+        </div>
+        
+        <!-- Indicador de permisos -->
+        <div id="permissionError" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm flex items-start gap-3">
+          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+          <div>
+            <strong>Permiso denegado:</strong> Por favor, permite el acceso a la cámara en tu navegador.
+          </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="flex gap-3">
+          <button onclick="startCamera()" id="startBtn" class="btn-brand flex-1 py-2 flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"/>
+            </svg>
+            Iniciar Cámara
+          </button>
+          <button onclick="capturePhoto()" id="captureBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-xl transition hidden flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+            </svg>
+            Capturar Foto
+          </button>
+          <button onclick="stopCamera()" id="stopBtn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-xl transition hidden flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+            Detener
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Subir Foto -->
+      <div id="uploadTab-content" class="hidden space-y-4">
+        <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-500 transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
+          <svg class="w-12 h-12 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <p class="text-slate-700 font-medium">Haz clic para seleccionar una foto</p>
+          <p class="text-slate-500 text-sm mt-1">o arrastra tu foto aquí</p>
+          <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="previewPhoto(event)">
+        </div>
+      </div>
+
+      <!-- Preview de foto capturada -->
+      <div id="photoPreview" class="hidden space-y-4">
+        <div class="bg-slate-100 rounded-xl overflow-hidden">
+          <img id="previewImage" src="" alt="Preview" class="w-full h-auto">
+        </div>
+        <div class="text-center text-sm text-slate-600">
+          ✅ Foto lista para guardar
+        </div>
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="flex gap-3 justify-end pt-4 border-t border-slate-200">
+        <button onclick="closeCamera()" class="px-6 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition">
+          Cancelar
+        </button>
+        <button onclick="savePhoto()" id="saveBtn" class="btn-brand px-6 py-2 hidden">
+          💾 Guardar Foto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Canvas para captura (oculto) -->
+<canvas id="photoCanvas" class="hidden"></canvas>
+
+<!-- JavaScript para captura de cámara -->
+<script>
+  let mediaStream = null;
+  let capturedPhoto = null;
+  let currentPhotoType = 'camera'; // 'camera' o 'upload'
+
+  async function startCamera() {
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      const video = document.getElementById('cameraStream');
+      video.srcObject = mediaStream;
+      video.play();
+
+      // Mostrar botones correctos
+      document.getElementById('startBtn').classList.add('hidden');
+      document.getElementById('captureBtn').classList.remove('hidden');
+      document.getElementById('stopBtn').classList.remove('hidden');
+      document.getElementById('permissionError').classList.add('hidden');
+
+    } catch (error) {
+      console.error('Error al acceder a la cámara:', error);
+      document.getElementById('permissionError').classList.remove('hidden');
+    }
+  }
+
+  function capturePhoto() {
+    const video = document.getElementById('cameraStream');
+    const canvas = document.getElementById('photoCanvas');
+    const context = canvas.getContext('2d');
+
+    // Ajustar canvas a resolución del video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Capturar imagen
+    context.drawImage(video, 0, 0);
+    capturedPhoto = canvas.toDataURL('image/jpeg', 0.95);
+
+    // Mostrar preview
+    showPhotoPreview(capturedPhoto);
+  }
+
+  function stopCamera() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+    }
+
+    const video = document.getElementById('cameraStream');
+    video.srcObject = null;
+
+    document.getElementById('startBtn').classList.remove('hidden');
+    document.getElementById('captureBtn').classList.add('hidden');
+    document.getElementById('stopBtn').classList.add('hidden');
+  }
+
+  function previewPhoto(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        capturedPhoto = e.target.result;
+        showPhotoPreview(capturedPhoto);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function showPhotoPreview(photoData) {
+    const preview = document.getElementById('photoPreview');
+    const previewImage = document.getElementById('previewImage');
+    const saveBtn = document.getElementById('saveBtn');
+
+    previewImage.src = photoData;
+    preview.classList.remove('hidden');
+    saveBtn.classList.remove('hidden');
+
+    // Scroll a preview
+    preview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function switchTab(tab) {
+    // Actualizar botones de tab
+    document.getElementById('cameraTab').classList.toggle('border-indigo-600', tab === 'camera');
+    document.getElementById('cameraTab').classList.toggle('border-transparent', tab !== 'camera');
+    document.getElementById('cameraTab').classList.toggle('text-slate-700', tab === 'camera');
+    document.getElementById('cameraTab').classList.toggle('text-slate-500', tab !== 'camera');
+
+    document.getElementById('uploadTab').classList.toggle('border-indigo-600', tab === 'upload');
+    document.getElementById('uploadTab').classList.toggle('border-transparent', tab !== 'upload');
+    document.getElementById('uploadTab').classList.toggle('text-slate-700', tab === 'upload');
+    document.getElementById('uploadTab').classList.toggle('text-slate-500', tab !== 'upload');
+
+    // Mostrar/ocultar contenido
+    document.getElementById('cameraTab-content').classList.toggle('hidden', tab !== 'camera');
+    document.getElementById('uploadTab-content').classList.toggle('hidden', tab !== 'upload');
+
+    currentPhotoType = tab;
+
+    // Si vamos al tab de cámara y hay stream, reiniciar
+    if (tab === 'camera' && mediaStream === null) {
+      startCamera();
+    }
+  }
+
+  function savePhoto() {
+    if (!capturedPhoto) return;
+
+    // Crear form data para enviar
+    const canvas = document.getElementById('photoCanvas');
+    canvas.toBlob(function(blob) {
+      const formData = new FormData();
+      formData.append('photo', blob, 'camera_photo.jpg');
+      formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+      // Disparar evento personalizado con la foto
+      window.dispatchEvent(new CustomEvent('photoCapture', {
+        detail: { photo: capturedPhoto, formData: formData }
+      }));
+
+      closeCamera();
+    }, 'image/jpeg', 0.95);
+  }
+
+  function closeCamera() {
+    stopCamera();
+    document.getElementById('cameraModal').classList.add('hidden');
+    document.getElementById('photoPreview').classList.add('hidden');
+    document.getElementById('saveBtn').classList.add('hidden');
+    capturedPhoto = null;
+  }
+
+  // Permitir cerrar modal con ESC
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && !document.getElementById('cameraModal').classList.contains('hidden')) {
+      closeCamera();
+    }
+  });
+</script>
+{% endblock %}

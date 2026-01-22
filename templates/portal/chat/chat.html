@@ -1,0 +1,220 @@
+{% extends 'portal/base.html' %}
+{% load static %}
+
+{% block title %}Chat - {{ client.gym.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 pb-24 flex flex-col">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-[var(--brand-color)] to-purple-600 text-white px-6 py-6 shadow-lg flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold">Chat</h1>
+                <p class="text-white/80 text-sm">{{ client.gym.name }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="messagesContainer" class="flex-1 overflow-y-auto px-6 py-6 space-y-4" style="max-height: calc(100vh - 280px);">
+        {% if messages %}
+            {% for msg in messages %}
+            <div class="flex {% if msg.is_from_client %}justify-end{% else %}justify-start{% endif %}">
+                <div class="{% if msg.is_from_client %}bg-[var(--brand-color)] text-white{% else %}bg-white text-slate-800 border border-slate-200{% endif %} rounded-2xl px-5 py-3 max-w-[80%] shadow-sm">
+                    {% if not msg.is_from_client %}
+                    <p class="text-xs font-semibold text-[var(--brand-color)] mb-1">{{ msg.sender.get_full_name|default:"Gimnasio" }}</p>
+                    {% endif %}
+                    <p class="text-sm whitespace-pre-wrap break-words">{{ msg.message }}</p>
+                    <p class="text-xs {% if msg.is_from_client %}text-white/70{% else %}text-slate-400{% endif %} mt-1 text-right">{{ msg.created_at|date:"H:i" }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="w-20 h-20 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-slate-700 mb-2">Inicia la conversación</h3>
+                <p class="text-slate-500 text-sm">Envía un mensaje para hablar con el gimnasio</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Input Form (Fixed at bottom) -->
+    <div class="bg-white border-t border-slate-200 px-6 py-4 flex-shrink-0" x-data="chatApp()">
+        <form @submit.prevent="sendMessage" class="flex gap-3">
+            <input 
+                type="text" 
+                x-model="newMessage"
+                placeholder="Escribe tu mensaje..."
+                class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)] outline-none"
+                :disabled="sending"
+            >
+            <button 
+                type="submit"
+                class="bg-[var(--brand-color)] hover:bg-[var(--brand-color-hover)] text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
+                :disabled="sending || !newMessage.trim()"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+                <span x-show="!sending">Enviar</span>
+                <span x-show="sending">...</span>
+            </button>
+        </form>
+        
+        <!-- Typing Indicator (optional) -->
+        <div x-show="isTyping" class="text-xs text-slate-500 mt-2 flex items-center gap-1">
+            <div class="flex gap-1">
+                <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></span>
+                <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></span>
+                <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></span>
+            </div>
+            <span>Escribiendo...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+function chatApp() {
+    return {
+        newMessage: '',
+        sending: false,
+        isTyping: false,
+        lastMessageId: {{ messages.last.id|default:0 }},
+        pollingInterval: null,
+        
+        init() {
+            // Scroll to bottom on load
+            this.$nextTick(() => {
+                this.scrollToBottom();
+            });
+            
+            // Start polling for new messages every 3 seconds
+            this.startPolling();
+            
+            // Check for pre-filled message from shop
+            const urlParams = new URLSearchParams(window.location.search);
+            const item = urlParams.get('item');
+            if (item) {
+                this.newMessage = `Hola, estoy interesado en: ${item}`;
+            }
+        },
+        
+        async sendMessage() {
+            if (!this.newMessage.trim() || this.sending) return;
+            
+            this.sending = true;
+            
+            try {
+                const response = await fetch("{% url 'portal_chat_send' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        message: this.newMessage
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Add message to UI
+                    this.addMessageToUI(data.message, true);
+                    this.newMessage = '';
+                    this.lastMessageId = data.message.id;
+                } else {
+                    alert('Error al enviar mensaje: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            } finally {
+                this.sending = false;
+            }
+        },
+        
+        startPolling() {
+            this.pollingInterval = setInterval(() => {
+                this.pollNewMessages();
+            }, 3000); // Poll every 3 seconds
+        },
+        
+        async pollNewMessages() {
+            try {
+                const response = await fetch(
+                    `{% url 'portal_chat_poll' %}?last_message_id=${this.lastMessageId}`
+                );
+                const data = await response.json();
+                
+                if (data.success && data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        this.addMessageToUI(msg, msg.is_from_client);
+                        this.lastMessageId = msg.id;
+                    });
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        },
+        
+        addMessageToUI(message, isFromClient) {
+            const container = document.getElementById('messagesContainer');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isFromClient ? 'justify-end' : 'justify-start'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `${isFromClient ? 'bg-[var(--brand-color)] text-white' : 'bg-white text-slate-800 border border-slate-200'} rounded-2xl px-5 py-3 max-w-[80%] shadow-sm`;
+            
+            let content = '';
+            if (!isFromClient) {
+                content += `<p class="text-xs font-semibold text-[var(--brand-color)] mb-1">${message.sender_name || 'Gimnasio'}</p>`;
+            }
+            content += `<p class="text-sm whitespace-pre-wrap break-words">${this.escapeHtml(message.text)}</p>`;
+            content += `<p class="text-xs ${isFromClient ? 'text-white/70' : 'text-slate-400'} mt-1 text-right">${message.created_at}</p>`;
+            
+            bubble.innerHTML = content;
+            messageDiv.appendChild(bubble);
+            container.appendChild(messageDiv);
+            
+            this.scrollToBottom();
+        },
+        
+        scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        },
+        
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+        
+        destroy() {
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+            }
+        }
+    }
+}
+</script>
+
+<style>
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+.animate-bounce {
+    animation: bounce 0.6s infinite;
+}
+</style>
+{% endblock %}

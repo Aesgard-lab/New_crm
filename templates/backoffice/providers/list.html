@@ -1,0 +1,88 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Proveedores{% endblock %}
+{% block breadcrumb %}Proveedores{% endblock %}
+{% block page_title %}Proveedores{% endblock %}
+
+{% block content %}
+<div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+  <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-900">Listado de proveedores</h2>
+      <p class="text-sm text-slate-500">Catálogo de proveedores con contacto y estado.</p>
+    </div>
+    <a href="{% url 'providers:provider_create' %}"
+       class="px-3 py-2 text-sm font-semibold rounded-lg bg-[var(--brand-color)] text-white hover:opacity-90 transition">
+      Nuevo proveedor
+    </a>
+  </div>
+  <div class="p-5 border-b border-slate-100">
+    <form method="get" class="flex gap-3 items-center flex-wrap">
+      <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre, razón social o NIF"
+        class="w-64 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]" />
+      <button type="submit" class="px-3 py-2 text-sm font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">Filtrar</button>
+      {% if q %}
+      <a href="{% url 'providers:provider_list' %}" class="text-sm text-slate-500 hover:text-[var(--brand-color)]">Limpiar</a>
+      {% endif %}
+    </form>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Nombre</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Contacto</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Email</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Teléfono</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Estado</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Items</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for provider in providers %}
+        <tr class="hover:bg-slate-50 cursor-pointer" data-href="{% url 'providers:provider_edit' provider.id %}">
+          <td class="px-4 py-3 font-medium text-slate-900 text-[var(--brand-color)]">
+            {{ provider.name }}
+          </td>
+          <td class="px-4 py-3 text-slate-700">{{ provider.contacts.first.name|default:"-" }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ provider.email|default:"-" }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ provider.phone|default:"-" }}</td>
+          <td class="px-4 py-3">
+            {% if provider.is_blocked %}
+              <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-50 text-red-700">Bloqueado</span>
+            {% elif provider.is_active %}
+              <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700">Activo</span>
+            {% else %}
+              <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700">Inactivo</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-slate-700">{{ provider.items.count }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-6 text-center text-slate-500">Sin proveedores aún.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="p-4 flex items-center gap-3 text-sm text-slate-600">
+    {% if page_obj.has_previous %}
+      <a class="px-3 py-1 border rounded-lg hover:bg-slate-50" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">Anterior</a>
+    {% endif %}
+    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="px-3 py-1 border rounded-lg hover:bg-slate-50" href="?page={{ page_obj.next_page_number }}&q={{ q }}">Siguiente</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll('[data-href]').forEach(function(row) {
+    row.addEventListener('click', function () {
+      window.location = this.dataset.href;
+    });
+  });
+</script>
+{% endblock %}

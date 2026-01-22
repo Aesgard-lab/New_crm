@@ -1,0 +1,202 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Clientes - Configuración{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > Clientes
+{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex gap-4 items-start">
+        <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9-4 9 4-9 4-9-4zm0 6l9 4 9-4" />
+            </svg>
+        </div>
+        <div class="flex-1">
+            <h3 class="font-bold text-slate-900">Cliente de empresa</h3>
+            <p class="text-sm text-slate-500">El toggle "Cliente de empresa" ya está disponible en las fichas, filtros y reportes. Marca esta opción en cada cliente para segmentar empresas.</p>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900">Nuevo campo personalizado</h3>
+                <p class="text-sm text-slate-500">Añade selects como "Cómo nos ha conocido" para capturar atributos adicionales.</p>
+            </div>
+        </div>
+
+        <form method="post" class="p-6 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="field">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-medium text-slate-700 mb-1 block">Nombre</label>
+                    {{ field_form.name }}
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700 mb-1 block">Identificador</label>
+                    {{ field_form.slug }}
+                    <p class="text-xs text-slate-400 mt-1">Se usa para guardar el dato en el cliente. Se genera en minúsculas y sin espacios.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-medium text-slate-700 mb-1 block">Tipo de campo</label>
+                    {{ field_form.field_type }}
+                    <p class="text-xs text-slate-400 mt-1">Selecciona "Selección" para listas o "Interruptor" para un toggle.</p>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700 mb-1 block">Opciones</label>
+                {{ field_form.options_raw }}
+                <p class="text-xs text-slate-400 mt-1">Una opción por línea (solo para selects). Para toggles deja este bloque vacío.</p>
+            </div>
+            <div class="flex items-center gap-6">
+                <label class="flex items-center gap-2 text-sm text-slate-700">{{ field_form.is_required }} Obligatorio</label>
+                <label class="flex items-center gap-2 text-sm text-slate-700">{{ field_form.is_active }} Activo</label>
+            </div>
+            {% if field_form.errors %}
+            <div class="text-sm text-red-600">{{ field_form.errors }}</div>
+            {% endif %}
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors">
+                    Guardar campo
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-slate-900">Campos configurados</h3>
+                <p class="text-sm text-slate-500">Los campos activos aparecen en formularios, filtros y reportes.</p>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-3">
+            {% for field in fields %}
+            <div class="border border-slate-100 rounded-xl p-4 flex items-start justify-between">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-slate-900">{{ field.name }}</span>
+                        <span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">{{ field.get_field_type_display }}</span>
+                        {% if field.is_required %}<span class="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Obligatorio</span>{% endif %}
+                        {% if not field.is_active %}<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">Inactivo</span>{% endif %}
+                    </div>
+                    <p class="text-xs text-slate-400 mb-2">Slug: {{ field.slug }}</p>
+                    {% if field.field_type == 'SELECT' %}
+                        <div class="flex flex-wrap gap-2">
+                            {% for option in field.options.all %}
+                            <span class="text-[10px] px-2 py-0.5 rounded-md border bg-slate-50 border-slate-200 text-slate-700">{{ option.label }}</span>
+                            {% empty %}
+                            <span class="text-xs text-slate-400">Sin opciones</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-xs text-slate-500">Toggle sin opciones (Sí/No).</div>
+                    {% endif %}
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="delete_field" value="{{ field.id }}">
+                    <button type="submit" class="text-sm text-red-500 hover:text-red-700">Eliminar</button>
+                </form>
+            </div>
+            {% empty %}
+            <p class="text-sm text-slate-400">Todavía no has creado campos personalizados.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-slate-900">Grupos</h3>
+                <p class="text-sm text-slate-500">Agrupa clientes por afinidad (ej. Empresas, Mañanas, Equipo).</p>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="group">
+                <label class="text-sm font-medium text-slate-700">Nuevo grupo</label>
+                <div class="flex gap-3 items-center">
+                    <div class="flex-1">{{ group_form.name }}</div>
+                    <button type="submit" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors">Añadir</button>
+                </div>
+                {% if group_form.errors %}
+                <div class="text-sm text-red-600">{{ group_form.errors }}</div>
+                {% endif %}
+            </form>
+
+            <div class="grid md:grid-cols-2 gap-3">
+                {% for group in groups %}
+                <div class="border border-slate-100 rounded-lg px-3 py-2 flex items-center justify-between">
+                    <span class="text-sm text-slate-800">{{ group.name }}</span>
+                    <form method="post" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_group" value="{{ group.id }}">
+                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                    </form>
+                </div>
+                {% empty %}
+                <p class="text-sm text-slate-400">No hay grupos aún.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-slate-900">Etiquetas</h3>
+                <p class="text-sm text-slate-500">Crea etiquetas rápidas como VIP, Moroso, Lesionado.</p>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="tag">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
+                    <div class="md:col-span-3">{{ tag_form.name }}</div>
+                    <div class="md:col-span-1 flex items-center gap-2">
+                        <span class="text-sm text-slate-600">Color</span>
+                        {{ tag_form.color }}
+                    </div>
+                </div>
+                {% if tag_form.errors %}
+                <div class="text-sm text-red-600">{{ tag_form.errors }}</div>
+                {% endif %}
+                <button type="submit" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors">Añadir etiqueta</button>
+            </form>
+
+            <div class="grid md:grid-cols-2 gap-3">
+                {% for tag in tags %}
+                <div class="border border-slate-100 rounded-lg px-3 py-2 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full" style="background-color: {{ tag.color|default:'#94a3b8' }}"></span>
+                        <span class="text-sm text-slate-800">{{ tag.name }}</span>
+                    </div>
+                    <form method="post" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_tag" value="{{ tag.id }}">
+                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+                    </form>
+                </div>
+                {% empty %}
+                <p class="text-sm text-slate-400">No hay etiquetas aún.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

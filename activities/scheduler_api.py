@@ -3,8 +3,20 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
-from .models import ActivitySession
+from .models import ActivitySession, ScheduleSettings
 from services.models import ServiceAppointment
+from clients.models import ClientVisit
+
+def _active_attendee_count(sess):
+    late_ids = set(
+        ClientVisit.objects.filter(
+            client__in=sess.attendees.all(),
+            date=sess.start_datetime.date(),
+            status='CANCELLED',
+            cancellation_type='LATE'
+        ).values_list('client_id', flat=True)
+    )
+    return max(sess.attendees.count() - len(late_ids), 0)
 
 @login_required
 @require_GET
@@ -33,11 +45,12 @@ def get_calendar_events(request):
         for sess in sessions:
             # Use Activity Color
             color = sess.activity.color
+            active_attendees = _active_attendee_count(sess)
                 
             events.append({
                 'id': f'sess_{sess.id}',
                 'resourceId': sess.room.id if sess.room else None,
-                'title': sess.activity.name, # Clean name
+                'title': f"{sess.activity.name} ({active_attendees}/{sess.max_capacity})",
                 'start': sess.start_datetime.isoformat(),
                 'end': sess.end_datetime.isoformat(),
                 'backgroundColor': color,
@@ -46,7 +59,7 @@ def get_calendar_events(request):
                     'type': 'session',
                     'staff': f"{sess.staff.user.first_name} {sess.staff.user.last_name}".strip() if sess.staff else 'Sin Asignar',
                     'room': sess.room.name if sess.room else 'Sin Sala',
-                    'attendees': sess.attendees.count(),
+                    'attendees': active_attendees,
                     'max_capacity': sess.max_capacity,
                     'db_id': sess.id
                 }
@@ -123,7 +136,56 @@ def create_session_api(request):
         start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00')) # Simple parsing
         end_dt = start_dt + timedelta(minutes=activity.duration)
         
-        # Check overlaps? (Optional for now)
+        # Get schedule settings for validations
+        settings = ScheduleSettings.get_for_gym(gym)
+        
+        # Check room overlaps if not allowed
+        if room and not settings.allow_room_overlaps:
+            overlapping_sessions = ActivitySession.objects.filter(
+                gym=gym,
+                room=room,
+                start_datetime__lt=end_dt,
+                end_datetime__gt=start_dt
+            ).exclude(pk=getattr(session, 'pk', None) if 'session' in locals() else None)
+            
+            if overlapping_sessions.exists():
+                return JsonResponse({
+                    'error': f'⚠️ Conflicto: La sala {room.name} ya tiene una clase programada en este horario'
+                }, status=400)
+        
+        # Check staff overlaps if not allowed
+        if staff and not settings.allow_staff_overlaps:
+            overlapping_staff = ActivitySession.objects.filter(
+                gym=gym,
+                staff=staff,
+                start_datetime__lt=end_dt,
+                end_datetime__gt=start_dt
+            ).exclude(pk=getattr(session, 'pk', None) if 'session' in locals() else None)
+            
+            if overlapping_staff.exists():
+                staff_name = f"{staff.user.first_name} {staff.user.last_name}".strip()
+                return JsonResponse({
+                    'error': f'⚠️ Conflicto: {staff_name} ya tiene una clase asignada en este horario'
+                }, status=400)
+        
+        # Check minimum break between classes for same staff
+        if staff and settings.min_break_between_classes > 0:
+            break_minutes = settings.min_break_between_classes
+            break_start = start_dt - timedelta(minutes=break_minutes)
+            break_end = end_dt + timedelta(minutes=break_minutes)
+            
+            nearby_classes = ActivitySession.objects.filter(
+                gym=gym,
+                staff=staff,
+                start_datetime__gte=break_start,
+                end_datetime__lte=break_end
+            ).exclude(pk=getattr(session, 'pk', None) if 'session' in locals() else None)
+            
+            if nearby_classes.exists():
+                staff_name = f"{staff.user.first_name} {staff.user.last_name}".strip()
+                return JsonResponse({
+                    'error': f'⚠️ Conflicto: {staff_name} necesita al menos {break_minutes} minutos de descanso entre clases'
+                }, status=400)
         
         session = ActivitySession.objects.create(
             gym=gym,

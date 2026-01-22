@@ -33,10 +33,21 @@
     </div>
 
     <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Política de Cancelación</label>
-        {{ form.cancellation_policy }}
-        <p class="text-[10px] text-slate-400 mt-1">Define reglas de penalización por no-show.</p>
-        {{ form.cancellation_policy.errors }}
+        <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-bold text-slate-500 uppercase">Política de Reserva</label>
+            <a href="{% url 'policy_list' %}"
+                class="text-[10px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                target="_blank">
+                Gestionar Políticas
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+            </a>
+        </div>
+        {{ form.policy }}
+        <p class="text-[10px] text-slate-400 mt-1">Define reglas de reserva, lista de espera y cancelación.</p>
+        {{ form.policy.errors }}
     </div>
 </div>
 
@@ -98,4 +109,98 @@
     </div>
     <p class="text-xs text-slate-400 mt-2">Solo el staff seleccionado podrá impartir esta clase.</p>
 </div>
+
+<!-- QR Check-in -->
+<div class="pt-6 border-t border-slate-100 mt-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="bg-green-100 text-green-700 p-2 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                </svg>
+            </span>
+            <div>
+                <h3 class="font-bold text-slate-900">Check-in por QR</h3>
+                <p class="text-xs text-slate-500">Permite que los clientes marquen asistencia escaneando un QR</p>
+            </div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+            {{ form.qr_checkin_enabled }}
+            <span class="ml-2 text-sm font-medium text-slate-700">Habilitado</span>
+        </label>
+    </div>
+    <div class="mt-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+        <strong>💡 Tip:</strong> Cuando está activo, puedes proyectar un QR en una tablet para que los clientes hagan check-in al llegar a clase.
+        <a href="{% url 'attendance_settings' %}" class="underline ml-1">Configurar opciones globales →</a>
+    </div>
+</div>
+
+<!-- Online Visibility -->
+<div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="bg-green-100 text-green-700 p-2.5 rounded-xl">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                </svg>
+            </span>
+            <div>
+                <h3 class="font-bold text-slate-900">Visible en Horario Público</h3>
+                <p class="text-xs text-slate-500">Mostrar esta actividad en el calendario público / widgets embebibles</p>
+            </div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+            {{ form.is_visible_online }}
+            <span class="ml-2 text-sm font-medium text-slate-700">Visible</span>
+        </label>
+    </div>
+    <div class="mt-3 p-3 bg-green-50 rounded-lg text-xs text-green-700">
+        <strong>🌐 Portal Público:</strong> Si está activo, las sesiones de esta actividad aparecerán en el horario público de la web del gimnasio y en widgets embebibles.
+    </div>
+</div>
+
+<!-- Propagation (Franchise Owners Only) -->
+{% if form.propagate_to_gyms %}
+<div class="mt-8 pt-6 border-t border-slate-200 bg-slate-50/50 -mx-6 px-6 pb-6 rounded-b-xl">
+    <div class="flex items-center gap-2 mb-4">
+        <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                </path>
+            </svg>
+        </span>
+        <div>
+            <h3 class="font-bold text-slate-900 text-sm">Propagar a Franquicia</h3>
+            <p class="text-xs text-slate-500">Copia o actualiza esta clase en otros gimnasios.</p>
+        </div>
+    </div>
+
+    <div class="space-y-2">
+        <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-bold text-slate-500 uppercase">Seleccionar Gimnasios</label>
+            <button type="button"
+                onclick="document.querySelectorAll('input[name=\'propagate_to_gyms\']').forEach(c => c.checked = true)"
+                class="text-[10px] font-bold text-[var(--brand-color)] hover:underline">
+                Seleccionar Todos
+            </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {% for checkbox in form.propagate_to_gyms %}
+            <label
+                class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-[var(--brand-color)] hover:shadow-sm transition-all">
+                {{ checkbox.tag }}
+                <span class="text-xs font-medium text-slate-700 truncate">{{ checkbox.choice_label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">
+            <strong>Nota:</strong> Se copiará también la Categoría y la Política si no existen en el destino.
+        </p>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

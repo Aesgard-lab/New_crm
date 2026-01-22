@@ -1,0 +1,81 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}{{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="text-center py-12">
+    {% if gym.logo %}
+    <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-32 w-auto mx-auto mb-6">
+    {% else %}
+    <div class="h-32 w-32 mx-auto brand-bg rounded-3xl flex items-center justify-center text-white text-5xl font-bold mb-6">
+        {{ gym.commercial_name|default:gym.name|slice:":1" }}
+    </div>
+    {% endif %}
+    
+    <h1 class="text-4xl font-bold text-slate-900 mb-4">
+        {{ gym.commercial_name|default:gym.name }}
+    </h1>
+    
+    {% if gym.address %}
+    <p class="text-lg text-slate-600 mb-2">📍 {{ gym.address }}, {{ gym.city }}</p>
+    {% endif %}
+    
+    {% if gym.phone %}
+    <p class="text-lg text-slate-600">📞 <a href="tel:{{ gym.phone }}" class="brand-text hover:underline">{{ gym.phone }}</a></p>
+    {% endif %}
+</div>
+
+<!-- Módulos Disponibles -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+    {% if modules.schedule %}
+    <a href="{% url 'public_schedule' slug=settings.public_slug %}" 
+       class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg transition-shadow group">
+        <div class="text-4xl mb-4">📅</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:brand-text transition-colors">Horario</h3>
+        <p class="text-sm text-slate-600">Consulta nuestras clases y horarios</p>
+    </a>
+    {% endif %}
+    
+    {% if modules.pricing %}
+    <a href="{% url 'public_pricing' slug=settings.public_slug %}" 
+       class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg transition-shadow group">
+        <div class="text-4xl mb-4">💳</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:brand-text transition-colors">Precios</h3>
+        <p class="text-sm text-slate-600">Descubre nuestros planes y tarifas</p>
+    </a>
+    {% endif %}
+    
+    {% if modules.services %}
+    <a href="{% url 'public_services' slug=settings.public_slug %}" 
+       class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg transition-shadow group">
+        <div class="text-4xl mb-4">✨</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:brand-text transition-colors">Servicios</h3>
+        <p class="text-sm text-slate-600">Servicios adicionales disponibles</p>
+    </a>
+    {% endif %}
+    
+    {% if modules.shop %}
+    <a href="{% url 'public_shop' slug=settings.public_slug %}" 
+       class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg transition-shadow group">
+        <div class="text-4xl mb-4">🛍️</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:brand-text transition-colors">Tienda</h3>
+        <p class="text-sm text-slate-600">Productos y merchandising</p>
+    </a>
+    {% endif %}
+</div>
+
+<!-- CTA -->
+{% if settings.allow_self_registration and not user.is_authenticated %}
+<div class="mt-16 text-center">
+    <div class="bg-gradient-to-r from-slate-50 to-blue-50 rounded-3xl p-12 border border-slate-100">
+        <h2 class="text-3xl font-bold text-slate-900 mb-4">¿Listo para empezar?</h2>
+        <p class="text-lg text-slate-600 mb-8">Únete a nuestra comunidad y comienza tu transformación</p>
+        <a href="{% url 'public_register' slug=settings.public_slug %}" 
+           class="inline-block brand-bg text-white font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity">
+            Crear Cuenta Gratis
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

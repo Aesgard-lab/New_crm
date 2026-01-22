@@ -1,0 +1,42 @@
+from django.contrib import admin
+from django.urls import path, include
+from django.views.generic import TemplateView
+# URLs config
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    # Admin Django
+    path("admin/", admin.site.urls),
+
+    # PWA Offline page
+    path("offline/", TemplateView.as_view(template_name="offline.html"), name="offline"),
+
+    # Public Portal y Widgets Embebibles - DEBE IR ANTES DEL BACKOFFICE
+    path("public/", include("public_portal.urls")),
+    path("embed/", include(("public_portal.embed_urls", "embed"), namespace="embed")),
+
+    # Backoffice (panel interno del gym)
+    path("", include("backoffice.urls")),
+    path("staff/", include("staff.urls")),
+    path("activities/", include("activities.urls")),
+    path("services/", include("services.urls")),
+    path("products/", include("products.urls")),
+    path("memberships/", include("memberships.urls")),
+    path("sales/", include("sales.urls")),
+    path("finance/", include("finance.urls")),
+    path("marketing/", include("marketing.urls")),
+    path("reporting/", include("reporting.urls")),
+    path("routines/", include("routines.urls")),
+    path("providers/", include(("providers.urls", "providers"), namespace="providers")),
+
+    # Member Portal (App Socios)
+    path("portal/", include("clients.urls")),
+
+    # Organizations / Franchise
+    path("organizations/", include("organizations.urls")),
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else settings.STATIC_ROOT)

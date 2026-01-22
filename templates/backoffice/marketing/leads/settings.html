@@ -1,0 +1,146 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Configuración Lead Pipeline{% endblock %}
+{% block breadcrumb %}Marketing > Lead Management{% endblock %}
+{% block page_title %}Configuración del Pipeline{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">{{ pipeline.name }}</h1>
+            <p class="text-sm text-slate-500">Configura las fases y automatizaciones del pipeline</p>
+        </div>
+        <a href="{% url 'lead_board' %}"
+            class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 flex items-center gap-2">
+            ← Volver al Tablero
+        </a>
+    </div>
+
+    <!-- Stages Configuration -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                    </path>
+                </svg>
+                Fases del Pipeline
+            </h2>
+        </div>
+        <div class="p-5">
+            <div class="space-y-3">
+                {% for stage in stages %}
+                <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="w-4 h-4 rounded-full" style="background-color: {{ stage.color }};"></div>
+                    <div class="flex-1">
+                        <div class="font-bold text-slate-800">{{ stage.name }}</div>
+                        <div class="text-xs text-slate-500">Orden: {{ stage.order }}</div>
+                    </div>
+                    <div class="flex items-center gap-4 text-sm">
+                        {% if stage.monthly_quota > 0 %}
+                        <span class="text-slate-500">Cuota: {{ stage.monthly_quota }}/mes</span>
+                        {% endif %}
+                        {% if stage.is_won %}
+                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Ganado</span>
+                        {% endif %}
+                        {% if stage.is_lost %}
+                        <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">Perdido</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="text-xs text-slate-400 mt-4">
+                💡 Para editar fases, usa el panel de administración de Django.
+            </p>
+        </div>
+    </div>
+
+    <!-- Automations -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Automatizaciones
+            </h2>
+        </div>
+        <div class="p-5">
+            {% if automations %}
+            <div class="space-y-3">
+                {% for rule in automations %}
+                <div
+                    class="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 {% if not rule.is_active %}opacity-50{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-slate-800">{{ rule.from_stage.name }}</span>
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                        </svg>
+                        <span class="font-medium text-slate-800">{{ rule.to_stage.name }}</span>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3">
+                        <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-bold">
+                            {{ rule.get_trigger_type_display }}
+                        </span>
+                        {% if rule.trigger_value %}
+                        <span class="text-sm text-slate-500">{{ rule.trigger_value }} días</span>
+                        {% endif %}
+                        <span class="{% if rule.is_active %}text-green-500{% else %}text-slate-400{% endif %}">
+                            {% if rule.is_active %}✓ Activa{% else %}○ Inactiva{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-slate-400">
+                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <p>No hay automatizaciones configuradas</p>
+                <p class="text-xs mt-1">Crea reglas desde el panel de administración de Django</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <h4 class="font-bold text-blue-800 mb-2">Tipos de Automatización Disponibles:</h4>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    {% for value, label in trigger_choices %}
+                    <li>• <strong>{{ label }}</strong></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Celery Info -->
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+        <div class="flex gap-3">
+            <svg class="w-6 h-6 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+                <h3 class="font-bold text-amber-800">Tareas en Segundo Plano (Celery)</h3>
+                <p class="text-sm text-amber-700 mt-1">
+                    Las automatizaciones se ejecutan mediante Celery. Asegúrate de que el worker y el beat estén
+                    corriendo:
+                </p>
+                <pre class="bg-amber-100 rounded-lg p-3 mt-2 text-xs text-amber-900 overflow-x-auto">
+# Worker (procesa tareas)
+celery -A config worker -l info
+
+# Beat (tareas periódicas - inactividad)
+celery -A config beat -l info</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

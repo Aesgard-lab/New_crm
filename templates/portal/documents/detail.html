@@ -1,0 +1,278 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}{{ document.name }} - {{ gym.name }}{% endblock %}
+
+{% block content %}
+<div x-data="documentApp()" x-init="init()" class="min-h-screen pb-24 bg-gradient-to-br from-slate-50 to-slate-100">
+    <!-- Header -->
+    <div class="bg-white border-b sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center gap-3">
+                <a href="{% url 'portal_documents' %}" class="text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </a>
+                <div class="flex-1 min-w-0">
+                    <h1 class="text-xl font-bold text-gray-900 truncate">{{ document.name }}</h1>
+                    <p class="text-sm text-gray-500">{{ document.get_document_type_display }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold 
+                    {% if document.status == 'SIGNED' %}bg-green-100 text-green-700
+                    {% elif document.status == 'PENDING' %}bg-amber-100 text-amber-700
+                    {% elif document.status == 'EXPIRED' %}bg-red-100 text-red-700
+                    {% else %}bg-gray-100 text-gray-700{% endif %}">
+                    {{ document.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-6 space-y-6">
+        
+        <!-- Document Content -->
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-6 space-y-4">
+                
+                <!-- Metadata -->
+                <div class="flex flex-wrap gap-4 pb-4 border-b text-sm text-gray-600">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-calendar"></i>
+                        <span>Creado: {{ document.created_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    {% if document.expires_at %}
+                    <div class="flex items-center gap-2 text-red-600">
+                        <i class="fas fa-clock"></i>
+                        <span>Vence: {{ document.expires_at|date:"d/m/Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if document.signed_at %}
+                    <div class="flex items-center gap-2 text-green-600">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Firmado: {{ document.signed_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Content -->
+                {% if document.content %}
+                <div class="prose prose-slate max-w-none">
+                    {{ document.content|safe }}
+                </div>
+                {% endif %}
+
+                <!-- File Download -->
+                {% if document.file %}
+                <div class="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="fas fa-file-pdf text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-semibold text-gray-900">Documento adjunto</p>
+                        <p class="text-sm text-gray-600">{{ document.file.name|basename }}</p>
+                    </div>
+                    <a href="{{ document.file.url }}" target="_blank" 
+                       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-download mr-2"></i>
+                        Descargar
+                    </a>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- Signature Section -->
+        {% if document.status == 'PENDING' and document.requires_signature %}
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-signature"></i>
+                    Firmar Documento
+                </h2>
+            </div>
+            <div class="p-6 space-y-6">
+                
+                <!-- Instructions -->
+                <div class="bg-blue-50 p-4 rounded-xl">
+                    <p class="text-sm text-blue-900">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Dibuja tu firma en el recuadro inferior usando el dedo o el mouse.
+                    </p>
+                </div>
+
+                <!-- Canvas Container -->
+                <div class="space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white">
+                        <canvas 
+                            id="signatureCanvas" 
+                            width="800" 
+                            height="300"
+                            class="w-full touch-none cursor-crosshair"
+                            @mousedown="startDrawing($event)"
+                            @mousemove="draw($event)"
+                            @mouseup="stopDrawing()"
+                            @mouseleave="stopDrawing()"
+                            @touchstart="startDrawing($event)"
+                            @touchmove="draw($event)"
+                            @touchend="stopDrawing()">
+                        </canvas>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-3">
+                        <button 
+                            @click="clearSignature()"
+                            class="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold">
+                            <i class="fas fa-redo mr-2"></i>
+                            Limpiar
+                        </button>
+                        <button 
+                            @click="submitSignature()"
+                            x-bind:disabled="!hasDrawn"
+                            x-bind:class="hasDrawn ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700' : 'bg-gray-300 cursor-not-allowed'"
+                            class="flex-1 px-4 py-3 text-white rounded-xl transition-all font-semibold shadow-lg">
+                            <i class="fas fa-check mr-2"></i>
+                            Firmar Documento
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Signed Signature Display -->
+        {% if document.status == 'SIGNED' and document.signature_image %}
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i>
+                    Documento Firmado
+                </h2>
+            </div>
+            <div class="p-6">
+                <div class="bg-green-50 p-6 rounded-xl text-center space-y-4">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                        <i class="fas fa-check text-3xl text-green-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-green-900 text-lg">Documento firmado correctamente</h3>
+                        <p class="text-sm text-green-700 mt-1">
+                            Firmado el {{ document.signed_at|date:"d/m/Y" }} a las {{ document.signed_at|date:"H:i" }}
+                        </p>
+                    </div>
+                    <div class="border-2 border-green-200 rounded-xl p-4 bg-white inline-block">
+                        <img src="{{ document.signature_image.url }}" alt="Firma" class="max-w-full h-auto" style="max-height: 150px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+function documentApp() {
+    return {
+        canvas: null,
+        ctx: null,
+        isDrawing: false,
+        hasDrawn: false,
+        lastX: 0,
+        lastY: 0,
+
+        init() {
+            this.canvas = document.getElementById('signatureCanvas');
+            if (this.canvas) {
+                this.ctx = this.canvas.getContext('2d');
+                this.ctx.strokeStyle = '#1e293b';
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+            }
+        },
+
+        getCoordinates(e) {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+
+            if (e.touches && e.touches[0]) {
+                return {
+                    x: (e.touches[0].clientX - rect.left) * scaleX,
+                    y: (e.touches[0].clientY - rect.top) * scaleY
+                };
+            }
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        },
+
+        startDrawing(e) {
+            e.preventDefault();
+            this.isDrawing = true;
+            const coords = this.getCoordinates(e);
+            this.lastX = coords.x;
+            this.lastY = coords.y;
+        },
+
+        draw(e) {
+            if (!this.isDrawing) return;
+            e.preventDefault();
+
+            const coords = this.getCoordinates(e);
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.lastX, this.lastY);
+            this.ctx.lineTo(coords.x, coords.y);
+            this.ctx.stroke();
+
+            this.lastX = coords.x;
+            this.lastY = coords.y;
+            this.hasDrawn = true;
+        },
+
+        stopDrawing() {
+            this.isDrawing = false;
+        },
+
+        clearSignature() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.hasDrawn = false;
+        },
+
+        async submitSignature() {
+            if (!this.hasDrawn) {
+                alert('Por favor, dibuja tu firma primero.');
+                return;
+            }
+
+            // Convertir canvas a base64
+            const signatureData = this.canvas.toDataURL('image/png');
+
+            // Enviar al servidor
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "portal_document_sign" document.id %}';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'signature';
+            input.value = signatureData;
+            form.appendChild(input);
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}
+</script>
+{% endblock %}

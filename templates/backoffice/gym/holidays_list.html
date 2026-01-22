@@ -1,0 +1,120 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-bold text-slate-900 flex items-center gap-3">
+                    <span class="text-2xl">🎄</span> {{ title }}
+                </h1>
+                <p class="text-slate-600 mt-2">Administra los días festivos y cerres especiales</p>
+            </div>
+            <a href="{% url 'gym_holiday_create' %}" class="btn btn-primary flex items-center gap-2">
+                <span class="text-xl">➕</span> Agregar Festivo
+            </a>
+        </div>
+
+        <!-- Tabla de Festivos -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+            {% if holidays %}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50">
+                                <th class="px-6 py-4 text-left text-sm font-semibold text-slate-900">Fecha</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold text-slate-900">Nombre</th>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-slate-900">Estado</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold text-slate-900">Horario</th>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-slate-900">Clases Forzadas</th>
+                                <th class="px-6 py-4 text-center text-sm font-semibold text-slate-900">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for holiday in holidays %}
+                                <tr class="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <span class="font-medium text-slate-900">
+                                            {{ holiday.date|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="text-slate-700">{{ holiday.name }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        {% if holiday.is_closed %}
+                                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">
+                                                🔴 Cerrado
+                                            </span>
+                                        {% else %}
+                                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                                                🟢 Abierto
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-700">
+                                        {% if holiday.special_open and holiday.special_close %}
+                                            {{ holiday.special_open|time:"H:i" }} - {{ holiday.special_close|time:"H:i" }}
+                                        {% else %}
+                                            <span class="text-slate-400">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        {% if holiday.allow_classes %}
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                                                ✅ Permitidas
+                                            </span>
+                                        {% else %}
+                                            <span class="text-slate-400">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-3">
+                                            <a href="{% url 'gym_holiday_edit' holiday.id %}" 
+                                               class="text-blue-600 hover:text-blue-900 font-semibold transition-colors">
+                                                ✏️ Editar
+                                            </a>
+                                            <form action="{% url 'gym_holiday_delete' holiday.id %}" method="POST" 
+                                                  class="inline" 
+                                                  onsubmit="return confirm('¿Confirmar eliminación?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="text-red-600 hover:text-red-900 font-semibold transition-colors">
+                                                    🗑️ Eliminar
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-12">
+                    <p class="text-slate-600 text-lg mb-4">No hay festivos configurados</p>
+                    <a href="{% url 'gym_holiday_create' %}" class="btn btn-primary inline-flex items-center gap-2">
+                        <span class="text-xl">➕</span> Agregar el Primer Festivo
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Tarjeta de Info -->
+        <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6">
+            <h3 class="font-semibold text-blue-900 mb-3">💡 Información sobre Festivos</h3>
+            <ul class="text-blue-800 space-y-2 text-sm">
+                <li>• <strong>Cerrado:</strong> El gym no funciona, no se pueden programar clases (a menos que se fuercen)</li>
+                <li>• <strong>Clases Forzadas:</strong> Si habilitas esta opción, puedes programar clases especiales en este día</li>
+                <li>• <strong>Horario Especial:</strong> Configura horarios diferentes para este día festivo</li>
+                <li>• Los festivos pasados no afectan nuevas programaciones, pero puedes mantenerlos para referencia</li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

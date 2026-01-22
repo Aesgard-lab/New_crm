@@ -1,0 +1,77 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Registro de Auditoría{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > Auditoría
+{% endblock %}
+{% block page_title %}Logs de Actividad{% endblock %}
+
+{% block content %}
+<div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div>
+            <h3 class="font-bold text-slate-800">Historial de Acciones</h3>
+            <p class="text-xs text-slate-500">Últimos 100 eventos registrados</p>
+        </div>
+        <div>
+            <!-- Future Filter: Date Range / User -->
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-3">Fecha/Hora</th>
+                    <th class="px-6 py-3">Usuario</th>
+                    <th class="px-6 py-3">Acción</th>
+                    <th class="px-6 py-3">Módulo</th>
+                    <th class="px-6 py-3">Detalle</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for log in logs %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-slate-500 whitespace-nowrap">
+                        {{ log.timestamp|date:"d/m/Y H:i:s" }}
+                    </td>
+                    <td class="px-6 py-4 font-medium text-slate-900">
+                        <div class="flex items-center gap-2">
+                            {% if log.user.staff_profile.photo %}
+                            <img src="{{ log.user.staff_profile.photo.url }}" class="w-6 h-6 rounded-full object-cover">
+                            {% else %}
+                            <div
+                                class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">
+                                {{ log.user.first_name|slice:":1" }}
+                            </div>
+                            {% endif %}
+                            <span>{{ log.user.get_full_name|default:log.user.email }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                            {% if log.action == 'CREATE' %}bg-green-100 text-green-800
+                            {% elif log.action == 'UPDATE' %}bg-blue-100 text-blue-800
+                            {% elif log.action == 'DELETE' %}bg-red-100 text-red-800
+                            {% else %}bg-slate-100 text-slate-800{% endif %}">
+                            {{ log.action }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-slate-600">{{ log.module }}</td>
+                    <td class="px-6 py-4 text-slate-600 truncate max-w-xs" title="{{ log.details }}">
+                        <div class="font-medium text-slate-800">{{ log.target }}</div>
+                        <div class="text-xs text-slate-400">{{ log.details|truncatechars:50 }}</div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                        No hay registros de actividad recientes.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

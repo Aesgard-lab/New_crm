@@ -1,0 +1,72 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}Eliminar Objetivo{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-red-50 border-b border-red-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Eliminar Objetivo</h2>
+                    <p class="text-sm text-red-600">Esta acción no se puede deshacer</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 space-y-4">
+            <p class="text-slate-700">
+                ¿Estás seguro de que deseas eliminar este objetivo?
+            </p>
+
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm font-medium text-slate-600">Período:</span>
+                        <span class="text-sm font-bold text-slate-900">{{ goal.get_period_display }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm font-medium text-slate-600">Fechas:</span>
+                        <span class="text-sm font-bold text-slate-900">
+                            {{ goal.start_date|date:"d/m/Y" }} - {{ goal.end_date|date:"d/m/Y" }}
+                        </span>
+                    </div>
+                    {% if goal.target_members %}
+                    <div class="flex justify-between">
+                        <span class="text-sm font-medium text-slate-600">Objetivo Socios:</span>
+                        <span class="text-sm font-bold text-slate-900">{{ goal.target_members }}</span>
+                    </div>
+                    {% endif %}
+                    {% if goal.target_revenue %}
+                    <div class="flex justify-between">
+                        <span class="text-sm font-medium text-slate-600">Objetivo Facturación:</span>
+                        <span class="text-sm font-bold text-slate-900">{{ goal.target_revenue|floatformat:0 }}€</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <form method="POST" class="flex gap-3 pt-4">
+                {% csrf_token %}
+                <button type="submit"
+                        class="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition font-medium shadow-sm">
+                    Sí, Eliminar Objetivo
+                </button>
+                <a href="{% url 'gym_goals_list' %}"
+                   class="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-medium">
+                    Cancelar
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

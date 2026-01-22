@@ -1,0 +1,218 @@
+{% extends 'superadmin/base.html' %}
+
+{% block header %}
+<a href="{% url 'superadmin:gym_list' %}" class="text-gray-500 hover:text-white mr-2">Gimnasios</a>
+<span class="text-gray-600">/</span>
+<span class="ml-2">{{ gym.name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Info -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Gym Overview -->
+        <div class="glass-panel p-6 rounded-xl">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">{{ gym.commercial_name|default:gym.name }}</h2>
+                    <p class="text-gray-400 text-sm mt-1">ID: {{ gym.id }} • Creado el {{ gym.created_at|date:"d M Y" }}
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="#"
+                        class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-lg border border-gray-700 transition">
+                        Editar Info
+                    </a>
+                    <!-- God Mode Button -->
+                    <form method="post" action="#">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg shadow-lg shadow-indigo-500/20 transition flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Acceder como Admin
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-gray-500 mb-1">Email de contacto</p>
+                    <p class="text-white">{{ gym.email|default:"-" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 mb-1">Teléfono</p>
+                    <p class="text-white">{{ gym.phone|default:"-" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 mb-1">Dirección</p>
+                    <p class="text-white">{{ gym.address|default:"-" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 mb-1">Ciudad/País</p>
+                    <p class="text-white">{{ gym.city }}, {{ gym.country }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-white mb-4">Historial de Pagos</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-gray-500 text-xs uppercase bg-gray-900/30">
+                            <th class="px-4 py-2">Factura</th>
+                            <th class="px-4 py-2">Fecha</th>
+                            <th class="px-4 py-2">Importe</th>
+                            <th class="px-4 py-2">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for invoice in invoices %}
+                        <tr class="text-sm hover:bg-white/5">
+                            <td class="px-4 py-3 font-mono text-gray-300">{{ invoice.invoice_number }}</td>
+                            <td class="px-4 py-3 text-gray-400">{{ invoice.issue_date|date:"d M Y" }}</td>
+                            <td class="px-4 py-3 text-white">{{ invoice.total_amount }}€</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="px-2 py-0.5 text-xs rounded-full {% if invoice.status == 'PAID' %}bg-green-500/10 text-green-400{% else %}bg-red-500/10 text-red-400{% endif %}">
+                                    {{ invoice.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-6 text-center text-gray-500">No hay facturas registradas</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Audit Logs -->
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-white mb-4">Registro de Auditoría</h3>
+            <div class="space-y-4 max-h-60 overflow-y-auto">
+                {% for log in logs %}
+                <div class="flex items-start space-x-3 text-sm border-l-2 border-gray-700 pl-4 py-1">
+                    <div>
+                        <p class="text-gray-300">
+                            <span class="font-semibold text-indigo-400">{{ log.action }}</span>
+                            por {{ log.superadmin.get_full_name }}
+                        </p>
+                        <p class="text-gray-500 text-xs">{{ log.description }}</p>
+                        <p class="text-gray-600 text-[10px] mt-1">{{ log.created_at }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center">No hay registros recientes</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="space-y-6">
+        <!-- Subscription Status -->
+        <div
+            class="glass-panel p-6 rounded-xl border-t-4 {% if subscription.status == 'ACTIVE' %}border-t-green-500{% elif subscription.status == 'PAST_DUE' %}border-t-red-500{% else %}border-t-gray-500{% endif %}">
+            <h3 class="text-sm uppercase tracking-wide text-gray-400 font-semibold mb-2">Suscripción SaaS</h3>
+
+            {% if subscription %}
+            <div class="mb-4">
+                <h4 class="text-2xl font-bold text-white">{{ subscription.plan.name }}</h4>
+                <p class="text-gray-400 text-sm">{{ subscription.billing_frequency }} • {{
+                    subscription.get_status_display }}</p>
+            </div>
+
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Precio</span>
+                    <span class="text-white font-medium">{{ subscription.plan.price_monthly }}€ / mes</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Fin Periodo</span>
+                    <span class="text-white font-medium">{{ subscription.current_period_end|date:"d M Y" }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Renovación Auto.</span>
+                    <span class="text-white font-medium">{% if subscription.auto_renew %}Sí{% else %}No{% endif
+                        %}</span>
+                </div>
+            </div>
+
+            <a href="{% url 'superadmin:gym_change_plan' gym.id %}"
+                class="block w-full text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition font-medium">
+                Cambiar Plan
+            </a>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-gray-400 mb-4">Este gimnasio no tiene una suscripción activa.</p>
+                <a href="{% url 'superadmin:gym_change_plan' gym.id %}"
+                    class="block w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition font-medium">
+                    Asignar Plan Manualmente
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Usage Limits -->
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-sm uppercase tracking-wide text-gray-400 font-semibold mb-4">Uso y Límites</h3>
+
+            <div class="space-y-4">
+                <!-- Members -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-300">Socios Activos</span>
+                        <span class="text-gray-400">{{ total_members }} / {{ subscription.plan.max_members|default:"∞"
+                            }}</span>
+                    </div>
+                    {% if subscription.plan.max_members %}
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-blue-500 h-2 rounded-full"
+                            style="width: {% widthratio total_members subscription.plan.max_members 100 %}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Staff -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-300">Usuarios Staff</span>
+                        <span class="text-gray-400">{{ total_staff }} / {{ subscription.plan.max_staff|default:"∞"
+                            }}</span>
+                    </div>
+                    {% if subscription.plan.max_staff %}
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-purple-500 h-2 rounded-full"
+                            style="width: {% widthratio total_staff subscription.plan.max_staff 100 %}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Enabled Modules -->
+        {% if subscription %}
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-sm uppercase tracking-wide text-gray-400 font-semibold mb-4">Módulos Activos</h3>
+            <div class="flex flex-wrap gap-2">
+                {% for module in subscription.plan.get_enabled_modules %}
+                <span class="px-2 py-1 text-xs font-medium rounded bg-gray-700 text-gray-200 border border-gray-600">
+                    {{ module }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

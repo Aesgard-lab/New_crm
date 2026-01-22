@@ -1,0 +1,178 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Configurar bono basado en ratings</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <!-- Staff Selection -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Instructor (Opcional)
+                </label>
+                <select name="staff" class="w-full rounded-xl border-slate-200">
+                    <option value="">🌐 Aplicar a Todos (Global)</option>
+                    {% for staff in staff_members %}
+                    <option value="{{ staff.id }}" {% if incentive and incentive.staff_id == staff.id %}selected{% endif %}>
+                        {{ staff.user.first_name }} {{ staff.user.last_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-slate-500 mt-1">
+                    Si no seleccionas ninguno, la regla aplicará a todos los instructores
+                </p>
+            </div>
+
+            <!-- Min Rating -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Rating Mínimo Requerido ⭐
+                </label>
+                <input type="number" name="min_rating" step="0.01" min="1" max="5" 
+                       value="{% if incentive %}{{ incentive.min_rating }}{% else %}4.5{% endif %}"
+                       class="w-full rounded-xl border-slate-200" required>
+                <p class="text-xs text-slate-500 mt-1">
+                    El instructor debe superar este rating promedio para recibir el bono
+                </p>
+            </div>
+
+            <!-- Performance Level -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Nivel de Rendimiento (Opcional)
+                </label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-[var(--brand-color)]">
+                        <input type="radio" name="level" value="BRONZE" {% if incentive.level == 'BRONZE' %}checked{% endif %} class="text-[var(--brand-color)]">
+                        <span>🥉 Bronce (4.0-4.29)</span>
+                    </label>
+                    
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-[var(--brand-color)]">
+                        <input type="radio" name="level" value="SILVER" {% if incentive.level == 'SILVER' %}checked{% endif %} class="text-[var(--brand-color)]">
+                        <span>🥈 Plata (4.3-4.49)</span>
+                    </label>
+                    
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-[var(--brand-color)]">
+                        <input type="radio" name="level" value="GOLD" {% if incentive.level == 'GOLD' %}checked{% endif %} class="text-[var(--brand-color)]">
+                        <span>🥇 Oro (4.5-4.79)</span>
+                    </label>
+                    
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-[var(--brand-color)]">
+                        <input type="radio" name="level" value="PLATINUM" {% if incentive.level == 'PLATINUM' %}checked{% endif %} class="text-[var(--brand-color)]">
+                        <span>💎 Platino (4.8-5.0)</span>
+                    </label>
+                </div>
+                <p class="text-xs text-slate-500 mt-2">
+                    El nivel es visual y ayuda a organizar los bonos
+                </p>
+            </div>
+
+            <hr class="my-6 border-slate-100">
+
+            <!-- Bonus Type -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Tipo de Bono
+                </label>
+                <div class="space-y-3">
+                    <label class="flex items-start gap-3 cursor-pointer p-4 border border-slate-200 rounded-xl hover:border-[var(--brand-color)]">
+                        <input type="radio" name="bonus_type" value="PERCENTAGE" 
+                               {% if not incentive or incentive.bonus_type == 'PERCENTAGE' %}checked{% endif %}
+                               class="mt-1 text-[var(--brand-color)]">
+                        <div>
+                            <div class="font-bold text-slate-800">Porcentaje del Salario Base</div>
+                            <div class="text-sm text-slate-500">El bono será un % del sueldo mensual (ej: 5%, 10%, 15%)</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-start gap-3 cursor-pointer p-4 border border-slate-200 rounded-xl hover:border-[var(--brand-color)]">
+                        <input type="radio" name="bonus_type" value="FIXED"
+                               {% if incentive and incentive.bonus_type == 'FIXED' %}checked{% endif %}
+                               class="mt-1 text-[var(--brand-color)]">
+                        <div>
+                            <div class="font-bold text-slate-800">Cantidad Fija en Euros</div>
+                            <div class="text-sm text-slate-500">El bono será una cantidad fija (ej: 100€, 250€)</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Bonus Value -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Valor del Bono
+                </label>
+                <input type="number" name="bonus_value" step="0.01" min="0" 
+                       value="{% if incentive %}{{ incentive.bonus_value }}{% else %}10{% endif %}"
+                       class="w-full rounded-xl border-slate-200" required>
+                <p class="text-xs text-slate-500 mt-1">
+                    Si es porcentaje: 5-15% (recomendado). Si es fijo: cantidad en euros
+                </p>
+            </div>
+
+            <hr class="my-6 border-slate-100">
+
+            <!-- Min Reviews -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Mínimo de Reviews Requeridas
+                </label>
+                <input type="number" name="min_reviews" min="1" 
+                       value="{% if incentive %}{{ incentive.min_reviews }}{% else %}10{% endif %}"
+                       class="w-full rounded-xl border-slate-200" required>
+                <p class="text-xs text-slate-500 mt-1">
+                    Para evitar sesgos, el instructor debe tener al menos X reviews en el período
+                </p>
+            </div>
+
+            <!-- Period Days -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Período de Cálculo (días)
+                </label>
+                <select name="period_days" class="w-full rounded-xl border-slate-200">
+                    <option value="7" {% if incentive and incentive.period_days == 7 %}selected{% endif %}>Última Semana</option>
+                    <option value="30" {% if not incentive or incentive.period_days == 30 %}selected{% endif %}>Último Mes (30 días)</option>
+                    <option value="60" {% if incentive and incentive.period_days == 60 %}selected{% endif %}>Últimos 2 Meses</option>
+                    <option value="90" {% if incentive and incentive.period_days == 90 %}selected{% endif %}>Últimos 3 Meses (Trimestre)</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-1">
+                    Se calculará el promedio de ratings en este período para determinar el bono
+                </p>
+            </div>
+
+            {% if not is_create %}
+            <!-- Active Status (only for edit) -->
+            <div class="mb-6">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="is_active" {% if incentive.is_active %}checked{% endif %} 
+                           class="w-5 h-5 rounded border-slate-300 text-[var(--brand-color)]">
+                    <div>
+                        <div class="font-bold text-slate-800">Incentivo Activo</div>
+                        <div class="text-sm text-slate-500">Desactívalo temporalmente sin eliminarlo</div>
+                    </div>
+                </label>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <button type="submit" 
+                        class="flex-1 bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white px-6 py-3 rounded-xl font-bold transition-colors">
+                    💾 Guardar Incentivo
+                </button>
+                <a href="{% url 'rating_incentive_list' %}" 
+                   class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-colors">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

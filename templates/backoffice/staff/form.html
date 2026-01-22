@@ -37,12 +37,17 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Role -->
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Rol</label>
-                    {{ profile_form.role }}
-                    {% if profile_form.role.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.role.errors.0 }}</p>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Rol (Permisos)</label>
+                    {{ profile_form.assigned_role }}
+                    {% if profile_form.assigned_role.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ profile_form.assigned_role.errors.0 }}</p>
                     {% endif %}
+                    <p class="text-xs text-slate-400 mt-1">
+                        Gestiona permisos en <a href="{% url 'role_list' %}"
+                            class="underline hover:text-indigo-600">Configuración > Roles</a>
+                    </p>
                 </div>
+
 
                 <!-- PIN -->
                 <div>
@@ -102,6 +107,49 @@
                     <p class="text-xs text-slate-400 mt-1">Se mostrará en la app y web</p>
                 </div>
             </div>
+
+            <hr class="border-slate-100 my-8">
+
+            <h2 class="text-lg font-bold text-slate-900 mb-6">Permisos Individuales</h2>
+            <p class="text-sm text-slate-600 mb-6">Asigna permisos específicos a este empleado, además de los heredados del rol:</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for module, permissions in structured_permissions.items %}
+                <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">{{ module }}</h3>
+                        <label class="text-xs flex items-center gap-2 cursor-pointer text-slate-500 hover:text-indigo-600">
+                            <input type="checkbox" onclick="toggleGroup(this)"
+                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            Seleccionar Todo
+                        </label>
+                    </div>
+                    <div class="p-5 space-y-3">
+                        {% for perm in permissions %}
+                        <label class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                            <input type="checkbox" name="permissions" value="{{ perm.codename }}" {% if perm.is_active %}checked{% endif %}
+                                class="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                            <div>
+                                <span class="block text-sm font-medium text-slate-800">{{ perm.label }}</span>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-blue-800 text-sm">
+                <strong>💡 Nota:</strong> Los permisos individuales se suman a los del Rol asignado. El empleado tendrá acceso a todas las acciones permitidas.
+            </div>
+
+            <script>
+            function toggleGroup(checkbox) {
+                const container = checkbox.closest('.bg-white');
+                const checkboxes = container.querySelectorAll('input[type="checkbox"][name="permissions"]');
+                checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            }
+            </script>
         </div>
 
         <div class="bg-slate-50 px-8 py-4 flex justify-end gap-3 border-t border-slate-100">
@@ -113,5 +161,6 @@
             </button>
         </div>
     </form>
+
 </div>
 {% endblock %}

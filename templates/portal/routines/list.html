@@ -1,0 +1,82 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Mis Rutinas - {{ client.gym.name }}{% endblock %}
+{% block page_title %}Mis Rutinas{% endblock %}
+
+{% block header_left %}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+    {% if assignments %}
+    {% for assignment in assignments %}
+    <a href="{% url 'portal_routine_detail' assignment.routine.id %}"
+        class="block card-modern p-6 hover:shadow-lg transition-all active:scale-[0.98]">
+        <div class="flex gap-5">
+            <!-- Icon -->
+            <div
+                class="w-16 h-16 gradient-brand rounded-3xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                    </path>
+                </svg>
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="font-bold text-slate-800 truncate">{{ assignment.routine.name }}</h3>
+                    <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+
+                <p class="text-sm text-slate-500 line-clamp-2 mb-4">{{ assignment.routine.description|default:"Sin
+                    descripción" }}</p>
+
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        {{ assignment.assigned_date|date:"d M Y" }}
+                    </span>
+
+                    {% if assignment.routine.exercises.count %}
+                    <span class="flex items-center gap-1.5 text-brand bg-brand bg-opacity-10 px-3 py-1.5 rounded-full font-bold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                        </svg>
+                        {{ assignment.routine.exercises.count }} ejercicio{{
+                        assignment.routine.exercises.count|pluralize:"s" }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-20">
+        <div class="w-24 h-24 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                </path>
+            </svg>
+        </div>
+        <h3 class="font-bold text-slate-800 text-xl mb-3">Sin rutinas asignadas</h3>
+        <p class="text-slate-500 max-w-sm mx-auto mb-6">
+            Tu entrenador aún no te ha asignado ninguna rutina. ¡Contacta con el gimnasio para comenzar tu entrenamiento!
+        </p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

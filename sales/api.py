@@ -16,10 +16,8 @@ from finance.models import PaymentMethod
 from accounts.decorators import require_gym_permission
 from memberships.models import MembershipPlan
 import json
-import json
 import datetime
 from django.shortcuts import get_object_or_404
-from django.db import transaction
 
 @require_gym_permission('sales.view_sale')
 def get_client_cards(request, client_id):
@@ -356,9 +354,15 @@ def search_clients(request):
              clients = clients.filter(id=query) | clients.filter(dni__icontains=query)
         else:
              clients = clients.filter(first_name__icontains=query) | clients.filter(last_name__icontains=query) | clients.filter(dni__icontains=query)
+    else:
+        # Sin query: mostrar todos los clientes ordenados alfabéticamente
+        clients = clients.order_by('first_name', 'last_name')
+    
+    # Limitar resultados
+    clients = clients[:20]
     
     results = []
-    for c in clients[:10]:
+    for c in clients:
         results.append({
             'id': c.id,
             'text': str(c),
@@ -429,6 +433,10 @@ def process_sale(request):
             order.created_at = created_at_val
             order.save() # Needed because auto_now_add might have set it to now
 
+        # Normalizar acumuladores monetarios a Decimal para evitar mezclas float/Decimal
+        order.total_base = Decimal(0)
+        order.total_tax = Decimal(0)
+
 
         total_amount = Decimal(0)
         total_discount = Decimal(0)
@@ -476,6 +484,8 @@ def process_sale(request):
             item_base = final_subtotal / (Decimal(1) + item_tax_rate_decimal)
             item_tax = final_subtotal - item_base
 
+            ct = ContentType.objects.get_for_model(obj)
+
             newItem = OrderItem.objects.create(
                 order=order,
                 content_type=ct,
@@ -499,12 +509,11 @@ def process_sale(request):
         total_paid = Decimal(0)
         
         # Process Payments
-        total_paid = 0
         payments_valid = True
         
         for p in payments:
             method_id = p.get('method_id')
-            amount = float(p.get('amount', 0))
+            amount = Decimal(str(p.get('amount', 0) or 0))
             
             stripe_pm_id = p.get('stripe_payment_method_id') # Legacy/Stripe specific
             
@@ -677,6 +686,21 @@ def subscription_charge(request, pk):
                  pass
         
         explicit_method_id = request.POST.get('method_id') or data.get('method_id')
+
+        # Anti-duplicado: evitar cobrar dos veces la misma cuota sin confirmación explícita
+        from django.contrib.contenttypes.models import ContentType
+        from sales.models import OrderItem
+        force = request.GET.get('force') or data.get('force') or request.POST.get('force')
+        recent_order_item = OrderItem.objects.filter(
+            content_type=ContentType.objects.get_for_model(ClientMembership),
+            object_id=membership.id,
+            order__status__in=['PAID', 'PENDING']
+        ).order_by('-order__created_at').first()
+        if recent_order_item and not force:
+            return JsonResponse({
+                'duplicate': True,
+                'warning': 'Ya existe un cobro reciente para esta cuota. Si continúas podrías duplicar la cuota.'
+            }, status=409)
 
         # 1. Determine Payment Method & Token
         provider = None
@@ -852,4 +876,82 @@ def subscription_charge(request, pk):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@require_gym_permission('sales.change_sale')
+def order_update_status(request, order_id):
+    """
+    Updates an order's status and other fields (amount, payment method, notes).
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status', '').upper()
+        
+        if new_status not in ['PAID', 'PENDING', 'REFUNDED', 'CANCELLED']:
+            return JsonResponse({'error': f'Estado inválido: {new_status}'}, status=400)
+        
+        old_status = order.status
+        changes = []
+        
+        # Update status
+        if old_status != new_status:
+            order.status = new_status
+            changes.append(f"Estado: {old_status} → {new_status}")
+        
+        # Update amount if provided
+        if 'amount' in data:
+            new_amount = float(data['amount'])
+            if new_amount != order.total_amount:
+                changes.append(f"Importe: {order.total_amount}€ → {new_amount}€")
+                order.total_amount = new_amount
+        
+        # Update payment method if provided (update first payment)
+        if 'payment_method_id' in data:
+            from finance.models import PaymentMethod
+            try:
+                payment_method = PaymentMethod.objects.get(id=data['payment_method_id'], gym=gym)
+                # Update the first payment or create one if doesn't exist
+                if order.payments.exists():
+                    first_payment = order.payments.first()
+                    old_method = first_payment.payment_method.name
+                    first_payment.payment_method = payment_method
+                    first_payment.save()
+                    changes.append(f"Método de pago: {old_method} → {payment_method.name}")
+                else:
+                    # Create a new payment record
+                    from sales.models import OrderPayment
+                    OrderPayment.objects.create(
+                        order=order,
+                        payment_method=payment_method,
+                        amount=order.total_amount
+                    )
+                    changes.append(f"Método de pago agregado: {payment_method.name}")
+            except PaymentMethod.DoesNotExist:
+                return JsonResponse({'error': 'Método de pago no encontrado'}, status=400)
+        
+        # Update internal notes if provided
+        if 'internal_notes' in data:
+            new_notes = data['internal_notes']
+            if new_notes:
+                order.internal_notes = (order.internal_notes or '') + f" | {new_notes}"
+                changes.append("Notas actualizadas")
+        
+        # Save all changes
+        if changes:
+            order.save()
+            change_summary = " | ".join(changes)
+        else:
+            change_summary = "Sin cambios"
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Operación actualizada: {change_summary}',
+            'new_status': new_status
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 

@@ -1,0 +1,163 @@
+{% extends "portal/base.html" %}
+
+{% block title %}{{ routine.name }} - Mi Gym{% endblock %}
+{% block page_title %}{{ routine.name }}{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'portal_routines' %}"
+    class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+    </svg>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Routine Header Card -->
+    <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-lg">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <p class="text-indigo-200 text-xs font-medium uppercase tracking-wider">Rutina asignada</p>
+                <h2 class="text-xl font-bold mt-1">{{ routine.name }}</h2>
+            </div>
+            <div class="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                    </path>
+                </svg>
+            </div>
+        </div>
+
+        {% if routine.description %}
+        <p class="text-indigo-100 text-sm mb-4">{{ routine.description }}</p>
+        {% endif %}
+
+        <div class="flex gap-4 text-sm">
+            <div>
+                <span class="text-indigo-200">Asignada</span>
+                <p class="font-bold">{{ assignment.assigned_date|date:"d M Y" }}</p>
+            </div>
+            <div>
+                <span class="text-indigo-200">Ejercicios</span>
+                <p class="font-bold">{{ exercises|length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercises List -->
+    <div>
+        <h3 class="font-bold text-slate-800 mb-4">Ejercicios</h3>
+
+        {% if exercises %}
+        <div class="space-y-4">
+            {% for re in exercises %}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                x-data="{ open: false }">
+                <!-- Exercise Header -->
+                <button @click="open = !open"
+                    class="w-full p-4 flex items-center gap-4 text-left hover:bg-slate-50 transition-colors">
+                    <!-- Order Number -->
+                    <div
+                        class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold flex-shrink-0">
+                        {{ forloop.counter }}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-slate-800 truncate">{{ re.exercise.name }}</h4>
+                        <p class="text-xs text-slate-500">
+                            {% if re.sets %}{{ re.sets }} series{% endif %}
+                            {% if re.reps %} × {{ re.reps }} reps{% endif %}
+                            {% if re.duration %} - {{ re.duration }}{% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Toggle Arrow -->
+                    <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open }" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+
+                <!-- Exercise Details (Collapsible) -->
+                <div x-show="open" x-collapse class="border-t border-slate-100">
+                    <!-- Video Preview -->
+                    {% if re.exercise.video_url %}
+                    <div class="aspect-video bg-slate-900">
+                        <iframe src="{{ re.exercise.video_url }}" class="w-full h-full" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                    {% elif re.exercise.image %}
+                    <img src="{{ re.exercise.image.url }}" class="w-full aspect-video object-cover">
+                    {% endif %}
+
+                    <div class="p-4 space-y-3">
+                        <!-- Description -->
+                        {% if re.exercise.description %}
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-1">Descripción</p>
+                            <p class="text-sm text-slate-600">{{ re.exercise.description }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Details Grid -->
+                        <div class="grid grid-cols-3 gap-3">
+                            {% if re.sets %}
+                            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                                <div class="text-lg font-bold text-slate-800">{{ re.sets }}</div>
+                                <div class="text-[10px] text-slate-500 font-medium uppercase">Series</div>
+                            </div>
+                            {% endif %}
+
+                            {% if re.reps %}
+                            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                                <div class="text-lg font-bold text-slate-800">{{ re.reps }}</div>
+                                <div class="text-[10px] text-slate-500 font-medium uppercase">Reps</div>
+                            </div>
+                            {% endif %}
+
+                            {% if re.rest_seconds %}
+                            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                                <div class="text-lg font-bold text-slate-800">{{ re.rest_seconds }}s</div>
+                                <div class="text-[10px] text-slate-500 font-medium uppercase">Descanso</div>
+                            </div>
+                            {% endif %}
+
+                            {% if re.weight %}
+                            <div class="bg-indigo-50 rounded-xl p-3 text-center">
+                                <div class="text-lg font-bold text-indigo-600">{{ re.weight }}kg</div>
+                                <div class="text-[10px] text-indigo-500 font-medium uppercase">Peso</div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Notes -->
+                        {% if re.notes %}
+                        <div class="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                            <p class="text-xs font-bold text-amber-700 mb-1">📝 Nota del entrenador</p>
+                            <p class="text-sm text-amber-800">{{ re.notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="text-center py-8 bg-white rounded-2xl border border-slate-100">
+            <p class="text-slate-500">Esta rutina no tiene ejercicios.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+{% endblock %}

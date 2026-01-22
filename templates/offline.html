@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sin conexión - CRM Gym</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+    <div class="text-center max-w-md">
+        <!-- Offline Icon -->
+        <div class="float-animation mb-8">
+            <svg class="w-24 h-24 mx-auto text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414">
+                </path>
+            </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-slate-800 mb-3">Sin conexión a Internet</h1>
+        <p class="text-slate-500 mb-8">
+            Parece que no tienes conexión. Algunas funciones pueden no estar disponibles hasta que vuelvas a conectarte.
+        </p>
+
+        <!-- Retry Button -->
+        <button onclick="window.location.reload()"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                </path>
+            </svg>
+            Reintentar
+        </button>
+
+        <!-- Cached Pages -->
+        <div class="mt-10 pt-6 border-t border-slate-200">
+            <p class="text-xs text-slate-400 mb-4 uppercase tracking-wider font-bold">Páginas disponibles offline:</p>
+            <div class="flex flex-wrap gap-2 justify-center">
+                <a href="/backoffice/"
+                    class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                    Dashboard
+                </a>
+                <a href="/backoffice/clients/"
+                    class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                    Clientes
+                </a>
+                <a href="/backoffice/staff/"
+                    class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                    Equipo
+                </a>
+            </div>
+        </div>
+
+        <!-- Version -->
+        <p class="mt-10 text-xs text-slate-300">CRM Gym v1.2.5</p>
+    </div>
+</body>
+
+</html>

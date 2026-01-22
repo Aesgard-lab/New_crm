@@ -1,0 +1,493 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Configuración{% endblock %}
+{% block breadcrumb %}Configuración{% endblock %}
+{% block page_title %}Hub de Ajustes{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Categories Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+        <!-- 1. GENERAL (Empresa) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Empresa</h3>
+                    <p class="text-sm text-slate-500">Datos, branding y ubicación</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'gym_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Perfil del Centro</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'gym_opening_hours' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Horarios de Apertura</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- PORTAL PÚBLICO & WIDGETS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center text-cyan-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Portal Público</h3>
+                    <p class="text-sm text-slate-500">Widgets embebibles y códigos</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'widget_code' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Código Widget Horarios & Precios</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 2. STAFF & PERMISSIONS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Equipo</h3>
+                    <p class="text-sm text-slate-500">Usuarios, roles y permisos</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'staff_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Ver Usuarios</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'role_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Roles y Permisos</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'incentive_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Configurar Incentivos</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 3. SERVICES & PRODUCTS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Servicios</h3>
+                    <p class="text-sm text-slate-500">Actividades, cuotas y productos</p>
+                </div>
+            </div>
+        
+        <!-- CONFIGURACIÓN DE HORARIOS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Configuración de Horarios</h3>
+                    <p class="text-sm text-slate-500">Validaciones, reservas y restricciones</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'schedule_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Configurar Sistema de Horarios</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'service_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Servicios y Categorías</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'activity_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Actividades Grupales</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'membership_plan_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Planes de Membresía</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'product_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Productos y Tienda</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- ASISTENCIAS / CHECK-IN -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-green-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Asistencias</h3>
+                    <p class="text-sm text-slate-500">Check-in QR y control de acceso</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'attendance_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Configuración Check-in</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'today_sessions_qr' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Proyectar QR de Clases</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'review_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Valoraciones de Clases</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        {% if can_view_providers %}
+        <!-- 3b. PROVIDERS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Proveedores</h3>
+                    <p class="text-sm text-slate-500">Catálogo, precios y órdenes</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'providers:provider_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Listado de Proveedores</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                {% if can_view_purchase_orders %}
+                <li>
+                    <a href="{% url 'providers:purchase_order_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Órdenes de Compra</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- 4. FINANCE -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Finanzas</h3>
+                    <p class="text-sm text-slate-500">Impuestos y pasarelas de pago</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'finance_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Impuestos y Métodos de Pago</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 4b. CLIENT APP -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">App del Cliente</h3>
+                    <p class="text-sm text-slate-500">Portal y acciones del cliente</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'client_app_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Permisos de App</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 4c. CLIENTES -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Clientes</h3>
+                    <p class="text-sm text-slate-500">Campos personalizados y empresa</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'client_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Campos y flags</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 5. MARKETING & LEADS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Marketing</h3>
+                    <p class="text-sm text-slate-500">Leads, email y campañas</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'lead_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Pipeline de Leads</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'marketing_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Configuración Email (SMTP)</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 6. SYSTEM (Integrations) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Sistema</h3>
+                    <p class="text-sm text-slate-500">Integraciones y avanzado</p>
+                </div>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="{% url 'audit_log_list' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Logs de Auditoría</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'finance_hardware_settings' %}"
+                        class="flex items-center justify-between hover-brand group text-sm font-medium">
+                        <span>Hardware TPV (Terminales)</span>
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

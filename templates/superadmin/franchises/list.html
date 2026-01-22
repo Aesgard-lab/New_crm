@@ -1,0 +1,59 @@
+{% extends 'superadmin/base.html' %}
+
+{% block header %}Franquicias{% endblock %}
+
+{% block content %}
+<div class="glass-panel rounded-xl">
+    <div class="p-6 border-b border-gray-800 flex justify-end">
+        <a href="{% url 'superadmin:franchise_create' %}"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg shadow-lg shadow-indigo-500/20 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Crear Franquicia
+        </a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="text-gray-400 text-xs uppercase bg-gray-900/50">
+                    <th class="px-6 py-3">Franquicia</th>
+                    <th class="px-6 py-3">Gimnasios</th>
+                    <th class="px-6 py-3">Plan de Suscripción</th>
+                    <th class="px-6 py-3">Fecha Creación</th>
+                    <th class="px-6 py-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for franchise in franchises %}
+                <tr class="text-sm hover:bg-white/5 cursor-pointer transition-colors" onclick="window.location='{% url 'superadmin:franchise_edit' franchise.id %}'">
+                    <td class="px-6 py-4 font-medium text-white">{{ franchise.name }}</td>
+                    <td class="px-6 py-4">
+                        <span
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-200">
+                            {{ franchise.gym_count }} gimnasios
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if franchise.subscription %}
+                        <span class="text-indigo-400">{{ franchise.subscription.plan.name }}</span>
+                        <span class="text-xs text-gray-500 block">{{ franchise.subscription.get_status_display }}</span>
+                        {% else %}
+                        <span class="text-gray-500 text-xs">Pago individual por gimnasio</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-400">{{ franchise.created_at|date:"d M Y" }}</td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="{% url 'superadmin:franchise_edit' franchise.id %}" class="text-indigo-400 hover:text-indigo-300" onclick="event.stopPropagation()">Detalles</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">No hay franquicias registradas</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

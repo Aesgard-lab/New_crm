@@ -1,0 +1,90 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Órdenes de compra{% endblock %}
+{% block breadcrumb %}Proveedores > Órdenes de compra{% endblock %}
+{% block page_title %}Órdenes de compra{% endblock %}
+
+{% block content %}
+<div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+  <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-900">Órdenes de compra</h2>
+      <p class="text-sm text-slate-500">Seguimiento de POs por proveedor.</p>
+    </div>
+    <a href="{% url 'providers:purchase_order_create' %}"
+       class="px-3 py-2 text-sm font-semibold rounded-lg bg-[var(--brand-color)] text-white hover:opacity-90 transition">
+      Nueva orden
+    </a>
+  </div>
+  <div class="p-5 border-b border-slate-100">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+      <input type="text" name="q" value="{{ q }}" placeholder="Buscar por referencia o proveedor"
+        class="w-64 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]" />
+      <select name="status" class="px-3 py-2 text-sm border border-slate-200 rounded-lg">
+        <option value="">Estado (todos)</option>
+        {% for code,label in purchase_orders.paginator.object_list.model.Status.choices %}
+        <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="provider" class="px-3 py-2 text-sm border border-slate-200 rounded-lg">
+        <option value="">Proveedor (todos)</option>
+        {% for p in providers %}
+        <option value="{{ p.id }}" {% if provider_id|default_if_none:'' == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="px-3 py-2 text-sm font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition">Filtrar</button>
+      {% if q or status or provider_id %}
+      <a href="{% url 'providers:purchase_order_list' %}" class="text-sm text-slate-500 hover:text-[var(--brand-color)]">Limpiar</a>
+      {% endif %}
+    </form>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">ID</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Proveedor</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Estado</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Emisión</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Total</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Líneas</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for po in purchase_orders %}
+        <tr class="hover:bg-slate-50 cursor-pointer" data-href="{% url 'providers:purchase_order_edit' po.id %}">
+          <td class="px-4 py-3 font-medium text-slate-900 text-[var(--brand-color)]">PO-{{ po.id }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ po.provider.name }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ po.get_status_display }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ po.issue_date }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ po.total }} {{ po.currency }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ po.lines.count }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-6 text-center text-slate-500">Sin órdenes de compra aún.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="p-4 flex items-center gap-3 text-sm text-slate-600">
+    {% if page_obj.has_previous %}
+      <a class="px-3 py-1 border rounded-lg hover:bg-slate-50" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&provider={{ provider_id }}">Anterior</a>
+    {% endif %}
+    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="px-3 py-1 border rounded-lg hover:bg-slate-50" href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&provider={{ provider_id }}">Siguiente</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll('[data-href]').forEach(function(row) {
+    row.addEventListener('click', function () {
+      window.location = this.dataset.href;
+    });
+  });
+</script>
+{% endblock %}

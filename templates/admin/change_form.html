@@ -1,0 +1,58 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .submit-row {
+        background: #f8fafc;
+        padding: 16px 20px;
+        border-radius: 0 0 12px 12px;
+        border-top: 2px solid #e2e8f0;
+    }
+    
+    fieldset.module {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    fieldset h2 {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        color: #1e293b;
+        font-weight: 600;
+        padding: 14px 20px;
+        border-radius: 12px 12px 0 0;
+        margin: 0;
+    }
+    
+    .form-row {
+        padding: 16px 20px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .form-row:last-child {
+        border-bottom: none;
+    }
+    
+    .inline-group {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .inline-group h2 {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        color: #1e293b;
+        font-weight: 600;
+        padding: 14px 20px;
+        border-radius: 12px 12px 0 0;
+    }
+</style>
+{% endblock %}

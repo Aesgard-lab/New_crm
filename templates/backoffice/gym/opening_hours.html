@@ -1,0 +1,197 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-8 px-4">
+    <div class="max-w-5xl mx-auto">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-bold text-slate-900 flex items-center gap-3">
+                    <span class="text-2xl">⏰</span> {{ title }}
+                </h1>
+                <p class="text-slate-600 mt-2">Define los horarios de operación diarios de tu gym</p>
+            </div>
+            <a href="{% url 'gym_holidays_list' %}" class="btn btn-secondary flex items-center gap-2">
+                <span>🎄</span> Ver Festivos
+            </a>
+        </div>
+
+        <!-- Formulario -->
+        <form method="POST" class="bg-white rounded-2xl shadow-lg p-8">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
+                    <p class="text-red-800 font-semibold">⚠️ Error en el formulario</p>
+                    {% for error in form.non_field_errors %}
+                        <p class="text-red-700 text-sm">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="space-y-6">
+                
+                <!-- Horarios entre semana (L-V) -->
+                <div class="border-2 border-blue-200 rounded-lg p-6 bg-blue-50">
+                    <h3 class="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                        <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">L-V</span>
+                        Lunes a Viernes
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <!-- Lunes -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Lunes</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.monday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.monday_close }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Martes -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Martes</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.tuesday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.tuesday_close }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Miércoles -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Miércoles</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.wednesday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.wednesday_close }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jueves -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Jueves</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.thursday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.thursday_close }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Viernes -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Viernes</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.friday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.friday_close }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Espacio vacío -->
+                        <div></div>
+                    </div>
+                </div>
+
+                <!-- Horarios fin de semana (S-D) -->
+                <div class="border-2 border-purple-200 rounded-lg p-6 bg-purple-50">
+                    <h3 class="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                        <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">S-D</span>
+                        Sábado y Domingo
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-6 max-w-xl">
+                        <!-- Sábado -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Sábado</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.saturday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.saturday_close }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Domingo -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-900 mb-2">Domingo</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    {{ form.sunday_open }}
+                                </div>
+                                <span class="text-slate-500">-</span>
+                                <div class="flex-1">
+                                    {{ form.sunday_close }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex items-center gap-4 mt-8 pt-6 border-t border-slate-200">
+                <button type="submit" class="btn btn-primary px-8">
+                    💾 Guardar Horarios
+                </button>
+                <a href="{% url 'backoffice_dashboard' %}" class="btn btn-secondary px-8">
+                    ✕ Cancelar
+                </a>
+            </div>
+        </form>
+
+        <!-- Información complementaria -->
+        <div class="mt-8 grid grid-cols-2 gap-6">
+            <!-- Tarjeta 1 -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6">
+                <h3 class="font-semibold text-blue-900 mb-3">📋 Horarios y Clases</h3>
+                <ul class="text-blue-800 space-y-2 text-sm">
+                    <li>✓ Estas horas definen cuándo puede funcionar el gym</li>
+                    <li>✓ Las clases no pueden programarse fuera de estos horarios</li>
+                    <li>✓ Los festivos pueden override estos horarios</li>
+                </ul>
+            </div>
+
+            <!-- Tarjeta 2 -->
+            <div class="bg-green-50 border-l-4 border-green-500 rounded-lg p-6">
+                <h3 class="font-semibold text-green-900 mb-3">💡 Consejos</h3>
+                <ul class="text-green-800 space-y-2 text-sm">
+                    <li>✓ Usa los mismos horarios si abres igual L-V</li>
+                    <li>✓ Cambia primero, luego gestiona festivos</li>
+                    <li>✓ Los cambios se aplican inmediatamente</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

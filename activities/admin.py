@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Room, ActivityCategory, Activity, CancellationPolicy
+from .models import Room, ActivityCategory, Activity, ActivityPolicy, WaitlistEntry
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
@@ -16,7 +16,13 @@ class ActivityAdmin(admin.ModelAdmin):
     list_display = ('name', 'gym', 'category', 'base_capacity')
     list_filter = ('gym', 'category')
 
-@admin.register(CancellationPolicy)
-class CancellationPolicyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'gym', 'window_hours', 'penalty_type')
-    list_filter = ('gym', 'penalty_type')
+@admin.register(ActivityPolicy)
+class ActivityPolicyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'gym', 'booking_window_mode', 'waitlist_enabled')
+    list_filter = ('gym', 'booking_window_mode', 'waitlist_enabled')
+
+@admin.register(WaitlistEntry)
+class WaitlistEntryAdmin(admin.ModelAdmin):
+    list_display = ('client', 'session', 'status', 'joined_at')
+    list_filter = ('status', 'joined_at')
+

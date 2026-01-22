@@ -1,0 +1,600 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Constructor de Rutina{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'routine_list' %}" class="hover:underline">Rutinas</a> > {{ routine.name }}
+{% endblock %}
+
+{% block content %}
+<style>
+    .exercise-preview-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    .exercise-preview-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    .routine-item { transition: all 0.2s ease; }
+    .routine-item:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .routine-item.dragging { opacity: 0.5; transform: rotate(2deg); }
+    .muscle-badge-CHEST { background: #fee2e2; color: #991b1b; }
+    .muscle-badge-BACK { background: #dbeafe; color: #1e40af; }
+    .muscle-badge-LEGS { background: #fef3c7; color: #92400e; }
+    .muscle-badge-ARMS { background: #f3e8ff; color: #6b21a8; }
+    .muscle-badge-SHOULDERS { background: #fce7f3; color: #9f1239; }
+    .muscle-badge-CORE { background: #d1fae5; color: #065f46; }
+    .muscle-badge-CARDIO { background: #fed7aa; color: #9a3412; }
+    .muscle-badge-FULL_BODY { background: #e0e7ff; color: #3730a3; }
+    
+    .video-thumbnail { position: relative; overflow: hidden; border-radius: 0.5rem; aspect-ratio: 16/9; background: #000; }
+    .video-thumbnail iframe { width: 100%; height: 100%; }
+    .video-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; 
+                     background: rgba(0,0,0,0.3); backdrop-filter: blur(1px); }
+</style>
+
+<div class="h-[calc(100vh-140px)] flex flex-col" x-data="routineBuilder()">
+
+    <!-- Top Bar -->
+    <div class="flex justify-between items-center mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-xl shadow-lg">
+        <div>
+            <h1 class="text-2xl font-bold text-white">{{ routine.name }}</h1>
+            <div class="flex gap-2 text-sm mt-1">
+                <span class="bg-white/20 text-white px-2.5 py-0.5 rounded-full backdrop-blur-sm">{{ routine.get_goal_display }}</span>
+                <span class="bg-white/20 text-white px-2.5 py-0.5 rounded-full backdrop-blur-sm">{{ routine.get_difficulty_display }}</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button @click="addDay()"
+                class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-medium transition-all hover:scale-105 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Añadir Día
+            </button>
+            <a href="{% url 'routine_list' %}"
+                class="bg-white text-indigo-600 hover:bg-indigo-50 px-6 py-2 rounded-lg font-bold transition-all hover:scale-105 shadow-lg flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Guardar y Salir
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Builder Area -->
+    <div class="flex gap-4 h-full overflow-hidden">
+
+        <!-- Left Sidebar: Exercise Library with Previews -->
+        <div class="w-80 bg-white rounded-2xl border border-slate-200 flex flex-col h-full shadow-lg overflow-hidden">
+            <!-- Header -->
+            <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+                <h3 class="font-bold text-slate-800 text-lg mb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    Biblioteca de Ejercicios
+                </h3>
+                
+                <!-- Search -->
+                <div class="relative">
+                    <svg class="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" x-model="search" placeholder="Buscar ejercicio..."
+                        class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition-all">
+                </div>
+            </div>
+
+            <!-- Muscle Group Filters -->
+            <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                <div class="flex flex-wrap gap-1.5">
+                    <button @click="filterGroup = ''"
+                        :class="{'bg-indigo-600 text-white shadow-md': filterGroup === '', 'bg-white text-slate-600 hover:bg-slate-100': filterGroup !== ''}"
+                        class="px-2.5 py-1 text-[10px] font-medium rounded-full transition-all">Todo</button>
+                    {% for key, label in muscle_groups %}
+                    <button @click="filterGroup = '{{ key }}'"
+                        :class="{'bg-indigo-600 text-white shadow-md': filterGroup === '{{ key }}', 'bg-white text-slate-600 hover:bg-slate-100': filterGroup !== '{{ key }}'}"
+                        class="px-2.5 py-1 text-[10px] font-medium rounded-full transition-all">{{ label }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Exercise List with Video Previews -->
+            <div id="library-list" class="flex-1 overflow-y-auto p-3 space-y-3">
+                {% for exercise in exercises %}
+                <div class="exercise-card exercise-preview-card bg-white rounded-xl border border-slate-200 shadow-sm cursor-move"
+                    data-id="{{ exercise.id }}" 
+                    data-name="{{ exercise.name }}" 
+                    data-video="{{ exercise.video_url }}"
+                    data-muscle="{{ exercise.muscle_group }}"
+                    data-description="{{ exercise.description|escapejs }}"
+                    x-show="shouldShow('{{ exercise.name|lower }}', '{{ exercise.muscle_group }}')"
+                    @click="selectExercise({{ exercise.id }}, '{{ exercise.name|escapejs }}', '{{ exercise.video_url }}', '{{ exercise.muscle_group }}', '{{ exercise.get_muscle_group_display }}', '{{ exercise.description|escapejs }}')">
+                    
+                    <!-- Video Thumbnail -->
+                    {% if exercise.video_url %}
+                    <div class="video-thumbnail relative">
+                        <img src="{% if 'youtube' in exercise.video_url %}https://img.youtube.com/vi/{% if 'v=' in exercise.video_url %}{{ exercise.video_url|cut:'https://www.youtube.com/watch?v=' }}{% else %}{{ exercise.video_url|cut:'https://youtu.be/' }}{% endif %}/hqdefault.jpg{% else %}https://via.placeholder.com/320x180/6366f1/ffffff?text=Video{% endif %}" 
+                             class="w-full h-full object-cover" alt="{{ exercise.name }}">
+                        <div class="video-overlay">
+                            <div class="bg-white/90 backdrop-blur-sm rounded-full p-2">
+                                <svg class="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="video-thumbnail bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                        <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Info -->
+                    <div class="p-3">
+                        <h4 class="font-bold text-slate-800 text-sm mb-1 line-clamp-1">{{ exercise.name }}</h4>
+                        <span class="muscle-badge-{{ exercise.muscle_group }} text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            {{ exercise.get_muscle_group_display }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Center: Routine Days -->
+        <div class="flex-1 h-full overflow-y-auto space-y-4 pr-2">
+            {% for day in routine.days.all %}
+            <div class="day-container bg-white rounded-2xl border-2 border-slate-200 shadow-lg overflow-hidden hover:border-indigo-300 transition-all"
+                data-day-id="{{ day.id }}">
+                <!-- Day Header -->
+                <div class="bg-gradient-to-r from-slate-50 to-slate-100 p-4 border-b-2 border-slate-200 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm">
+                            {{ forloop.counter }}
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-800">{{ day.name }}</h3>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="duplicateDay({{ day.id }})" title="Duplicar Día"
+                            class="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 p-2 rounded-lg transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                        <button @click="deleteDay({{ day.id }})" title="Eliminar Día"
+                            class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sortable Area -->
+                <div class="day-exercises p-4 space-y-2 min-h-[120px] bg-slate-50/30" id="day-{{ day.id }}">
+                    {% for rx in day.exercises.all %}
+                    <div class="routine-item bg-white p-4 rounded-xl border-2 border-slate-200 shadow-sm flex items-center gap-4 hover:border-indigo-300 transition-all"
+                        data-rx-id="{{ rx.id }}">
+                        <!-- Drag Handle -->
+                        <div class="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-600 handle transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                            </svg>
+                        </div>
+                        
+                        <!-- Exercise Info -->
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">{{ rx.exercise.name }}</h4>
+                            <span class="muscle-badge-{{ rx.exercise.muscle_group }} text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {{ rx.exercise.get_muscle_group_display }}
+                            </span>
+                        </div>
+
+                        <!-- Quick Edit Inputs -->
+                        <div class="flex gap-3 items-center">
+                            <div class="flex flex-col">
+                                <label class="text-[9px] text-slate-500 uppercase font-bold mb-1">Series</label>
+                                <input type="text" value="{{ rx.sets }}"
+                                    @change="updateDetails({{ rx.id }}, 'sets', $event.target.value)"
+                                    class="w-16 text-sm border-2 border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 outline-none font-semibold text-slate-700 text-center transition-all"
+                                    placeholder="3">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-[9px] text-slate-500 uppercase font-bold mb-1">Reps</label>
+                                <input type="text" value="{{ rx.reps }}"
+                                    @change="updateDetails({{ rx.id }}, 'reps', $event.target.value)"
+                                    class="w-20 text-sm border-2 border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 outline-none font-semibold text-slate-700 text-center transition-all"
+                                    placeholder="10-12">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-[9px] text-slate-500 uppercase font-bold mb-1">Descanso</label>
+                                <input type="text" value="{{ rx.rest }}"
+                                    @change="updateDetails({{ rx.id }}, 'rest', $event.target.value)"
+                                    class="w-16 text-sm border-2 border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 outline-none font-semibold text-slate-700 text-center transition-all"
+                                    placeholder="60s">
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex gap-1">
+                            <button @click="duplicateExercise({{ rx.id }}, {{ day.id }})" title="Duplicar"
+                                class="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                            <button @click="deleteExercise({{ rx.id }}, $event.target.closest('.routine-item'))" title="Eliminar"
+                                class="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Empty State -->
+                    {% if not day.exercises.exists %}
+                    <div class="text-center py-8 text-slate-400">
+                        <svg class="w-12 h-12 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                        <p class="text-sm">Arrastra ejercicios aquí</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not routine.days.exists %}
+            <div class="text-center py-16 text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-300">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <p class="text-lg font-medium mb-2">No hay días creados</p>
+                <p class="text-sm">Haz clic en "Añadir Día" para empezar</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Sidebar: Exercise Preview Panel -->
+        <div class="w-96 bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden" 
+             x-show="selectedExercise.id" 
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 transform translate-x-4"
+             x-transition:enter-end="opacity-100 transform translate-x-0">
+            
+            <div class="h-full flex flex-col">
+                <!-- Preview Header -->
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white">
+                    <div class="flex justify-between items-start mb-3">
+                        <h3 class="text-lg font-bold" x-text="selectedExercise.name"></h3>
+                        <button @click="selectedExercise.id = null" class="text-white/80 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <span class="text-xs bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full" x-text="selectedExercise.muscleGroupLabel"></span>
+                </div>
+
+                <!-- Video Preview -->
+                <div class="relative bg-black" style="aspect-ratio: 16/9;">
+                    <template x-if="selectedExercise.videoUrl">
+                        <div>
+                            <div class="group relative overflow-hidden rounded-xl bg-slate-900"
+                                 x-data="{ zoomed: false }"
+                                 @mouseenter="zoomed = true"
+                                 @mouseleave="zoomed = false"
+                                 @touchstart="zoomed = !zoomed">
+                                <iframe :src="getEmbedUrl(selectedExercise.videoUrl)" 
+                                        class="w-full h-full transition-transform duration-500 ease-out"
+                                        :class="zoomed ? 'scale-110' : 'scale-100'"
+                                        frameborder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowfullscreen
+                                        referrerpolicy="strict-origin-when-cross-origin"
+                                        loading="lazy"></iframe>
+                                <!-- Indicador de zoom -->
+                                <div class="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full transition-opacity duration-300"
+                                     :class="zoomed ? 'opacity-100' : 'opacity-0'">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                                        </svg>
+                                        <span class="text-xs text-white font-medium">Zoom</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-xs text-slate-500 leading-snug">
+                                <strong>Nota:</strong> Si aparece el <strong>error 153</strong> de YouTube, significa que el propietario del vídeo
+                                no permite reproducirlo incrustado. 
+                                <a :href="selectedExercise.videoUrl" target="_blank" rel="noopener" class="text-indigo-600 hover:text-indigo-700 underline">
+                                    Ver vídeo en YouTube ↗
+                                </a>
+                            </p>
+                        </div>
+                    </template>
+                    <template x-if="!selectedExercise.videoUrl">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center text-slate-400">
+                                <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-sm">Sin video disponible</p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Exercise Details -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descripción</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line" x-text="selectedExercise.description || 'Sin descripción'"></p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Acciones Rápidas</h4>
+                        <div class="space-y-2">
+                            <button @click="quickAddToAllDays()" 
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-4 rounded-lg font-medium transition-all hover:shadow-md flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Añadir a Todos los Días
+                            </button>
+                            <template x-if="selectedExercise.videoUrl">
+                                <a :href="selectedExercise.videoUrl" target="_blank"
+                                   class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                    </svg>
+                                    Ver Video Completo
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SortableJS -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+    function routineBuilder() {
+        return {
+            search: '',
+            filterGroup: '',
+            selectedExercise: { id: null, name: '', videoUrl: '', muscleGroup: '', muscleGroupLabel: '', description: '' },
+            csrfToken: '{{ csrf_token }}',
+            routineId: {{ routine.id }},
+
+            init() {
+                this.initSortables();
+            },
+
+            shouldShow(name, muscleGroup) {
+                const matchesSearch = name.includes(this.search.toLowerCase());
+                const matchesGroup = this.filterGroup === '' || muscleGroup === this.filterGroup;
+                return matchesSearch && matchesGroup;
+            },
+
+            selectExercise(id, name, videoUrl, muscleGroup, muscleGroupLabel, description) {
+                this.selectedExercise = {
+                    id: id,
+                    name: name,
+                    videoUrl: videoUrl,
+                    muscleGroup: muscleGroup,
+                    muscleGroupLabel: muscleGroupLabel,
+                    description: description
+                };
+            },
+
+            initSortables() {
+                // Initialize Sidebar Drag (Clone mode)
+                new Sortable(document.getElementById('library-list'), {
+                    group: { name: 'shared', pull: 'clone', put: false },
+                    sort: false,
+                    animation: 200,
+                    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    ghostClass: 'opacity-50',
+                    chosenClass: 'ring-2 ring-indigo-500'
+                });
+
+                // Initialize Day Lists (Receive mode)
+                document.querySelectorAll('.day-exercises').forEach(el => {
+                    new Sortable(el, {
+                        group: 'shared',
+                        animation: 200,
+                        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                        handle: '.handle',
+                        ghostClass: 'opacity-30',
+                        dragClass: 'dragging',
+                        chosenClass: 'ring-2 ring-indigo-400',
+                        onAdd: (evt) => {
+                            const itemEl = evt.item;
+                            const dayId = evt.to.closest('.day-container').dataset.dayId;
+                            const exerciseId = itemEl.dataset.id;
+                            itemEl.remove();
+                            this.addExerciseToDay(dayId, exerciseId);
+                        },
+                        onUpdate: (evt) => {
+                            const dayId = evt.to.closest('.day-container').dataset.dayId;
+                            this.updateOrder(dayId, evt.to);
+                        }
+                    });
+                });
+            },
+
+            async addExerciseToDay(dayId, exerciseId) {
+                try {
+                    const res = await fetch(`/routines/api/routines/${this.routineId}/add-exercise/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ day_id: dayId, exercise_id: exerciseId })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        location.reload();
+                    }
+                } catch (error) {
+                    console.error('Error adding exercise:', error);
+                }
+            },
+
+            async updateOrder(dayId, containerEl) {
+                const orderedIds = Array.from(containerEl.children)
+                    .map(el => el.dataset.rxId)
+                    .filter(id => id);
+                
+                try {
+                    await fetch(`/routines/api/routines/${this.routineId}/update-order/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ day_id: dayId, ordered_ids: orderedIds })
+                    });
+                } catch (error) {
+                    console.error('Error updating order:', error);
+                }
+            },
+
+            async updateDetails(rxId, field, value) {
+                try {
+                    await fetch(`/routines/api/exercises/${rxId}/update/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ [field]: value })
+                    });
+                } catch (error) {
+                    console.error('Error updating details:', error);
+                }
+            },
+
+            async deleteExercise(rxId, el) {
+                if (!confirm('¿Eliminar este ejercicio de la rutina?')) return;
+                
+                try {
+                    await fetch(`/routines/api/exercises/${rxId}/delete/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken }
+                    });
+                    el.style.transform = 'scale(0)';
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 200);
+                } catch (error) {
+                    console.error('Error deleting exercise:', error);
+                }
+            },
+
+            async duplicateExercise(rxId, dayId) {
+                try {
+                    await fetch(`/routines/api/exercises/${rxId}/duplicate/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken }
+                    });
+                    location.reload();
+                } catch (error) {
+                    console.error('Error duplicating exercise:', error);
+                }
+            },
+
+            async addDay() {
+                try {
+                    await fetch(`/routines/api/routines/${this.routineId}/add-day/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken }
+                    });
+                    location.reload();
+                } catch (error) {
+                    console.error('Error adding day:', error);
+                }
+            },
+
+            async deleteDay(dayId) {
+                if (!confirm('¿Eliminar este día completo y todos sus ejercicios?')) return;
+                
+                try {
+                    await fetch(`/routines/api/days/${dayId}/delete/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken }
+                    });
+                    location.reload();
+                } catch (error) {
+                    console.error('Error deleting day:', error);
+                }
+            },
+
+            async duplicateDay(dayId) {
+                try {
+                    await fetch(`/routines/api/days/${dayId}/duplicate/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': this.csrfToken }
+                    });
+                    location.reload();
+                } catch (error) {
+                    console.error('Error duplicating day:', error);
+                }
+            },
+
+            async quickAddToAllDays() {
+                if (!this.selectedExercise.id) return;
+                if (!confirm('¿Añadir este ejercicio a todos los días de la rutina?')) return;
+
+                try {
+                    const days = document.querySelectorAll('.day-container');
+                    for (const day of days) {
+                        const dayId = day.dataset.dayId;
+                        await this.addExerciseToDay(dayId, this.selectedExercise.id);
+                    }
+                } catch (error) {
+                    console.error('Error adding to all days:', error);
+                }
+            },
+
+            getEmbedUrl(url) {
+                if (!url) return '';
+                
+                console.log('Original URL:', url);
+                
+                // YouTube - Extraer video ID de cualquier formato
+                if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    let videoId = '';
+                    
+                    // Formato: https://www.youtube.com/watch?v=VIDEO_ID
+                    const watchMatch = url.match(/[?&]v=([^&]+)/);
+                    if (watchMatch) {
+                        videoId = watchMatch[1];
+                    }
+                    // Formato: https://youtu.be/VIDEO_ID
+                    else if (url.includes('youtu.be/')) {
+                        videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
+                    }
+                    // Formato: https://www.youtube.com/embed/VIDEO_ID
+                    else if (url.includes('/embed/')) {
+                        videoId = url.split('/embed/')[1].split('?')[0].split('&')[0];
+                    }
+                    
+                    if (videoId) {
+                        const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&loop=1&playlist=${videoId}`;
+                        console.log('Embed URL:', embedUrl);
+                        return embedUrl;
+                    }
+                }
+                
+                // Vimeo
+                if (url.includes('vimeo')) {
+                    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                    if (vimeoMatch) {
+                        return `https://player.vimeo.com/video/${vimeoMatch[1]}?loop=1`;
+                    }
+                }
+                
+                console.log('No se pudo convertir, usando URL original:', url);
+                return url;
+            }
+        }
+    }
+</script>
+{% endblock %}

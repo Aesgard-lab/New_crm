@@ -1,0 +1,216 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Logros y Achievements - {{ gym.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 flex items-center gap-3">
+                        <span class="text-5xl">🏆</span>
+                        Logros y Badges
+                    </h1>
+                    <p class="mt-2 text-gray-600">Gestiona los achievements disponibles para tus clientes</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{% url 'gamification:leaderboard' gym.id %}" 
+                       class="px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors shadow-sm">
+                        🏅 Leaderboard
+                    </a>
+                    <a href="{% url 'admin:gamification_achievement_changelist' %}" 
+                       class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm">
+                        ➕ Crear Logro
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs de Categorías -->
+        <div x-data="{ activeTab: 'all' }" class="mb-8">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8 overflow-x-auto">
+                    <button @click="activeTab = 'all'" 
+                            :class="activeTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        Todos ({{ achievements.count }})
+                    </button>
+                    <button @click="activeTab = 'ATTENDANCE'" 
+                            :class="activeTab === 'ATTENDANCE' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        💪 Asistencia
+                    </button>
+                    <button @click="activeTab = 'STREAK'" 
+                            :class="activeTab === 'STREAK' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        🔥 Rachas
+                    </button>
+                    <button @click="activeTab = 'SOCIAL'" 
+                            :class="activeTab === 'SOCIAL' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        🤝 Social
+                    </button>
+                    <button @click="activeTab = 'REVIEWS'" 
+                            :class="activeTab === 'REVIEWS' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        ⭐ Reviews
+                    </button>
+                    <button @click="activeTab = 'SPECIAL'" 
+                            :class="activeTab === 'SPECIAL' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        🌟 Especiales
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Grid de Logros -->
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for achievement in achievements %}
+                <div x-show="activeTab === 'all' || activeTab === '{{ achievement.category }}'" 
+                     class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all">
+                    <div class="p-6">
+                        <!-- Badge Icon -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="text-5xl">{{ achievement.icon }}</div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-900">{{ achievement.name }}</h3>
+                                    <p class="text-xs text-gray-500 mt-1">{{ achievement.get_category_display }}</p>
+                                </div>
+                            </div>
+                            <a href="{% url 'admin:gamification_achievement_change' achievement.id %}" 
+                               class="text-gray-400 hover:text-blue-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </a>
+                        </div>
+
+                        <!-- Description -->
+                        <p class="text-sm text-gray-600 mb-4">{{ achievement.description }}</p>
+
+                        <!-- Requirements -->
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="text-xs font-semibold text-gray-500">REQUISITO:</span>
+                            <span class="text-xs font-bold text-blue-600">
+                                {{ achievement.requirement_value }} {{ achievement.requirement_type }}
+                            </span>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">Recompensa:</span>
+                                <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs font-bold">
+                                    +{{ achievement.xp_reward }} XP
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                                </svg>
+                                <span class="text-xs font-bold text-gray-700">{{ achievement.unlocked_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Logros Más Populares -->
+        <div class="mt-12 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-yellow-50 to-orange-50 px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <span>🔥</span>
+                    Top 10 Logros Más Desbloqueados
+                </h2>
+            </div>
+            <div class="p-6">
+                <div class="space-y-3">
+                    {% for achievement in popular_achievements %}
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center gap-4">
+                            <span class="text-3xl">{{ achievement.icon }}</span>
+                            <div>
+                                <h4 class="font-bold text-gray-900">{{ achievement.name }}</h4>
+                                <p class="text-xs text-gray-500">{{ achievement.description }}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-blue-600">{{ achievement.unlocked_count }}</div>
+                            <div class="text-xs text-gray-500">desbloqueados</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-center text-gray-500 py-8">No hay logros desbloqueados aún</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimos Desbloqueos -->
+        <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <span>🎉</span>
+                    Últimos Desbloqueos
+                </h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Logro</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recompensa</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for unlock in recent_unlocks %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                                        <span class="text-white font-bold text-sm">
+                                            {{ unlock.client.user.first_name|first|upper }}{{ unlock.client.user.last_name|first|upper }}
+                                        </span>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-bold text-gray-900">{{ unlock.client.user.get_full_name }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xl">{{ unlock.achievement.icon }}</span>
+                                    <span class="text-sm font-bold text-gray-900">{{ unlock.achievement.name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
+                                    +{{ unlock.achievement.xp_reward }} XP
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ unlock.unlocked_at|date:"d/m/Y H:i" }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                No hay desbloqueos recientes
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="{% url 'settings_dashboard' %}"
+        class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div>
+        <div class="font-bold text-xl">Hardware TPV</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">Configuración de Terminales e Impresoras</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- ADD FORM -->
+    <div class="lg:col-span-1">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
+            <h3 class="font-bold text-lg text-slate-800 mb-4">Añadir Dispositivo</h3>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre</label>
+                        <input type="text" name="name" required placeholder="Ej: Mostrador Principal"
+                            class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--brand-color)]">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Tipo</label>
+                        <select name="device_type" required
+                            class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--brand-color)]">
+                            {% for code, label in device_types %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Identificador / IP</label>
+                        <input type="text" name="identifier" required placeholder="Serial No. o IP"
+                            class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--brand-color)]">
+                        <p class="text-xs text-slate-500 mt-1">Para Stripe Terminal, usa el Serial Number (ej: WSC...).
+                            Para Impresoras, la IP loca.</p>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full py-3 bg-[var(--brand-color)] hover:bg-slate-800 text-white rounded-xl font-bold transition-colors">
+                        Guardar Dispositivo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LIST -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800">Dispositivos Configurados</h3>
+                <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">{{ devices|length }} Total</span>
+            </div>
+
+            {% if devices %}
+            <div class="divide-y divide-slate-100">
+                {% for device in devices %}
+                <div class="p-6 flex items-start justify-between hover:bg-slate-50 transition-colors group">
+                    <div class="flex gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                            {% if device.device_type == 'STRIPE_READER' %}
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                                </path>
+                            </svg>
+                            {% elif device.device_type == 'PRINTER_NETWORK' %}
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                </path>
+                            </svg>
+                            {% else %}
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-800">{{ device.name }}</div>
+                            <div class="text-xs text-slate-500 uppercase tracking-wide font-semibold mt-1">{{
+                                device.get_device_type_display }}</div>
+                            <div
+                                class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-1 inline-block border border-slate-200">
+                                {{ device.identifier }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST" onsubmit="return confirm('¿Eliminar este dispositivo?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="device_id" value="{{ device.id }}">
+                        <button type="submit"
+                            class="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                </path>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-12 text-center text-slate-400">
+                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                    </path>
+                </svg>
+                <p>No hay dispositivos configurados</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

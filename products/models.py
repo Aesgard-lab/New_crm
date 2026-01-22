@@ -37,6 +37,22 @@ class Product(models.Model):
     # Supplier Info
     supplier_name = models.CharField(_("Proveedor"), max_length=100, blank=True)
     supplier_reference = models.CharField(_("Ref. Proveedor"), max_length=100, blank=True)
+    preferred_provider = models.ForeignKey(
+        "providers.Provider",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="preferred_products",
+        verbose_name=_("Proveedor preferente"),
+    )
+    preferred_provider_item = models.ForeignKey(
+        "providers.ProviderItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="preferred_products",
+        verbose_name=_("Artículo proveedor preferente"),
+    )
     
     # Inventory
     track_stock = models.BooleanField(_("Controlar Stock"), default=True)

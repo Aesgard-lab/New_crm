@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horario - {{ gym.commercial_name|default:gym.name }}</title>
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FullCalendar -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    
+    <!-- Estilos dinámicos basados en branding del gym -->
+    <style>
+        :root {
+            --brand-color: {{ gym.brand_color|default:"#0f172a" }};
+        }
+        
+        .brand-bg { background-color: var(--brand-color) !important; }
+        .brand-color { color: var(--brand-color) !important; }
+        .brand-border { border-color: var(--brand-color) !important; }
+        
+        /* Tema oscuro/claro */
+        {% if theme == 'dark' %}
+        body {
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+        .fc {
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+        .fc .fc-button {
+            background-color: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+        .fc .fc-button:hover {
+            background-color: #475569;
+        }
+        .filter-btn {
+            background-color: #334155;
+            color: #f1f5f9;
+        }
+        .filter-btn.active {
+            background-color: var(--brand-color);
+        }
+        {% else %}
+        body {
+            background-color: #ffffff;
+            color: #0f172a;
+        }
+        {% endif %}
+        
+        /* Optimización para iframe */
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        /* Estilos del calendario */
+        .fc-event {
+            cursor: pointer;
+            border-radius: 8px;
+            padding: 2px 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: none;
+        }
+        
+        .fc-daygrid-event {
+            white-space: normal !important;
+            padding: 4px;
+        }
+        
+        .fc-event-title {
+            font-weight: 700;
+        }
+        
+        .fc-event-time {
+            font-size: 0.7rem;
+            opacity: 0.9;
+        }
+        
+        /* Filtros */
+        .filter-btn {
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        
+        .filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .filter-btn.active {
+            background-color: var(--brand-color);
+            color: white;
+            border-color: var(--brand-color);
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            body { padding: 8px; }
+            .filter-container { flex-wrap: wrap; }
+            .filter-btn { padding: 6px 12px; font-size: 0.75rem; margin: 2px; }
+            .fc-toolbar-title { font-size: 1.25rem !important; }
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top-color: var(--brand-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Modal simplificado */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        {% if theme == 'dark' %}
+        .modal-content {
+            background: #334155;
+            color: #f1f5f9;
+        }
+        {% endif %}
+    </style>
+</head>
+<body>
+    <!-- Header compacto -->
+    <div class="mb-4 flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+            {% if gym.logo %}
+            <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-10 w-auto">
+            {% endif %}
+            <h1 class="text-xl font-bold">{{ gym.commercial_name|default:gym.name }}</h1>
+        </div>
+        
+        <!-- Botón para abrir en página completa -->
+        <a href="/public/gym/{{ settings.public_slug }}/schedule/" 
+           target="_blank"
+           class="brand-bg text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+            📅 Ver Horario Completo
+        </a>
+    </div>
+    
+    <!-- Filtros de actividades -->
+    {% if activities %}
+    <div class="mb-4 overflow-x-auto">
+        <div class="filter-container flex gap-2 pb-2">
+            <button class="filter-btn active" data-activity-id="all">
+                Todas las Clases
+            </button>
+            {% for activity in activities %}
+            <button class="filter-btn" 
+                    data-activity-id="{{ activity.id }}"
+                    style="background-color: {{ activity.color|default:'#64748b' }}20; color: {{ activity.color|default:'#64748b' }}; border-color: {{ activity.color|default:'#64748b' }}40;">
+                {{ activity.name }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Calendario -->
+    <div id="calendar" style="min-height: 600px;"></div>
+    
+    <!-- Loading indicator -->
+    <div id="loading" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- Modal para detalles de sesión -->
+    <div id="sessionModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <h2 id="modalTitle" class="text-2xl font-bold"></h2>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <div class="flex items-center gap-3 text-sm">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span id="modalTime"></span>
+                    </div>
+                    
+                    <div id="modalStaff" class="flex items-center gap-3 text-sm" style="display: none;">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        <span id="modalStaffName"></span>
+                    </div>
+                    
+                    <div id="modalRoom" class="flex items-center gap-3 text-sm" style="display: none;">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                        <span id="modalRoomName"></span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 text-sm">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <span id="modalCapacity"></span>
+                    </div>
+                </div>
+                
+                <div id="modalAvailability" class="mb-6"></div>
+                
+                <a href="/public/gym/{{ settings.public_slug }}/login/" 
+                   target="_blank"
+                   class="block w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity text-center">
+                    Reservar Plaza
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let calendar;
+        let currentFilter = 'all';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                locale: 'es',
+                firstDay: 1,
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    week: 'Semana',
+                    day: 'Día'
+                },
+                allDaySlot: false,
+                slotMinTime: '06:00:00',
+                slotMaxTime: '23:00:00',
+                slotDuration: '00:30:00',
+                expandRows: true,
+                nowIndicator: true,
+                eventClick: function(info) {
+                    showSessionDetail(info.event);
+                },
+                loading: function(isLoading) {
+                    document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+                },
+                events: function(info, successCallback, failureCallback) {
+                    const params = new URLSearchParams({
+                        start: info.startStr,
+                        end: info.endStr
+                    });
+                    
+                    if (currentFilter !== 'all') {
+                        params.append('activity', currentFilter);
+                    }
+                    
+                    fetch(`/public/gym/{{ settings.public_slug }}/api/schedule/events/?${params}`)
+                        .then(response => response.json())
+                        .then(data => successCallback(data))
+                        .catch(error => {
+                            console.error('Error loading events:', error);
+                            failureCallback(error);
+                        });
+                }
+            });
+            
+            calendar.render();
+            
+            // Ajustar altura del calendario para iframe
+            resizeCalendar();
+            window.addEventListener('resize', resizeCalendar);
+        });
+        
+        function resizeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            const windowHeight = window.innerHeight;
+            const calendarTop = calendarEl.getBoundingClientRect().top;
+            const newHeight = Math.max(400, windowHeight - calendarTop - 20);
+            calendarEl.style.height = newHeight + 'px';
+            if (calendar) calendar.updateSize();
+        }
+        
+        // Filtrado por actividad
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.activityId;
+                calendar.refetchEvents();
+            });
+        });
+        
+        function showSessionDetail(event) {
+            const props = event.extendedProps;
+            
+            document.getElementById('modalTitle').textContent = event.title;
+            document.getElementById('modalTime').textContent = event.start.toLocaleString('es-ES', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Staff
+            if (props.staff) {
+                document.getElementById('modalStaffName').textContent = props.staff;
+                document.getElementById('modalStaff').style.display = 'flex';
+            } else {
+                document.getElementById('modalStaff').style.display = 'none';
+            }
+            
+            // Room
+            if (props.room) {
+                document.getElementById('modalRoomName').textContent = props.room;
+                document.getElementById('modalRoom').style.display = 'flex';
+            } else {
+                document.getElementById('modalRoom').style.display = 'none';
+            }
+            
+            // Capacity
+            document.getElementById('modalCapacity').textContent = 
+                `${props.attendees}/${props.max_capacity} plazas ocupadas`;
+            
+            // Availability
+            const availDiv = document.getElementById('modalAvailability');
+            if (props.is_full) {
+                availDiv.innerHTML = '<div class="p-4 bg-red-50 border-2 border-red-200 rounded-xl text-sm text-red-800 font-semibold text-center">❌ Clase Completa</div>';
+            } else {
+                availDiv.innerHTML = `<div class="p-4 bg-green-50 border-2 border-green-200 rounded-xl text-sm text-green-800 font-semibold text-center">✅ ${props.spots_available} plazas disponibles</div>`;
+            }
+            
+            document.getElementById('sessionModal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('sessionModal').style.display = 'none';
+        }
+        
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('sessionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Comunicar altura al padre (si está en iframe)
+        function sendHeightToParent() {
+            if (window.parent !== window) {
+                const height = document.body.scrollHeight;
+                window.parent.postMessage({
+                    type: 'resize',
+                    height: height
+                }, '*');
+            }
+        }
+        
+        setInterval(sendHeightToParent, 1000);
+    </script>
+</body>
+</html>

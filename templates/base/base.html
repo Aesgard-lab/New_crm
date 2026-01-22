@@ -6,15 +6,192 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <style>
     :root {
-      --brand-color: {
-          {
-          request.gym.brand_color|default: "#0f172a"
-        }
-      }
+      --brand-color: {{ request.gym.brand_color|default:"#0f172a" }};
 
       ;
+    }
+
+    /* ============================================
+       BRAND COLOR HOVER SYSTEM
+       ============================================ */
+
+    /* Texts with brand hover */
+    .hover-brand {
+      color: inherit;
+      transition: color 0.3s ease, text-decoration-color 0.3s ease;
+    }
+
+    .hover-brand:hover {
+      color: var(--brand-color);
+    }
+
+    .text-brand-hover:hover {
+      color: var(--brand-color) !important;
+    }
+
+    /* Primary buttons with brand color */
+    .btn-brand {
+      background-color: var(--brand-color);
+      color: white;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-brand:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .btn-brand:active {
+      transform: translateY(0);
+    }
+
+    /* Outline buttons with brand color */
+    .btn-brand-outline {
+      border: 2px solid var(--brand-color);
+      color: var(--brand-color);
+      background-color: transparent;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-brand-outline:hover {
+      background-color: var(--brand-color);
+      color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Ghost buttons with brand color on hover */
+    .btn-brand-ghost {
+      color: var(--brand-color);
+      background-color: transparent;
+      transition: all 0.3s ease;
+    }
+
+    .btn-brand-ghost:hover {
+      background-color: color-mix(in srgb, var(--brand-color) 10%, transparent);
+      color: var(--brand-color);
+    }
+
+    /* Cards with brand border hover */
+    .card-hover {
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-hover:hover {
+      border-color: var(--brand-color);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-color) 10%, transparent);
+    }
+
+    /* Badges with brand color */
+    .badge-brand {
+      background-color: color-mix(in srgb, var(--brand-color) 10%, transparent);
+      color: var(--brand-color);
+      transition: all 0.3s ease;
+    }
+
+    .badge-brand:hover {
+      background-color: var(--brand-color);
+      color: white;
+    }
+
+    /* Links with brand underline on hover */
+    .link-brand {
+      color: var(--brand-color);
+      text-decoration: none;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+
+    .link-brand::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background-color: var(--brand-color);
+      transition: width 0.3s ease;
+    }
+
+    .link-brand:hover::after {
+      width: 100%;
+    }
+
+    /* Icons with brand color hover */
+    .icon-brand-hover {
+      color: inherit;
+      transition: color 0.3s ease, transform 0.3s ease;
+    }
+
+    .icon-brand-hover:hover {
+      color: var(--brand-color);
+      transform: scale(1.1);
+    }
+
+    /* Borders and accents with brand color */
+    .border-brand-hover {
+      border-color: currentColor;
+      transition: border-color 0.3s ease;
+    }
+
+    .border-brand-hover:hover {
+      border-color: var(--brand-color);
+    }
+
+    /* Background accent on hover */
+    .bg-brand-hover {
+      transition: background-color 0.3s ease;
+    }
+
+    .bg-brand-hover:hover {
+      background-color: color-mix(in srgb, var(--brand-color) 5%, transparent);
+    }
+
+    /* Legacy button classes for backward compatibility */
+    .btn-primary {
+      background-color: var(--brand-color);
+      color: white;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      padding: 0.5rem 1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background-color: white;
+      color: #64748b;
+      font-weight: 600;
+      border: 2px solid #e2e8f0;
+      border-radius: 0.75rem;
+      padding: 0.5rem 1rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-secondary:hover {
+      background-color: #f8fafc;
+      border-color: var(--brand-color);
+      color: var(--brand-color);
     }
   </style>
   <title>{% block title %}Backoffice{% endblock %}</title>
@@ -30,6 +207,37 @@
     <main class="flex-1 lg:ml-64 transition-all">
       <!-- Header -->
       {% include "base/header.html" %}
+
+      <!-- Subscription Warnings -->
+      {% if subscription_warnings %}
+      <div class="px-4 md:px-6 pt-6 pb-0 space-y-3">
+        {% for warning in subscription_warnings %}
+        <div
+          class="flex items-center justify-between p-4 rounded-xl border {% if warning.type == 'danger' %}bg-rose-50 border-rose-100 text-rose-700{% else %}bg-amber-50 border-amber-100 text-amber-700{% endif %}">
+          <div class="flex items-center gap-3">
+            {% if warning.type == 'danger' %}
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            {% else %}
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {% endif %}
+            <span class="font-medium text-sm">{{ warning.message }}</span>
+          </div>
+          {% if warning.link %}
+          <a href="{% url warning.link %}"
+            class="text-sm font-semibold underline hover:no-underline whitespace-nowrap ml-4">
+            Solucionar &rarr;
+          </a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
 
       <!-- Global Messages -->
       {% if messages %}

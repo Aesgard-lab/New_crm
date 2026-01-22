@@ -1,0 +1,337 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}Check-in QR{% endblock %}
+
+{% block extra_css %}
+<style>
+    #qr-reader {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    #qr-reader video {
+        border-radius: 1rem;
+    }
+    
+    #qr-reader__scan_region {
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    
+    .scanner-overlay {
+        position: relative;
+    }
+    
+    .scanner-frame {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border: 3px solid var(--brand-color, #10b981);
+        border-radius: 1rem;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+    }
+    
+    .scanner-frame::before,
+    .scanner-frame::after {
+        content: '';
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border-color: var(--brand-color, #10b981);
+        border-style: solid;
+    }
+    
+    .scanner-frame::before {
+        top: -3px;
+        left: -3px;
+        border-width: 4px 0 0 4px;
+        border-radius: 1rem 0 0 0;
+    }
+    
+    .scanner-frame::after {
+        bottom: -3px;
+        right: -3px;
+        border-width: 0 4px 4px 0;
+        border-radius: 0 0 1rem 0;
+    }
+    
+    .result-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 1rem;
+    }
+    
+    .result-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        max-width: 360px;
+        width: 100%;
+        text-align: center;
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .result-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 2.5rem;
+    }
+    
+    .result-icon.success {
+        background: #dcfce7;
+    }
+    
+    .result-icon.error {
+        background: #fee2e2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold text-slate-800">Check-in con QR</h1>
+        <p class="text-slate-500 mt-1">Escanea el código QR de la clase para confirmar tu asistencia</p>
+    </div>
+    
+    <!-- Scanner Container -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-6">
+        <div id="qr-reader"></div>
+        
+        <!-- Estado del escáner -->
+        <div id="scanner-status" class="text-center mt-4">
+            <div class="flex items-center justify-center gap-2 text-slate-500">
+                <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span>Apunta la cámara al código QR de la pantalla</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Próximas clases -->
+    {% if upcoming_sessions %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-6">
+        <h2 class="font-semibold text-slate-800 mb-3">Tus próximas clases</h2>
+        <div class="space-y-3">
+            {% for session in upcoming_sessions %}
+            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold" 
+                     style="background-color: {{ session.activity.color|default:'#3B82F6' }}">
+                    {{ session.start_datetime|time:"H:i" }}
+                </div>
+                <div class="flex-1">
+                    <div class="font-medium text-slate-800">{{ session.activity.name }}</div>
+                    <div class="text-sm text-slate-500">
+                        {{ session.start_datetime|date:"l d M" }}
+                        {% if session.room %} • {{ session.room.name }}{% endif %}
+                    </div>
+                </div>
+                {% if session.activity.qr_checkin_enabled %}
+                <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">QR</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Últimos check-ins -->
+    {% if recent_checkins %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <h2 class="font-semibold text-slate-800 mb-3">Últimos check-ins</h2>
+        <div class="space-y-2">
+            {% for checkin in recent_checkins %}
+            <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                <div>
+                    <div class="font-medium text-slate-700">{{ checkin.session.activity.name }}</div>
+                    <div class="text-sm text-slate-500">{{ checkin.checked_in_at|date:"d/m/Y H:i" }}</div>
+                </div>
+                <span class="text-green-600">✓</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de resultado -->
+<div id="result-modal" class="result-modal hidden">
+    <div class="result-card">
+        <div id="result-icon" class="result-icon"></div>
+        <h3 id="result-title" class="text-xl font-bold text-slate-800 mb-2"></h3>
+        <p id="result-message" class="text-slate-600 mb-4"></p>
+        <div id="result-details" class="text-sm text-slate-500 mb-4"></div>
+        <button onclick="closeResultModal()" class="w-full py-3 bg-brand text-white rounded-xl font-semibold hover:opacity-90 transition-opacity">
+            Continuar
+        </button>
+    </div>
+</div>
+
+<!-- HTML5 QR Code Scanner -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+    let html5QrcodeScanner = null;
+    let isProcessing = false;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        initScanner();
+    });
+    
+    function initScanner() {
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+        };
+        
+        html5QrcodeScanner = new Html5Qrcode("qr-reader");
+        
+        html5QrcodeScanner.start(
+            { facingMode: "environment" }, // Cámara trasera
+            config,
+            onScanSuccess,
+            onScanFailure
+        ).catch(err => {
+            console.error("Error iniciando cámara:", err);
+            document.getElementById('scanner-status').innerHTML = `
+                <div class="text-red-500 flex flex-col items-center gap-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <span>No se pudo acceder a la cámara</span>
+                    <button onclick="initScanner()" class="text-brand underline">Reintentar</button>
+                </div>
+            `;
+        });
+    }
+    
+    async function onScanSuccess(decodedText, decodedResult) {
+        if (isProcessing) return;
+        isProcessing = true;
+        
+        // Pausar escáner temporalmente
+        html5QrcodeScanner.pause();
+        
+        document.getElementById('scanner-status').innerHTML = `
+            <div class="flex items-center justify-center gap-2 text-brand">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Procesando check-in...</span>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('{% url "portal_checkin_process" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ qr_content: decodedText })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showResult(true, data);
+            } else {
+                showResult(false, data);
+            }
+        } catch (error) {
+            showResult(false, { error: 'Error de conexión. Inténtalo de nuevo.' });
+        }
+        
+        isProcessing = false;
+    }
+    
+    function onScanFailure(error) {
+        // Ignorar errores de no detectar QR (normal cuando no hay QR en cámara)
+    }
+    
+    function showResult(success, data) {
+        const modal = document.getElementById('result-modal');
+        const icon = document.getElementById('result-icon');
+        const title = document.getElementById('result-title');
+        const message = document.getElementById('result-message');
+        const details = document.getElementById('result-details');
+        
+        if (success) {
+            icon.className = 'result-icon success';
+            icon.innerHTML = '✅';
+            title.textContent = '¡Check-in exitoso!';
+            message.textContent = data.message || '¡Ya estás registrado en la clase!';
+            details.innerHTML = `
+                <strong>${data.session_name || ''}</strong><br>
+                ${data.session_time ? `Hora: ${data.session_time}` : ''}
+                ${data.already_checked_in ? '<br><span class="text-amber-600">Ya habías hecho check-in</span>' : ''}
+            `;
+        } else {
+            icon.className = 'result-icon error';
+            icon.innerHTML = '❌';
+            title.textContent = 'No se pudo hacer check-in';
+            message.textContent = data.error || 'Ha ocurrido un error';
+            details.innerHTML = '';
+        }
+        
+        modal.classList.remove('hidden');
+    }
+    
+    function closeResultModal() {
+        document.getElementById('result-modal').classList.add('hidden');
+        
+        // Reanudar escáner
+        document.getElementById('scanner-status').innerHTML = `
+            <div class="flex items-center justify-center gap-2 text-slate-500">
+                <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span>Apunta la cámara al código QR de la pantalla</span>
+            </div>
+        `;
+        
+        html5QrcodeScanner.resume();
+    }
+    
+    // Limpiar al salir
+    window.addEventListener('beforeunload', function() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}Marketing > Automatizaciones > Retención{% endblock %}
+{% block page_title %}⚠️ Alertas de Retención{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="retentionAlerts()">
+    <!-- Header & Stats -->
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Alertas de Retención</h1>
+            <p class="text-sm text-slate-500">Clientes en riesgo que requieren atención</p>
+        </div>
+        
+        <div class="flex gap-3">
+            <div class="text-center px-4 py-2 bg-red-50 rounded-xl border border-red-200">
+                <div class="text-2xl font-bold text-red-600">{{ stats.high_risk }}</div>
+                <div class="text-xs text-red-700">Alto Riesgo</div>
+            </div>
+            <div class="text-center px-4 py-2 bg-amber-50 rounded-xl border border-amber-200">
+                <div class="text-2xl font-bold text-amber-600">{{ stats.unassigned }}</div>
+                <div class="text-xs text-amber-700">Sin Asignar</div>
+            </div>
+            <div class="text-center px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
+                <div class="text-2xl font-bold text-blue-600">{{ stats.total }}</div>
+                <div class="text-xs text-blue-700">Total Abiertas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+        <div class="flex flex-wrap gap-3">
+            <!-- Status Filter -->
+            <select onchange="window.location.href='?status='+this.value+'&type={{ current_filters.type }}&assigned={{ current_filters.assigned }}'"
+                class="rounded-lg border-slate-300 text-sm">
+                <option value="OPEN" {% if current_filters.status == 'OPEN' %}selected{% endif %}>🔴 Abiertas</option>
+                <option value="IN_PROGRESS" {% if current_filters.status == 'IN_PROGRESS' %}selected{% endif %}>🟡 En Progreso</option>
+                <option value="RESOLVED" {% if current_filters.status == 'RESOLVED' %}selected{% endif %}>✅ Resueltas</option>
+                <option value="ALL" {% if current_filters.status == 'ALL' %}selected{% endif %}>Todas</option>
+            </select>
+
+            <!-- Type Filter -->
+            <select onchange="window.location.href='?status={{ current_filters.status }}&type='+this.value+'&assigned={{ current_filters.assigned }}'"
+                class="rounded-lg border-slate-300 text-sm">
+                <option value="">Todos los tipos</option>
+                {% for value, label in type_choices %}
+                <option value="{{ value }}" {% if current_filters.type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Assigned Filter -->
+            <select onchange="window.location.href='?status={{ current_filters.status }}&type={{ current_filters.type }}&assigned='+this.value"
+                class="rounded-lg border-slate-300 text-sm">
+                <option value="">Todas las asignaciones</option>
+                <option value="me" {% if current_filters.assigned == 'me' %}selected{% endif %}>Asignadas a mí</option>
+                <option value="unassigned" {% if current_filters.assigned == 'unassigned' %}selected{% endif %}>Sin asignar</option>
+            </select>
+
+            <button onclick="window.location.href='{% url 'retention_alerts_list' %}'"
+                class="ml-auto text-sm text-slate-600 hover:text-slate-900 font-bold">
+                Limpiar filtros
+            </button>
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    {% if alerts %}
+    <div class="space-y-3">
+        {% for alert in alerts %}
+        <div class="bg-white border-2 {% if alert.risk_score >= 70 %}border-red-300{% elif alert.risk_score >= 40 %}border-amber-300{% else %}border-slate-200{% endif %} rounded-2xl p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-start gap-4">
+                <!-- Risk Indicator -->
+                <div class="flex-shrink-0">
+                    <div class="w-16 h-16 rounded-xl flex items-center justify-center font-bold text-lg
+                        {% if alert.risk_score >= 70 %}bg-red-100 text-red-700
+                        {% elif alert.risk_score >= 40 %}bg-amber-100 text-amber-700
+                        {% else %}bg-slate-100 text-slate-700{% endif %}">
+                        {{ alert.risk_score }}
+                    </div>
+                    <div class="text-xs text-center text-slate-500 mt-1">Riesgo</div>
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h3 class="font-bold text-slate-900 mb-1">{{ alert.title }}</h3>
+                            <p class="text-sm text-slate-600">{{ alert.description }}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold
+                            {% if alert.status == 'OPEN' %}bg-red-100 text-red-700
+                            {% elif alert.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-700
+                            {% elif alert.status == 'RESOLVED' %}bg-green-100 text-green-700
+                            {% else %}bg-slate-100 text-slate-600{% endif %}">
+                            {{ alert.get_status_display }}
+                        </span>
+                    </div>
+
+                    <!-- Meta Info -->
+                    <div class="flex flex-wrap gap-4 text-sm text-slate-500 mb-3">
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <a href="{% url 'client_detail' alert.client.pk %}" class="hover:text-[var(--brand-color)] font-bold">
+                                {{ alert.client.first_name }} {{ alert.client.last_name }}
+                            </a>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            {{ alert.get_alert_type_display }}
+                        </div>
+                        {% if alert.days_inactive %}
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {{ alert.days_inactive }} días inactivo
+                        </div>
+                        {% endif %}
+                        {% if alert.assigned_to %}
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                            </svg>
+                            Asignado a: <strong>{{ alert.assigned_to.user.get_full_name }}</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    {% if alert.status == 'OPEN' or alert.status == 'IN_PROGRESS' %}
+                    <div class="flex gap-2">
+                        <button @click="resolveAlert({{ alert.pk }})"
+                            class="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg font-bold">
+                            ✓ Resolver
+                        </button>
+                        <button @click="dismissAlert({{ alert.pk }})"
+                            class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold">
+                            Descartar
+                        </button>
+                        <a href="{% url 'client_detail' alert.client.pk %}"
+                            class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg font-bold">
+                            Ver Cliente
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 bg-white rounded-2xl border border-slate-200">
+        <svg class="w-16 h-16 mx-auto text-green-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h3 class="text-lg font-bold text-slate-700 mb-2">¡Todo bajo control!</h3>
+        <p class="text-sm text-slate-500">No hay alertas de retención pendientes</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function retentionAlerts() {
+    return {
+        async resolveAlert(alertId) {
+            if (!confirm('¿Marcar esta alerta como resuelta?')) return;
+            
+            try {
+                const response = await fetch(`/marketing/automation/retention/${alertId}/resolve/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ action: 'resolve' })
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        },
+        
+        async dismissAlert(alertId) {
+            if (!confirm('¿Descartar esta alerta?')) return;
+            
+            try {
+                const response = await fetch(`/marketing/automation/retention/${alertId}/resolve/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ action: 'dismiss' })
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

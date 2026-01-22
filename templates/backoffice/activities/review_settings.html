@@ -1,0 +1,179 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Configuración de Sistema de Reviews</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Configurar valoraciones de clases</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+        <form id="settings-form">
+            {% csrf_token %}
+            
+            <!-- Enable/Disable -->
+            <div class="mb-6">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="enabled" {% if settings.enabled %}checked{% endif %} 
+                           class="w-5 h-5 rounded border-slate-300 text-[var(--brand-color)]">
+                    <div>
+                        <div class="font-bold text-slate-800">Activar Sistema de Reviews</div>
+                        <div class="text-sm text-slate-500">Los clientes podrán valorar las clases después de asistir</div>
+                    </div>
+                </label>
+            </div>
+
+            <hr class="my-6 border-slate-100">
+
+            <!-- Delay Hours -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Retraso de Solicitud (horas)
+                </label>
+                <input type="number" name="delay_hours" value="{{ settings.delay_hours }}" min="0" max="168"
+                       class="w-full rounded-xl border-slate-200">
+                <p class="text-xs text-slate-500 mt-1">
+                    Tiempo después de la clase antes de solicitar la valoración (0 = inmediato)
+                </p>
+            </div>
+
+            <!-- Request Mode -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Modo de Solicitud
+                </label>
+                <div class="space-y-3">
+                    <label class="flex items-start gap-3 cursor-pointer p-4 border border-slate-200 rounded-xl hover:border-[var(--brand-color)] transition-colors">
+                        <input type="radio" name="request_mode" value="ALL" {% if settings.request_mode == 'ALL' %}checked{% endif %}
+                               class="mt-1 text-[var(--brand-color)]">
+                        <div>
+                            <div class="font-bold text-slate-800">Solicitar a Todos</div>
+                            <div class="text-sm text-slate-500">Todos los clientes recibirán solicitud de review después de cada clase</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-start gap-3 cursor-pointer p-4 border border-slate-200 rounded-xl hover:border-[var(--brand-color)] transition-colors">
+                        <input type="radio" name="request_mode" value="RANDOM" {% if settings.request_mode == 'RANDOM' %}checked{% endif %}
+                               class="mt-1 text-[var(--brand-color)]">
+                        <div>
+                            <div class="font-bold text-slate-800">Solicitud Aleatoria</div>
+                            <div class="text-sm text-slate-500">Solo algunos clientes seleccionados aleatoriamente recibirán la solicitud</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Random Probability (shown when RANDOM mode selected) -->
+            <div id="random-probability-container" class="mb-6" style="display: {% if settings.request_mode == 'RANDOM' %}block{% else %}none{% endif %}">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Probabilidad (%)
+                </label>
+                <input type="number" name="random_probability" value="{{ settings.random_probability }}" min="1" max="100"
+                       class="w-full rounded-xl border-slate-200">
+                <p class="text-xs text-slate-500 mt-1">
+                    Porcentaje de clientes que recibirán la solicitud (recomendado: 20-40%)
+                </p>
+            </div>
+
+            <hr class="my-6 border-slate-100">
+
+            <!-- Points per Review -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Puntos de Fidelización por Review
+                </label>
+                <input type="number" name="points_per_review" value="{{ settings.points_per_review }}" min="0" max="100"
+                       class="w-full rounded-xl border-slate-200">
+                <p class="text-xs text-slate-500 mt-1">
+                    Puntos que se otorgan automáticamente al completar una valoración
+                </p>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex gap-3">
+                <button type="submit" 
+                        class="flex-1 bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white px-6 py-3 rounded-xl font-bold transition-colors">
+                    💾 Guardar Configuración
+                </button>
+                <a href="{% url 'review_report' %}" 
+                   class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-colors">
+                    Volver al Reporte
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 p-6 rounded-2xl">
+        <h3 class="font-bold text-slate-800 mb-3">💡 Consejos de Configuración</h3>
+        <ul class="space-y-2 text-sm text-slate-700">
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Retraso recomendado:</strong> 3-6 horas permite que el cliente reflexione sobre la clase sin olvidar detalles
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Modo aleatorio:</strong> Evita saturar a los clientes habituales con solicitudes constantes (recomendado 30%)
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Puntos de fidelización:</strong> Incentiva las reviews pero no las hagas demasiado valiosas (10-25 puntos óptimo)
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Reviews públicas:</strong> Requieren aprobación antes de mostrarse a otros clientes
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// Show/hide random probability field based on request mode
+document.querySelectorAll('input[name="request_mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const container = document.getElementById('random-probability-container');
+        container.style.display = this.value === 'RANDOM' ? 'block' : 'none';
+    });
+});
+
+// Submit form via AJAX
+document.getElementById('settings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('{% url "review_settings" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            const btn = this.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Guardado Correctamente';
+            btn.classList.add('bg-emerald-500');
+            btn.classList.remove('bg-[var(--brand-color)]');
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.classList.remove('bg-emerald-500');
+                btn.classList.add('bg-[var(--brand-color)]');
+            }, 2000);
+        }
+    });
+});
+</script>
+{% endblock %}

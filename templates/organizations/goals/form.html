@@ -1,0 +1,104 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}{% if goal %}Editar Objetivo{% else %}Nuevo Objetivo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h2 class="text-xl font-bold text-slate-900">
+                {% if goal %}Editar Objetivo{% else %}Nuevo Objetivo{% endif %}
+            </h2>
+            <p class="text-sm text-slate-500 mt-1">Define los objetivos de rendimiento para {{ gym.name }}</p>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            <!-- Período -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    Período del Objetivo
+                </label>
+                <select name="period" required
+                        class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="monthly" {% if goal and goal.period == 'monthly' %}selected{% endif %}>Mensual</option>
+                    <option value="quarterly" {% if goal and goal.period == 'quarterly' %}selected{% endif %}>Trimestral</option>
+                    <option value="yearly" {% if goal and goal.period == 'yearly' %}selected{% endif %}>Anual</option>
+                </select>
+            </div>
+
+            <!-- Fecha de Inicio -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    Fecha de Inicio
+                </label>
+                <input type="date" name="start_date" required
+                       value="{% if goal %}{{ goal.start_date|date:'Y-m-d' }}{% endif %}"
+                       class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <p class="text-xs text-slate-500 mt-1">La fecha de fin se calculará automáticamente según el período</p>
+            </div>
+
+            <!-- Objetivos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Target Members -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        👥 Objetivo de Socios
+                    </label>
+                    <input type="number" name="target_members" min="0"
+                           value="{% if goal and goal.target_members %}{{ goal.target_members }}{% endif %}"
+                           placeholder="Ej: 500"
+                           class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-slate-500 mt-1">Número objetivo de socios activos</p>
+                </div>
+
+                <!-- Target Revenue -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        💰 Objetivo de Facturación
+                    </label>
+                    <input type="number" name="target_revenue" min="0" step="0.01"
+                           value="{% if goal and goal.target_revenue %}{{ goal.target_revenue }}{% endif %}"
+                           placeholder="Ej: 50000"
+                           class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-slate-500 mt-1">Facturación objetivo en euros</p>
+                </div>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div class="flex gap-3">
+                    <div class="text-amber-600 text-xl">💡</div>
+                    <div class="text-sm text-amber-800">
+                        <strong>Nota:</strong> Debes establecer al menos un objetivo (socios o facturación). Puedes definir ambos si lo deseas.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notas -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    Notas (opcional)
+                </label>
+                <textarea name="notes" rows="3"
+                          placeholder="Añade contexto o detalles sobre este objetivo..."
+                          class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{% if goal %}{{ goal.notes }}{% endif %}</textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-3 pt-4 border-t border-slate-100">
+                <button type="submit"
+                        class="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-medium shadow-sm">
+                    {% if goal %}Actualizar Objetivo{% else %}Crear Objetivo{% endif %}
+                </button>
+                <a href="{% url 'gym_goals_list' %}"
+                   class="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-medium">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'superadmin/base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Estado del Sistema & Migración</h1>
+            <p class="text-slate-400">Herramientas de mantenimiento y control de integridad de datos.</p>
+        </div>
+        <div class="flex gap-3">
+            <form method="post" action="{% url 'superadmin:system_initialize_plans' %}">
+                {% csrf_token %}
+                <button type="submit"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition text-sm font-medium">
+                    🔄 Inicializar Planes
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Health Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <h3 class="text-gray-400 text-sm font-medium mb-2">Total Gimnasios</h3>
+            <p class="text-3xl font-bold text-white">{{ status.total_gyms }}</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <h3 class="text-gray-400 text-sm font-medium mb-2">Suscripciones Activas</h3>
+            <p class="text-3xl font-bold text-emerald-400">{{ status.subscribed_gyms }}</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <h3 class="text-gray-400 text-sm font-medium mb-2">Gimnasios Huérfanos</h3>
+            <div class="flex items-end justify-between">
+                <p
+                    class="text-3xl font-bold {% if status.orphan_gyms_count > 0 %}text-rose-400{% else %}text-white{% endif %}">
+                    {{ status.orphan_gyms_count }}
+                </p>
+                {% if status.orphan_gyms_count > 0 %}
+                <form method="post" action="{% url 'superadmin:system_migrate_orphans' %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg hover:bg-rose-500/20 transition">
+                        ⚠️ Migrar Huérfanos
+                    </button>
+                </form>
+                {% else %}
+                <span class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">
+                    Todo en orden
+                </span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Sin suscripción asignada</p>
+        </div>
+    </div>
+
+    <!-- Orphan Gyms List -->
+    {% if status.orphan_gyms_count > 0 %}
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+        <div class="p-6 border-b border-gray-700">
+            <h2 class="text-lg font-semibold text-white">Gimnasios Pendientes de Migración</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-400">
+                <thead class="bg-gray-900/50 uppercase text-xs font-medium">
+                    <tr>
+                        <th class="px-6 py-3">Nombre</th>
+                        <th class="px-6 py-3">Email</th>
+                        <th class="px-6 py-3">Fecha Alta</th>
+                        <th class="px-6 py-3 text-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                    {% for gym in orphan_gyms %}
+                    <tr class="hover:bg-gray-700/50 transition">
+                        <td class="px-6 py-4 font-medium text-white">{{ gym.name }}</td>
+                        <td class="px-6 py-4">{{ gym.email }}</td>
+                        <td class="px-6 py-4">{{ gym.created_at|date:"d M Y" }}</td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{% url 'superadmin:gym_detail' gym.id %}"
+                                class="text-indigo-400 hover:text-indigo-300">
+                                Ver Detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Environment Info -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Información del Entorno</h2>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+                <p class="text-slate-500">Stripe Environment</p>
+                <p class="text-white font-mono">
+                    {% if debug %}TEST MODE{% else %}PRODUCTION{% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-slate-500">Versión del Sistema</p>
+                <p class="text-white">v2.1.0</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

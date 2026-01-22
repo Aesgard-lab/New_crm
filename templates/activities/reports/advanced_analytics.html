@@ -1,0 +1,641 @@
+{% extends "backoffice/base.html" %}
+{% load static analytics_tags %}
+
+{% block title %}Analytics Avanzados - {{ gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+    }
+    
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin: 24px 0;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        padding: 20px;
+        border-left: 4px solid var(--brand-color, #007bff);
+    }
+    
+    .metric-title {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .metric-subtitle {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 20px 0;
+    }
+    
+    .lead-time-bar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+    
+    .lead-time-label {
+        min-width: 120px;
+        font-weight: 600;
+    }
+    
+    .lead-time-progress {
+        flex: 1;
+        height: 32px;
+        background: #e9ecef;
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .lead-time-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--brand-color, #007bff), var(--brand-color-hover, #0056b3));
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 12px;
+        color: white;
+        font-weight: bold;
+        transition: width 0.5s ease;
+    }
+    
+    .seasonal-day-card {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    
+    .seasonal-day-card:hover {
+        border-color: var(--brand-color, #007bff);
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .seasonal-day-name {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 8px;
+    }
+    
+    .seasonal-day-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: var(--brand-color, #007bff);
+    }
+    
+    .seasonal-day-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+    
+    .prediction-form {
+        background: #f8f9fa;
+        padding: 24px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+    
+    .prediction-result {
+        background: linear-gradient(135deg, var(--brand-color, #007bff), var(--brand-color-hover, #0056b3));
+        color: white;
+        padding: 32px;
+        border-radius: 8px;
+        text-align: center;
+        margin-top: 24px;
+    }
+    
+    .prediction-value {
+        font-size: 3rem;
+        font-weight: bold;
+        margin: 16px 0;
+    }
+    
+    .prediction-confidence {
+        display: inline-block;
+        padding: 6px 16px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 12px;
+        margin-top: 8px;
+    }
+    
+    .retention-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .retention-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+    
+    .retention-activity {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .retention-stats {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+    }
+    
+    .retention-rate {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--brand-color, #007bff);
+    }
+    
+    .retention-badge {
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .retention-excellent { background: #d4edda; color: #155724; }
+    .retention-good { background: #d1ecf1; color: #0c5460; }
+    .retention-fair { background: #fff3cd; color: #856404; }
+    .retention-poor { background: #f8d7da; color: #721c24; }
+    
+    .filter-bar {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+    
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #007bff;
+        padding: 16px;
+        border-radius: 4px;
+        margin-bottom: 24px;
+    }
+    
+    .info-box-icon {
+        font-size: 1.5rem;
+        margin-right: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">🔮 Analytics Avanzados y Predictivos</h1>
+            <p class="text-muted">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }} (últimos 90 días)</p>
+        </div>
+        <div>
+            <a href="{% url 'analytics_dashboard' %}" class="btn btn-outline-secondary">
+                ← Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <span class="info-box-icon">💡</span>
+        <strong>Analytics Avanzados:</strong> Usa datos históricos de los últimos 90 días para identificar patrones, 
+        predecir comportamiento futuro y optimizar tus operaciones.
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="filter-bar">
+        <div class="row">
+            <div class="col-md-4">
+                <label>Fecha Inicio</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-4">
+                <label>Fecha Fin</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    🔍 Actualizar Análisis
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Booking Lead Time -->
+    <div class="report-container">
+        <h3 class="h5 mb-4">⏱️ Análisis de Anticipación de Reservas</h3>
+        <p class="text-muted small mb-4">Cuándo reservan tus clientes antes de la clase</p>
+        
+        {% if booking_lead_time %}
+            <div class="lead-time-bar">
+                <div class="lead-time-label">Mismo Día</div>
+                <div class="lead-time-progress">
+                    <div class="lead-time-fill" style="width: {{ booking_lead_time.same_day_percentage }}%;">
+                        {{ booking_lead_time.same_day_percentage|floatformat:1 }}%
+                    </div>
+                </div>
+                <div style="min-width: 60px;">{{ booking_lead_time.same_day_count }} reservas</div>
+            </div>
+            
+            <div class="lead-time-bar">
+                <div class="lead-time-label">1-3 Días</div>
+                <div class="lead-time-progress">
+                    <div class="lead-time-fill" style="width: {{ booking_lead_time.one_to_three_days_percentage }}%; background: linear-gradient(90deg, #28a745, #1e7e34);">
+                        {{ booking_lead_time.one_to_three_days_percentage|floatformat:1 }}%
+                    </div>
+                </div>
+                <div style="min-width: 60px;">{{ booking_lead_time.one_to_three_days_count }} reservas</div>
+            </div>
+            
+            <div class="lead-time-bar">
+                <div class="lead-time-label">4-7 Días</div>
+                <div class="lead-time-progress">
+                    <div class="lead-time-fill" style="width: {{ booking_lead_time.four_to_seven_days_percentage }}%; background: linear-gradient(90deg, #ffc107, #e0a800);">
+                        {{ booking_lead_time.four_to_seven_days_percentage|floatformat:1 }}%
+                    </div>
+                </div>
+                <div style="min-width: 60px;">{{ booking_lead_time.four_to_seven_days_count }} reservas</div>
+            </div>
+            
+            <div class="lead-time-bar">
+                <div class="lead-time-label">8+ Días</div>
+                <div class="lead-time-progress">
+                    <div class="lead-time-fill" style="width: {{ booking_lead_time.eight_plus_days_percentage }}%; background: linear-gradient(90deg, #17a2b8, #117a8b);">
+                        {{ booking_lead_time.eight_plus_days_percentage|floatformat:1 }}%
+                    </div>
+                </div>
+                <div style="min-width: 60px;">{{ booking_lead_time.eight_plus_days_count }} reservas</div>
+            </div>
+            
+            <div class="mt-4 p-3" style="background: #fff3cd; border-radius: 6px;">
+                <strong>💡 Insight:</strong>
+                {% if booking_lead_time.same_day_percentage > 50 %}
+                    La mayoría de tus clientes reservan el mismo día. Considera enviar recordatorios diarios o notificaciones push.
+                {% elif booking_lead_time.one_to_three_days_percentage > 40 %}
+                    Tus clientes planifican con 1-3 días de anticipación. Los emails de recordatorio 24h antes son ideales.
+                {% else %}
+                    Tienes clientes que planifican con anticipación. Ofrece incentivos por reservas tempranas.
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="text-center text-muted">No hay suficientes datos de reservas</p>
+        {% endif %}
+    </div>
+
+    <!-- Patrones Estacionales -->
+    <div class="report-container">
+        <h3 class="h5 mb-4">📅 Patrones Estacionales por Día</h3>
+        <p class="text-muted small mb-4">Promedio de asistencia por día de la semana</p>
+        
+        {% if seasonal_patterns %}
+            <div class="analytics-grid" style="grid-template-columns: repeat(7, 1fr);">
+                {% for pattern in seasonal_patterns %}
+                <div class="seasonal-day-card">
+                    <div class="seasonal-day-name">
+                        {% if pattern.day_of_week == 1 %}Lunes
+                        {% elif pattern.day_of_week == 2 %}Martes
+                        {% elif pattern.day_of_week == 3 %}Miércoles
+                        {% elif pattern.day_of_week == 4 %}Jueves
+                        {% elif pattern.day_of_week == 5 %}Viernes
+                        {% elif pattern.day_of_week == 6 %}Sábado
+                        {% else %}Domingo{% endif %}
+                    </div>
+                    <div class="seasonal-day-value">{{ pattern.avg_attendance|floatformat:1 }}</div>
+                    <div class="seasonal-day-label">promedio</div>
+                    <div class="mt-2" style="font-size: 0.75rem; color: #6c757d;">
+                        {{ pattern.total_sessions }} sesiones
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="chart-container mt-4">
+                <canvas id="seasonalChart"></canvas>
+            </div>
+        {% else %}
+            <p class="text-center text-muted">No hay datos de patrones estacionales</p>
+        {% endif %}
+    </div>
+
+    <!-- Predicción de Asistencia -->
+    <div class="report-container">
+        <h3 class="h5 mb-4">🎯 Predictor de Asistencia</h3>
+        <p class="text-muted small mb-4">Predice la asistencia esperada basada en datos históricos</p>
+        
+        <form id="predictionForm" class="prediction-form">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Actividad</label>
+                    <select id="activity_id" class="form-control" required>
+                        <option value="">-- Seleccionar actividad --</option>
+                        {% for activity in activities %}
+                            <option value="{{ activity.id }}">{{ activity.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Día de la Semana</label>
+                    <select id="day_of_week" class="form-control" required>
+                        <option value="2">Lunes</option>
+                        <option value="3">Martes</option>
+                        <option value="4">Miércoles</option>
+                        <option value="5">Jueves</option>
+                        <option value="6">Viernes</option>
+                        <option value="7">Sábado</option>
+                        <option value="1">Domingo</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Hora</label>
+                    <select id="hour" class="form-control" required>
+                        {% for h in "678910111213141516171819202122"|make_list %}
+                            <option value="{{ h }}">{{ h }}:00</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    🔮 Predecir Asistencia
+                </button>
+            </div>
+        </form>
+        
+        <div id="predictionResult" style="display: none;">
+            <!-- Resultado se carga dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Retención de Miembros por Clase -->
+    <div class="report-container">
+        <h3 class="h5 mb-4">🔄 Retención de Miembros por Clase</h3>
+        <p class="text-muted small mb-4">Porcentaje de clientes que repiten cada actividad</p>
+        
+        <ul class="retention-list">
+            {% for retention in member_retention %}
+            <li class="retention-item">
+                <div class="retention-activity">
+                    {{ retention.activity__name }}
+                </div>
+                <div class="retention-stats">
+                    <div>
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total Clientes</div>
+                        <div><strong>{{ retention.total_clients }}</strong></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: #6c757d;">Repiten</div>
+                        <div><strong>{{ retention.repeat_clients }}</strong></div>
+                    </div>
+                    <div class="retention-rate">
+                        {{ retention.repeat_rate|floatformat:1 }}%
+                    </div>
+                    <div>
+                        {% with rate=retention.repeat_rate %}
+                            {% if rate >= 70 %}
+                                <span class="retention-badge retention-excellent">⭐ Excelente</span>
+                            {% elif rate >= 50 %}
+                                <span class="retention-badge retention-good">✅ Bueno</span>
+                            {% elif rate >= 30 %}
+                                <span class="retention-badge retention-fair">⚠️ Regular</span>
+                            {% else %}
+                                <span class="retention-badge retention-poor">❌ Bajo</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </li>
+            {% empty %}
+            <li class="text-center text-muted">No hay datos de retención disponibles</li>
+            {% endfor %}
+        </ul>
+        
+        {% if member_retention %}
+        <div class="chart-container mt-4">
+            <canvas id="retentionChart"></canvas>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recomendaciones -->
+    <div class="report-container" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <h3 class="h5 mb-4">💡 Recomendaciones Basadas en Datos</h3>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 6px;">
+                    <h5>📊 Optimiza Horarios</h5>
+                    <p class="mb-0">
+                        {% if seasonal_patterns %}
+                            Los {{ seasonal_patterns.0.day_of_week|yesno:"Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo" }}s 
+                            son tus días más fuertes. Programa tus clases más populares en estos días.
+                        {% else %}
+                            Analiza tus patrones de asistencia para identificar los mejores días.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 6px;">
+                    <h5>🎯 Marketing Dirigido</h5>
+                    <p class="mb-0">
+                        {% if booking_lead_time.same_day_percentage > 50 %}
+                            Tus clientes reservan el mismo día. Usa notificaciones push y SMS para recordatorios de última hora.
+                        {% else %}
+                            Tus clientes planifican con anticipación. Los emails semanales funcionarán mejor.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 6px;">
+                    <h5>🔄 Mejora Retención</h5>
+                    <p class="mb-0">
+                        {% if member_retention %}
+                            Enfócate en las clases con baja retención. Considera encuestas de satisfacción y ajustes.
+                        {% else %}
+                            Mide la retención regularmente para identificar oportunidades de mejora.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 6px;">
+                    <h5>📈 Capacidad Óptima</h5>
+                    <p class="mb-0">
+                        Usa el predictor de asistencia para ajustar la capacidad máxima de tus clases y reducir no-shows.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Gráfica de Patrones Estacionales
+    {% if seasonal_patterns %}
+    const seasonalCtx = document.getElementById('seasonalChart').getContext('2d');
+    const seasonalData = {{ seasonal_patterns|safe }};
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    
+    new Chart(seasonalCtx, {
+        type: 'line',
+        data: {
+            labels: seasonalData.map(d => dayNames[d.day_of_week - 1]),
+            datasets: [{
+                label: 'Asistencia Promedio',
+                data: seasonalData.map(d => d.avg_attendance),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Patrón de Asistencia por Día de la Semana'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    // Gráfica de Retención
+    {% if member_retention %}
+    const retentionCtx = document.getElementById('retentionChart').getContext('2d');
+    const retentionData = {{ member_retention|safe }};
+    
+    new Chart(retentionCtx, {
+        type: 'bar',
+        data: {
+            labels: retentionData.map(r => r.activity__name),
+            datasets: [{
+                label: 'Tasa de Retención %',
+                data: retentionData.map(r => r.repeat_rate),
+                backgroundColor: retentionData.map(r => {
+                    if (r.repeat_rate >= 70) return 'rgba(40, 167, 69, 0.8)';
+                    if (r.repeat_rate >= 50) return 'rgba(23, 162, 184, 0.8)';
+                    if (r.repeat_rate >= 30) return 'rgba(255, 193, 7, 0.8)';
+                    return 'rgba(220, 53, 69, 0.8)';
+                })
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Tasa de Retención por Actividad'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    // Predictor de Asistencia
+    document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const activityId = document.getElementById('activity_id').value;
+        const dayOfWeek = document.getElementById('day_of_week').value;
+        const hour = document.getElementById('hour').value;
+        
+        if (!activityId) {
+            alert('Por favor selecciona una actividad');
+            return;
+        }
+        
+        try {
+            const response = await fetch(
+                `/activities/api/analytics/predict/?activity_id=${activityId}&day_of_week=${dayOfWeek}&hour=${hour}`
+            );
+            const data = await response.json();
+            
+            // Mostrar resultado
+            const resultDiv = document.getElementById('predictionResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <div class="prediction-result">
+                    <h4>Predicción para ${data.activity_name}</h4>
+                    <div class="prediction-value">${data.predicted_attendance.toFixed(1)} personas</div>
+                    <div>Basado en ${data.historical_sessions} sesiones históricas</div>
+                    <div class="prediction-confidence">
+                        Confianza: ${data.confidence === 'high' ? 'Alta ✅' : 
+                                     data.confidence === 'medium' ? 'Media ⚠️' : 'Baja ⛔'}
+                    </div>
+                    <div class="mt-3" style="font-size: 0.9rem; opacity: 0.9;">
+                        Rango histórico: ${data.min_attendance} - ${data.max_attendance} personas
+                    </div>
+                </div>
+            `;
+            
+            // Scroll al resultado
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al obtener la predicción. Por favor intenta de nuevo.');
+        }
+    });
+</script>
+{% endblock %}

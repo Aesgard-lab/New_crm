@@ -1,0 +1,259 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">💬 Chat con Clientes</h1>
+            <p class="text-muted">Conversaciones en tiempo real</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchClientModal">
+                <i class="bi bi-plus-circle"></i> Nuevo Chat
+            </button>
+            <button onclick="location.reload()" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-clockwise"></i> Actualizar
+            </button>
+        </div>
+    </div>
+
+    {% if chat_rooms %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for room in chat_rooms %}
+                        <a href="{% url 'chat_detail' room.id %}" 
+                           class="list-group-item list-group-item-action {% if room.unread_count > 0 %}bg-light{% endif %}">
+                            <div class="d-flex w-100 align-items-center">
+                                <!-- Avatar -->
+                                <div class="me-3">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" 
+                                         style="width: 48px; height: 48px;">
+                                        <span class="text-primary fw-bold">
+                                            {{ room.client.first_name.0|upper }}{{ room.client.last_name.0|upper }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Info -->
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h6 class="mb-0 fw-semibold">
+                                            {{ room.client.first_name }} {{ room.client.last_name }}
+                                            {% if room.client.has_portal_access %}
+                                            <span class="badge bg-success bg-opacity-10 text-success ms-2" 
+                                                  title="Tiene acceso al portal">
+                                                <i class="bi bi-phone"></i> App
+                                            </span>
+                                            {% endif %}
+                                            {% if room.unread_count > 0 %}
+                                            <span class="badge bg-danger ms-2">{{ room.unread_count }}</span>
+                                            {% endif %}
+                                        </h6>
+                                        <small class="text-muted">
+                                            {% if room.last_message_at %}
+                                                {{ room.last_message_at|date:"d/m H:i" }}
+                                            {% else %}
+                                                {{ room.created_at|date:"d/m/Y" }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="text-muted small">
+                                        <i class="bi bi-envelope"></i> {{ room.client.user.email }}
+                                    </div>
+                                    
+                                    {% with last_msg=room.messages.last %}
+                                    {% if last_msg %}
+                                    <div class="text-muted small mt-1">
+                                        <strong>{% if last_msg.is_from_client %}Cliente{% else %}Tú{% endif %}:</strong>
+                                        {{ last_msg.message|truncatewords:10 }}
+                                    </div>
+                                    {% endif %}
+                                    {% endwith %}
+                                </div>
+                                
+                                <!-- Arrow -->
+                                <div class="ms-2">
+                                    <i class="bi bi-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="bi bi-chat-dots" style="font-size: 4rem; color: #dee2e6;"></i>
+        </div>
+        <h4 class="text-muted">No hay conversaciones</h4>
+        <p class="text-muted">Las conversaciones con clientes aparecerán aquí cuando te escriban desde el portal.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de búsqueda de clientes -->
+<div class="modal fade" id="searchClientModal" tabindex="-1" aria-labelledby="searchClientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="searchClientModalLabel">
+                    <i class="bi bi-search"></i> Buscar Cliente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Buscador -->
+                <div class="mb-3">
+                    <input type="text" 
+                           id="clientSearchInput" 
+                           class="form-control" 
+                           placeholder="Buscar por nombre, email o teléfono..."
+                           autocomplete="off">
+                    <small class="text-muted">Solo clientes con acceso al portal</small>
+                </div>
+                
+                <!-- Resultados -->
+                <div id="searchResults">
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-search"></i>
+                        <p class="mb-0">Escribe para buscar clientes</p>
+                    </div>
+                </div>
+                
+                <!-- Loading -->
+                <div id="searchLoading" class="text-center py-3 d-none">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Buscando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let searchTimeout;
+const searchInput = document.getElementById('clientSearchInput');
+const searchResults = document.getElementById('searchResults');
+const searchLoading = document.getElementById('searchLoading');
+
+// Buscar al escribir (con debounce)
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+    
+    if (query.length < 2) {
+        searchResults.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-search"></i>
+                <p class="mb-0">Escribe al menos 2 caracteres</p>
+            </div>
+        `;
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        searchClients(query);
+    }, 300);
+});
+
+function searchClients(query) {
+    searchLoading.classList.remove('d-none');
+    searchResults.innerHTML = '';
+    
+    fetch(`{% url 'chat_search_clients' %}?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            searchLoading.classList.add('d-none');
+            displayResults(data.clients);
+        })
+        .catch(error => {
+            searchLoading.classList.add('d-none');
+            searchResults.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    Error al buscar clientes
+                </div>
+            `;
+        });
+}
+
+function displayResults(clients) {
+    if (clients.length === 0) {
+        searchResults.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox"></i>
+                <p class="mb-0">No se encontraron clientes</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="list-group">';
+    clients.forEach(client => {
+        const avatar = client.photo_url 
+            ? `<img src="${client.photo_url}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">` 
+            : `<div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" 
+                    style="width: 40px; height: 40px;">
+                    <span class="text-primary fw-bold">${client.name.charAt(0)}</span>
+               </div>`;
+        
+        html += `
+            <a href="javascript:void(0)" 
+               onclick="startChat(${client.id})" 
+               class="list-group-item list-group-item-action">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">${avatar}</div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0">${client.name}</h6>
+                        <small class="text-muted">
+                            ${client.email}
+                            ${client.phone ? ' • ' + client.phone : ''}
+                        </small>
+                    </div>
+                    <div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </div>
+                </div>
+            </a>
+        `;
+    });
+    html += '</div>';
+    
+    searchResults.innerHTML = html;
+}
+
+function startChat(clientId) {
+    // Redirigir a iniciar chat con el cliente
+    window.location.href = `/chat/start/${clientId}/`;
+}
+
+// Limpiar búsqueda al cerrar modal
+document.getElementById('searchClientModal').addEventListener('hidden.bs.modal', function () {
+    searchInput.value = '';
+    searchResults.innerHTML = `
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-search"></i>
+            <p class="mb-0">Escribe para buscar clientes</p>
+        </div>
+    `;
+});
+</script>
+
+<style>
+.list-group-item:hover {
+    background-color: #f8f9fa !important;
+}
+</style>
+{% endblock %}

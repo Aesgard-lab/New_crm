@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horario - {{ gym.commercial_name|default:gym.name }}</title>
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --brand-color: {{ gym.brand_color|default:"#06b6d4" }};
+        }
+        
+        .brand-bg { 
+            background-color: var(--brand-color) !important; 
+        }
+        
+        .brand-color { 
+            color: var(--brand-color) !important; 
+        }
+        
+        .brand-border { 
+            border-color: var(--brand-color) !important; 
+        }
+        
+        .brand-btn {
+            background-color: var(--brand-color);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .brand-btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .session-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .session-card:hover {
+            border-left-color: var(--brand-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateX(4px);
+        }
+        
+        .instructor-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .activity-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+        
+        .time-badge {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+        
+        /* Animación de carga */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Botón de reserva */
+        .reserve-btn {
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .reserve-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Navegación de fecha */
+        .date-nav-btn {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        
+        .date-nav-btn:hover:not(:disabled) {
+            background-color: var(--brand-color);
+            color: white;
+            border-color: var(--brand-color);
+        }
+        
+        .date-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
+        
+        <!-- Header -->
+        <div class="mb-6 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+                Horario de Clases
+            </h1>
+            <p class="text-gray-600">
+                {{ gym.commercial_name|default:gym.name }}
+            </p>
+        </div>
+        
+        <!-- Navegación de Fecha -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div class="flex items-center justify-between">
+                <button onclick="changeDate(-1)" class="date-nav-btn px-4 py-2 rounded-lg font-medium">
+                    <i class="fas fa-chevron-left mr-2"></i>
+                    Anterior
+                </button>
+                
+                <div class="text-center">
+                    <div class="text-sm text-gray-500">
+                        <span id="dayName"></span>
+                    </div>
+                    <div class="text-xl font-bold text-gray-800" id="currentDate"></div>
+                </div>
+                
+                <button onclick="changeDate(1)" class="date-nav-btn px-4 py-2 rounded-lg font-medium">
+                    Siguiente
+                    <i class="fas fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+            
+            <!-- Botón Hoy -->
+            <div class="text-center mt-3">
+                <button onclick="goToToday()" class="text-sm brand-color font-medium hover:underline">
+                    <i class="fas fa-calendar-day mr-1"></i>
+                    Ir a Hoy
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filtros de Actividad -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">
+                <i class="fas fa-filter mr-2"></i>
+                Filtrar por actividad:
+            </h3>
+            <div class="flex flex-wrap gap-2" id="activityFilters">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+        
+        <!-- Lista de Clases -->
+        <div id="sessionsList" class="space-y-4">
+            <!-- Se llenará dinámicamente -->
+        </div>
+        
+        <!-- Estado vacío -->
+        <div id="emptyState" class="hidden bg-white rounded-lg shadow-sm p-12 text-center">
+            <i class="fas fa-calendar-times text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">
+                No hay clases programadas
+            </h3>
+            <p class="text-gray-500">
+                Intenta cambiar de fecha o eliminar filtros
+            </p>
+        </div>
+        
+        <!-- Loading -->
+        <div id="loadingState" class="bg-white rounded-lg shadow-sm p-12 text-center">
+            <div class="loading mx-auto mb-4" style="border-top-color: var(--brand-color);"></div>
+            <p class="text-gray-500">Cargando horarios...</p>
+        </div>
+        
+    </div>
+    
+    <!-- Modal de Login/Reserva -->
+    <div id="authModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-sign-in-alt mr-2 brand-color"></i>
+                Inicia sesión para reservar
+            </h3>
+            <p class="text-gray-600 mb-6">
+                Para reservar una clase necesitas tener una cuenta activa.
+            </p>
+            <div class="space-y-3">
+                <a href="/public/gym/{{ gym.slug }}/login/?next={{ request.path }}" 
+                   class="block w-full text-center brand-btn px-6 py-3 rounded-lg font-medium">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Iniciar Sesión
+                </a>
+                <a href="/public/gym/{{ gym.slug }}/register/" 
+                   class="block w-full text-center bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Crear Cuenta
+                </a>
+                <button onclick="closeAuthModal()" 
+                        class="block w-full text-center text-gray-600 px-6 py-2 rounded-lg hover:bg-gray-100">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentDate = new Date();
+        let allSessions = [];
+        let selectedActivities = new Set();
+        const isAuthenticated = {{ is_authenticated|yesno:"true,false" }};
+        
+        // Formatear fecha
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+        
+        // Formatear hora
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            return `${hours}:${minutes}`;
+        }
+        
+        // Días de la semana
+        const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        // Actualizar fecha en UI
+        function updateDateDisplay() {
+            document.getElementById('dayName').textContent = daysOfWeek[currentDate.getDay()];
+            document.getElementById('currentDate').textContent = 
+                `${currentDate.getDate()} ${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        }
+        
+        // Cambiar fecha
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            updateDateDisplay();
+            loadSessions();
+        }
+        
+        // Ir a hoy
+        function goToToday() {
+            currentDate = new Date();
+            updateDateDisplay();
+            loadSessions();
+        }
+        
+        // Cargar sesiones
+        async function loadSessions() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('sessionsList').innerHTML = '';
+            document.getElementById('emptyState').classList.add('hidden');
+            
+            try {
+                const response = await fetch(`/public/gym/{{ gym.slug }}/api/schedule/events/?start=${formatDate(currentDate)}&end=${formatDate(currentDate)}`);
+                const data = await response.json();
+                
+                allSessions = data;
+                updateActivityFilters();
+                renderSessions();
+                
+            } catch (error) {
+                console.error('Error cargando sesiones:', error);
+                document.getElementById('sessionsList').innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+                        <p class="text-red-700">Error al cargar el horario</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('loadingState').classList.add('hidden');
+            }
+        }
+        
+        // Actualizar filtros de actividad
+        function updateActivityFilters() {
+            const activities = new Map();
+            
+            allSessions.forEach(session => {
+                if (!activities.has(session.activity_id)) {
+                    activities.set(session.activity_id, {
+                        id: session.activity_id,
+                        name: session.title,
+                        color: session.color
+                    });
+                }
+            });
+            
+            const filtersContainer = document.getElementById('activityFilters');
+            filtersContainer.innerHTML = `
+                <button onclick="toggleActivityFilter(null)" 
+                        class="activity-filter activity-badge bg-gray-200 text-gray-800 hover:bg-gray-300 cursor-pointer ${selectedActivities.size === 0 ? 'ring-2 ring-offset-2' : ''}" 
+                        data-activity="all"
+                        style="${selectedActivities.size === 0 ? 'ring-color: var(--brand-color);' : ''}">
+                    Todas
+                </button>
+            `;
+            
+            activities.forEach(activity => {
+                const isSelected = selectedActivities.has(activity.id);
+                filtersContainer.innerHTML += `
+                    <button onclick="toggleActivityFilter(${activity.id})" 
+                            class="activity-filter activity-badge cursor-pointer ${isSelected ? 'ring-2 ring-offset-2' : ''}"
+                            data-activity="${activity.id}"
+                            style="background-color: ${activity.color}; color: white; ${isSelected ? 'ring-color: ' + activity.color + ';' : ''}">
+                        ${activity.name}
+                    </button>
+                `;
+            });
+        }
+        
+        // Toggle filtro de actividad
+        function toggleActivityFilter(activityId) {
+            if (activityId === null) {
+                selectedActivities.clear();
+            } else {
+                if (selectedActivities.has(activityId)) {
+                    selectedActivities.delete(activityId);
+                } else {
+                    selectedActivities.add(activityId);
+                }
+            }
+            
+            updateActivityFilters();
+            renderSessions();
+        }
+        
+        // Renderizar sesiones
+        function renderSessions() {
+            const container = document.getElementById('sessionsList');
+            
+            // Filtrar sesiones
+            let filteredSessions = allSessions;
+            if (selectedActivities.size > 0) {
+                filteredSessions = allSessions.filter(s => selectedActivities.has(s.activity_id));
+            }
+            
+            // Ordenar por hora
+            filteredSessions.sort((a, b) => a.start.localeCompare(b.start));
+            
+            if (filteredSessions.length === 0) {
+                container.innerHTML = '';
+                document.getElementById('emptyState').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('emptyState').classList.add('hidden');
+            
+            container.innerHTML = filteredSessions.map(session => {
+                const startTime = formatTime(session.start.split('T')[1]);
+                const endTime = formatTime(session.end.split('T')[1]);
+                const spotsLeft = session.capacity - session.bookings;
+                const isFull = spotsLeft <= 0;
+                const isAlmostFull = spotsLeft > 0 && spotsLeft <= 3;
+                
+                return `
+                    <div class="session-card bg-white rounded-lg shadow-sm p-4 md:p-6">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            
+                            <!-- Hora y Actividad -->
+                            <div class="flex items-center gap-4">
+                                <div class="text-center min-w-[80px]">
+                                    <div class="time-badge px-3 py-2 rounded-lg">
+                                        ${startTime}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        ${endTime}
+                                    </div>
+                                </div>
+                                
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 mb-1">
+                                        ${session.title}
+                                    </h3>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600">
+                                        ${session.staff_name ? `
+                                            <div class="flex items-center gap-2">
+                                                ${session.staff_photo ? `
+                                                    <img src="${session.staff_photo}" alt="${session.staff_name}" class="instructor-img">
+                                                ` : `
+                                                    <div class="instructor-img bg-gray-200 flex items-center justify-center">
+                                                        <i class="fas fa-user text-gray-400"></i>
+                                                    </div>
+                                                `}
+                                                <span class="font-medium">${session.staff_name}</span>
+                                            </div>
+                                        ` : ''}
+                                        
+                                        ${session.location ? `
+                                            <div class="flex items-center gap-1">
+                                                <i class="fas fa-map-marker-alt text-gray-400"></i>
+                                                <span>${session.location}</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Capacidad y Botón -->
+                            <div class="flex items-center gap-4 md:flex-col md:items-end">
+                                <div class="text-right">
+                                    ${isFull ? `
+                                        <span class="text-red-600 font-semibold text-sm">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>
+                                            Completo
+                                        </span>
+                                    ` : isAlmostFull ? `
+                                        <span class="text-orange-600 font-semibold text-sm">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            ${spotsLeft} ${spotsLeft === 1 ? 'plaza' : 'plazas'}
+                                        </span>
+                                    ` : `
+                                        <span class="text-green-600 font-semibold text-sm">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            ${spotsLeft} disponibles
+                                        </span>
+                                    `}
+                                </div>
+                                
+                                <button 
+                                    onclick="reserveSession(${session.id}, '${session.title}')"
+                                    ${isFull ? 'disabled' : ''}
+                                    class="reserve-btn brand-btn px-6 py-2 rounded-lg font-medium ${isFull ? 'opacity-50 cursor-not-allowed' : ''}">
+                                    ${isFull ? 
+                                        '<i class="fas fa-ban mr-2"></i>Completo' : 
+                                        session.is_booked ? 
+                                            '<i class="fas fa-check mr-2"></i>Reservado' : 
+                                            '<i class="fas fa-plus mr-2"></i>Reservar'
+                                    }
+                                </button>
+                            </div>
+                            
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Reservar sesión
+        async function reserveSession(sessionId, sessionTitle) {
+            if (!isAuthenticated) {
+                showAuthModal();
+                return;
+            }
+            
+            if (confirm(`¿Confirmar reserva para ${sessionTitle}?`)) {
+                try {
+                    const response = await fetch(`/public/gym/{{ gym.slug }}/api/bookings/book/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        alert('¡Reserva confirmada!');
+                        loadSessions();
+                    } else {
+                        alert(data.error || 'Error al realizar la reserva');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error de conexión');
+                }
+            }
+        }
+        
+        // Mostrar modal de autenticación
+        function showAuthModal() {
+            document.getElementById('authModal').classList.remove('hidden');
+        }
+        
+        // Cerrar modal
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+        
+        // Obtener cookie CSRF
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Comunicar altura al padre (iframe)
+        function updateParentHeight() {
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'resize',
+                    height: document.body.scrollHeight
+                }, '*');
+            }
+        }
+        
+        // Observar cambios de tamaño
+        const resizeObserver = new ResizeObserver(updateParentHeight);
+        resizeObserver.observe(document.body);
+        
+        // Inicializar
+        updateDateDisplay();
+        loadSessions();
+    </script>
+    
+</body>
+</html>

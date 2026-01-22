@@ -1,6 +1,7 @@
 from django import forms
 from .models import Product, ProductCategory
 from finance.models import TaxRate
+from organizations.models import Gym
 
 class ProductCategoryForm(forms.ModelForm):
     class Meta:
@@ -51,10 +52,39 @@ class ProductForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_visible_online': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
         }
+
+    propagate_to_gyms = forms.ModelMultipleChoiceField(
+        queryset=Gym.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+        label="Propagar a otros gimnasios",
+        help_text="Selecciona los gimnasios donde quieres copiar/actualizar este producto."
+    )
     
     def __init__(self, *args, **kwargs):
         gym = kwargs.pop('gym', None)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if gym:
             self.fields['category'].queryset = ProductCategory.objects.filter(gym=gym)
             self.fields['tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
+
+            # Franchise Propagation Logic
+            is_owner = user and gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
+            
+            if is_owner:
+                franchise_gyms = gym.franchise.gyms.all()
+                self.fields['propagate_to_gyms'].queryset = franchise_gyms
+                
+                # Pre-select gyms that already have this product (by name)
+                if self.instance and self.instance.pk:
+                    from products.models import Product
+                    gyms_with_product = list(Product.objects.filter(
+                        gym__in=franchise_gyms,
+                        name=self.instance.name
+                    ).exclude(gym=gym).values_list('gym_id', flat=True))
+                    
+                    if gyms_with_product:
+                        self.initial['propagate_to_gyms'] = gyms_with_product
+            else:
+                del self.fields['propagate_to_gyms']

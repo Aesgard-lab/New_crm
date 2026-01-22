@@ -2,6 +2,7 @@ from django.test import TestCase, Client as TestClient
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from organizations.models import Gym
+from accounts.models_memberships import GymMembership
 from clients.models import Client
 from products.models import Product, ProductCategory
 from sales.models import Order, OrderItem, OrderPayment
@@ -15,22 +16,10 @@ class SalesAPITest(TestCase):
     def setUp(self):
         # Setup Gym & User
         self.gym = Gym.objects.create(name="Test Gym")
-        self.user = User.objects.create_user(username="staff", password="password")
-        self.user.gym = self.gym # Assuming middleware or property handles this
-        # If user.gym is a ManyToMany or uses 'profile', we might need to adjust.
-        # But based on code 'request.gym = request.user.gym', it seems direct.
-        # Wait, usually Middleware sets request.gym. 
-        # API decorators use request.gym. We need to ensure request.gym is set or mocked.
-        # If we use Client(), the middleware 'accounts.middleware.GymMiddleware' (guessing) might serve it.
-        # Let's assume we need to login.
+        self.user = User.objects.create_user(email="staff@example.com", password="password")
+        GymMembership.objects.create(user=self.user, gym=self.gym, role=GymMembership.Role.ADMIN)
         self.client = TestClient()
-        self.client.login(username="staff", password="password")
-        
-        # NOTE: If we need a Gym session/cookie/domain to trigger middleware, we might need more setup.
-        # For now, let's try to patch request.gym or ensure the user->gym relation is correct.
-        # If 'request.gym' comes from 'request.user.gym', we just need to set it.
-        self.user.gyms.add(self.gym) # Assuming mechanism
-        self.user.save()
+        self.client.login(username="staff@example.com", password="password")
         
         # Define a way to force gym context if middleware relies on it
         session = self.client.session
@@ -43,7 +32,7 @@ class SalesAPITest(TestCase):
         self.product = Product.objects.create(
             gym=self.gym, name="Protein Shake", 
             base_price=10.00, tax_rate=None, category=self.category,
-            stock=100
+            track_stock=False, stock_quantity=100
         )
         self.pm_cash = PaymentMethod.objects.create(gym=self.gym, name="Efectivo", is_active=True)
         self.pm_card = PaymentMethod.objects.create(gym=self.gym, name="Tarjeta", is_active=True)
@@ -72,19 +61,6 @@ class SalesAPITest(TestCase):
         # Testing middleware behavior manually might be hard. 
         # We'll just run it.
         
-        from django.contrib.contenttypes.models import ContentType
-        from django.contrib.auth.models import Permission
-        ct = ContentType.objects.get_for_model(Order)
-        perm = Permission.objects.get(content_type=ct, codename='add_sale')
-        self.user.user_permissions.add(perm)
-        perm_view = Permission.objects.get(content_type=ct, codename='view_sale')
-        self.user.user_permissions.add(perm_view)
-        perm_change = Permission.objects.get(content_type=ct, codename='change_sale')
-        self.user.user_permissions.add(perm_change)
-        perm_delete = Permission.objects.get(content_type=ct, codename='delete_sale')
-        self.user.user_permissions.add(perm_delete)
-        self.user.save()
-
         try:
             response = self.client.post(url, data=json.dumps(data), content_type='application/json')
             

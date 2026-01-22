@@ -1,0 +1,216 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Check-in - {{ client.gym.name }}{% endblock %}
+{% block page_title %}Check-in{% endblock %}
+
+{% block header_left %}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    
+    <!-- QR Dinámico para Check-in -->
+    <div class="card-modern text-center py-8">
+        <h3 class="text-xl font-bold text-slate-900 mb-2">Código de Acceso</h3>
+        <p class="text-slate-500 text-sm mb-8">Escanea este código en la entrada del gimnasio</p>
+        
+        <!-- QR Code Container -->
+        <div class="bg-white p-6 rounded-3xl mx-auto max-w-[280px] shadow-xl border-4 border-slate-100 relative" 
+             x-data="{ 
+                qrCode: '{{ qr_token }}',
+                timeLeft: 30,
+                init() {
+                    this.updateTimer();
+                    setInterval(() => this.refreshQR(), 30000);
+                }
+             }">
+            
+            <!-- QR Code (placeholder - usar QRCode.js o similar) -->
+            <div id="qrcode" class="w-full h-64 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                <div class="text-center">
+                    <div class="w-48 h-48 mx-auto bg-gradient-to-br from-slate-200 to-slate-100 rounded-2xl mb-3 flex items-center justify-center">
+                        <div class="grid grid-cols-8 gap-1 p-4">
+                            {% for i in "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" %}
+                            <div class="w-2 h-2 {% if forloop.counter0|divisibleby:3 %}bg-slate-900{% else %}bg-white{% endif %} rounded-sm"></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400">Código QR simulado</p>
+                </div>
+            </div>
+            
+            <!-- Token visible -->
+            <div class="mb-4">
+                <p class="text-slate-900 font-mono text-2xl font-bold tracking-widest">{{ qr_token }}</p>
+                <p class="text-slate-500 text-xs mt-2">Código de seguridad</p>
+            </div>
+            
+            <!-- Timer -->
+            <div class="flex items-center justify-center gap-2 text-brand">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="text-sm font-medium" x-text="`Renueva en ${timeLeft}s`"></span>
+            </div>
+            
+            <!-- Auto-refresh indicator -->
+            <div class="absolute top-2 right-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            </div>
+        </div>
+        
+        <div class="mt-6 p-4 bg-blue-50 rounded-2xl max-w-sm mx-auto">
+            <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="text-left">
+                    <p class="text-sm font-semibold text-blue-900 mb-1">Código de seguridad</p>
+                    <p class="text-xs text-blue-700">Este código se renueva automáticamente cada 30 segundos para mayor seguridad.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Información de Membresía -->
+    {% if membership %}
+    <div class="card-modern">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="font-bold text-slate-900">Tu Membresía</h4>
+            <span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">ACTIVA</span>
+        </div>
+        
+        <div class="space-y-3">
+            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                <span class="text-sm text-slate-600">Plan</span>
+                <span class="text-sm font-bold text-slate-900">{{ membership.name }}</span>
+            </div>
+            
+            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                <span class="text-sm text-slate-600">Válida hasta</span>
+                <span class="text-sm font-bold text-slate-900">{{ membership.end_date|date:"d M Y" }}</span>
+            </div>
+            
+            {% if not membership.is_unlimited %}
+            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                <span class="text-sm text-slate-600">Sesiones disponibles</span>
+                <span class="text-sm font-bold text-brand">{{ membership.sessions_remaining }} / {{ membership.sessions_total }}</span>
+            </div>
+            {% else %}
+            <div class="p-3 bg-brand bg-opacity-10 rounded-xl text-center">
+                <span class="text-sm font-bold text-brand">✓ Acceso Ilimitado</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Instrucciones -->
+    <div class="card-modern">
+        <h4 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Cómo usar tu código
+        </h4>
+        
+        <div class="space-y-4">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm">1</div>
+                <div>
+                    <p class="font-semibold text-slate-900 text-sm mb-1">Acércate al escáner</p>
+                    <p class="text-xs text-slate-600">Muestra el código QR al lector de la entrada</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm">2</div>
+                <div>
+                    <p class="font-semibold text-slate-900 text-sm mb-1">Escanea el código</p>
+                    <p class="text-xs text-slate-600">El sistema verificará tu membresía automáticamente</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm">3</div>
+                <div>
+                    <p class="font-semibold text-slate-900 text-sm mb-1">¡Listo para entrenar!</p>
+                    <p class="text-xs text-slate-600">Recibirás confirmación y podrás acceder al gimnasio</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historial reciente -->
+    <div class="card-modern">
+        <h4 class="font-bold text-slate-900 mb-4">Últimas visitas</h4>
+        
+        {% if recent_visits %}
+        <div class="space-y-2">
+            {% for visit in recent_visits|slice:":5" %}
+            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-900">{{ visit.date|date:"d M Y" }}</p>
+                        <p class="text-xs text-slate-500">{{ visit.check_in_time|time:"H:i" }}</p>
+                    </div>
+                </div>
+                <span class="text-xs text-emerald-600 font-bold">✓</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-center text-slate-500 text-sm py-4">Sin visitas recientes</p>
+        {% endif %}
+    </div>
+    
+</div>
+
+<!-- Alpine.js para auto-refresh -->
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('qrRefresh', () => ({
+        timeLeft: 30,
+        qrToken: '{{ qr_token }}',
+        
+        init() {
+            this.startTimer();
+        },
+        
+        startTimer() {
+            setInterval(() => {
+                this.timeLeft--;
+                if (this.timeLeft <= 0) {
+                    this.refreshQR();
+                }
+            }, 1000);
+        },
+        
+        async refreshQR() {
+            try {
+                const response = await fetch('{% url "portal_checkin_refresh" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.token) {
+                    this.qrToken = data.token;
+                    this.timeLeft = 30;
+                    // Actualizar QR code aquí si usas librería
+                }
+            } catch (error) {
+                console.error('Error refreshing QR:', error);
+            }
+        }
+    }));
+});
+</script>
+
+{% endblock %}

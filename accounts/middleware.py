@@ -1,6 +1,10 @@
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils import translation
+from django.conf.locale import LANG_INFO
 from accounts.services import user_gym_ids, default_gym_id
+
+LANGUAGE_SESSION_KEY = 'django_language'
 
 EXEMPT_PATH_PREFIXES = (
     "/admin/",
@@ -11,6 +15,7 @@ EXEMPT_PATH_PREFIXES = (
 class CurrentGymMiddleware:
     """
     Asegura que, si el usuario tiene gyms, exista un current_gym_id válido en sesión.
+    También activa el idioma del gimnasio.
     """
 
     def __init__(self, get_response):
@@ -39,6 +44,13 @@ class CurrentGymMiddleware:
         from organizations.models import Gym
         try:
             request.gym = Gym.objects.get(pk=current_gym_id)
+            
+            # Activar el idioma del gimnasio si no está ya activo
+            if hasattr(request.gym, 'language'):
+                language_session = request.session.get(LANGUAGE_SESSION_KEY)
+                if language_session != request.gym.language:
+                    translation.activate(request.gym.language)
+                    request.session[LANGUAGE_SESSION_KEY] = request.gym.language
         except Gym.DoesNotExist:
             request.gym = None
 

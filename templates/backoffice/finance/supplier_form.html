@@ -1,0 +1,81 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'supplier_list' %}" class="inline-flex items-center text-slate-600 hover:text-slate-900 mb-4">
+            ← Volver a proveedores
+        </a>
+        <h1 class="text-3xl font-bold text-slate-800">{{ title }}</h1>
+    </div>
+
+    <form method="post" class="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Nombre del Proveedor *</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">CIF/NIF</label>
+                {{ form.tax_id }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Persona de Contacto</label>
+                {{ form.contact_person }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                {{ form.email }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Teléfono</label>
+                {{ form.phone }}
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Dirección</label>
+                {{ form.address }}
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Cuenta Bancaria (IBAN)</label>
+                {{ form.bank_account }}
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Notas Internas</label>
+                {{ form.notes }}
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    {{ form.is_active }}
+                    <span class="text-sm font-medium text-slate-700">Proveedor activo</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-4 pt-4 border-t">
+            <a href="{% url 'supplier_list' %}" 
+               class="px-6 py-3 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition font-medium">
+                Cancelar
+            </a>
+            <button type="submit" 
+                    class="px-8 py-3 bg-[var(--brand-color)] text-white rounded-xl hover:opacity-90 transition font-semibold">
+                Guardar Proveedor
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Mis Pagos - {{ client.gym.name }}{% endblock %}
+
+{% block header %}
+<header class="glass sticky top-0 z-30 border-b border-slate-100 pt-safe">
+    <div class="px-5 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="{% url 'portal_home' %}"
+                class="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <h1 class="font-bold text-lg text-slate-900">Mis Pagos</h1>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 animate-slide-up pb-24">
+
+    <!-- 1. NEXT PAYMENT CARD -->
+    {% if next_payment %}
+    <div class="gradient-brand rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden card-modern">
+        <!-- Decor -->
+        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl"></div>
+
+        <p class="text-white/70 text-xs font-medium uppercase tracking-wide mb-1">Próxima Cuota</p>
+        <div class="flex items-baseline gap-2 mb-2">
+            <h2 class="text-3xl font-bold">{{ next_payment.amount }}€</h2>
+            <span class="text-white/80 text-sm">{{ next_payment.plan_name }}</span>
+        </div>
+
+        <p class="text-white/80 text-sm mb-6">
+            {% if next_payment.is_pending_activation %}
+            Fecha de inicio: <strong>{{ next_payment.date|date:"d M Y" }}</strong>
+            {% else %}
+            Vence el <strong>{{ next_payment.date|date:"d M Y" }}</strong>
+            {% endif %}
+        </p>
+
+        {% if allow_pay_next %}
+        <form action="{% url 'portal_pay_next' %}" method="POST">
+            {% csrf_token %}
+            <button type="submit"
+                class="w-full bg-white text-[var(--brand-color)] py-3 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-transform flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                    </path>
+                </svg>
+                Pagar Ahora
+            </button>
+        </form>
+        {% else %}
+        <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-xs text-white/90">
+            El pago se procesará automáticamente en la fecha de vencimiento usando tu tarjeta guardada.
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center py-10">
+        <div class="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h3 class="font-bold text-slate-900 text-lg">Todo al día</h3>
+        <p class="text-slate-500 text-sm">No tienes pagos pendientes próximamente.</p>
+    </div>
+    {% endif %}
+
+    <!-- 2. PAYMENT HISTORY -->
+    <div>
+        <h3 class="font-bold text-slate-900 text-lg mb-4 px-1">Historial</h3>
+
+        {% if payments %}
+        <div class="space-y-3">
+            {% for payment in payments %}
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <!-- Icon based on status -->
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center
+                        {% if payment.status == 'PAID' %}bg-green-50 text-green-600
+                        {% elif payment.status == 'PENDING' %}bg-orange-50 text-orange-600
+                        {% elif payment.status == 'FAILED' %}bg-red-50 text-red-600
+                        {% else %}bg-slate-100 text-slate-500{% endif %}">
+
+                        {% if payment.status == 'PAID' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                        {% elif payment.status == 'FAILED' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        {% else %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <p class="font-bold text-slate-900 text-sm">{{ payment.concept }}</p>
+                        <p class="text-xs text-slate-500">{{ payment.date|date:"d M Y" }}</p>
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <p class="font-bold text-slate-900">{{ payment.amount }}€</p>
+                    <p class="text-[10px] font-bold uppercase tracking-wider
+                        {% if payment.status == 'PAID' %}text-green-600
+                        {% elif payment.status == 'PENDING' %}text-orange-600
+                        {% elif payment.status == 'FAILED' %}text-red-600
+                        {% else %}text-slate-500{% endif %}">
+                        {{ payment.get_status_display }}
+                    </p>
+
+                    {% if payment.status == 'FAILED' or payment.status == 'PENDING' %}
+                    <form action="{% url 'portal_retry_payment' payment.id %}" method="POST" class="mt-1">
+                        {% csrf_token %}
+                        <button type="submit" class="text-xs text-[var(--brand-color)] font-bold underline">
+                            Reintentar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p class="text-slate-400 text-sm">No hay pagos registrados aún.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

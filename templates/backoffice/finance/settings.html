@@ -1,10 +1,15 @@
 {% extends "backoffice/base.html" %}
 
+{% block title %}Finanzas - Configuración{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > Finanzas
+{% endblock %}
+{% block page_title %}Configuración Financiera{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto">
     <div class="mb-8">
-        <h1 class="text-2xl font-bold text-slate-800">{{ title }}</h1>
-        <p class="text-slate-500">Gestiona los impuestos y métodos de pago de tu centro</p>
+        <p class="text-slate-500">Gestiona los impuestos, métodos de pago y pasarelas de tu centro</p>
     </div>
 
     <div x-data="{ tab: 'taxes' }">
@@ -165,7 +170,8 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <!-- Stripe Section -->
-                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100"
+                            x-data="{ editingStripe: {{ settings_form.stripe_secret_key.value|yesno:'false,true' }} }">
                             <div class="flex items-center gap-3 mb-6">
                                 <div class="bg-indigo-600 p-2 rounded-lg text-white">
                                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -174,9 +180,32 @@
                                     </svg>
                                 </div>
                                 <h4 class="font-bold text-indigo-900">Configuración Stripe</h4>
+
+                                {% if settings_form.stripe_secret_key.value %}
+                                <span
+                                    class="ml-auto bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Vinculado
+                                </span>
+                                {% endif %}
                             </div>
 
-                            <div class="space-y-4">
+                            <!-- Connected State -->
+                            <div x-show="!editingStripe"
+                                class="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm text-center">
+                                <div class="text-indigo-600 font-medium mb-2">Cuenta de Stripe Conectada</div>
+                                <p class="text-xs text-slate-500 mb-4">Las claves están guardadas de forma segura.</p>
+                                <button type="button" @click="editingStripe = true"
+                                    class="text-sm text-slate-400 hover:text-indigo-600 underline">
+                                    Cambiar configuración
+                                </button>
+                            </div>
+
+                            <!-- Edit Form -->
+                            <div x-show="editingStripe" class="space-y-4" x-transition>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">Clave Pública
                                         (Publishable Key)</label>
@@ -189,11 +218,18 @@
                                     {{ settings_form.stripe_secret_key }}
                                     <p class="text-xs text-slate-400 mt-1">Empieza por 'sk_'</p>
                                 </div>
+                                {% if settings_form.stripe_secret_key.value %}
+                                <div class="text-right">
+                                    <button type="button" @click="editingStripe = false"
+                                        class="text-xs text-slate-400 hover:text-slate-600">Cancelar edición</button>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
 
                         <!-- Redsys Section -->
-                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100"
+                            x-data="{ editingRedsys: {{ settings_form.redsys_secret_key.value|yesno:'false,true' }} }">
                             <div class="flex items-center gap-3 mb-6">
                                 <div class="bg-red-600 p-2 rounded-lg text-white">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,9 +239,33 @@
                                     </svg>
                                 </div>
                                 <h4 class="font-bold text-red-900">Configuración Redsys</h4>
+
+                                {% if settings_form.redsys_secret_key.value %}
+                                <span
+                                    class="ml-auto bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Vinculado
+                                </span>
+                                {% endif %}
                             </div>
 
-                            <div class="space-y-4">
+                            <!-- Connected State -->
+                            <div x-show="!editingRedsys"
+                                class="bg-white p-4 rounded-xl border border-red-100 shadow-sm text-center">
+                                <div class="text-red-700 font-medium mb-2">TPV Virtual Redsys Conectado</div>
+                                <p class="text-xs text-slate-500 mb-4">Terminal {{
+                                    settings_form.redsys_merchant_terminal.value }} Configurado</p>
+                                <button type="button" @click="editingRedsys = true"
+                                    class="text-sm text-slate-400 hover:text-red-600 underline">
+                                    Cambiar configuración
+                                </button>
+                            </div>
+
+                            <!-- Edit Form -->
+                            <div x-show="editingRedsys" class="space-y-4" x-transition>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">Código de Comercio
                                         (FUC)</label>
@@ -227,6 +287,12 @@
                                     {{ settings_form.redsys_secret_key }}
                                     <p class="text-xs text-slate-400 mt-1">Clave de encriptación del comercio</p>
                                 </div>
+                                {% if settings_form.redsys_secret_key.value %}
+                                <div class="text-right">
+                                    <button type="button" @click="editingRedsys = false"
+                                        class="text-xs text-slate-400 hover:text-slate-600">Cancelar edición</button>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -237,6 +303,18 @@
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Moneda Principal</label>
                                 {{ settings_form.currency }}
                                 <p class="text-xs text-slate-400 mt-1">Código ISO 4217 (ej: EUR, USD)</p>
+                            </div>
+                            <div class="mt-6 bg-white border border-slate-200 rounded-xl p-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-800">App del Cliente</div>
+                                        <p class="text-xs text-slate-500 mt-1">Gestiona permisos en Configuración → App del Cliente.</p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-1 text-xs font-semibold">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full {% if settings_form.instance.allow_client_delete_card %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-700{% endif %}">Eliminar tarjeta: {% if settings_form.instance.allow_client_delete_card %}Sí{% else %}No{% endif %}</span>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full {% if settings_form.instance.allow_client_pay_next_fee %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-700{% endif %}">Pagar siguiente cuota: {% if settings_form.instance.allow_client_pay_next_fee %}Sí{% else %}No{% endif %}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

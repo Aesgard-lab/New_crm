@@ -1,0 +1,174 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Configuración de Asistencias{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-slate-800">Configuración de Asistencias</h1>
+        <p class="text-slate-500 mt-1">Configura cómo los clientes pueden marcar su asistencia a clases</p>
+    </div>
+
+    <form method="POST" class="space-y-8">
+        {% csrf_token %}
+        
+        <!-- Modo de Check-in -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Modo de Check-in
+            </h2>
+            
+            <div class="space-y-4">
+                {% for value, label in checkin_modes %}
+                <label class="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:border-brand transition-colors {% if settings.checkin_mode == value %}border-brand bg-brand/5{% else %}border-slate-200{% endif %}">
+                    <input type="radio" name="checkin_mode" value="{{ value }}" 
+                           {% if settings.checkin_mode == value %}checked{% endif %}
+                           class="mt-1 text-brand focus:ring-brand">
+                    <div>
+                        <div class="font-medium text-slate-800">{{ label }}</div>
+                        <div class="text-sm text-slate-500 mt-1">
+                            {% if value == 'STAFF_ONLY' %}
+                            El personal del gimnasio marca manualmente la asistencia de cada cliente.
+                            {% elif value == 'QR_ENABLED' %}
+                            Los clientes escanean un QR proyectado en una tablet/pantalla para marcar su asistencia.
+                            {% elif value == 'BOTH' %}
+                            Ambos métodos disponibles: el staff puede marcar manualmente o el cliente escanear QR.
+                            {% endif %}
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Configuración QR -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6" id="qrSettings">
+            <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                </svg>
+                Configuración de QR
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Ventana de tiempo -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Minutos antes de la clase
+                    </label>
+                    <input type="number" name="qr_checkin_minutes_before" 
+                           value="{{ settings.qr_checkin_minutes_before }}"
+                           min="5" max="60"
+                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+                    <p class="text-xs text-slate-500 mt-1">Cuánto antes del inicio se permite el check-in</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Minutos después del inicio
+                    </label>
+                    <input type="number" name="qr_checkin_minutes_after" 
+                           value="{{ settings.qr_checkin_minutes_after }}"
+                           min="5" max="60"
+                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+                    <p class="text-xs text-slate-500 mt-1">Margen después del inicio para permitir check-in</p>
+                </div>
+                
+                <!-- Seguridad QR -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Renovar QR cada (segundos)
+                    </label>
+                    <select name="qr_refresh_seconds" 
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+                        <option value="15" {% if settings.qr_refresh_seconds == 15 %}selected{% endif %}>15 segundos (más seguro)</option>
+                        <option value="30" {% if settings.qr_refresh_seconds == 30 %}selected{% endif %}>30 segundos (recomendado)</option>
+                        <option value="60" {% if settings.qr_refresh_seconds == 60 %}selected{% endif %}>60 segundos</option>
+                        <option value="120" {% if settings.qr_refresh_seconds == 120 %}selected{% endif %}>2 minutos</option>
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">QR dinámico para evitar capturas de pantalla</p>
+                </div>
+                
+                <!-- Mensaje de éxito -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Mensaje de confirmación
+                    </label>
+                    <input type="text" name="checkin_success_message" 
+                           value="{{ settings.checkin_success_message }}"
+                           maxlength="200"
+                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+                    <p class="text-xs text-slate-500 mt-1">Mensaje que ve el cliente tras hacer check-in exitoso</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cómo funciona -->
+        <div class="bg-blue-50 rounded-xl p-6 border border-blue-100">
+            <h3 class="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                ¿Cómo implementar el check-in por QR?
+            </h3>
+            <ol class="text-sm text-blue-700 space-y-2 list-decimal list-inside">
+                <li><strong>Tablet en recepción:</strong> Coloca una tablet o pantalla en el área de entrada</li>
+                <li><strong>Proyectar QR:</strong> Ve a <a href="{% url 'today_sessions_qr' %}" class="underline">Sesiones del día</a> y selecciona la clase</li>
+                <li><strong>Modo pantalla completa:</strong> Usa el botón de pantalla completa para modo kiosko</li>
+                <li><strong>El cliente escanea:</strong> Con su móvil escanea el QR y confirma asistencia</li>
+                <li><strong>Confirmación:</strong> El cliente ve un mensaje de éxito y el contador se actualiza</li>
+            </ol>
+            
+            <div class="mt-4 flex gap-3">
+                <a href="{% url 'today_sessions_qr' %}" 
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    Ver sesiones de hoy
+                </a>
+            </div>
+        </div>
+        
+        <!-- Botones -->
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'settings_dashboard' %}" 
+               class="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                Cancelar
+            </a>
+            <button type="submit" 
+                    class="px-6 py-2 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors">
+                Guardar configuración
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Mostrar/ocultar configuración QR según el modo seleccionado
+    document.addEventListener('DOMContentLoaded', function() {
+        const radios = document.querySelectorAll('input[name="checkin_mode"]');
+        const qrSettings = document.getElementById('qrSettings');
+        
+        function updateQRVisibility() {
+            const selected = document.querySelector('input[name="checkin_mode"]:checked');
+            if (selected && selected.value === 'STAFF_ONLY') {
+                qrSettings.style.display = 'none';
+            } else {
+                qrSettings.style.display = 'block';
+            }
+        }
+        
+        radios.forEach(radio => {
+            radio.addEventListener('change', updateQRVisibility);
+        });
+        
+        updateQRVisibility();
+    });
+</script>
+{% endblock %}

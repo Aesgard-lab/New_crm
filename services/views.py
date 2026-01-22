@@ -4,6 +4,7 @@ from accounts.decorators import require_gym_permission
 from django.contrib import messages
 from .models import Service, ServiceCategory
 from .forms import ServiceForm, ServiceCategoryForm
+from services.franchise_service import FranchisePropagationService
 
 # --- Services ---
 
@@ -19,15 +20,25 @@ def service_list(request):
 def service_create(request):
     gym = request.gym
     if request.method == 'POST':
-        form = ServiceForm(request.POST, request.FILES, gym=gym)
+        form = ServiceForm(request.POST, request.FILES, gym=gym, user=request.user)
         if form.is_valid():
             service = form.save(commit=False)
             service.gym = gym
             service.save()
-            messages.success(request, 'Servicio creado correctamente.')
+            
+            # Handle Propagation
+            if 'propagate_to_gyms' in form.fields and form.cleaned_data.get('propagate_to_gyms'):
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                results = FranchisePropagationService.propagate_service(service, target_gyms)
+                
+                msg = f'Servicio creado. Propagación: {results["created"]} creados, {results["updated"]} actualizados.'
+                if results['errors']: msg += f' Warning: {len(results["errors"])} errores.'
+                messages.success(request, msg)
+            else:
+                messages.success(request, 'Servicio creado correctamente.')
             return redirect('service_list')
     else:
-        form = ServiceForm(gym=gym)
+        form = ServiceForm(gym=gym, user=request.user)
     
     return render(request, 'backoffice/services/form.html', {
         'form': form,
@@ -41,13 +52,22 @@ def service_edit(request, pk):
     service = get_object_or_404(Service, pk=pk, gym=gym)
     
     if request.method == 'POST':
-        form = ServiceForm(request.POST, request.FILES, instance=service, gym=gym)
+        form = ServiceForm(request.POST, request.FILES, instance=service, gym=gym, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Servicio actualizado.')
+            service = form.save()
+            
+            # Handle Propagation
+            if 'propagate_to_gyms' in form.fields and form.cleaned_data.get('propagate_to_gyms'):
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                results = FranchisePropagationService.propagate_service(service, target_gyms)
+                
+                msg = f'Servicio actualizado. Propagación: {results["created"]} creados, {results["updated"]} actualizados.'
+                messages.success(request, msg)
+            else:
+                messages.success(request, 'Servicio actualizado.')
             return redirect('service_list')
     else:
-        form = ServiceForm(instance=service, gym=gym)
+        form = ServiceForm(instance=service, gym=gym, user=request.user)
     
     return render(request, 'backoffice/services/form.html', {
         'form': form,

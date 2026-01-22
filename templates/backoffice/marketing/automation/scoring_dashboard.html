@@ -1,0 +1,186 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}Marketing > Automatizaciones > Lead Scoring{% endblock %}
+{% block page_title %}⭐ Lead Scoring{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Lead Scoring</h1>
+            <p class="text-sm text-slate-500">Puntuación automática de leads basada en comportamiento</p>
+        </div>
+        <a href="/admin/marketing/leadscoringrule/add/" target="_blank"
+            class="bg-[var(--brand-color)] hover:bg-[var(--brand-hover)] text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Nueva Regla
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-sm text-slate-500 mb-1">Score Promedio</div>
+            <div class="text-2xl font-bold text-slate-900">{{ stats.avg|floatformat:0|default:"0" }}</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-sm text-slate-500 mb-1">Score Máximo</div>
+            <div class="text-2xl font-bold text-green-600">{{ stats.max|default:"0" }}</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-sm text-slate-500 mb-1">Score Mínimo</div>
+            <div class="text-2xl font-bold text-red-600">{{ stats.min|default:"0" }}</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-sm text-slate-500 mb-1">Reglas Activas</div>
+            <div class="text-2xl font-bold text-amber-600">{{ rules|length }}</div>
+        </div>
+    </div>
+
+    <!-- Top Leads -->
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-900">🔥 Top Leads (Mayor Score)</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Ranking</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Cliente</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Score</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Último Evento +</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Último Evento -</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for score in top_scores %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm
+                                {% if forloop.counter <= 3 %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ forloop.counter }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-900">{{ score.client.first_name }} {{ score.client.last_name }}</div>
+                            <div class="text-sm text-slate-500">{{ score.client.email }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="inline-flex items-center justify-center px-3 py-1 rounded-full font-bold
+                                {% if score.score >= 70 %}bg-green-100 text-green-700
+                                {% elif score.score >= 40 %}bg-amber-100 text-amber-700
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ score.score }} pts
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600">
+                            {% if score.last_positive_event %}
+                            {{ score.last_positive_event|date:"d/m/Y H:i" }}
+                            {% else %}
+                            <span class="text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600">
+                            {% if score.last_negative_event %}
+                            {{ score.last_negative_event|date:"d/m/Y H:i" }}
+                            {% else %}
+                            <span class="text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <a href="{% url 'client_detail' score.client.pk %}"
+                                class="text-[var(--brand-color)] hover:underline text-sm font-bold">
+                                Ver Cliente
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-slate-400">
+                            No hay leads puntuados todavía
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Reglas de Scoring -->
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-900">📋 Reglas de Puntuación</h2>
+        </div>
+        <div class="p-5">
+            {% if rules %}
+            <div class="space-y-3">
+                {% for rule in rules %}
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-4">
+                        <div class="text-2xl font-bold {% if rule.points > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ rule.points|stringformat:"+d" }}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">{{ rule.name }}</div>
+                            <div class="text-sm text-slate-500">{{ rule.get_event_type_display }}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {% if rule.is_active %}
+                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Activa</span>
+                        {% else %}
+                        <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-full text-xs font-bold">Inactiva</span>
+                        {% endif %}
+                        <a href="/admin/marketing/leadscoringrule/{{ rule.pk }}/change/" target="_blank"
+                            class="text-blue-600 hover:text-blue-800 text-sm font-bold">
+                            Editar
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-slate-400">
+                <p>No hay reglas de scoring configuradas</p>
+                <a href="/admin/marketing/leadscoringrule/add/" target="_blank"
+                    class="inline-block mt-4 text-[var(--brand-color)] hover:underline font-bold">
+                    Crear primera regla
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Automatizaciones -->
+    {% if automations %}
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-900">⚡ Automatizaciones por Score</h2>
+        </div>
+        <div class="p-5 space-y-3">
+            {% for auto in automations %}
+            <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-indigo-900">{{ auto.name }}</div>
+                        <div class="text-sm text-indigo-700 mt-1">
+                            Si score >= {{ auto.min_score }}{% if auto.max_score %} y <= {{ auto.max_score }}{% endif %}
+                            → {{ auto.get_action_type_display }}
+                        </div>
+                    </div>
+                    {% if auto.is_active %}
+                    <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Activa</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'superadmin/base.html' %}
+
+{% block header %}{% if editing %}Editar Franquicia{% else %}Crear Nueva Franquicia{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-white mb-4 border-b border-gray-800 pb-2">Datos de la Franquicia</h3>
+
+            <div class="space-y-6">
+                <!-- Name -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">{{ form.name.label }}</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Owners -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">{{ form.owners.label }}</label>
+                    {{ form.owners }}
+                    <p class="text-xs text-gray-500 mt-1">{{ form.owners.help_text }}</p>
+                    {% if form.owners.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.owners.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Cross-Booking -->
+                <div class="pt-4 border-t border-gray-800">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        {{ form.allow_cross_booking }}
+                        <div>
+                            <span class="text-sm font-medium text-gray-300">{{ form.allow_cross_booking.label }}</span>
+                            <p class="text-xs text-gray-500">{{ form.allow_cross_booking.help_text }}</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'superadmin:franchise_list' %}"
+                class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-lg shadow-indigo-500/20 transition">
+                Guardar Franquicia
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

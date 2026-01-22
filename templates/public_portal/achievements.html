@@ -1,0 +1,128 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Mis Logros - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{% url 'public_client_dashboard' slug=settings.public_slug %}" 
+       class="text-sm text-[var(--brand-color)] hover:underline mb-2 inline-block">
+        ← Volver a Mi Perfil
+    </a>
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">🏆 Mis Logros</h1>
+    <p class="text-slate-600">{{ unlocked_count }} de {{ total_count }} logros desbloqueados</p>
+</div>
+
+<!-- Progreso general -->
+<div class="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl shadow-lg p-6 text-white mb-8">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+            <div class="text-4xl font-bold">{{ unlocked_count }}/{{ total_count }}</div>
+            <div class="text-purple-200">Logros Desbloqueados</div>
+        </div>
+        
+        <div class="flex gap-6">
+            <div class="text-center">
+                <div class="text-2xl font-bold">{{ progress.total_xp }}</div>
+                <div class="text-xs text-purple-200">XP Total</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold">Nivel {{ progress.current_level }}</div>
+                <div class="text-xs text-purple-200">{{ progress.get_rank_badge.icon }} {{ progress.get_rank_badge.name }}</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold">🔥 {{ progress.current_streak }}</div>
+                <div class="text-xs text-purple-200">Racha Actual</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Barra de progreso -->
+    <div class="mt-4">
+        <div class="flex justify-between text-sm text-purple-200 mb-1">
+            <span>Progreso total</span>
+            <span>{% widthratio unlocked_count total_count 100 %}%</span>
+        </div>
+        <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden">
+            <div class="h-full bg-yellow-400 rounded-full transition-all" 
+                 style="width: {% widthratio unlocked_count total_count 100 %}%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Grid de logros -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in achievements %}
+    <div class="bg-white rounded-2xl shadow-lg border-2 {% if item.unlocked %}border-green-300{% else %}border-slate-200{% endif %} overflow-hidden transition-all hover:shadow-xl">
+        <!-- Header -->
+        <div class="p-6 {% if item.unlocked %}bg-gradient-to-br from-green-50 to-emerald-50{% else %}bg-slate-50{% endif %}">
+            <div class="flex items-start justify-between">
+                <div class="text-5xl {% if not item.unlocked %}grayscale opacity-50{% endif %}">
+                    {{ item.achievement.icon }}
+                </div>
+                {% if item.unlocked %}
+                <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                    ✓ Desbloqueado
+                </span>
+                {% else %}
+                <span class="px-3 py-1 bg-slate-100 text-slate-500 text-xs font-bold rounded-full">
+                    🔒 Bloqueado
+                </span>
+                {% endif %}
+            </div>
+            
+            <h3 class="text-xl font-bold text-slate-900 mt-4">{{ item.achievement.name }}</h3>
+            <p class="text-sm text-slate-600 mt-1">{{ item.achievement.description }}</p>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 border-t border-slate-100">
+            {% if item.unlocked %}
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-green-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span class="text-sm font-medium">+{{ item.achievement.xp_reward }} XP obtenidos</span>
+                </div>
+                <div class="text-xs text-slate-400">
+                    {{ item.unlocked_at|date:"d/m/Y" }}
+                </div>
+            </div>
+            {% else %}
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-600">Progreso</span>
+                    <span class="font-bold text-slate-900">{{ item.current }}/{{ item.required }}</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div class="h-full bg-purple-600 rounded-full transition-all" 
+                         style="width: {{ item.progress_pct }}%"></div>
+                </div>
+                <div class="text-xs text-slate-500 text-right">
+                    +{{ item.achievement.xp_reward }} XP al desbloquear
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-12">
+        <div class="text-6xl mb-4">🏆</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2">No hay logros disponibles</h3>
+        <p class="text-slate-600">Pronto habrá nuevos logros que desbloquear</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Enlaces rápidos -->
+<div class="mt-8 flex gap-4 justify-center">
+    <a href="{% url 'public_leaderboard' slug=settings.public_slug %}" 
+       class="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors">
+        🏅 Ver Ranking
+    </a>
+    <a href="{% url 'public_schedule' slug=settings.public_slug %}" 
+       class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+        📅 Reservar Clase
+    </a>
+</div>
+{% endblock %}

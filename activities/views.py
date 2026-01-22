@@ -2,10 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from accounts.decorators import require_gym_permission
 from django.contrib import messages
-from .models import Room, Activity, ActivityCategory, CancellationPolicy
-from .models import Room, Activity, ActivityCategory, CancellationPolicy
+from .models import Room, Activity, ActivityCategory, ActivityPolicy, ScheduleSettings
 from staff.models import StaffProfile
-from .forms import RoomForm, ActivityForm, ActivityCategoryForm
+from .forms import RoomForm, ActivityForm, ActivityCategoryForm, ActivityPolicyForm
+from .schedule_forms import ScheduleSettingsForm
+from services.franchise_service import FranchisePropagationService
 
 @login_required
 @require_gym_permission('activities.view_room')
@@ -61,7 +62,7 @@ def room_edit(request, pk):
 @require_gym_permission('activities.view_activity')
 def activity_list(request):
     gym = request.gym
-    activities = Activity.objects.filter(gym=gym).select_related('category', 'cancellation_policy')
+    activities = Activity.objects.filter(gym=gym).select_related('category', 'policy')
     return render(request, 'backoffice/activities/classes/list.html', {'activities': activities})
 
 @login_required
@@ -69,16 +70,28 @@ def activity_list(request):
 def activity_create(request):
     gym = request.gym
     if request.method == 'POST':
-        form = ActivityForm(request.POST, request.FILES, gym=gym)
+        form = ActivityForm(request.POST, request.FILES, gym=gym, user=request.user)
         if form.is_valid():
             activity = form.save(commit=False)
             activity.gym = gym
             activity.save()
             form.save_m2m()
-            messages.success(request, 'Actividad creada correctamente.')
+            
+            # Handle Propagation
+            if 'propagate_to_gyms' in form.fields and form.cleaned_data.get('propagate_to_gyms'):
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                results = FranchisePropagationService.propagate_activity(activity, target_gyms)
+                
+                msg = f'Actividad creada. Propagación: {results["created"]} creadas, {results["updated"]} actualizadas.'
+                if results['errors']:
+                    msg += f' Warning: Hubo {len(results["errors"])} errores.'
+                messages.success(request, msg)
+            else:
+                messages.success(request, 'Actividad creada correctamente.')
+                
             return redirect('activity_list')
     else:
-        form = ActivityForm(gym=gym)
+        form = ActivityForm(gym=gym, user=request.user)
     
     return render(request, 'backoffice/activities/classes/form.html', {
         'form': form,
@@ -92,13 +105,23 @@ def activity_edit(request, pk):
     activity = get_object_or_404(Activity, pk=pk, gym=gym)
     
     if request.method == 'POST':
-        form = ActivityForm(request.POST, request.FILES, instance=activity, gym=gym)
+        form = ActivityForm(request.POST, request.FILES, instance=activity, gym=gym, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Actividad actualizada.')
+            activity = form.save()
+            
+            # Handle Propagation
+            if 'propagate_to_gyms' in form.fields and form.cleaned_data.get('propagate_to_gyms'):
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                results = FranchisePropagationService.propagate_activity(activity, target_gyms)
+                
+                msg = f'Actividad actualizada. Propagación: {results["created"]} creadas, {results["updated"]} actualizadas.'
+                messages.success(request, msg)
+            else:
+                messages.success(request, 'Actividad actualizada.')
+                
             return redirect('activity_list')
     else:
-        form = ActivityForm(instance=activity, gym=gym)
+        form = ActivityForm(instance=activity, gym=gym, user=request.user)
     
     return render(request, 'backoffice/activities/classes/form.html', {
         'form': form,
@@ -176,7 +199,6 @@ def calendar_view(request):
     
     # We need to construct a cleaner staff list with full names
     staff_list = []
-    staff_list = []
     for s in staff_members:
         # User model (custom) might not have get_full_name
         first = s.user.first_name
@@ -187,10 +209,90 @@ def calendar_view(request):
             name = s.user.email
             
         staff_list.append({'id': s.id, 'name': name})
+    
+    # Convert staff_list to JSON for JavaScript
+    import json
+    staff_list_json = json.dumps(staff_list)
 
     return render(request, 'backoffice/scheduler/calendar.html', {
         'rooms': rooms,
         'activities': activities,
-        'staff_list': staff_list,
+        'staff_list': staff_list,  # For Django template loop
+        'staff_list_json': staff_list_json,  # For JavaScript
         'title': 'Calendario de Actividades'
+    })
+
+# --- Policies ---
+
+@login_required
+@require_gym_permission('activities.view_activitypolicy')
+def policy_list(request):
+    gym = request.gym
+    policies = ActivityPolicy.objects.filter(gym=gym).order_by('name')
+    return render(request, 'backoffice/activities/policies/list.html', {'policies': policies})
+
+@login_required
+@require_gym_permission('activities.add_activitypolicy')
+def policy_create(request):
+    gym = request.gym
+    if request.method == 'POST':
+        form = ActivityPolicyForm(request.POST)
+        if form.is_valid():
+            policy = form.save(commit=False)
+            policy.gym = gym
+            policy.save()
+            messages.success(request, 'Política creada correctamente.')
+            return redirect('policy_list')
+    else:
+        form = ActivityPolicyForm()
+    
+    return render(request, 'backoffice/activities/policies/form.html', {
+        'form': form,
+        'title': 'Nueva Política'
+    })
+
+@login_required
+@require_gym_permission('activities.change_activitypolicy')
+def policy_edit(request, pk):
+    gym = request.gym
+    policy = get_object_or_404(ActivityPolicy, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        form = ActivityPolicyForm(request.POST, instance=policy)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Política actualizada.')
+            return redirect('policy_list')
+    else:
+        form = ActivityPolicyForm(instance=policy)
+    
+    return render(request, 'backoffice/activities/policies/form.html', {
+        'form': form,
+        'title': f'Editar {policy.name}',
+        'policy': policy
+    })
+
+
+@login_required
+@require_gym_permission('activities.view_activity')
+def schedule_settings(request):
+    """
+    Vista para gestionar la configuración del sistema de horarios.
+    """
+    gym = request.gym
+    settings = ScheduleSettings.get_for_gym(gym)
+    
+    if request.method == 'POST':
+        form = ScheduleSettingsForm(request.POST, instance=settings)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '✅ Configuración de horarios guardada correctamente.')
+            return redirect('schedule_settings')
+    else:
+        form = ScheduleSettingsForm(instance=settings)
+    
+    return render(request, 'backoffice/settings/schedule_settings.html', {
+        'form': form,
+        'settings': settings,
+        'title': 'Configuración de Horarios'
     })

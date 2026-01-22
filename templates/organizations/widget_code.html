@@ -1,0 +1,355 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Widgets Embebibles{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > Widgets
+{% endblock %}
+{% block page_title %}Códigos de Widgets Embebibles{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6" x-data="{ openTab: 'horarios' }">
+    
+    {% if not portal_settings or not portal_settings.public_portal_enabled %}
+    <!-- Alerta: Portal no habilitado -->
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-xl">
+        <div class="flex">
+            <svg class="w-6 h-6 text-yellow-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <div>
+                <h3 class="text-sm font-semibold text-yellow-800 mb-2">Portal Público No Habilitado</h3>
+                <p class="text-sm text-yellow-700 mb-3">
+                    Para usar los widgets, activa el portal público en <a href="{% url 'gym_settings' %}" class="underline font-semibold hover:text-yellow-900">Configuración del Centro</a>
+                </p>
+                <div class="text-xs text-yellow-600">
+                    <p>✓ Marca "Portal público habilitado"</p>
+                    <p>✓ Configura un "Slug público" (ejemplo: mi-gimnasio)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Tabs -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="flex border-b border-slate-200 overflow-x-auto">
+            <button @click="openTab = 'horarios'" 
+                    :class="openTab === 'horarios' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-600 hover:text-slate-900'"
+                    class="px-6 py-4 font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Horarios
+            </button>
+            <button @click="openTab = 'precios'" 
+                    :class="openTab === 'precios' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-600 hover:text-slate-900'"
+                    class="px-6 py-4 font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                </svg>
+                Cuotas
+            </button>
+            <button @click="openTab = 'servicios'" 
+                    :class="openTab === 'servicios' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-600 hover:text-slate-900'"
+                    class="px-6 py-4 font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                Servicios
+            </button>
+            <button @click="openTab = 'productos'" 
+                    :class="openTab === 'productos' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-600 hover:text-slate-900'"
+                    class="px-6 py-4 font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                </svg>
+                Productos
+            </button>
+        </div>
+    </div>
+    
+    <!-- TAB: HORARIOS -->
+    <div x-show="openTab === 'horarios'" x-transition class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Vista de Lista -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                </svg>
+                Horario - Vista Lista
+            </h3>
+            
+            <div class="mb-4 border-2 border-dashed border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                <iframe 
+                    src="{{ base_url }}/embed/{{ portal_settings.public_slug }}/schedule/"
+                    width="100%" 
+                    height="400"
+                    frameborder="0"
+                    class="bg-white">
+                </iframe>
+            </div>
+            
+            <div class="bg-slate-900 rounded-lg p-4 relative">
+                <button onclick="copyToClipboard('code-schedule-list', this)" 
+                        class="absolute top-2 right-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition">
+                    📋 Copiar
+                </button>
+                <pre id="code-schedule-list" class="text-sm text-green-400 overflow-x-auto pr-20"><code>&lt;iframe src="{{ base_url }}/embed/{{ portal_settings.public_slug }}/schedule/" width="100%" height="1200" frameborder="0" style="border-radius:12px"&gt;&lt;/iframe&gt;</code></pre>
+            </div>
+            
+            <p class="text-xs text-slate-500 mt-3">✅ Vista vertical con filtros, fechas y reservas</p>
+        </div>
+        
+        <!-- Vista de Calendario -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Horario - Vista Calendario
+            </h3>
+            
+            <div class="mb-4 border-2 border-dashed border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                <iframe 
+                    src="{{ base_url }}/embed/{{ portal_settings.public_slug }}/schedule/calendar/"
+                    width="100%" 
+                    height="400"
+                    frameborder="0"
+                    class="bg-white">
+                </iframe>
+            </div>
+            
+            <div class="bg-slate-900 rounded-lg p-4 relative">
+                <button onclick="copyToClipboard('code-schedule-calendar', this)" 
+                        class="absolute top-2 right-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition">
+                    📋 Copiar
+                </button>
+                <pre id="code-schedule-calendar" class="text-sm text-green-400 overflow-x-auto pr-20"><code>&lt;iframe src="{{ base_url }}/embed/{{ portal_settings.public_slug }}/schedule/calendar/" width="100%" height="800" frameborder="0" style="border-radius:12px"&gt;&lt;/iframe&gt;</code></pre>
+            </div>
+            
+            <p class="text-xs text-slate-500 mt-3">✅ Vista mensual estilo Google Calendar</p>
+        </div>
+        
+    </div>
+    
+    <!-- TAB: PRECIOS & CUOTAS -->
+    <div x-show="openTab === 'precios'" x-transition>
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-slate-900">Planes de Membresía</h3>
+                <span class="text-xs text-slate-500">{{ membership_plans.count }} plan{{ membership_plans.count|pluralize:"es" }}</span>
+            </div>
+            
+            {% if membership_plans %}
+            <div class="space-y-4">
+                {% for plan in membership_plans %}
+                <div class="border border-slate-200 rounded-xl p-4 hover:shadow-md transition">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-slate-900">{{ plan.name }}</h4>
+                            <p class="text-sm text-slate-600 mt-1">{{ plan.description|truncatewords:20 }}</p>
+                            <p class="text-xl font-bold text-[var(--brand-color)] mt-2">{{ plan.final_price }}€</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-900 rounded-lg p-3 relative mt-3">
+                        <button onclick="copyToClipboard('code-plan-{{ plan.id }}', this)" 
+                                class="absolute top-1 right-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition">
+                            📋 Copiar
+                        </button>
+                        <pre id="code-plan-{{ plan.id }}" class="text-xs text-green-400 overflow-x-auto pr-20"><code>&lt;div class="membership-plan" data-gym="{{ portal_settings.public_slug }}" data-plan="{{ plan.id }}"&gt;
+  &lt;h3&gt;{{ plan.name }}&lt;/h3&gt;
+  &lt;p&gt;{{ plan.description|striptags|truncatewords:20 }}&lt;/p&gt;
+  &lt;span class="price"&gt;{{ plan.final_price }}€&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-400">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                </svg>
+                <p class="mb-3">No tienes planes de membresía activos</p>
+                <a href="{% url 'membership_plan_list' %}" class="btn-brand inline-block px-4 py-2 text-sm">
+                    Crear primer plan
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- TAB: SERVICIOS -->
+    <div x-show="openTab === 'servicios'" x-transition>
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-slate-900">Servicios Individuales</h3>
+                <span class="text-xs text-slate-500">{{ services.count }} servicio{{ services.count|pluralize:"s" }}</span>
+            </div>
+            
+            {% if services %}
+            <div class="space-y-4">
+                {% for service in services %}
+                <div class="border border-slate-200 rounded-xl p-4 hover:shadow-md transition">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-slate-900">{{ service.name }}</h4>
+                            <p class="text-sm text-slate-600 mt-1">{{ service.description|truncatewords:20 }}</p>
+                            <div class="flex items-center gap-4 mt-2 text-sm text-slate-600">
+                                <span>⏱️ {{ service.duration }} min</span>
+                                <span class="font-bold text-[var(--brand-color)]">{{ service.final_price }}€</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-900 rounded-lg p-3 relative mt-3">
+                        <button onclick="copyToClipboard('code-service-{{ service.id }}', this)" 
+                                class="absolute top-1 right-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition">
+                            📋 Copiar
+                        </button>
+                        <pre id="code-service-{{ service.id }}" class="text-xs text-green-400 overflow-x-auto pr-20"><code>&lt;div class="service-card" data-gym="{{ portal_settings.public_slug }}" data-service="{{ service.id }}"&gt;
+  &lt;h3&gt;{{ service.name }}&lt;/h3&gt;
+  &lt;p&gt;{{ service.description|striptags|truncatewords:20 }}&lt;/p&gt;
+  &lt;span class="duration"&gt;{{ service.duration }} minutos&lt;/span&gt;
+  &lt;span class="price"&gt;{{ service.final_price }}€&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-400">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <p class="mb-3">No tienes servicios activos</p>
+                <a href="{% url 'service_list' %}" class="btn-brand inline-block px-4 py-2 text-sm">
+                    Crear primer servicio
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- TAB: PRODUCTOS -->
+    <div x-show="openTab === 'productos'" x-transition>
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-slate-900">Productos de Tienda</h3>
+                <span class="text-xs text-slate-500">{{ products.count }} producto{{ products.count|pluralize:"s" }}</span>
+            </div>
+            
+            {% if products %}
+            <div class="space-y-4">
+                {% for product in products %}
+                <div class="border border-slate-200 rounded-xl p-4 hover:shadow-md transition">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-slate-900">{{ product.name }}</h4>
+                            <p class="text-sm text-slate-600 mt-1">{{ product.description|truncatewords:20 }}</p>
+                            {% if product.sku %}
+                            <p class="text-xs text-slate-400 mt-1">SKU: {{ product.sku }}</p>
+                            {% endif %}
+                            <p class="text-xl font-bold text-[var(--brand-color)] mt-2">{{ product.final_price }}€</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-900 rounded-lg p-3 relative mt-3">
+                        <button onclick="copyToClipboard('code-product-{{ product.id }}', this)" 
+                                class="absolute top-1 right-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition">
+                            📋 Copiar
+                        </button>
+                        <pre id="code-product-{{ product.id }}" class="text-xs text-green-400 overflow-x-auto pr-20"><code>&lt;div class="product-card" data-gym="{{ portal_settings.public_slug }}" data-product="{{ product.id }}"&gt;
+  &lt;h3&gt;{{ product.name }}&lt;/h3&gt;
+  &lt;p&gt;{{ product.description|striptags|truncatewords:20 }}&lt;/p&gt;
+  {% if product.sku %}&lt;span class="sku"&gt;{{ product.sku }}&lt;/span&gt;{% endif %}
+  &lt;span class="price"&gt;{{ product.final_price }}€&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-400">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                </svg>
+                <p class="mb-3">No tienes productos visibles online</p>
+                <a href="{% url 'product_list' %}" class="btn-brand inline-block px-4 py-2 text-sm">
+                    Ver productos
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Instrucciones -->
+    <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-6">
+        <h3 class="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            Cómo Usar los Widgets
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="bg-white rounded-lg p-4 border border-blue-100">
+                <h4 class="font-semibold text-slate-900 mb-2">📱 Horarios (iFrame completo)</h4>
+                <p class="text-slate-600 text-xs mb-2">Muestra un calendario funcional completo con reservas</p>
+                <ul class="text-xs text-slate-600 space-y-1">
+                    <li>✓ Responsive y adaptable</li>
+                    <li>✓ Usa tu color de marca</li>
+                    <li>✓ Filtros y navegación</li>
+                </ul>
+            </div>
+            
+            <div class="bg-white rounded-lg p-4 border border-blue-100">
+                <h4 class="font-semibold text-slate-900 mb-2">🎯 Servicios/Productos (HTML)</h4>
+                <p class="text-slate-600 text-xs mb-2">Bloques individuales para cada ítem</p>
+                <ul class="text-xs text-slate-600 space-y-1">
+                    <li>✓ Personaliza con tu CSS</li>
+                    <li>✓ Inserta en cualquier página</li>
+                    <li>✓ Actualización automática</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="mt-4 p-3 bg-white/50 rounded-lg text-xs text-blue-900">
+            <p class="font-semibold mb-1">💡 Consejo:</p>
+            <p>Los códigos usan el slug público de tu gimnasio: <code class="bg-blue-100 px-2 py-1 rounded">{{ portal_settings.public_slug }}</code></p>
+        </div>
+    </div>
+    
+    {% endif %}
+    
+</div>
+
+<script>
+function copyToClipboard(elementId, button) {
+    const codeElement = document.getElementById(elementId);
+    const text = codeElement.textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = button.textContent;
+        button.textContent = '✅ Copiado';
+        button.classList.add('bg-green-600');
+        button.classList.remove('bg-slate-700');
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('bg-green-600');
+            button.classList.add('bg-slate-700');
+        }, 2000);
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        button.textContent = '❌ Error';
+        setTimeout(() => {
+            button.textContent = '📋 Copiar';
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

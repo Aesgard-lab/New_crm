@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from organizations.models import Gym
 from finance.models import TaxRate
@@ -46,6 +47,24 @@ class MembershipPlan(models.Model):
     # Contract
     contract_required = models.BooleanField(_("Requiere Firma de Contrato"), default=False)
     contract_content = models.TextField(_("Contenido del Contrato"), blank=True, help_text=_("Texto legal que el cliente debe aceptar y firmar."))
+    
+    # Pause Configuration (for recurring plans)
+    allow_pause = models.BooleanField(_("Permitir Pausas"), default=False, help_text=_("Solo para planes recurrentes"))
+    pause_fee = models.DecimalField(_("Cargo por Pausa"), max_digits=10, decimal_places=2, default=0, help_text=_("Cargo único al activar la pausa"))
+    pause_min_days = models.IntegerField(_("Días Mínimos de Pausa"), default=7)
+    pause_max_days = models.IntegerField(_("Días Máximos de Pausa"), default=90)
+    pause_max_per_year = models.IntegerField(_("Pausas Máximas al Año"), default=2)
+    pause_advance_notice_days = models.IntegerField(_("Días de Anticipación"), default=3, help_text=_("Días mínimos de anticipación para solicitar pausa"))
+    pause_allows_gym_access = models.BooleanField(_("Permite Acceso al Gimnasio"), default=False, help_text=_("Durante la pausa"))
+    pause_allows_booking = models.BooleanField(_("Permite Reservas"), default=False, help_text=_("Durante la pausa"))
+    pause_extends_end_date = models.BooleanField(_("Extiende Fecha Final"), default=True, help_text=_("Suma los días de pausa al final de la membresía"))
+    
+    # Attendance & Late Cancellation Settings
+    count_late_cancel_as_used = models.BooleanField(
+        _("Contar Cancelación Tardía como Sesión Consumida"),
+        default=False,
+        help_text=_("Si está activado, las cancelaciones fuera de ventana contarán como sesión gastada")
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -99,3 +118,45 @@ class PlanAccessRule(models.Model):
         
         qty = "Ilimitado" if self.quantity == 0 else str(self.quantity)
         return f"{qty} x {target}"
+
+
+class MembershipPause(models.Model):
+    """Historial de pausas en membresías"""
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', _("Pendiente")
+        ACTIVE = 'ACTIVE', _("Activa")
+        COMPLETED = 'COMPLETED', _("Completada")
+        CANCELLED = 'CANCELLED', _("Cancelada")
+    
+    membership = models.ForeignKey('clients.ClientMembership', on_delete=models.CASCADE, related_name='pauses')
+    start_date = models.DateField(_("Fecha de Inicio"))
+    end_date = models.DateField(_("Fecha de Fin"))
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    
+    fee_charged = models.DecimalField(_("Cargo Aplicado"), max_digits=10, decimal_places=2, default=0)
+    reason = models.TextField(_("Motivo"), blank=True, help_text=_("Motivo de la pausa"))
+    
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_pauses')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    gym_access_allowed = models.BooleanField(_("Acceso Permitido"), default=False)
+    booking_allowed = models.BooleanField(_("Reservas Permitidas"), default=False)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Pausa de Membresía")
+        verbose_name_plural = _("Pausas de Membresías")
+    
+    def __str__(self):
+        return f"Pausa {self.membership.client.full_name} ({self.start_date} - {self.end_date})"
+    
+    @property
+    def duration_days(self):
+        """Duración de la pausa en días"""
+        return (self.end_date - self.start_date).days + 1
+    
+    def is_active_now(self):
+        """Verifica si la pausa está activa en este momento"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        return self.status == self.Status.ACTIVE and self.start_date <= today <= self.end_date

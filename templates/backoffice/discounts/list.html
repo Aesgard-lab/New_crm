@@ -1,0 +1,58 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm text-slate-500">Programas de referidos</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+  <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Programas de Referidos</h2>
+      <p class="text-sm text-slate-500">Gestiona los programas de referidos activos.</p>
+    </div>
+    <a href="{% url 'referral_program_create' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-color)] text-white font-semibold hover:opacity-90">
+      + Nuevo programa
+    </a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr>
+          <th class="px-4 py-3 text-left">Nombre</th>
+          <th class="px-4 py-3 text-left">Refiere</th>
+          <th class="px-4 py-3 text-left">Referido</th>
+          <th class="px-4 py-3 text-left">Bonus</th>
+          <th class="px-4 py-3 text-right">Estado</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for program in programs %}
+        <tr class="hover:bg-slate-50/60">
+          <td class="px-4 py-3 font-semibold text-slate-900">{{ program.name }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ program.referrer_discount }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ program.referred_discount }}</td>
+          <td class="px-4 py-3 text-slate-700">{{ program.bonus_discount|default:"-" }}</td>
+          <td class="px-4 py-3 text-right">
+            {% if program.is_active %}
+            <span class="px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">Activo</span>
+            {% else %}
+            <span class="px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-600">Inactivo</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-4 py-10 text-center text-slate-500">
+            No hay programas de referidos aún.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

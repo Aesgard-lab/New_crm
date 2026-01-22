@@ -1,0 +1,211 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Lead Management · {{ pipeline.name }}{% endblock %}
+{% block breadcrumb %}Marketing{% endblock %}
+{% block page_title %}Lead Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="leadBoard()">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">{{ pipeline.name }}</h1>
+            <p class="text-sm text-slate-500">Gestiona tus leads con drag & drop</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'client_create' %}?status=LEAD"
+                class="btn-brand px-4 py-2 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nuevo Lead
+            </a>
+            <a href="{% url 'lead_settings' %}"
+                class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Configurar
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-center">
+        <div class="flex items-center gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase">Asignado:</label>
+            <select class="text-sm rounded-lg border-slate-200 pr-8" @change="filterCards()">
+                <option value="">Todos</option>
+                {% for staff in staff_list %}
+                <option value="{{ staff.id }}">{{ staff.user.first_name }} {{ staff.user.last_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase">Fuente:</label>
+            <select class="text-sm rounded-lg border-slate-200 pr-8" @change="filterCards()">
+                <option value="">Todas</option>
+                {% for value, label in source_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="ml-auto">
+            <input type="search" placeholder="Buscar lead..." class="text-sm rounded-lg border-slate-200 w-64"
+                @input="searchCards($event.target.value)">
+        </div>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="flex gap-4 overflow-x-auto pb-4" style="min-height: 70vh;">
+        {% for stage in stages %}
+        <div class="flex-shrink-0 w-80 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col"
+            data-stage-id="{{ stage.id }}">
+            <!-- Stage Header -->
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full" style="background-color: {{ stage.color }};"></div>
+                    <h3 class="font-bold text-slate-800">{{ stage.name }}</h3>
+                    <span class="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                        {{ stage.lead_cards.count }}
+                    </span>
+                </div>
+                {% if stage.monthly_quota > 0 %}
+                <div class="text-xs text-slate-500">
+                    {{ stage.get_current_month_count }}/{{ stage.monthly_quota }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Cards Container (Sortable) -->
+            <div class="flex-1 p-3 space-y-3 overflow-y-auto sortable-column" data-stage-id="{{ stage.id }}">
+                {% for card in stage.lead_cards.all %}
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm cursor-move hover:shadow-md transition-shadow lead-card"
+                    data-card-id="{{ card.id }}" @click="openCardDetail({{ card.id }})">
+                    <!-- Client Info -->
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <div class="font-bold text-slate-900">{{ card.client.first_name }} {{ card.client.last_name
+                                }}</div>
+                            {% if card.client.email %}
+                            <div class="text-xs text-slate-500">{{ card.client.email }}</div>
+                            {% endif %}
+                        </div>
+                        {% if card.assigned_to %}
+                        <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold"
+                            title="{{ card.assigned_to.user.first_name }}">
+                            {{ card.assigned_to.user.first_name|slice:":1" }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Contact Info -->
+                    {% if card.client.phone_number %}
+                    <div class="flex items-center gap-1 text-xs text-slate-500 mb-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z">
+                            </path>
+                        </svg>
+                        {{ card.client.phone_number }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Tags & Meta -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style="background-color: {{ stage.color }}20; color: {{ stage.color }};">
+                            {{ card.get_source_display }}
+                        </span>
+                        {% if card.next_followup %}
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            📅 {{ card.next_followup|date:"d/m" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-slate-400 text-sm py-8">
+                    Sin leads en esta fase
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- SortableJS for Drag & Drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    function leadBoard() {
+        return {
+            init() {
+                // Initialize Sortable on each column
+                document.querySelectorAll('.sortable-column').forEach(column => {
+                    new Sortable(column, {
+                        group: 'leads',
+                        animation: 150,
+                        ghostClass: 'opacity-50',
+                        dragClass: 'shadow-xl',
+                        onEnd: (evt) => {
+                            const cardId = evt.item.dataset.cardId;
+                            const newStageId = evt.to.dataset.stageId;
+                            this.moveCard(cardId, newStageId);
+                        }
+                    });
+                });
+            },
+
+            async moveCard(cardId, stageId) {
+                try {
+                    const response = await fetch(`/marketing/leads/api/card/${cardId}/move/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ stage_id: stageId })
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        alert('Error: ' + (data.error || 'No se pudo mover'));
+                        location.reload();
+                    }
+                } catch (error) {
+                    console.error('Move error:', error);
+                    location.reload();
+                }
+            },
+
+            openCardDetail(cardId) {
+                // Open detail modal or navigate to client
+                window.location.href = `/clients/${cardId}/`;
+            },
+
+            filterCards() {
+                // Implement filter logic
+            },
+
+            searchCards(query) {
+                // Implement search logic
+            }
+        }
+    }
+</script>
+
+<style>
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+
+    .sortable-chosen {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}

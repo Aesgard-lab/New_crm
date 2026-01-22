@@ -1,0 +1,75 @@
+{% comment %}
+Componente: Tabla Responsive
+Uso: {% include "components/responsive_table.html" %}
+
+Este componente proporciona una estructura para tablas que se adaptan a móvil.
+En desktop muestra tabla tradicional, en móvil muestra tarjetas.
+
+NOTA: Este es un template base. Copiar el patrón para cada tabla específica.
+{% endcomment %}
+
+<!-- DESKTOP: Tabla tradicional (visible en md+) -->
+<div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200">
+    <table class="w-full text-sm text-left">
+        <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+            <tr>
+                <th class="px-6 py-3 font-semibold text-slate-600 uppercase text-xs tracking-wider">Columna 1</th>
+                <th class="px-6 py-3 font-semibold text-slate-600 uppercase text-xs tracking-wider">Columna 2</th>
+                <th class="px-6 py-3 font-semibold text-slate-600 uppercase text-xs tracking-wider">Columna 3</th>
+                <th class="px-6 py-3 font-semibold text-slate-600 uppercase text-xs tracking-wider">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white">
+            {% for item in items %}
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 text-slate-700">{{ item.field1 }}</td>
+                <td class="px-6 py-4 text-slate-700">{{ item.field2 }}</td>
+                <td class="px-6 py-4 text-slate-700">{{ item.field3 }}</td>
+                <td class="px-6 py-4">
+                    <a href="#" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Ver</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="px-6 py-8 text-center text-slate-400">
+                    Sin registros
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MOBILE: Tarjetas (visible solo en móvil) -->
+<div class="md:hidden space-y-3">
+    {% for item in items %}
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Columna 1</span>
+                <span class="text-sm font-medium text-slate-900">{{ item.field1 }}</span>
+            </div>
+            <div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Columna 2</span>
+                <span class="text-sm font-medium text-slate-900">{{ item.field2 }}</span>
+            </div>
+            <div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Columna 3</span>
+                <span class="text-sm font-medium text-slate-900">{{ item.field3 }}</span>
+            </div>
+            <div class="flex items-end">
+                <a href="#" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Ver →</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-8 text-slate-400 bg-white rounded-xl border border-slate-200">
+        <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+            </path>
+        </svg>
+        <p class="text-sm">Sin registros</p>
+    </div>
+    {% endfor %}
+</div>

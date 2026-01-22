@@ -1,0 +1,108 @@
+{% extends "backoffice/includes/form_base.html" %}
+
+{% block subtitle %}Configuración de reglas de reserva{% endblock %}
+{% block form_width %}max-w-3xl mx-auto{% endblock %}
+{% block cancel_url %}{% url 'policy_list' %}{% endblock %}
+{% block submit_label %}Guardar Política{% endblock %}
+
+{% block form_fields %}
+<!-- Basic Info -->
+<div class="mb-8">
+    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre de la Política</label>
+    {{ form.name }}
+    {{ form.name.errors }}
+</div>
+
+<!-- Booking Rules -->
+<div class="bg-slate-50 border border-slate-100 rounded-xl p-5 mb-6">
+    <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        Apertura de Reservas
+    </h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="col-span-2">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modo de Apertura</label>
+            {{ form.booking_window_mode }}
+            <p class="text-[10px] text-slate-400 mt-1">Elige cómo y cuándo se abren las plazas.</p>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Valor de Antelación</label>
+            {{ form.booking_window_value }}
+            <p class="text-[10px] text-slate-400 mt-1">Horas (si es relativo) o Días (si es hora fija).</p>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hora de Apertura (Solo Fijo)</label>
+            {{ form.booking_time_release }}
+            <p class="text-[10px] text-slate-400 mt-1">Ej: 00:00 o 22:00. Déjalo vacío si usas modo relativo.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Waitlist Settings -->
+<div class="bg-slate-50 border border-slate-100 rounded-xl p-5 mb-6">
+    <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+            </path>
+        </svg>
+        Lista de Espera
+    </h3>
+
+    <div class="flex items-center gap-2 mb-4">
+        {{ form.waitlist_enabled }}
+        <label class="text-sm font-medium text-slate-700">Activar Lista de Espera</label>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modo de Funcionamiento</label>
+            {{ form.waitlist_mode }}
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Límite de Personas</label>
+            {{ form.waitlist_limit }}
+            <p class="text-[10px] text-slate-400 mt-1">0 = Sin límite.</p>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Congelar Lista (Horas)</label>
+            {{ form.auto_promote_cutoff_hours }}
+            <p class="text-[10px] text-slate-400 mt-1">Horas antes de la clase que detienen la auto-promoción.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Cancellation -->
+<div class="bg-red-50/50 border border-red-100 rounded-xl p-5">
+    <h3 class="font-bold text-red-900 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+            </path>
+        </svg>
+        Política de Cancelación
+    </h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Ventana Penalización (Horas)</label>
+            {{ form.cancellation_window_hours }}
+            <p class="text-[10px] text-slate-400 mt-1">Si cancelan X horas antes, se penaliza.</p>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo de Penalización</label>
+            {{ form.penalty_type }}
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Monto Multa (solo cobro)</label>
+            {{ form.fee_amount }}
+        </div>
+    </div>
+</div>
+{% endblock %}

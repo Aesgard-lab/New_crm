@@ -1,0 +1,65 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Confirmar eliminación</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="text-center mb-6">
+            <div class="text-6xl mb-4">⚠️</div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Eliminar este incentivo?</h3>
+            <p class="text-slate-600">Esta acción no se puede deshacer</p>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl mb-6">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-slate-500 font-medium mb-1">Instructor:</div>
+                    <div class="font-bold text-slate-800">
+                        {% if incentive.staff %}
+                        {{ incentive.staff.user.first_name }} {{ incentive.staff.user.last_name }}
+                        {% else %}
+                        🌐 Global
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-slate-500 font-medium mb-1">Rating Mínimo:</div>
+                    <div class="font-bold text-amber-600">{{ incentive.min_rating }} ⭐</div>
+                </div>
+                <div>
+                    <div class="text-slate-500 font-medium mb-1">Bono:</div>
+                    <div class="font-bold text-emerald-600">
+                        {{ incentive.bonus_value }}{% if incentive.bonus_type == 'PERCENTAGE' %}%{% else %}€{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-slate-500 font-medium mb-1">Nivel:</div>
+                    <div class="font-bold text-slate-800">
+                        {% if incentive.level %}
+                        {{ incentive.get_level_display }}
+                        {% else %}
+                        Sin nivel
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" class="flex gap-3">
+            {% csrf_token %}
+            <button type="submit" 
+                    class="flex-1 bg-rose-500 hover:bg-rose-600 text-white px-6 py-3 rounded-xl font-bold transition-colors">
+                🗑️ Sí, Eliminar
+            </button>
+            <a href="{% url 'rating_incentive_list' %}" 
+               class="flex-1 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-colors">
+                Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

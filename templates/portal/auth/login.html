@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Socios - {{ gym.name|default:"Mi Gimnasio" }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-color: {{ gym.brand_color|default:'#0f172a' }};
+            --brand-rgb: {{ gym.brand_color|default:'#0f172a' }}|slice:"1:"|add:""|hexrgb;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+        }
+        
+        .bg-brand {
+            background-color: var(--brand-color);
+        }
+        
+        .text-brand {
+            color: var(--brand-color);
+        }
+        
+        .border-brand {
+            border-color: var(--brand-color);
+        }
+        
+        .focus-brand:focus {
+            border-color: var(--brand-color);
+            --tw-ring-color: var(--brand-color);
+        }
+        
+        .btn-brand {
+            background-color: var(--brand-color);
+        }
+        
+        .btn-brand:hover {
+            filter: brightness(1.1);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--brand-color) 0%, #1e293b 100%);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen gradient-bg flex items-center justify-center p-4">
+
+    <div class="w-full max-w-sm bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-fade-in">
+        <div class="text-center mb-8">
+            {% if gym.logo %}
+            <div class="mb-4">
+                <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-20 w-auto mx-auto object-contain">
+            </div>
+            {% else %}
+            <div class="w-20 h-20 bg-brand rounded-3xl flex items-center justify-center text-white mx-auto mb-4 shadow-xl">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                    </path>
+                </svg>
+            </div>
+            {% endif %}
+            <h1 class="text-3xl font-bold text-slate-800 mb-1">{{ gym.name|default:"Bienvenido" }}</h1>
+            <p class="text-slate-500 text-sm">Accede a tu área personal</p>
+        </div>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div class="mb-4 p-4 rounded-2xl text-sm font-medium animate-fade-in {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-100{% else %}bg-emerald-50 text-emerald-700 border border-emerald-100{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <form method="POST" class="space-y-5">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                <input type="email" name="email" required
+                    class="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-200 focus-brand bg-slate-50/50 transition-all placeholder:text-slate-400"
+                    placeholder="tu@email.com">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Contraseña</label>
+                <div class="relative">
+                    <input type="password" name="password" id="password" required
+                        class="w-full px-4 py-3.5 pr-12 rounded-2xl border-2 border-slate-200 focus-brand bg-slate-50/50 transition-all placeholder:text-slate-400"
+                        placeholder="••••••••">
+                    <button type="button" onclick="togglePassword()" 
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        <svg id="eyeOffIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            </div>
+
+            <script>
+                function togglePassword() {
+                    const passwordInput = document.getElementById('password');
+                    const eyeIcon = document.getElementById('eyeIcon');
+                    const eyeOffIcon = document.getElementById('eyeOffIcon');
+                    
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        eyeIcon.classList.add('hidden');
+                        eyeOffIcon.classList.remove('hidden');
+                    } else {
+                        passwordInput.type = 'password';
+                        eyeIcon.classList.remove('hidden');
+                        eyeOffIcon.classList.add('hidden');
+                    }
+                }
+            </script>
+
+            <button type="submit"
+                class="w-full py-4 rounded-2xl btn-brand text-white font-bold shadow-2xl transition-all active:scale-95 hover:shadow-xl">
+                <span class="flex items-center justify-center gap-2">
+                    <span>Iniciar Sesión</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                </span>
+            </button>
+        </form>
+
+        <div class="mt-8 text-center">
+            <a href="{% url 'portal_forgot_password' %}"
+                class="text-sm text-brand font-semibold hover:underline transition-all">¿Olvidaste tu contraseña?</a>
+        </div>
+        
+        <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p class="text-xs text-slate-400">© {{ gym.name|default:"CRM Gym" }} - Tu bienestar es nuestra pasión</p>
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -4,6 +4,7 @@ from accounts.decorators import require_gym_permission
 from django.contrib import messages
 from .models import Product, ProductCategory
 from .forms import ProductForm, ProductCategoryForm
+from services.franchise_service import FranchisePropagationService
 
 # --- Products ---
 
@@ -19,15 +20,25 @@ def product_list(request):
 def product_create(request):
     gym = request.gym
     if request.method == 'POST':
-        form = ProductForm(request.POST, request.FILES, gym=gym)
+        form = ProductForm(request.POST, request.FILES, gym=gym, user=request.user)
         if form.is_valid():
             product = form.save(commit=False)
             product.gym = gym
             product.save()
-            messages.success(request, 'Producto creado correctamente.')
+            
+            # Handle Propagation
+            if 'propagate_to_gyms' in form.fields and form.cleaned_data.get('propagate_to_gyms'):
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                results = FranchisePropagationService.propagate_product(product, target_gyms)
+                
+                msg = f'Producto creado. Propagación: {results["created"]} creados, {results["updated"]} actualizados.'
+                if results['errors']: msg += f' Warning: {len(results["errors"])} errores.'
+                messages.success(request, msg)
+            else:
+                messages.success(request, 'Producto creado correctamente.')
             return redirect('product_list')
     else:
-        form = ProductForm(gym=gym)
+        form = ProductForm(gym=gym, user=request.user)
     
     return render(request, 'backoffice/products/form.html', {
         'form': form,
@@ -41,16 +52,23 @@ def product_edit(request, pk):
     product = get_object_or_404(Product, pk=pk, gym=gym)
     
     if request.method == 'POST':
-        form = ProductForm(request.POST, request.FILES, instance=product, gym=gym)
+        form = ProductForm(request.POST, request.FILES, instance=product, gym=gym, user=request.user)
         if form.is_valid():
-            form.save()
-            # Use StockMove logic here if stock changes? For simplicity we allow direct edit for now,
-            # but ideally we should block stock edit and use Adjustment view. 
-            # We will adhere to user request for "Simple" first.
-            messages.success(request, 'Producto actualizado.')
+            product = form.save()
+            
+            # Handle Propagation
+            if 'propagate_to_gyms' in form.fields and form.cleaned_data.get('propagate_to_gyms'):
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                results = FranchisePropagationService.propagate_product(product, target_gyms)
+                
+                msg = f'Producto actualizado. Propagación: {results["created"]} creados, {results["updated"]} actualizados.'
+                messages.success(request, msg)
+            else:
+                messages.success(request, 'Producto actualizado.')
+
             return redirect('product_list')
     else:
-        form = ProductForm(instance=product, gym=gym)
+        form = ProductForm(instance=product, gym=gym, user=request.user)
     
     return render(request, 'backoffice/products/form.html', {
         'form': form,

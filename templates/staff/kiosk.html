@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Kiosco Staff - Check-in</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -11,100 +11,241 @@
         input {
             font-size: 16px;
         }
+        
+        /* Modo Quiosco: Pantalla completa */
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            overscroll-behavior: none;
+        }
+        
+        /* Animación de éxito/error */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .shake {
+            animation: shake 0.5s;
+        }
+        
+        @keyframes pulse-success {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        
+        .pulse-success {
+            animation: pulse-success 0.6s;
+        }
+        
+        /* Vibración visual al presionar botón */
+        @keyframes tap-feedback {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        
+        .tap-feedback {
+            animation: tap-feedback 0.2s;
+        }
     </style>
 </head>
 
-<body class="bg-slate-900 h-screen flex items-center justify-center overflow-hidden">
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 h-screen flex items-center justify-center overflow-hidden">
+
+    <!-- Logo del Gimnasio -->
+    <div class="absolute top-8 left-8 text-white">
+        <h2 class="text-2xl font-bold">{{ gym.name|default:"TechGym" }}</h2>
+        <p class="text-sm text-slate-400">Control de Personal</p>
+    </div>
+    
+    <!-- Reloj Digital -->
+    <div class="absolute top-8 right-8 text-white text-right">
+        <div id="current-time" class="text-3xl font-bold tabular-nums"></div>
+        <div id="current-date" class="text-sm text-slate-400"></div>
+    </div>
 
     <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 text-center mx-4">
 
         <!-- Estado (Mensajes) -->
         <div id="status-message"
             class="hidden absolute top-0 left-0 w-full h-full bg-white/95 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-10 transition-all">
-            <div id="status-icon" class="text-6xl mb-4">👋</div>
-            <h2 id="status-title" class="text-2xl font-bold text-slate-800 mb-2"></h2>
-            <p id="status-text" class="text-slate-500"></p>
+            
+            <!-- Foto del empleado tras fichaje exitoso -->
+            <div id="staff-photo-container" class="hidden mb-4">
+                <img id="staff-photo" src="" alt="" class="w-32 h-32 rounded-full object-cover border-4 border-green-500 shadow-xl">
+            </div>
+            
+            <div id="status-icon" class="text-7xl mb-4">👋</div>
+            <h2 id="status-title" class="text-3xl font-bold text-slate-800 mb-2"></h2>
+            <p id="status-text" class="text-slate-600 text-lg"></p>
+            <p id="status-time" class="text-slate-400 text-sm mt-2"></p>
         </div>
 
         <div class="mb-8">
-            <h1 class="text-xl font-bold text-slate-700 uppercase tracking-widest">Control de Acceso</h1>
-            <p class="text-slate-400 text-sm mt-1">Introduce tu PIN de empleado</p>
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-700 mb-1">Control de Acceso</h1>
+            <p class="text-slate-500 text-sm">Introduce tu PIN de empleado</p>
         </div>
 
         <!-- PIN Display -->
         <div class="mb-8">
-            <div class="flex justify-center gap-3" id="pin-display">
-                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
-                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
-                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
-                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot"></div>
+            <div class="flex justify-center gap-4" id="pin-display">
+                <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
+                <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
+                <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
+                <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
             </div>
             <input type="password" id="pin-input" class="opacity-0 absolute w-0 h-0" maxlength="6" inputmode="numeric">
         </div>
 
         <!-- Numpad -->
-        <div class="grid grid-cols-3 gap-4 max-w-xs mx-auto mb-6">
+        <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto mb-6">
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="1">1</button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="2">2</button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="3">3</button>
 
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="4">4</button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="5">5</button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="6">6</button>
 
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="7">7</button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="8">8</button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="9">9</button>
 
-            <button class="text-slate-300 active:text-slate-500 w-16 h-16 flex items-center justify-center"
-                onclick="clearPin()">C</button>
+            <button class="w-20 h-20 text-slate-400 hover:text-slate-600 active:text-red-500 text-xl font-semibold flex items-center justify-center transition-all"
+                onclick="clearPin()">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
             <button
-                class="numpad-btn w-16 h-16 rounded-full bg-slate-50 border border-slate-200 text-2xl font-semibold text-slate-600 active:bg-slate-200 active:scale-95 transition-all text-center flex items-center justify-center"
+                class="numpad-btn w-20 h-20 rounded-2xl bg-slate-50 border-2 border-slate-200 text-3xl font-bold text-slate-700 hover:bg-slate-100 active:bg-blue-100 active:border-blue-400 transition-all text-center flex items-center justify-center shadow-sm"
                 data-val="0">0</button>
-            <button class="text-slate-300 active:text-slate-500 w-16 h-16 flex items-center justify-center"
-                onclick="backspace()">⌫</button>
+            <button class="w-20 h-20 text-slate-400 hover:text-slate-600 active:text-amber-500 text-xl font-semibold flex items-center justify-center transition-all"
+                onclick="backspace()">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"></path>
+                </svg>
+            </button>
         </div>
 
         <button id="submit-btn"
-            class="w-full bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg opacity-50 cursor-not-allowed transition-all"
+            class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-5 rounded-2xl shadow-xl opacity-50 cursor-not-allowed transition-all disabled:opacity-50 enabled:hover:shadow-2xl enabled:hover:scale-[1.02]"
             disabled>
-            ENTRAR
+            <span class="flex items-center justify-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                FICHAR
+            </span>
         </button>
 
-        <div class="mt-8 text-xs text-slate-300">
-            TechGym CRM System
+        <div class="mt-6 text-xs text-slate-400 space-y-1">
+            <p>TechGym CRM System v2.0</p>
+            <p>🔒 Conexión Segura</p>
         </div>
     </div>
+
+    <!-- Audio para feedback -->
+    <audio id="success-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEwxOouHwuGoiByJ+0fPQezAFKIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEwxOouHwuGoiByJ+0fPQezAFKIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEwxOouHwuGoiByJ+0fPQezAFKIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEwxOouHwuGoiByJ+0fPQezAFKIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEwxOouHwuGoiByJ+0fPQezAFKIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEw==" type="audio/wav">
+    </audio>
+    <audio id="error-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuGz/LTgjMGHm7A7+OZRA0PVKvo66NFEw==" type="audio/wav">
+    </audio>
 
     <script>
         const dots = document.querySelectorAll('.pin-dot');
         const submitBtn = document.getElementById('submit-btn');
+        const pinDisplay = document.getElementById('pin-display');
         let currentPin = "";
         const MAX_PIN = 4;
+        let isSubmitting = false;
+        
+        // Actualizar reloj en tiempo real
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-ES', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const dateStr = now.toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            document.getElementById('current-time').textContent = timeStr;
+            document.getElementById('current-date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+        }
+        
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        // Auto-reset después de inactividad (30 segundos)
+        let inactivityTimer;
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                if (currentPin.length > 0 && !isSubmitting) {
+                    clearPin();
+                    showTemporaryMessage('⏱️ Tiempo agotado', 'Por seguridad, el PIN fue borrado', 'warning');
+                }
+            }, 30000); // 30 segundos
+        }
+        
+        resetInactivityTimer();
 
         document.querySelectorAll('.numpad-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (currentPin.length < MAX_PIN) {
+            btn.addEventListener('click', (e) => {
+                if (currentPin.length < MAX_PIN && !isSubmitting) {
+                    // Feedback visual
+                    btn.classList.add('tap-feedback');
+                    setTimeout(() => btn.classList.remove('tap-feedback'), 200);
+                    
+                    // Vibración en móviles
+                    if (navigator.vibrate) {
+                        navigator.vibrate(10);
+                    }
+                    
                     currentPin += btn.dataset.val;
                     updateUI();
+                    resetInactivityTimer();
+                    
+                    // Auto-submit cuando se completan 4 dígitos
+                    if (currentPin.length === MAX_PIN) {
+                        setTimeout(() => {
+                            submitBtn.click();
+                        }, 300);
+                    }
                 }
             });
         });
@@ -112,20 +253,27 @@
         function clearPin() {
             currentPin = "";
             updateUI();
+            resetInactivityTimer();
         }
 
         function backspace() {
             currentPin = currentPin.slice(0, -1);
             updateUI();
+            resetInactivityTimer();
+            
+            // Vibración en móviles
+            if (navigator.vibrate) {
+                navigator.vibrate(5);
+            }
         }
 
         function updateUI() {
             dots.forEach((dot, index) => {
                 if (index < currentPin.length) {
-                    dot.classList.add('bg-slate-800');
+                    dot.classList.add('bg-blue-600', 'scale-110');
                     dot.classList.remove('bg-slate-200');
                 } else {
-                    dot.classList.remove('bg-slate-800');
+                    dot.classList.remove('bg-blue-600', 'scale-110');
                     dot.classList.add('bg-slate-200');
                 }
             });
@@ -133,15 +281,23 @@
             if (currentPin.length >= 4) {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                submitBtn.classList.add('cursor-pointer');
             } else {
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                submitBtn.classList.remove('cursor-pointer');
             }
         }
 
         submitBtn.addEventListener('click', submitPin);
 
         function submitPin() {
+            if (isSubmitting || currentPin.length < 4) return;
+            
+            isSubmitting = true;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Verificando...</span>';
+            
             const formData = new FormData();
             formData.append('pin', currentPin);
             formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
@@ -153,10 +309,20 @@
                 .then(response => response.json())
                 .then(data => {
                     showStatus(data);
-                    clearPin();
+                    setTimeout(() => {
+                        clearPin();
+                        isSubmitting = false;
+                        submitBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>FICHAR</span>';
+                    }, 3500);
                 })
                 .catch(error => {
-                    showStatus({ status: 'error', message: 'Error de conexión' });
+                    console.error('Error:', error);
+                    showStatus({ status: 'error', message: 'Error de conexión. Verifica tu red.' });
+                    setTimeout(() => {
+                        clearPin();
+                        isSubmitting = false;
+                        submitBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>FICHAR</span>';
+                    }, 3500);
                 });
         }
 
@@ -165,22 +331,105 @@
             const icon = document.getElementById('status-icon');
             const title = document.getElementById('status-title');
             const text = document.getElementById('status-text');
+            const timeDisplay = document.getElementById('status-time');
+            const photoContainer = document.getElementById('staff-photo-container');
+            const photo = document.getElementById('staff-photo');
 
             modal.classList.remove('hidden');
 
             if (data.status === 'success') {
-                icon.textContent = data.action === 'checkin' ? '👋' : '🏁';
-                title.textContent = data.action === 'checkin' ? '¡Hola ' + data.staff_name + '!' : '¡Adiós ' + data.staff_name + '!';
+                // Sonido de éxito
+                try {
+                    document.getElementById('success-sound').play();
+                } catch (e) {}
+                
+                // Vibración de éxito
+                if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100]);
+                }
+                
+                modal.classList.add('pulse-success');
+                
+                if (data.action === 'checkin') {
+                    icon.textContent = '👋';
+                    icon.style.fontSize = '6rem';
+                    title.textContent = '¡Bienvenido/a!';
+                    title.style.color = '#16a34a';
+                } else {
+                    icon.textContent = '🏁';
+                    icon.style.fontSize = '6rem';
+                    title.textContent = '¡Hasta luego!';
+                    title.style.color = '#ea580c';
+                }
+                
+                text.textContent = data.staff_name || 'Empleado';
+                text.style.fontSize = '1.5rem';
+                text.style.fontWeight = '700';
+                
+                // Mostrar hora de fichaje
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('es-ES', { 
+                    hour: '2-digit', 
+                    minute: '2-digit'
+                });
+                timeDisplay.textContent = `Fichaje registrado a las ${timeStr}`;
+                
+                // Mostrar foto si está disponible
+                if (data.staff_photo) {
+                    photo.src = data.staff_photo;
+                    photoContainer.classList.remove('hidden');
+                    icon.classList.add('hidden');
+                }
+                
             } else {
+                // Sonido de error
+                try {
+                    document.getElementById('error-sound').play();
+                } catch (e) {}
+                
+                // Vibración de error
+                if (navigator.vibrate) {
+                    navigator.vibrate([50, 100, 50, 100, 50]);
+                }
+                
+                pinDisplay.classList.add('shake');
+                setTimeout(() => pinDisplay.classList.remove('shake'), 500);
+                
                 icon.textContent = '❌';
-                title.textContent = 'Error';
+                icon.style.fontSize = '5rem';
+                title.textContent = 'PIN Incorrecto';
+                title.style.color = '#dc2626';
+                text.textContent = data.message || 'Verifica tu código';
+                text.style.fontSize = '1.125rem';
+                text.style.fontWeight = '400';
+                timeDisplay.textContent = '';
+                photoContainer.classList.add('hidden');
+                icon.classList.remove('hidden');
             }
-
-            text.textContent = data.message;
 
             setTimeout(() => {
                 modal.classList.add('hidden');
-            }, 3000);
+                modal.classList.remove('pulse-success');
+                photoContainer.classList.add('hidden');
+                icon.classList.remove('hidden');
+                resetInactivityTimer();
+            }, 3500);
+        }
+        
+        function showTemporaryMessage(title, message, type = 'info') {
+            const modal = document.getElementById('status-message');
+            const icon = document.getElementById('status-icon');
+            const titleEl = document.getElementById('status-title');
+            const text = document.getElementById('status-text');
+            
+            modal.classList.remove('hidden');
+            icon.textContent = type === 'warning' ? '⚠️' : 'ℹ️';
+            titleEl.textContent = title;
+            text.textContent = message;
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 2000);
         }
     </script>
 </body>

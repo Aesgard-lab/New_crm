@@ -1,0 +1,187 @@
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.forms import inlineformset_factory
+from django.shortcuts import render, redirect, get_object_or_404
+from accounts.decorators import require_gym_permission
+from .models import Provider, PurchaseOrder, PurchaseOrderLine
+from .forms import ProviderForm, PurchaseOrderForm, PurchaseOrderLineForm, PurchaseOrderLineFormSet
+
+
+@login_required
+@require_gym_permission("providers.view")
+def provider_list(request):
+    gym = request.gym
+    q = request.GET.get("q", "").strip()
+    queryset = Provider.objects.filter(gym=gym).select_related("gym").prefetch_related("contacts", "items")
+    if q:
+        queryset = queryset.filter(Q(name__icontains=q) | Q(legal_name__icontains=q) | Q(tax_id__icontains=q))
+
+    paginator = Paginator(queryset, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(
+        request,
+        "backoffice/providers/list.html",
+        {
+            "providers": page_obj,
+            "page_obj": page_obj,
+            "q": q,
+        },
+    )
+
+
+@login_required
+@require_gym_permission("providers.manage")
+def provider_create(request):
+    gym = request.gym
+    if request.method == "POST":
+        form = ProviderForm(request.POST)
+        if form.is_valid():
+            provider = form.save(commit=False)
+            provider.gym = gym
+            provider.save()
+            messages.success(request, "Proveedor creado.")
+            return redirect("providers:provider_list")
+    else:
+        form = ProviderForm()
+
+    return render(
+        request,
+        "backoffice/providers/form.html",
+        {
+            "form": form,
+            "title": "Nuevo proveedor",
+        },
+    )
+
+
+@login_required
+@require_gym_permission("providers.manage")
+def provider_edit(request, pk):
+    gym = request.gym
+    provider = get_object_or_404(Provider, pk=pk, gym=gym)
+
+    if request.method == "POST":
+        form = ProviderForm(request.POST, instance=provider)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Proveedor actualizado.")
+            return redirect("providers:provider_list")
+    else:
+        form = ProviderForm(instance=provider)
+
+    return render(
+        request,
+        "backoffice/providers/form.html",
+        {
+            "form": form,
+            "title": f"Editar {provider.name}",
+        },
+    )
+
+
+@login_required
+@require_gym_permission("providers.purchase_orders.view")
+def purchase_order_list(request):
+    gym = request.gym
+    q = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    provider_id = request.GET.get("provider")
+
+    queryset = (
+        PurchaseOrder.objects.filter(gym=gym)
+        .select_related("provider", "created_by")
+        .prefetch_related("lines")
+        .order_by("-created_at")
+    )
+    if q:
+        queryset = queryset.filter(Q(reference__icontains=q) | Q(provider__name__icontains=q))
+    if status:
+        queryset = queryset.filter(status=status)
+    if provider_id:
+        queryset = queryset.filter(provider_id=provider_id)
+
+    paginator = Paginator(queryset, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(
+        request,
+        "backoffice/providers/purchase_orders.html",
+        {
+            "purchase_orders": page_obj,
+            "page_obj": page_obj,
+            "q": q,
+            "status": status,
+            "provider_id": provider_id,
+            "providers": Provider.objects.filter(gym=gym).only("id", "name"),
+        },
+    )
+
+
+@login_required
+@require_gym_permission("providers.purchase_orders.manage")
+def purchase_order_create(request):
+    gym = request.gym
+    LineFormSet = PurchaseOrderLineFormSet
+    if request.method == "POST":
+        form = PurchaseOrderForm(request.POST, gym=gym)
+        formset = LineFormSet(request.POST, prefix="lines")
+        if form.is_valid() and formset.is_valid():
+            po = form.save(commit=False)
+            po.gym = gym
+            po.created_by = request.user
+            po.save()
+            formset.instance = po
+            formset.save()
+            messages.success(request, "Orden de compra creada.")
+            return redirect("providers:purchase_order_list")
+    else:
+        form = PurchaseOrderForm(gym=gym)
+        formset = LineFormSet(prefix="lines")
+
+    return render(
+        request,
+        "backoffice/providers/purchase_order_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "title": "Nueva orden de compra",
+        },
+    )
+
+
+@login_required
+@require_gym_permission("providers.purchase_orders.manage")
+def purchase_order_edit(request, pk):
+    gym = request.gym
+    po = get_object_or_404(PurchaseOrder, pk=pk, gym=gym)
+    LineFormSet = PurchaseOrderLineFormSet
+
+    if request.method == "POST":
+        form = PurchaseOrderForm(request.POST, instance=po, gym=gym)
+        formset = LineFormSet(request.POST, instance=po, prefix="lines")
+        # pasar gym/provider a cada form del formset
+        for f in formset.forms:
+            f.__init__(data=f.data, instance=f.instance, gym=gym, provider=po.provider)
+        if form.is_valid() and formset.is_valid():
+            po = form.save(commit=False)
+            po.gym = gym
+            po.save()
+            formset.save()
+            messages.success(request, "Orden de compra actualizada.")
+            return redirect("providers:purchase_order_list")
+    else:
+        form = PurchaseOrderForm(instance=po, gym=gym)
+        formset = LineFormSet(instance=po, prefix="lines")
+        for f in formset.forms:
+            f.__init__(instance=f.instance, gym=gym, provider=po.provider)
+
+    return render(
+        request,
+        "backoffice/providers/purchase_order_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "title": f"Editar PO-{po.id}",
+        },
+    )

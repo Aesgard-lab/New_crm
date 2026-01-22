@@ -1,0 +1,82 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Roles y Permisos{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > Roles y Permisos
+{% endblock %}
+{% block page_title %}Gestión de Roles{% endblock %}
+
+{% block content %}
+<div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+        <div>
+            <h2 class="font-bold text-slate-800">Roles de Equipo</h2>
+            <p class="text-sm text-slate-500">Define qué zonas puede ver y editar cada empleado</p>
+        </div>
+        <button onclick="document.getElementById('newRoleModal').classList.remove('hidden')"
+            class="bg-[var(--brand-color)] hover:opacity-90 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Nuevo Rol
+        </button>
+    </div>
+
+    <div class="divide-y divide-slate-100">
+        {% for role in roles %}
+        <div class="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+            <div class="flex items-center gap-4">
+                <div
+                    class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                    {{ role.name|slice:":1" }}
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800">{{ role.name }}</h4>
+                    <div class="text-xs text-slate-500 flex items-center gap-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                        <span>{{ role.user_set.count }} usuarios</span>
+                    </div>
+                </div>
+            </div>
+
+            <a href="{% url 'role_edit' role.id %}"
+                class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-indigo-600 transition-colors">
+                Editar Permisos
+            </a>
+        </div>
+        {% empty %}
+        <div class="p-8 text-center text-slate-400">
+            <p>No hay roles definidos.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Create -->
+<div id="newRoleModal"
+    class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
+        <h3 class="text-lg font-bold text-slate-800 mb-4">Crear Nuevo Rol</h3>
+        <form action="{% url 'role_create' %}" method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del Rol</label>
+                <input type="text" name="name" required
+                    class="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Ej: Recepcionista Sr.">
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="document.getElementById('newRoleModal').classList.add('hidden')"
+                    class="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium">Cancelar</button>
+                <button type="submit"
+                    class="px-4 py-2 bg-[var(--brand-color)] text-white rounded-lg text-sm font-bold shadow-lg hover:opacity-90">Crear
+                    Rol</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

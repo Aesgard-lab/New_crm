@@ -1,0 +1,253 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .signature-container {
+        touch-action: none;
+    }
+</style>
+{% endblock %}
+
+{% block header_right %}
+<a href="{% url 'client_detail' client.id %}" class="text-sm font-medium text-slate-500 hover:text-slate-800">
+    ← Volver a la ficha
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="signatureHandler()">
+
+    <!-- Document Info -->
+    <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden mb-6">
+        <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">{{ document.name }}</h2>
+                    <p class="text-sm text-slate-500">Cliente: {{ client.first_name }} {{ client.last_name }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Content -->
+        <div class="p-6 prose prose-sm max-w-none max-h-[400px] overflow-y-auto border-b border-slate-100">
+            {{ document.content|safe }}
+        </div>
+    </div>
+
+    <!-- Signature Section -->
+    <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-amber-50/50">
+            <div class="flex items-center gap-3">
+                <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                    </path>
+                </svg>
+                <div>
+                    <h3 class="font-bold text-amber-900">Firma del Cliente</h3>
+                    <p class="text-sm text-amber-700">El cliente debe firmar en el recuadro de abajo</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <!-- Signature Canvas -->
+            <div class="signature-container border-2 border-dashed border-slate-300 rounded-2xl bg-white mb-4 relative"
+                style="height: 250px;">
+                <canvas id="signature-canvas" class="w-full h-full rounded-2xl cursor-crosshair"
+                    @mousedown="startDrawing($event)" @mousemove="draw($event)" @mouseup="stopDrawing()"
+                    @mouseleave="stopDrawing()" @touchstart.prevent="startDrawing($event)"
+                    @touchmove.prevent="draw($event)" @touchend="stopDrawing()">
+                </canvas>
+
+                <!-- Placeholder text -->
+                <div x-show="!hasSignature"
+                    class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <p class="text-slate-400 text-lg">Firme aquí</p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex justify-between items-center">
+                <button @click="clearSignature()" type="button"
+                    class="text-red-600 hover:text-red-700 text-sm font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                        </path>
+                    </svg>
+                    Borrar Firma
+                </button>
+
+                <p class="text-xs text-slate-400">Firma digital legalmente vinculante</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+            <a href="{% url 'client_detail' client.id %}"
+                class="text-slate-500 hover:text-slate-700 text-sm font-medium">
+                Cancelar
+            </a>
+
+            <button @click="submitSignature()" :disabled="!hasSignature || isSubmitting"
+                :class="hasSignature && !isSubmitting ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 cursor-not-allowed'"
+                class="text-white px-8 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center gap-2">
+                <template x-if="isSubmitting">
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                </template>
+                <template x-if="!isSubmitting">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </template>
+                <span x-text="isSubmitting ? 'Firmando...' : 'FIRMAR DOCUMENTO'"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function signatureHandler() {
+        return {
+            canvas: null,
+            ctx: null,
+            isDrawing: false,
+            hasSignature: false,
+            isSubmitting: false,
+            lastX: 0,
+            lastY: 0,
+
+            init() {
+                this.canvas = document.getElementById('signature-canvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                // Set canvas size
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                // Configure drawing style
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 3;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+            },
+
+            resizeCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+
+                // Restore drawing style after resize
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 3;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+            },
+
+            getCoordinates(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                if (e.touches && e.touches[0]) {
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                }
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            },
+
+            startDrawing(e) {
+                this.isDrawing = true;
+                const coords = this.getCoordinates(e);
+                this.lastX = coords.x;
+                this.lastY = coords.y;
+            },
+
+            draw(e) {
+                if (!this.isDrawing) return;
+
+                const coords = this.getCoordinates(e);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.lastX, this.lastY);
+                this.ctx.lineTo(coords.x, coords.y);
+                this.ctx.stroke();
+
+                this.lastX = coords.x;
+                this.lastY = coords.y;
+                this.hasSignature = true;
+            },
+
+            stopDrawing() {
+                this.isDrawing = false;
+            },
+
+            clearSignature() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.hasSignature = false;
+            },
+
+            async submitSignature() {
+                if (!this.hasSignature || this.isSubmitting) return;
+
+                if (!confirm('¿Estás seguro de que el cliente quiere firmar este documento? Esta acción es legalmente vinculante.')) {
+                    return;
+                }
+
+                this.isSubmitting = true;
+
+                try {
+                    const signatureData = this.canvas.toDataURL('image/png');
+
+                    const formData = new FormData();
+                    formData.append('signature_image', signatureData);
+
+                    const response = await fetch('{% url "client_sign_insitu" client.id document.id %}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('✅ Documento firmado correctamente');
+                        window.location.href = '{% url "client_detail" client.id %}';
+                    } else {
+                        alert('Error: ' + (data.error || 'Error desconocido'));
+                    }
+                } catch (error) {
+                    alert('Error de conexión: ' + error.message);
+                } finally {
+                    this.isSubmitting = false;
+                }
+            }
+        };
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        Alpine.data('signatureHandler', signatureHandler);
+    });
+</script>
+{% endblock %}

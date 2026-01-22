@@ -1,0 +1,479 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Elegant & Minimalist Dashboard */
+    :root {
+        --primary-accent: #6366f1;
+        --secondary-accent: #8b5cf6;
+    }
+
+    .elegant-dashboard {
+        background: linear-gradient(135deg, #fafafa 0%, #f4f4f5 100%);
+        min-height: 100vh;
+        padding: 2rem;
+    }
+
+    .card-minimal {
+        background: white;
+        border-radius: 20px;
+        padding: 1.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        border: 1px solid #f1f5f9;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card-minimal:hover {
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+        border-color: #e0e7ff;
+        transform: translateY(-2px);
+    }
+
+    .kpi-value {
+        font-size: 2.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1;
+    }
+
+    .kpi-label {
+        color: #64748b;
+        font-size: 0.813rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+
+    .kpi-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .badge-warning {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 320px;
+        width: 100%;
+    }
+
+    .table-minimal {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-minimal th {
+        text-align: left;
+        color: #64748b;
+        font-weight: 600;
+        padding: 0.875rem 1rem;
+        font-size: 0.813rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .table-minimal td {
+        padding: 1rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .table-minimal tbody tr {
+        transition: background-color 0.15s ease;
+    }
+
+    .table-minimal tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .progress-minimal {
+        background: #f1f5f9;
+        height: 4px;
+        border-radius: 9999px;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        border-radius: 9999px;
+        transition: width 0.6s ease;
+    }
+
+    .icon-minimal {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.125rem;
+    }
+</style>
+
+<div class="elegant-dashboard">
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 mb-1">Dashboard General</h1>
+            <p class="text-slate-500 text-sm">Franquicia: <span class="font-semibold text-indigo-600">{{ franchise_name }}</span></p>
+        </div>
+        <div class="flex gap-3">
+            <button class="px-4 py-2 rounded-xl bg-white text-slate-700 hover:bg-slate-50 transition border border-slate-200 text-sm font-medium shadow-sm">
+                📅 Este Mes
+            </button>
+            <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition text-sm font-medium shadow-sm">
+                📊 Exportar
+            </button>
+        </div>
+    </div>
+
+    <!-- KPIs Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Revenue -->
+        <div class="card-minimal group">
+            <div class="flex items-start justify-between mb-3">
+                <div class="icon-minimal bg-indigo-50 text-indigo-600">
+                    💰
+                </div>
+            </div>
+            <div class="kpi-label">Facturación Mensual</div>
+            <div class="kpi-value mb-2">{{ kpi.revenue_month|floatformat:0 }}€</div>
+            <div class="flex items-center gap-2">
+                <span class="kpi-badge badge-success">
+                    ↑ +12%
+                </span>
+                <span class="text-xs text-slate-500">vs mes anterior</span>
+            </div>
+        </div>
+
+        <!-- Active Members -->
+        <div class="card-minimal group">
+            <div class="flex items-start justify-between mb-3">
+                <div class="icon-minimal bg-blue-50 text-blue-600">
+                    👥
+                </div>
+            </div>
+            <div class="kpi-label">Socios Activos</div>
+            <div class="kpi-value mb-2">{{ kpi.active_members }}</div>
+            <div class="flex items-center gap-2">
+                <span class="kpi-badge badge-success">
+                    ↑ +5.4%
+                </span>
+                <span class="text-xs text-slate-500">vs mes anterior</span>
+            </div>
+        </div>
+
+        <!-- Churn -->
+        <div class="card-minimal group">
+            <div class="flex items-start justify-between mb-3">
+                <div class="icon-minimal bg-amber-50 text-amber-600">
+                    📉
+                </div>
+            </div>
+            <div class="kpi-label">Tasa de Abandono</div>
+            <div class="kpi-value mb-2">{{ kpi.churn_rate }}%</div>
+            <div class="flex items-center gap-2">
+                <span class="kpi-badge badge-warning">
+                    ↓ -0.2%
+                </span>
+                <span class="text-xs text-slate-500">objetivo < 5%</span>
+            </div>
+        </div>
+
+        <!-- Gyms -->
+        <div class="card-minimal group">
+            <div class="flex items-start justify-between mb-3">
+                <div class="icon-minimal bg-purple-50 text-purple-600">
+                    🏢
+                </div>
+            </div>
+            <div class="kpi-label">Gimnasios Operativos</div>
+            <div class="kpi-value mb-2">{{ kpi.total_gyms }}</div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 font-medium">100% operativos</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content: Charts & Table -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Revenue Chart -->
+        <div class="lg:col-span-2 card-minimal">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span class="text-xl">📈</span> Evolución de Ingresos
+                </h3>
+                <span class="text-xs text-slate-400 font-medium">Últimos 12 meses</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Column: Top Gyms -->
+        <div class="card-minimal">
+            <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <span class="text-xl">🏆</span> Top Rendimiento
+            </h3>
+
+            <div class="overflow-y-auto max-h-[320px] space-y-4">
+                {% for gym in gyms_performance %}
+                <div class="group">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <div class="font-semibold text-slate-900 text-sm">{{ gym.name }}</div>
+                            <div class="text-xs text-slate-500 mb-2">{{ gym.location }}</div>
+                            
+                            {% if gym.goals.has_goals %}
+                                <!-- Goals Progress Indicators -->
+                                <div class="space-y-2 mt-3">
+                                    {% if gym.goals.target_members %}
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs text-slate-600">👥 Socios</span>
+                                            <span class="text-xs font-bold {% if gym.goals.members_progress >= 100 %}text-emerald-600{% elif gym.goals.members_progress >= 80 %}text-green-600{% elif gym.goals.members_progress >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
+                                                {{ gym.active_members }}/{{ gym.goals.target_members }}
+                                            </span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="h-full rounded-full transition-all duration-500 {% if gym.goals.members_progress >= 100 %}bg-emerald-500{% elif gym.goals.members_progress >= 80 %}bg-green-500{% elif gym.goals.members_progress >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
+                                                 style="width: {% if gym.goals.members_progress > 100 %}100{% else %}{{ gym.goals.members_progress|floatformat:0 }}{% endif %}%"></div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if gym.goals.target_revenue %}
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs text-slate-600">💰 Facturación</span>
+                                            <span class="text-xs font-bold {% if gym.goals.revenue_progress >= 100 %}text-emerald-600{% elif gym.goals.revenue_progress >= 80 %}text-green-600{% elif gym.goals.revenue_progress >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
+                                                {{ gym.revenue|floatformat:0 }}€/{{ gym.goals.target_revenue|floatformat:0 }}€
+                                            </span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="h-full rounded-full transition-all duration-500 {% if gym.goals.revenue_progress >= 100 %}bg-emerald-500{% elif gym.goals.revenue_progress >= 80 %}bg-green-500{% elif gym.goals.revenue_progress >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
+                                                 style="width: {% if gym.goals.revenue_progress > 100 %}100{% else %}{{ gym.goals.revenue_progress|floatformat:0 }}{% endif %}%"></div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-xs text-slate-400 italic mt-2">Sin objetivos definidos</div>
+                            {% endif %}
+                        </div>
+                        <div class="text-right ml-3">
+                            <div class="font-bold text-slate-900 text-sm">{{ gym.revenue|floatformat:0 }}€</div>
+                            <div class="text-xs text-emerald-600 font-medium">{{ gym.active_members }} socios</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gym Goals Management Section -->
+    <div class="mt-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <span class="text-2xl">🎯</span> Gestión de Objetivos
+                </h2>
+                <p class="text-sm text-slate-500 mt-1">Establece y monitorea objetivos para cada gimnasio</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for gym in gyms_performance %}
+            <div class="card-minimal group">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-900">{{ gym.name }}</h3>
+                        <p class="text-xs text-slate-500">{{ gym.location }}</p>
+                    </div>
+                    <a href="/organizaciones/objetivos/?gym={{ gym.id }}" 
+                       class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </a>
+                </div>
+
+                {% if gym.goals.has_goals %}
+                <!-- With Goals - Show Progress -->
+                <div class="space-y-4">
+                    {% if gym.goals.target_members %}
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-medium text-slate-700">👥 Objetivo Socios</span>
+                            <span class="text-xs font-bold {% if gym.goals.members_progress >= 100 %}text-emerald-600{% elif gym.goals.members_progress >= 80 %}text-green-600{% elif gym.goals.members_progress >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
+                                {{ gym.goals.members_progress|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-lg font-bold text-slate-900">{{ gym.active_members }}</span>
+                            <span class="text-sm text-slate-600">/ {{ gym.goals.target_members }}</span>
+                        </div>
+                        <div class="w-full bg-white rounded-full h-2 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500 {% if gym.goals.members_progress >= 100 %}bg-gradient-to-r from-emerald-500 to-green-500{% elif gym.goals.members_progress >= 80 %}bg-gradient-to-r from-green-500 to-emerald-500{% elif gym.goals.members_progress >= 60 %}bg-gradient-to-r from-amber-500 to-yellow-500{% else %}bg-gradient-to-r from-red-500 to-orange-500{% endif %}" 
+                                 style="width: {% if gym.goals.members_progress > 100 %}100{% else %}{{ gym.goals.members_progress|floatformat:0 }}{% endif %}%"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if gym.goals.target_revenue %}
+                    <div class="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-medium text-slate-700">💰 Objetivo Facturación</span>
+                            <span class="text-xs font-bold {% if gym.goals.revenue_progress >= 100 %}text-emerald-600{% elif gym.goals.revenue_progress >= 80 %}text-green-600{% elif gym.goals.revenue_progress >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
+                                {{ gym.goals.revenue_progress|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-lg font-bold text-slate-900">{{ gym.revenue|floatformat:0 }}€</span>
+                            <span class="text-sm text-slate-600">/ {{ gym.goals.target_revenue|floatformat:0 }}€</span>
+                        </div>
+                        <div class="w-full bg-white rounded-full h-2 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500 {% if gym.goals.revenue_progress >= 100 %}bg-gradient-to-r from-emerald-500 to-green-500{% elif gym.goals.revenue_progress >= 80 %}bg-gradient-to-r from-green-500 to-emerald-500{% elif gym.goals.revenue_progress >= 60 %}bg-gradient-to-r from-amber-500 to-yellow-500{% else %}bg-gradient-to-r from-red-500 to-orange-500{% endif %}" 
+                                 style="width: {% if gym.goals.revenue_progress > 100 %}100{% else %}{{ gym.goals.revenue_progress|floatformat:0 }}{% endif %}%"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <!-- No Goals - Show Current Stats -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between text-sm py-2 px-3 bg-slate-50 rounded-lg">
+                        <span class="text-slate-600">👥 Socios Actuales</span>
+                        <span class="font-bold text-slate-900">{{ gym.active_members }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm py-2 px-3 bg-slate-50 rounded-lg">
+                        <span class="text-slate-600">💰 Facturación Actual</span>
+                        <span class="font-bold text-slate-900">{{ gym.revenue|floatformat:0 }}€</span>
+                    </div>
+                    <div class="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p class="text-xs text-amber-800 text-center">
+                            ⚠️ No hay objetivos definidos para este gimnasio
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mt-4 pt-4 border-t border-slate-100">
+                    <a href="/organizaciones/objetivos/?gym={{ gym.id }}" 
+                       class="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center justify-center gap-1 py-2">
+                        <span>{% if gym.goals.has_goals %}Ver/Editar Objetivos{% else %}Establecer Objetivos{% endif %}</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+
+        // Gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+        const chartData = JSON.parse('{{ chart_data|escapejs }}');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Ingresos Totales (€)',
+                    data: chartData.data,
+                    borderColor: '#6366f1',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#6366f1',
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#f1f5f9',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y.toLocaleString('es-ES') + ' €';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { 
+                            display: false
+                        },
+                        ticks: { 
+                            color: '#94a3b8',
+                            font: { size: 11, weight: '500' }
+                        }
+                    },
+                    y: {
+                        grid: { 
+                            color: '#f1f5f9',
+                            drawBorder: false
+                        },
+                        ticks: { 
+                            color: '#94a3b8',
+                            font: { size: 11, weight: '500' },
+                            callback: function(value) {
+                                return value.toLocaleString('es-ES') + '€';
+                            }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

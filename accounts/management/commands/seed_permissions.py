@@ -11,6 +11,15 @@ DEFAULT_PERMS = [
     ("staff.manage", "Gestionar staff y permisos"),
     ("marketing.view", "Ver marketing"),
     ("marketing.create", "Crear campañas"),
+    ("discounts.view", "Ver descuentos y promociones"),
+    ("discounts.create", "Crear descuentos"),
+    ("discounts.edit", "Editar descuentos"),
+    ("discounts.delete", "Eliminar descuentos"),
+    ("discounts.apply", "Aplicar descuentos en ventas"),
+    ("providers.view", "Ver proveedores"),
+    ("providers.manage", "Gestionar proveedores"),
+    ("providers.purchase_orders.view", "Ver órdenes de compra"),
+    ("providers.purchase_orders.manage", "Gestionar órdenes de compra"),
 ]
 
 

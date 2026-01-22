@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ gym.commercial_name|default:gym.name }}{% endblock %}</title>
+    
+    {% if settings.meta_title %}
+    <meta name="title" content="{{ settings.meta_title }}">
+    {% endif %}
+    
+    {% if settings.meta_description %}
+    <meta name="description" content="{{ settings.meta_description }}">
+    {% endif %}
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ settings.meta_title|default:gym.commercial_name }}">
+    <meta property="og:description" content="{{ settings.meta_description }}">
+    {% if settings.og_image %}
+    <meta property="og:image" content="{{ settings.og_image.url }}">
+    {% endif %}
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Brand Color -->
+    <style>
+        :root {
+            --brand-color: {{ gym.brand_color|default:'#0f172a' }};
+        }
+        .brand-bg {
+            background-color: var(--brand-color);
+        }
+        .brand-text {
+            color: var(--brand-color);
+        }
+        .brand-border {
+            border-color: var(--brand-color);
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-slate-50 min-h-screen">
+    
+    <!-- HEADER -->
+    <header class="brand-bg text-white sticky top-0 z-50 shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Logo + Nombre -->
+                <a href="{% url 'public_gym_home' slug=settings.public_slug %}" class="flex items-center gap-3">
+                    {% if gym.logo %}
+                    <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-12 w-auto">
+                    {% else %}
+                    <div class="h-12 w-12 bg-white/20 rounded-xl flex items-center justify-center font-bold text-xl">
+                        {{ gym.commercial_name|default:gym.name|slice:":1" }}
+                    </div>
+                    {% endif %}
+                    <span class="text-xl font-bold">{{ gym.commercial_name|default:gym.name }}</span>
+                </a>
+                
+                <!-- Navegación -->
+                <nav class="hidden md:flex items-center gap-6">
+                    {% if settings.show_schedule %}
+                    <a href="{% url 'public_schedule' slug=settings.public_slug %}" 
+                       class="hover:opacity-80 transition-opacity font-medium">
+                        📅 Horario
+                    </a>
+                    {% endif %}
+                    
+                    {% if settings.show_pricing %}
+                    <a href="{% url 'public_pricing' slug=settings.public_slug %}" 
+                       class="hover:opacity-80 transition-opacity font-medium">
+                        💳 Precios
+                    </a>
+                    {% endif %}
+                    
+                    {% if settings.show_services %}
+                    <a href="{% url 'public_services' slug=settings.public_slug %}" 
+                       class="hover:opacity-80 transition-opacity font-medium">
+                        ✨ Servicios
+                    </a>
+                    {% endif %}
+                    
+                    {% if settings.show_shop %}
+                    <a href="{% url 'public_shop' slug=settings.public_slug %}" 
+                       class="hover:opacity-80 transition-opacity font-medium">
+                        🛍️ Tienda
+                    </a>
+                    {% endif %}
+                    
+                    <!-- Auth -->
+                    <div class="pl-4 border-l border-white/20">
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'public_logout' slug=settings.public_slug %}" 
+                           class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors">
+                            Salir
+                        </a>
+                        {% else %}
+                        <a href="{% url 'public_login' slug=settings.public_slug %}" 
+                           class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors">
+                            Acceder
+                        </a>
+                        {% endif %}
+                    </div>
+                </nav>
+                
+                <!-- Mobile Menu Button -->
+                <button class="md:hidden bg-white/10 p-2 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- MESSAGES -->
+    {% if messages %}
+    <div class="container mx-auto px-4 py-4">
+        {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-800{% elif message.tags == 'success' %}bg-green-50 border-green-200 text-green-800{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %} border rounded-xl p-4 mb-4">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- MAIN CONTENT -->
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 text-white mt-16">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Info -->
+                <div>
+                    <h3 class="font-bold text-lg mb-4">{{ gym.commercial_name|default:gym.name }}</h3>
+                    {% if gym.address %}
+                    <p class="text-sm text-slate-400 mb-2">📍 {{ gym.address }}, {{ gym.city }}</p>
+                    {% endif %}
+                    {% if gym.phone %}
+                    <p class="text-sm text-slate-400 mb-2">📞 <a href="tel:{{ gym.phone }}" class="hover:text-white">{{ gym.phone }}</a></p>
+                    {% endif %}
+                    {% if gym.email %}
+                    <p class="text-sm text-slate-400">✉️ <a href="mailto:{{ gym.email }}" class="hover:text-white">{{ gym.email }}</a></p>
+                    {% endif %}
+                </div>
+                
+                <!-- Redes Sociales -->
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Síguenos</h3>
+                    <div class="flex gap-4">
+                        {% if gym.instagram %}
+                        <a href="{{ gym.instagram }}" target="_blank" class="text-slate-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"/></svg>
+                        </a>
+                        {% endif %}
+                        {% if gym.facebook %}
+                        <a href="{{ gym.facebook }}" target="_blank" class="text-slate-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Enlaces -->
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Enlaces</h3>
+                    <ul class="space-y-2 text-sm text-slate-400">
+                        {% if settings.show_schedule %}
+                        <li><a href="{% url 'public_schedule' slug=settings.public_slug %}" class="hover:text-white">Horario de Clases</a></li>
+                        {% endif %}
+                        {% if settings.show_pricing %}
+                        <li><a href="{% url 'public_pricing' slug=settings.public_slug %}" class="hover:text-white">Planes y Precios</a></li>
+                        {% endif %}
+                        {% if settings.allow_self_registration %}
+                        <li><a href="{% url 'public_register' slug=settings.public_slug %}" class="hover:text-white">Registrarse</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-slate-800 mt-8 pt-8 text-center text-sm text-slate-500">
+                © {{ gym.commercial_name|default:gym.name }} · Powered by New CRM
+            </div>
+        </div>
+    </footer>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,269 @@
+﻿Found 1 test(s).
+python : Creating 
+test database for 
+alias 'default' 
+('test_new_gym')...
+En línea: 1 
+Carácter: 1
++ python manage.py 
+test memberships.test
+s_membership_update.F
+ieldPreser ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (Creatin   
+ g test d...st_ne    
+w_gym')...:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+
+Operations to perform:
+  Synchronize unmigrated apps: messages, public_portal, staticfiles
+  Apply all migrations: accounts, activities, admin, auth, clients, contenttypes, discounts, django_celery_beat, django_celery_results, finance, marketing, memberships, organizations, products, providers, routines, sales, services, sessions, staff
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying organizations.0001_initial... OK
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying accounts.0001_initial... OK
+  Applying accounts.0002_permission_franchisemembership_gymmembership... OK
+  Applying organizations.0002_gym_brand_color... OK
+  Applying staff.0001_initial... OK
+  Applying staff.0002_staffprofile_photo_incentiverule_salaryconfig_and_more... OK
+  Applying staff.0003_incentiverule_staff... OK
+  Applying staff.0004_stafftask... OK
+  Applying staff.0005_alter_workshift_method... OK
+  Applying organizations.0003_gym_address_gym_city_gym_commercial_name_gym_country_and_more... OK
+  Applying organizations.0004_gym_facebook_gym_instagram_gym_tiktok_gym_youtube... OK
+  Applying staff.0006_auditlog... OK
+  Applying organizations.0005_franchise_owners... OK
+  Applying organizations.0006_gymopeninghours_gymholiday... OK
+  Applying organizations.0007_booking_policy_settings... OK
+  Applying organizations.0008_remove_gym_allow_waitlist_and_more... OK
+  Applying organizations.0009_gymgoal... OK
+  Applying staff.0007_ratingincentive... OK
+  Applying finance.0001_initial... OK
+  Applying activities.0001_initial... OK
+  Applying services.0001_initial... OK
+  Applying services.0002_alter_service_tax_rate_servicecategory_and_more... OK
+  Applying services.0003_service_is_active_service_is_visible_online... OK
+  Applying activities.0002_cancellationpolicy_activity_cancellation_policy... OK
+  Applying memberships.0001_initial... OK
+  Applying memberships.0002_membershipplan_is_membership... OK
+  Applying memberships.0003_remove_membershipplan_billing_cycle_and_more... OK
+  Applying memberships.0004_membershipplan_contract_content_and_more... OK
+  Applying clients.0001_initial... OK
+  Applying clients.0002_clientmembership_clientsale_clientvisit... OK
+  Applying clients.0003_clientgroup_parent_clientnote_type_clientdocument... OK
+  Applying clients.0004_client_access_code... OK
+  Applying clients.0005_clientsale_staff_clientvisit_staff... OK
+  Applying clients.0006_client_stripe_customer_id... OK
+  Applying clients.0007_clientmembership_sessions_total_and_more... OK
+  Applying clients.0008_alter_clientdocument_options_clientdocument_content_and_more... OK
+  Applying clients.0009_chatroom_chatmessage... OK
+  Applying clients.0010_clientfield_clientfieldoption_client_is_company_client... OK
+  Applying clients.0011_alter_clientfield_field_type... OK
+  Applying clients.0012_clientmembership_current_period_end_and_more... OK
+  Applying clients.0013_client_email_notifications_enabled... OK
+  Applying clients.0014_clientvisit_cancellation_type... OK
+  Applying activities.0003_schedulerule_activitysession... OK
+  Applying activities.0004_activity_color... OK
+  Applying activities.0005_activitypolicy_waitlistentry_and_more... OK
+  Applying activities.0006_reviewsettings_reviewrequest_classreview... OK
+  Applying activities.0007_activity_qr_checkin_enabled_attendancesettings_and_more... OK
+  Applying activities.0008_activity_is_visible_online... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying organizations.0010_publicportalsettings... OK
+  Applying memberships.0005_membershipplan_allow_pause_and_more... OK
+  Applying finance.0002_remove_taxrate_rate_taxrate_gym_taxrate_rate_percent_and_more... OK
+  Applying finance.0003_financesettings... OK
+  Applying finance.0004_financesettings_redsys_environment_and_more... OK
+  Applying finance.0005_alter_financesettings_options_clientredsystoken... OK
+  Applying finance.0006_posdevice... OK
+  Applying finance.0007_financesettings_allow_client_delete_card... OK
+  Applying finance.0008_financesettings_allow_client_pay_next_fee... OK
+  Applying finance.0009_alter_paymentmethod_options_and_more... OK
+  Applying clients.0015_alter_clientfield_options_clientfield_display_order_and_more... OK
+  Applying clients.0016_clientmembership_created_by_clientmembership_gym_and_more... OK
+  Applying sales.0001_initial... OK
+  Applying services.0004_serviceappointment... OK
+  Applying services.0005_service_color... OK
+  Applying sales.0002_orderpayment_transaction_id... OK
+  Applying products.0001_initial... OK
+  Applying discounts.0001_initial... OK
+  Applying django_celery_beat.0001_initial... OK
+  Applying django_celery_beat.0002_auto_20161118_0346... OK
+  Applying django_celery_beat.0003_auto_20161209_0049... OK
+  Applying django_celery_beat.0004_auto_20170221_0000... OK
+  Applying django_celery_beat.0005_add_solarschedule_events_choices... OK
+  Applying django_celery_beat.0006_auto_20180322_0932... OK
+  Applying django_celery_beat.0007_auto_20180521_0826... OK
+  Applying django_celery_beat.0008_auto_20180914_1922... OK
+  Applying django_celery_beat.0006_auto_20180210_1226... OK
+  Applying django_celery_beat.0006_periodictask_priority... OK
+  Applying django_celery_beat.0009_periodictask_headers... OK
+  Applying django_celery_beat.0010_auto_20190429_0326... OK
+  Applying django_celery_beat.0011_auto_20190508_0153... OK
+  Applying django_celery_beat.0012_periodictask_expire_seconds... OK
+  Applying django_celery_beat.0013_auto_20200609_0727... OK
+  Applying django_celery_beat.0014_remove_clockedschedule_enabled... OK
+  Applying django_celery_beat.0015_edit_solarschedule_events_choices... OK
+  Applying django_celery_beat.0016_alter_crontabschedule_timezone... OK
+  Applying django_celery_beat.0017_alter_crontabschedule_month_of_year... OK
+  Applying django_celery_beat.0018_improve_crontab_helptext... OK
+  Applying django_celery_beat.0019_alter_periodictasks_options... OK
+  Applying django_celery_results.0001_initial... OK
+  Applying django_celery_results.0002_add_task_name_args_kwargs... OK
+  Applying django_celery_results.0003_auto_20181106_1101... OK
+  Applying django_celery_results.0004_auto_20190516_0412... OK
+  Applying django_celery_results.0005_taskresult_worker... OK
+  Applying django_celery_results.0006_taskresult_date_created... OK
+  Applying django_celery_results.0007_remove_taskresult_hidden... OK
+  Applying django_celery_results.0008_chordcounter... OK
+  Applying django_celery_results.0009_groupresult... OK
+  Applying django_celery_results.0010_remove_duplicate_indices... OK
+  Applying django_celery_results.0011_taskresult_periodic_task_name... OK
+  Applying django_celery_results.0012_taskresult_date_started... OK
+  Applying django_celery_results.0013_taskresult_django_cele_periodi_1993cf_idx... OK
+  Applying django_celery_results.0014_alter_taskresult_status... OK
+  Applying marketing.0001_initial... OK
+  Applying marketing.0002_remove_popup_target_group_and_more... OK
+  Applying marketing.0003_leadpipeline_leadstage_leadcard_leadstageautomation... OK
+  Applying marketing.0004_popup_enhancements... OK
+  Applying marketing.0005_remove_marketingsettings_smtp_password_and_more... OK
+  Applying marketing.0006_emailworkflow_emailworkflowexecution_and_more... OK
+  Applying marketing.0007_retentionrule_assigned_staff... OK
+  Applying marketing.0008_advertisement_advertisementimpression... OK
+  Applying marketing.0009_class_notifications... OK
+  Applying providers.0001_initial... OK
+  Applying products.0002_product_preferred_provider... OK
+  Applying providers.0002_purchaseorder_provider... OK
+  Applying providers.0003_alter_purchaseorder_provider... OK
+  Applying routines.0001_initial... OK
+  Applying routines.0002_exercisetag_exercise_tags... OK
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).
+test_billing_dates_no
+t_changed (membership
+s.tests_membership_up
+date.FieldPreservatio
+nTestCase.test_billin
+g_dates_not_changed)
+Las fechas de 
+facturaci¾n no deben 
+cambiar al 
+actualizar el plan 
+... ERROR
+
+=====================
+=====================
+=====================
+=======
+ERROR: test_billing_d
+ates_not_changed (mem
+berships.tests_member
+ship_update.FieldPres
+ervationTestCase.test
+_billing_dates_not_ch
+anged)
+Las fechas de 
+facturaci¾n no deben 
+cambiar al 
+actualizar el plan
+---------------------
+---------------------
+---------------------
+-------
+Traceback (most 
+recent call last):
+  File "C:\Users\sant
+i\OneDrive\Escritorio
+\New_crm\memberships\
+tests_membership_upda
+te.py", line 662, in 
+setUp
+    self.gym = Gym.ob
+jects.create(franchis
+e=self.franchise, 
+name='Gym', 
+slug='gym', commercia
+l_name='Gym')
+               ~~~~~~
+~~~~~~~~~~~~^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
+^
+  File "C:\Users\sant
+i\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\dja
+ngo\db\models\manager
+.py", line 87, in 
+manager_method
+    return getattr(se
+lf.get_queryset(), 
+name)(*args, 
+**kwargs)
+           ~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\sant
+i\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\dja
+ngo\db\models\query.p
+y", line 658, in 
+create
+    obj = 
+self.model(**kwargs)
+  File "C:\Users\sant
+i\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\dja
+ngo\db\models\base.py
+", line 567, in 
+__init__
+    raise TypeError(
+    ...<2 lines>...
+    )
+TypeError: Gym() got 
+unexpected keyword 
+arguments: 'slug'
+
+---------------------
+---------------------
+---------------------
+-------
+Ran 1 test in 0.007s
+
+FAILED (errors=1)
+Destroying test 
+database for alias 
+'default' 
+('test_new_gym')...
+

@@ -1,0 +1,242 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Rendimiento por Ratings</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Performance de instructores basado en valoraciones</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Period Filter -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <form method="GET" class="flex items-center gap-4">
+            <label class="font-bold text-slate-700">Período:</label>
+            <select name="period" onchange="this.form.submit()" class="rounded-xl border-slate-200">
+                <option value="7" {% if period_days == 7 %}selected{% endif %}>Última Semana</option>
+                <option value="30" {% if period_days == 30 %}selected{% endif %}>Último Mes</option>
+                <option value="60" {% if period_days == 60 %}selected{% endif %}>Últimos 2 Meses</option>
+                <option value="90" {% if period_days == 90 %}selected{% endif %}>Últimos 3 Meses</option>
+            </select>
+            <div class="flex-1"></div>
+            <a href="{% url 'rating_incentive_list' %}" 
+               class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold transition-colors">
+                ⚙️ Configurar Incentivos
+            </a>
+        </form>
+    </div>
+
+    <!-- Performance Table -->
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800">Ranking de Instructores - Últimos {{ period_days }} días</h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-500 font-medium">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Puesto</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Instructor</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Reviews</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Rating Instructor</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Rating Clase</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Nivel</th>
+                        <th class="px-6 py-3 text-right font-semibold uppercase text-xs">Bono Estimado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for data in performance_data %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-center">
+                            {% if forloop.counter == 1 %}
+                            <span class="text-2xl">🥇</span>
+                            {% elif forloop.counter == 2 %}
+                            <span class="text-2xl">🥈</span>
+                            {% elif forloop.counter == 3 %}
+                            <span class="text-2xl">🥉</span>
+                            {% else %}
+                            <span class="text-slate-400 font-bold">#{{ forloop.counter }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                {% if data.instructor.photo %}
+                                <img src="{{ data.instructor.photo.url }}" class="w-10 h-10 rounded-full object-cover">
+                                {% else %}
+                                <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600">
+                                    {{ data.instructor.user.first_name.0 }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <div class="font-bold text-slate-800">
+                                        {{ data.instructor.user.first_name }} {{ data.instructor.user.last_name }}
+                                    </div>
+                                    <div class="text-xs text-slate-500">
+                                        {{ data.instructor.get_role_display }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="{% if data.total_reviews >= data.best_incentive.min_reviews %}text-emerald-600{% else %}text-rose-600{% endif %} font-bold">
+                                {{ data.total_reviews }}
+                            </span>
+                            {% if data.best_incentive %}
+                            <div class="text-xs text-slate-400">
+                                (mín: {{ data.best_incentive.min_reviews }})
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="font-bold text-2xl {% if data.avg_instructor_rating >= 4.8 %}text-purple-600{% elif data.avg_instructor_rating >= 4.5 %}text-amber-600{% elif data.avg_instructor_rating >= 4.0 %}text-orange-600{% else %}text-rose-600{% endif %}">
+                                {{ data.avg_instructor_rating }}
+                            </div>
+                            <div class="text-xs text-slate-400">⭐⭐⭐⭐⭐</div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="font-bold text-xl text-indigo-600">
+                                {{ data.avg_class_rating }}
+                            </div>
+                            <div class="text-xs text-slate-400">⭐⭐⭐⭐⭐</div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if data.level == 'BRONZE' %}
+                            <span class="bg-orange-100 text-orange-700 px-3 py-2 rounded-full text-xs font-bold">🥉 Bronce</span>
+                            {% elif data.level == 'SILVER' %}
+                            <span class="bg-slate-200 text-slate-700 px-3 py-2 rounded-full text-xs font-bold">🥈 Plata</span>
+                            {% elif data.level == 'GOLD' %}
+                            <span class="bg-yellow-100 text-yellow-700 px-3 py-2 rounded-full text-xs font-bold">🥇 Oro</span>
+                            {% elif data.level == 'PLATINUM' %}
+                            <span class="bg-purple-100 text-purple-700 px-3 py-2 rounded-full text-xs font-bold">💎 Platino</span>
+                            {% else %}
+                            <span class="text-slate-400">Sin nivel</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            {% if data.bonus_amount > 0 %}
+                            <div class="font-bold text-emerald-600 text-xl">
+                                +{{ data.bonus_amount }}€
+                            </div>
+                            {% if data.best_incentive %}
+                            <div class="text-xs text-slate-500">
+                                {% if data.best_incentive.bonus_type == 'PERCENTAGE' %}
+                                {{ data.best_incentive.bonus_value }}% del salario
+                                {% else %}
+                                Bono fijo
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-slate-400 text-sm">
+                                {% if data.total_reviews == 0 %}
+                                Sin reviews
+                                {% elif data.total_reviews < data.best_incentive.min_reviews %}
+                                Pocas reviews
+                                {% else %}
+                                Rating bajo
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-slate-400">
+                            No hay datos de rendimiento en este período
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Total Bonuses -->
+        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 p-6 rounded-2xl">
+            <div class="text-sm font-bold text-emerald-600 uppercase mb-2">Total Bonos Este Período</div>
+            <div class="text-3xl font-bold text-slate-800">
+                {% widthratio performance_data|length 1 1 as total %}
+                {{ performance_data|length|add:"0" }}
+                {% for data in performance_data %}
+                {% if forloop.first %}
+                {% widthratio 0 1 1 as sum %}
+                {% endif %}
+                {% endfor %}
+                {% for data in performance_data %}
+                {% endfor %}
+                {% for data in performance_data %}
+                    {% endfor %}
+                {# Calculate sum manually #}
+                {% with total_bonus=0 %}
+                {% for data in performance_data %}
+                    {% endfor %}
+                {% endwith %}
+                <span class="text-emerald-600">Calculando...</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">Suma de todos los bonos activos</div>
+        </div>
+
+        <!-- Best Performer -->
+        {% if performance_data %}
+        <div class="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 p-6 rounded-2xl">
+            <div class="text-sm font-bold text-amber-600 uppercase mb-2">🏆 Mejor Instructor</div>
+            <div class="text-xl font-bold text-slate-800">
+                {{ performance_data.0.instructor.user.first_name }} {{ performance_data.0.instructor.user.last_name }}
+            </div>
+            <div class="text-2xl font-bold text-amber-600 mt-2">
+                {{ performance_data.0.avg_instructor_rating }} ⭐
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Low Performers Alert -->
+        <div class="bg-gradient-to-br from-rose-50 to-red-50 border border-rose-200 p-6 rounded-2xl">
+            <div class="text-sm font-bold text-rose-600 uppercase mb-2">⚠️ Requieren Atención</div>
+            <div class="text-3xl font-bold text-slate-800">
+                {% widthratio performance_data|length 1 1 as low_count %}
+                {% for data in performance_data %}
+                {% if data.avg_instructor_rating < 3.8 and data.total_reviews >= 5 %}
+                {% endif %}
+                {% endfor %}
+                <span class="text-rose-600">
+                    {% for data in performance_data %}{% if data.avg_instructor_rating < 3.8 and data.total_reviews >= 5 %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% endfor %}
+                </span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">Instructores con rating <3.8</div>
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 p-6 rounded-2xl">
+        <h3 class="font-bold text-slate-800 mb-3">💡 Recomendaciones</h3>
+        <ul class="space-y-2 text-sm text-slate-700">
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Ratings <3.8:</strong> Programa sesión de feedback constructivo 1-on-1
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Pocas reviews:</strong> Incentiva a los clientes a valorar las clases de estos instructores
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Top performers:</strong> Considera darles horarios premium o clases especiales
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-indigo-600 font-bold">•</span>
+                <div>
+                    <strong>Transparencia:</strong> Comparte estos datos con el equipo para fomentar la mejora continua
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

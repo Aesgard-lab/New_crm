@@ -1,0 +1,182 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Incentivos por Rating</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Bonos basados en valoraciones de clases</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header with Actions -->
+    <div class="flex justify-between items-center">
+        <div>
+            <a href="{% url 'staff_rating_performance' %}" 
+               class="inline-block bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold transition-colors">
+                📊 Ver Rendimiento Actual
+            </a>
+        </div>
+        <a href="{% url 'rating_incentive_create' %}" 
+           class="bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white px-6 py-3 rounded-xl font-bold transition-colors">
+            ➕ Crear Incentivo
+        </a>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-6 rounded-2xl">
+        <h3 class="font-bold text-slate-800 mb-3">💡 Cómo Funciona el Sistema de Incentivos por Rating</h3>
+        <ul class="space-y-2 text-sm text-slate-700">
+            <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">•</span>
+                <div>
+                    <strong>Bonos Automáticos:</strong> Los instructores reciben bonos mensuales si su rating promedio supera el umbral configurado
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">•</span>
+                <div>
+                    <strong>Niveles de Rendimiento:</strong> Bronce (4.0-4.29), Plata (4.3-4.49), Oro (4.5-4.79), Platino (4.8-5.0)
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">•</span>
+                <div>
+                    <strong>Mínimo de Reviews:</strong> Se requiere un número mínimo de valoraciones para evitar sesgos
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">•</span>
+                <div>
+                    <strong>Global vs Individual:</strong> Puedes crear reglas para todo el equipo o personalizadas por instructor
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Incentives Table -->
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800">Reglas Configuradas</h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-500 font-medium">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Instructor</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Rating Mínimo</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Nivel</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Bono</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Min. Reviews</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Período</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Estado</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for incentive in incentives %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-700">
+                            {% if incentive.staff %}
+                            {{ incentive.staff.user.first_name }} {{ incentive.staff.user.last_name }}
+                            {% else %}
+                            <span class="text-indigo-600 font-bold">🌐 Global</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="font-bold text-amber-600">{{ incentive.min_rating }} ⭐</span>
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            {% if incentive.level == 'BRONZE' %}
+                            <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-bold">🥉 Bronce</span>
+                            {% elif incentive.level == 'SILVER' %}
+                            <span class="bg-slate-200 text-slate-700 px-2 py-1 rounded-full text-xs font-bold">🥈 Plata</span>
+                            {% elif incentive.level == 'GOLD' %}
+                            <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">🥇 Oro</span>
+                            {% elif incentive.level == 'PLATINUM' %}
+                            <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-bold">💎 Platino</span>
+                            {% else %}
+                            <span class="text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3 text-center font-bold text-emerald-600">
+                            {{ incentive.bonus_value }}{% if incentive.bonus_type == 'PERCENTAGE' %}%{% else %}€{% endif %}
+                        </td>
+                        <td class="px-6 py-3 text-center text-slate-600">
+                            {{ incentive.min_reviews }}
+                        </td>
+                        <td class="px-6 py-3 text-center text-slate-600">
+                            {{ incentive.period_days }} días
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            {% if incentive.is_active %}
+                            <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">Activo</span>
+                            {% else %}
+                            <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-xs font-bold">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{% url 'rating_incentive_edit' incentive.pk %}" 
+                                   class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                    ✏️
+                                </a>
+                                <a href="{% url 'rating_incentive_delete' incentive.pk %}" 
+                                   class="text-rose-600 hover:text-rose-800 font-medium">
+                                    🗑️
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-8 text-center text-slate-400">
+                            No hay incentivos por rating configurados
+                            <div class="mt-4">
+                                <a href="{% url 'rating_incentive_create' %}" 
+                                   class="inline-block bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white px-6 py-3 rounded-xl font-bold transition-colors">
+                                    ➕ Crear Primer Incentivo
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recommended Configuration -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h3 class="font-bold text-slate-800 mb-4">🎯 Configuración Recomendada (Basada en Mindbody & Glofox)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-orange-50 border border-orange-200 p-4 rounded-xl">
+                <div class="font-bold text-orange-700 mb-2">🥉 Bronce (4.0-4.29)</div>
+                <div class="text-sm text-slate-600">Bono: 5% del salario base</div>
+                <div class="text-xs text-slate-500 mt-1">Instructor competente, margen de mejora</div>
+            </div>
+            
+            <div class="bg-slate-100 border border-slate-300 p-4 rounded-xl">
+                <div class="font-bold text-slate-700 mb-2">🥈 Plata (4.3-4.49)</div>
+                <div class="text-sm text-slate-600">Bono: 8% del salario base</div>
+                <div class="text-xs text-slate-500 mt-1">Buen desempeño consistente</div>
+            </div>
+            
+            <div class="bg-yellow-50 border border-yellow-300 p-4 rounded-xl">
+                <div class="font-bold text-yellow-700 mb-2">🥇 Oro (4.5-4.79)</div>
+                <div class="text-sm text-slate-600">Bono: 12% del salario base</div>
+                <div class="text-xs text-slate-500 mt-1">Excelente instructor, alta satisfacción</div>
+            </div>
+            
+            <div class="bg-purple-50 border border-purple-300 p-4 rounded-xl">
+                <div class="font-bold text-purple-700 mb-2">💎 Platino (4.8-5.0)</div>
+                <div class="text-sm text-slate-600">Bono: 15% del salario base</div>
+                <div class="text-xs text-slate-500 mt-1">Elite, experiencia excepcional</div>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-sm text-slate-600">
+            <strong>Nota:</strong> Recomendamos mínimo 10 reviews/mes para activar bonos y feedback constructivo para ratings <3.8
+        </div>
+    </div>
+</div>
+{% endblock %}

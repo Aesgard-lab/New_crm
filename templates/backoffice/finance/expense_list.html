@@ -1,0 +1,325 @@
+{% extends 'base/base.html' %}
+{% load humanize %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div x-data="{ 
+    showFilters: false,
+    showModal: false,
+    selectedExpense: null
+}">
+    <!-- Header con estadísticas -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">💸 Gestión de Gastos</h1>
+                <p class="text-slate-500 mt-1">Control total de gastos y proveedores</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="{% url 'expense_generate_recurring' %}" 
+                   class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition">
+                    🔄 Generar Recurrentes
+                </a>
+                <a href="{% url 'expense_create' %}" 
+                   class="px-6 py-3 bg-[var(--brand-color)] text-white rounded-xl hover:opacity-90 transition font-semibold">
+                    ➕ Nuevo Gasto
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-slate-300 transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">📊</span>
+                    <span class="text-xs font-medium text-slate-500">Total</span>
+                </div>
+                <p class="text-2xl font-bold text-slate-900">{{ stats.count|default:0 }}</p>
+                <p class="text-xs text-slate-500 mt-1">gastos registrados</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-slate-300 transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">💰</span>
+                    <span class="text-xs font-medium text-slate-500">Base</span>
+                </div>
+                <p class="text-2xl font-bold text-slate-900">{{ stats.total_base|floatformat:2|default:"0.00" }}€</p>
+                <p class="text-xs text-slate-500 mt-1">sin impuestos</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-slate-300 transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">🧾</span>
+                    <span class="text-xs font-medium text-slate-500">IVA</span>
+                </div>
+                <p class="text-2xl font-bold text-slate-900">{{ stats.total_tax|floatformat:2|default:"0.00" }}€</p>
+                <p class="text-xs text-slate-500 mt-1">impuestos</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-[var(--brand-color)] transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">💳</span>
+                    <span class="text-xs font-medium text-slate-500">Total</span>
+                </div>
+                <p class="text-2xl font-bold text-slate-900">{{ stats.total|floatformat:2|default:"0.00" }}€</p>
+                <p class="text-xs text-slate-500 mt-1">con IVA</p>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-200 hover:border-green-500 transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">✅</span>
+                    <span class="text-xs font-medium text-slate-500">Pagado</span>
+                </div>
+                <p class="text-2xl font-bold text-green-600">{{ stats.total_paid|floatformat:2|default:"0.00" }}€</p>
+                <p class="text-xs text-slate-500 mt-1">abonado</p>
+            </div>
+        </div>
+
+        <!-- Alertas -->
+        {% if pending_count > 0 or overdue_count > 0 %}
+        <div class="mt-4 flex gap-3">
+            {% if pending_count > 0 %}
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg flex-1">
+                <p class="text-yellow-800">⚠️ Tienes <strong>{{ pending_count }}</strong> gasto(s) pendiente(s) de pago</p>
+            </div>
+            {% endif %}
+            {% if overdue_count > 0 %}
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex-1">
+                <p class="text-red-800">🚨 Tienes <strong>{{ overdue_count }}</strong> gasto(s) vencido(s)</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Filtros y Quick Links -->
+    <div class="mb-6 bg-white rounded-2xl shadow-sm p-6">
+        <!-- Filtros Rápidos de Fecha -->
+        <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <span class="text-sm font-medium text-slate-600">Período:</span>
+            <a href="?date_filter=today" 
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition {% if request.GET.date_filter == 'today' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                Hoy
+            </a>
+            <a href="?date_filter=week" 
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition {% if request.GET.date_filter == 'week' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                Esta Semana
+            </a>
+            <a href="?date_filter=month" 
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition {% if request.GET.date_filter == 'month' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                Este Mes
+            </a>
+            <a href="?date_filter=quarter" 
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition {% if request.GET.date_filter == 'quarter' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                Trimestre
+            </a>
+            <a href="{% url 'expense_list' %}" 
+               class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                Todos
+            </a>
+        </div>
+
+        <div class="flex items-center justify-between">
+            <button @click="showFilters = !showFilters" 
+                    class="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition">
+                <span>🔍</span>
+                <span x-text="showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'"></span>
+            </button>
+            
+            <div class="flex gap-3">
+                <a href="{% url 'supplier_list' %}" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition">
+                    👥 Proveedores
+                </a>
+                <a href="{% url 'category_list' %}" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-xl hover:bg-purple-200 transition">
+                    🏷️ Categorías
+                </a>
+            </div>
+        </div>
+
+        <!-- Panel de filtros -->
+        <form method="get" x-show="showFilters" x-transition class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📅 Desde</label>
+                <input type="date" name="date_from" value="{{ filter_date_from }}" 
+                       class="w-full rounded-xl border-slate-200">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📅 Hasta</label>
+                <input type="date" name="date_to" value="{{ filter_date_to }}" 
+                       class="w-full rounded-xl border-slate-200">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">👤 Proveedor</label>
+                <select name="supplier" class="w-full rounded-xl border-slate-200">
+                    <option value="">Todos</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}" {% if filter_supplier == supplier.id|stringformat:"s" %}selected{% endif %}>
+                        {{ supplier.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">🏷️ Categoría</label>
+                <select name="category" class="w-full rounded-xl border-slate-200">
+                    <option value="">Todas</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if filter_category == category.id|stringformat:"s" %}selected{% endif %}>
+                        {{ category.icon }} {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📊 Estado</label>
+                <select name="status" class="w-full rounded-xl border-slate-200">
+                    <option value="">Todos</option>
+                    {% for value, label in STATUS_CHOICES %}
+                    <option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">🔄 Recurrente</label>
+                <select name="is_recurring" class="w-full rounded-xl border-slate-200">
+                    <option value="">Todos</option>
+                    <option value="yes" {% if filter_is_recurring == 'yes' %}selected{% endif %}>Sí</option>
+                    <option value="no" {% if filter_is_recurring == 'no' %}selected{% endif %}>No</option>
+                </select>
+            </div>
+            <div class="md:col-span-3 flex gap-3 justify-end">
+                <a href="{% url 'expense_list' %}" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition">
+                    🔄 Limpiar
+                </a>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
+                    🔍 Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de gastos -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-slate-50 border-b-2 border-slate-200">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Fecha</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Concepto</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Proveedor</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Categoría</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase">Base</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase">IVA</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase">Total</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-600 uppercase">Estado</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-600 uppercase">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for expense in expenses %}
+                <tr class="hover:bg-slate-50 transition cursor-pointer" onclick="window.location='{% url 'expense_edit' expense.pk %}'">
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-slate-900">{{ expense.issue_date|date:"d/m/Y" }}</div>
+                        {% if expense.due_date %}
+                        <div class="text-xs text-slate-500">Vence: {{ expense.due_date|date:"d/m/Y" }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-semibold text-slate-900">{{ expense.concept }}</div>
+                        {% if expense.reference_number %}
+                        <div class="text-xs text-slate-500">Ref: {{ expense.reference_number }}</div>
+                        {% endif %}
+                        {% if expense.is_recurring %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                            🔄 {{ expense.get_recurrence_frequency_display }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if expense.supplier %}
+                        <div class="text-sm text-slate-900">{{ expense.supplier.name }}</div>
+                        {% else %}
+                        <span class="text-xs text-slate-400">Sin proveedor</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if expense.category %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" 
+                              style="background-color: {{ expense.category.color }}22; color: {{ expense.category.color }};">
+                            {{ expense.category.icon }} {{ expense.category.name }}
+                        </span>
+                        {% else %}
+                        <span class="text-xs text-slate-400">Sin categoría</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-medium text-slate-900">
+                        {{ expense.base_amount|floatformat:2 }}€
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm text-slate-600">
+                        {{ expense.tax_amount|floatformat:2 }}€
+                        <span class="text-xs text-slate-400">({{ expense.tax_rate }}%)</span>
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-bold text-slate-900">
+                        {{ expense.total_amount|floatformat:2 }}€
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if expense.status == 'PAID' %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                            ✅ Pagado
+                        </span>
+                        {% elif expense.status == 'OVERDUE' %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                            🚨 Vencido
+                        </span>
+                        {% elif expense.status == 'PARTIAL' %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                            ⚠️ Parcial
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                            ⏳ Pendiente
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4" onclick="event.stopPropagation()">
+                        <div class="flex items-center justify-center gap-2">
+                            {% if expense.status != 'PAID' %}
+                            <a href="{% url 'expense_mark_paid' expense.pk %}" 
+                               class="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition text-xs font-medium"
+                               title="Marcar como pagado">
+                                ✅
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'expense_edit' expense.pk %}" 
+                               class="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-xs font-medium"
+                               title="Editar">
+                                ✏️
+                            </a>
+                            <a href="{% url 'expense_delete' expense.pk %}" 
+                               class="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-xs font-medium"
+                               title="Eliminar">
+                                🗑️
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="px-6 py-12 text-center">
+                        <div class="text-slate-400">
+                            <div class="text-6xl mb-4">📭</div>
+                            <p class="text-lg font-medium">No hay gastos registrados</p>
+                            <p class="text-sm mt-2">Empieza creando tu primer gasto</p>
+                            <a href="{% url 'expense_create' %}" 
+                               class="mt-4 inline-block px-6 py-3 bg-[var(--brand-color)] text-white rounded-xl hover:opacity-90 transition">
+                                ➕ Crear Primer Gasto
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

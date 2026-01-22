@@ -1,0 +1,233 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div x-data="{ isRecurring: {{ form.is_recurring.value|yesno:'true,false,false' }} }">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="mb-6">
+            <a href="{% url 'expense_list' %}" 
+               class="inline-flex items-center text-slate-600 hover:text-slate-900 mb-4">
+                ← Volver a gastos
+            </a>
+            <h1 class="text-3xl font-bold text-slate-800">{{ title }}</h1>
+            <p class="text-slate-500 mt-1">Complete los datos del gasto</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Información Básica -->
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>📋</span>
+                    <span>Información Básica</span>
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Proveedor *</label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.supplier.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Categoría *</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Concepto *</label>
+                        {{ form.concept }}
+                        {% if form.concept.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.concept.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Nº Factura/Referencia</label>
+                        {{ form.reference_number }}
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Descripción</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Importes -->
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>💰</span>
+                    <span>Importes</span>
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Importe Base *</label>
+                        {{ form.base_amount }}
+                        {% if form.base_amount.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.base_amount.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-slate-500">Sin IVA</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">% IVA *</label>
+                        {{ form.tax_rate }}
+                        {% if form.tax_rate.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.tax_rate.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-slate-500">Ej: 21.00</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Importe Pagado</label>
+                        {{ form.paid_amount }}
+                        <p class="mt-1 text-xs text-slate-500">Para pagos parciales</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-slate-50 rounded-xl">
+                    <p class="text-sm text-slate-600">
+                        💡 El total con IVA se calculará automáticamente al guardar
+                    </p>
+                </div>
+            </div>
+
+            <!-- Fechas y Estado -->
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>📅</span>
+                    <span>Fechas y Estado</span>
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Fecha Emisión *</label>
+                        {{ form.issue_date }}
+                        {% if form.issue_date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.issue_date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Fecha Vencimiento</label>
+                        {{ form.due_date }}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Fecha Pago</label>
+                        {{ form.payment_date }}
+                        <p class="mt-1 text-xs text-slate-500">Dejar vacío si no pagado</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Estado</label>
+                        {{ form.status }}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Método de Pago</label>
+                        {{ form.payment_method }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recurrencia -->
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>🔄</span>
+                    <span>Recurrencia</span>
+                </h3>
+                
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        {{ form.is_recurring }}
+                        <span class="text-sm font-medium text-slate-700">Este gasto es recurrente</span>
+                    </label>
+                    <p class="mt-1 text-xs text-slate-500 ml-8">Se generará automáticamente cada período</p>
+                </div>
+
+                <div x-show="isRecurring" x-transition class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 pt-4 border-t">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Frecuencia</label>
+                        {{ form.recurrence_frequency }}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Día del Mes</label>
+                        {{ form.recurrence_day }}
+                        <p class="mt-1 text-xs text-slate-500">Entre 1 y 28</p>
+                    </div>
+
+                    <div>
+                        <label class="flex items-center gap-3 cursor-pointer mt-6">
+                            {{ form.is_active_recurrence }}
+                            <span class="text-sm font-medium text-slate-700">Recurrencia activa</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Productos Relacionados -->
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>🛒</span>
+                    <span>Productos Relacionados</span>
+                </h3>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Productos</label>
+                    {{ form.related_products }}
+                    <p class="mt-2 text-xs text-slate-500">Mantén Ctrl/Cmd para seleccionar múltiples</p>
+                </div>
+            </div>
+
+            <!-- Adjuntos y Notas -->
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>📎</span>
+                    <span>Adjuntos y Notas</span>
+                </h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Documento Adjunto</label>
+                        {{ form.attachment }}
+                        {% if is_edit and expense.attachment %}
+                        <p class="mt-2 text-xs text-slate-500">
+                            Archivo actual: <a href="{{ expense.attachment.url }}" target="_blank" class="text-blue-600 hover:underline">Ver documento</a>
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Notas Internas</label>
+                        {{ form.notes }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end gap-4">
+                <a href="{% url 'expense_list' %}" 
+                   class="px-6 py-3 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition font-medium">
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="px-8 py-3 bg-[var(--brand-color)] text-white rounded-xl hover:opacity-90 transition font-semibold">
+                    {% if is_edit %}✏️ Actualizar{% else %}➕ Crear{% endif %} Gasto
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

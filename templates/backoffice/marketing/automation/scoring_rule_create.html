@@ -1,0 +1,90 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Asignar puntos automáticamente según acciones del cliente</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <form method="post" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
+        {% csrf_token %}
+        
+        <div class="space-y-6">
+            <!-- Nombre -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Nombre de la Regla *
+                </label>
+                <input type="text" name="name" required
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Ej: Puntos por visita al gimnasio">
+            </div>
+
+            <!-- Tipo de Evento -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Tipo de Evento *
+                </label>
+                <select name="event_type" required
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <option value="">Seleccionar evento...</option>
+                    {% for value, label in event_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="mt-2 text-xs text-slate-500">
+                    Cuando el cliente realice esta acción, se le asignarán los puntos
+                </p>
+            </div>
+
+            <!-- Puntos -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Puntos a Asignar *
+                </label>
+                <input type="number" name="points" required value="10"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                <p class="mt-2 text-xs text-slate-500">
+                    Usa valores negativos para restar puntos (ej: -5 por inactividad)
+                </p>
+            </div>
+
+            <!-- Descripción -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Descripción
+                </label>
+                <textarea name="description" rows="2"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Descripción opcional..."></textarea>
+            </div>
+
+            <!-- Ejemplos -->
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                <div class="text-sm text-orange-900">
+                    <p class="font-bold mb-2">💡 Ejemplos de puntuación:</p>
+                    <ul class="space-y-1 ml-4">
+                        <li>• <strong>+10 pts</strong> por visita registrada</li>
+                        <li>• <strong>+15 pts</strong> por clase reservada</li>
+                        <li>• <strong>+25 pts</strong> por compra realizada</li>
+                        <li>• <strong>-5 pts</strong> por inactividad</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3 mt-8">
+            <button type="submit"
+                class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-colors">
+                Crear Regla
+            </button>
+            <a href="{% url 'automation_dashboard' %}"
+                class="px-6 py-3 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

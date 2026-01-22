@@ -1,0 +1,316 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Código del Widget de Horarios{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            <i class="fas fa-code text-blue-600 mr-3"></i>
+            Código del Widget de Horarios
+        </h1>
+        <p class="text-gray-600">
+            Copia el código y pégalo en tu sitio web para mostrar el horario de clases
+        </p>
+    </div>
+    
+    {% if not portal_settings or not portal_settings.public_portal_enabled %}
+    <!-- Alerta: Portal no habilitado -->
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800">
+                    Portal Público No Habilitado
+                </h3>
+                <div class="mt-2 text-sm text-yellow-700">
+                    <p>Para usar el widget, primero debes habilitar el portal público:</p>
+                    <ol class="list-decimal ml-5 mt-2">
+                        <li>Ve a <strong>Configuración → Gimnasios</strong></li>
+                        <li>Marca <strong>"Portal público habilitado"</strong></li>
+                        <li>Configura un <strong>"Slug público"</strong> (ejemplo: mi-gimnasio)</li>
+                        <li>Guarda los cambios</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if portal_settings and portal_settings.public_portal_enabled %}
+    
+    <!-- Tabs -->
+    <div class="bg-white rounded-lg shadow-sm mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="flex -mb-px">
+                <button onclick="showTab('list')" 
+                        class="tab-btn active px-6 py-4 border-b-2 border-blue-500 font-medium text-blue-600 text-sm">
+                    <i class="fas fa-list mr-2"></i>
+                    Vista de Lista
+                    <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Recomendada</span>
+                </button>
+                <button onclick="showTab('calendar')" 
+                        class="tab-btn px-6 py-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 text-sm">
+                    <i class="fas fa-calendar mr-2"></i>
+                    Vista de Calendario
+                </button>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- Tab Content: Vista de Lista -->
+    <div id="tab-list" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Preview -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-eye text-blue-600 mr-2"></i>
+                    Vista Previa
+                </h2>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <iframe 
+                        src="{{ base_url }}/embed/{{ gym.slug }}/schedule/"
+                        width="100%" 
+                        height="600"
+                        frameborder="0"
+                        style="border-radius: 8px; background: white;">
+                    </iframe>
+                </div>
+                
+                <div class="mt-4 text-sm text-gray-600">
+                    <p><strong>Características:</strong></p>
+                    <ul class="list-disc ml-5 mt-2 space-y-1">
+                        <li>Lista vertical con información completa</li>
+                        <li>Fotos de instructores</li>
+                        <li>Botones de reserva integrados</li>
+                        <li>Filtros por actividad</li>
+                        <li>Navegación por fechas</li>
+                        <li>Responsive (móvil, tablet, desktop)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Código -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        <i class="fas fa-code text-blue-600 mr-2"></i>
+                        Código HTML
+                    </h2>
+                    <button onclick="copyCode('code-list')" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                        <i class="fas fa-copy mr-2"></i>
+                        Copiar
+                    </button>
+                </div>
+                
+                <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <pre id="code-list" class="text-sm text-gray-100"><code>&lt;iframe 
+    src="{{ base_url }}/embed/{{ gym.slug }}/schedule/"
+    width="100%" 
+    height="1200"
+    frameborder="0"
+    style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);"&gt;
+&lt;/iframe&gt;</code></pre>
+                </div>
+                
+                <!-- Tema Oscuro -->
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-moon mr-2"></i>
+                        Tema Oscuro
+                    </h3>
+                    <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                        <pre id="code-list-dark" class="text-sm text-gray-100"><code>&lt;iframe 
+    src="{{ base_url }}/embed/{{ gym.slug }}/schedule/?theme=dark"
+    width="100%" 
+    height="1200"
+    frameborder="0"
+    style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);"&gt;
+&lt;/iframe&gt;</code></pre>
+                    </div>
+                    <button onclick="copyCode('code-list-dark')" 
+                            class="mt-2 px-3 py-1 bg-gray-700 text-white rounded text-xs hover:bg-gray-800">
+                        <i class="fas fa-copy mr-1"></i>
+                        Copiar tema oscuro
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Tab Content: Vista de Calendario -->
+    <div id="tab-calendar" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Preview -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-eye text-blue-600 mr-2"></i>
+                    Vista Previa
+                </h2>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <iframe 
+                        src="{{ base_url }}/embed/{{ gym.slug }}/schedule/calendar/"
+                        width="100%" 
+                        height="600"
+                        frameborder="0"
+                        style="border-radius: 8px; background: white;">
+                    </iframe>
+                </div>
+                
+                <div class="mt-4 text-sm text-gray-600">
+                    <p><strong>Características:</strong></p>
+                    <ul class="list-disc ml-5 mt-2 space-y-1">
+                        <li>Calendario mensual estilo Google</li>
+                        <li>Vista compacta de múltiples días</li>
+                        <li>Colores por tipo de actividad</li>
+                        <li>Modal con detalles al hacer clic</li>
+                        <li>Filtros por actividad</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Código -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        <i class="fas fa-code text-blue-600 mr-2"></i>
+                        Código HTML
+                    </h2>
+                    <button onclick="copyCode('code-calendar')" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                        <i class="fas fa-copy mr-2"></i>
+                        Copiar
+                    </button>
+                </div>
+                
+                <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <pre id="code-calendar" class="text-sm text-gray-100"><code>&lt;iframe 
+    src="{{ base_url }}/embed/{{ gym.slug }}/schedule/calendar/"
+    width="100%" 
+    height="800"
+    frameborder="0"
+    style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);"&gt;
+&lt;/iframe&gt;</code></pre>
+                </div>
+                
+                <!-- Tema Oscuro -->
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-moon mr-2"></i>
+                        Tema Oscuro
+                    </h3>
+                    <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                        <pre id="code-calendar-dark" class="text-sm text-gray-100"><code>&lt;iframe 
+    src="{{ base_url }}/embed/{{ gym.slug }}/schedule/calendar/?theme=dark"
+    width="100%" 
+    height="800"
+    frameborder="0"
+    style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);"&gt;
+&lt;/iframe&gt;</code></pre>
+                    </div>
+                    <button onclick="copyCode('code-calendar-dark')" 
+                            class="mt-2 px-3 py-1 bg-gray-700 text-white rounded text-xs hover:bg-gray-800">
+                        <i class="fas fa-copy mr-1"></i>
+                        Copiar tema oscuro
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Instrucciones -->
+    <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-blue-900 mb-4">
+            <i class="fas fa-info-circle mr-2"></i>
+            Instrucciones de Integración
+        </h3>
+        
+        <div class="space-y-4 text-sm text-blue-800">
+            <div>
+                <h4 class="font-semibold mb-2">1. WordPress</h4>
+                <p>Añade un bloque "HTML Personalizado" y pega el código.</p>
+            </div>
+            
+            <div>
+                <h4 class="font-semibold mb-2">2. Wix</h4>
+                <p>Añade un elemento "HTML Embed" o "iframe" y pega la URL del widget.</p>
+            </div>
+            
+            <div>
+                <h4 class="font-semibold mb-2">3. HTML Estático</h4>
+                <p>Copia el código del iframe y pégalo donde quieras que aparezca el horario.</p>
+            </div>
+            
+            <div class="pt-4 border-t border-blue-200">
+                <p class="font-semibold mb-2">
+                    <i class="fas fa-palette mr-2"></i>
+                    Personalización
+                </p>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>El widget usa automáticamente tu <strong>color de marca</strong></li>
+                    <li>Para cambiar el color: <strong>Configuración → Gimnasios → Color de marca</strong></li>
+                    <li>Altura recomendada: <strong>1200px</strong> (lista) o <strong>800px</strong> (calendario)</li>
+                    <li>El widget es <strong>100% responsive</strong></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    {% endif %}
+    
+</div>
+
+<script>
+function showTab(tabName) {
+    // Ocultar todas las tabs
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    // Remover clase active de todos los botones
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // Mostrar tab seleccionada
+    document.getElementById('tab-' + tabName).classList.remove('hidden');
+    
+    // Activar botón correspondiente
+    event.target.classList.add('active', 'border-blue-500', 'text-blue-600');
+    event.target.classList.remove('border-transparent', 'text-gray-500');
+}
+
+function copyCode(elementId) {
+    const codeElement = document.getElementById(elementId);
+    const text = codeElement.textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        // Mostrar mensaje de éxito
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check mr-2"></i>¡Copiado!';
+        btn.classList.add('bg-green-600');
+        btn.classList.remove('bg-blue-600', 'bg-gray-700');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('bg-green-600');
+            btn.classList.add(elementId.includes('dark') ? 'bg-gray-700' : 'bg-blue-600');
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

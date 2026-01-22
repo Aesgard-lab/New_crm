@@ -1,0 +1,73 @@
+{% extends "backoffice/base.html" %}
+{% block page_title %}Fusionar Fichas de Cliente{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-8">
+  <h1 class="text-2xl font-bold mb-6">Fusionar Fichas de Cliente</h1>
+  {% if conflict_warning %}
+    <div class="bg-amber-100 border border-amber-300 text-amber-800 rounded-xl p-4 mb-6 text-sm font-bold flex items-center gap-2">
+      <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      {{ conflict_warning }}
+    </div>
+  {% endif %}
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h2 class="font-bold text-slate-700 mb-2">Ficha 1</h2>
+        <div class="space-y-2">
+          <div><span class="text-xs text-slate-400">Nombre:</span> {{ c1.first_name }} {{ c1.last_name }}</div>
+          <div><span class="text-xs text-slate-400">Email:</span> {{ c1.email }}</div>
+          <div><span class="text-xs text-slate-400">Teléfono:</span> {{ c1.phone }}</div>
+          <div><span class="text-xs text-slate-400">ID:</span> {{ c1.id }}</div>
+        </div>
+      </div>
+      <div>
+        <h2 class="font-bold text-slate-700 mb-2">Ficha 2</h2>
+        <div class="space-y-2">
+          <div><span class="text-xs text-slate-400">Nombre:</span> {{ c2.first_name }} {{ c2.last_name }}</div>
+          <div><span class="text-xs text-slate-400">Email:</span> {{ c2.email }}</div>
+          <div><span class="text-xs text-slate-400">Teléfono:</span> {{ c2.phone }}</div>
+          <div><span class="text-xs text-slate-400">ID:</span> {{ c2.id }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-8">
+      <h3 class="font-bold mb-2">¿Qué datos quieres conservar?</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Nombre</label>
+          <select name="first_name" class="w-full rounded-xl border-slate-200">
+            <option value="c1">{{ c1.first_name }}</option>
+            <option value="c2">{{ c2.first_name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Apellidos</label>
+          <select name="last_name" class="w-full rounded-xl border-slate-200">
+            <option value="c1">{{ c1.last_name }}</option>
+            <option value="c2">{{ c2.last_name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Email</label>
+          <select name="email" class="w-full rounded-xl border-slate-200">
+            <option value="c1">{{ c1.email }}</option>
+            <option value="c2">{{ c2.email }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Teléfono</label>
+          <select name="phone" class="w-full rounded-xl border-slate-200">
+            <option value="c1">{{ c1.phone }}</option>
+            <option value="c2">{{ c2.phone }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mt-8 flex gap-4">
+      <button type="submit" class="px-6 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700">Fusionar y Unificar</button>
+      <a href="{% url 'clients_duplicates' %}" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

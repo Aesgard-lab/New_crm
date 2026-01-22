@@ -1,0 +1,88 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Compra Exitosa - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto text-center py-12">
+    <!-- Icono de éxito -->
+    <div class="mb-8">
+        <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        
+        <h1 class="text-3xl font-bold text-slate-900 mb-4">¡Compra Exitosa!</h1>
+        <p class="text-lg text-slate-600">Tu plan ha sido activado correctamente</p>
+    </div>
+    
+    <!-- Detalle de la compra -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 mb-8 text-left">
+        <h2 class="text-xl font-bold text-slate-900 mb-6 text-center">Detalles de tu plan</h2>
+        
+        <div class="space-y-4">
+            <div class="flex justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Plan</span>
+                <span class="font-bold text-slate-900">{{ membership.plan.name }}</span>
+            </div>
+            
+            <div class="flex justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Precio</span>
+                <span class="font-bold text-slate-900">{{ membership.plan.final_price|floatformat:2 }}€</span>
+            </div>
+            
+            <div class="flex justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Fecha de inicio</span>
+                <span class="font-bold text-slate-900">{{ membership.start_date|date:"d/m/Y" }}</span>
+            </div>
+            
+            {% if membership.end_date %}
+            <div class="flex justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Fecha de fin</span>
+                <span class="font-bold text-slate-900">{{ membership.end_date|date:"d/m/Y" }}</span>
+            </div>
+            {% endif %}
+            
+            <div class="flex justify-between py-3">
+                <span class="text-slate-600">Estado</span>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800">
+                    ✓ Activo
+                </span>
+            </div>
+        </div>
+        
+        {% if membership.plan.is_recurring %}
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-900">
+            <p class="font-bold mb-1">📅 Renovación automática</p>
+            <p>Tu plan se renovará automáticamente cada {{ membership.plan.get_frequency_display_custom }}.</p>
+            <p class="mt-2 text-xs">Puedes cancelar en cualquier momento desde tu perfil.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Confirmación por email -->
+    <div class="mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <p class="text-sm text-slate-600">
+            📧 Hemos enviado un email de confirmación a <strong>{{ user.email }}</strong>
+        </p>
+    </div>
+    
+    <!-- Acciones -->
+    <div class="space-y-4">
+        <a href="{% url 'public_schedule' slug=settings.public_slug %}" 
+           class="block brand-bg text-white font-bold py-4 px-8 rounded-xl hover:opacity-90 transition-opacity">
+            📅 Ver Horario y Reservar Clases
+        </a>
+        
+        <a href="{% url 'public_client_dashboard' slug=settings.public_slug %}" 
+           class="block bg-slate-100 text-slate-900 font-bold py-4 px-8 rounded-xl hover:bg-slate-200 transition-colors">
+            👤 Ir a Mi Perfil
+        </a>
+        
+        <a href="{% url 'public_home' slug=settings.public_slug %}" 
+           class="block text-slate-600 hover:text-[var(--brand-color)] py-2">
+            ← Volver al inicio
+        </a>
+    </div>
+</div>
+{% endblock %}

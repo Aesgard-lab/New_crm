@@ -1,0 +1,300 @@
+{% extends "base/base.html" %}
+{% load gym_tags %}
+
+{% block title %}Analytics de Descuentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-4">
+      <a href="{% url 'discount_list' %}"
+        class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+      </a>
+      <div>
+        <h1 class="text-3xl font-bold text-slate-900">Analytics de Descuentos</h1>
+        <p class="text-sm text-slate-500 mt-1">Análisis de rendimiento de los últimos 30 días</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-500 font-medium">Total Descuentos</p>
+          <p class="text-3xl font-bold text-slate-900 mt-1">{{ total_discounts_applied }}</p>
+          <p class="text-xs text-slate-500 mt-1">Aplicados este mes</p>
+        </div>
+        <div class="p-3 bg-blue-50 rounded-lg">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+            </path>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-500 font-medium">Ahorro Total</p>
+          <p class="text-3xl font-bold text-green-600 mt-1">{{ total_discount_amount|floatformat:0 }}€</p>
+          <p class="text-xs text-slate-500 mt-1">En descuentos</p>
+        </div>
+        <div class="p-3 bg-green-50 rounded-lg">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+            </path>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-500 font-medium">Ingresos Generados</p>
+          <p class="text-3xl font-bold text-[var(--brand-color)] mt-1">{{ total_revenue|floatformat:0 }}€</p>
+          <p class="text-xs text-slate-500 mt-1">Ventas con descuento</p>
+        </div>
+        <div class="p-3 bg-purple-50 rounded-lg">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+            </path>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-500 font-medium">Promedio de Ahorro</p>
+          <p class="text-3xl font-bold text-amber-600 mt-1">{{ average_discount|floatformat:2 }}€</p>
+          <p class="text-xs text-slate-500 mt-1">Por transacción</p>
+        </div>
+        <div class="p-3 bg-amber-50 rounded-lg">
+          <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Top Discounts -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Top Descuentos Más Usados</h3>
+      
+      <div class="space-y-3">
+        {% for discount in top_discounts %}
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+          <div class="flex items-center gap-3 flex-1">
+            <div class="w-10 h-10 bg-[var(--brand-color)] rounded-lg flex items-center justify-center text-white font-bold">
+              #{{ forloop.counter }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-900 truncate">{{ discount.name }}</div>
+              <code class="text-xs text-slate-500 bg-white px-2 py-0.5 rounded">{{ discount.code }}</code>
+            </div>
+          </div>
+          <div class="text-right ml-4">
+            <div class="font-bold text-slate-900">{{ discount.usage_count }}</div>
+            <div class="text-xs text-slate-500">usos</div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-sm text-slate-500 text-center py-8">Sin datos disponibles</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Daily Usage Trend -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Tendencia Diaria de Uso</h3>
+      
+      <div class="space-y-2">
+        {% for day in daily_usage %}
+        <div class="flex items-center gap-3">
+          <div class="w-24 text-sm text-slate-600">{{ day.date|date:"d M" }}</div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden">
+                <div class="bg-[var(--brand-color)] h-full flex items-center justify-end pr-2 text-xs text-white font-medium transition-all"
+                  style="width: {% if day.usage_count > 0 %}{% widthratio day.usage_count max_daily_usage 100 %}%{% else %}0%{% endif %}">
+                  {% if day.usage_count > 0 %}{{ day.usage_count }}{% endif %}
+                </div>
+              </div>
+              <div class="w-20 text-sm text-right text-slate-600">{{ day.total_amount|floatformat:2 }}€</div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-sm text-slate-500 text-center py-8">Sin datos disponibles</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Discount Types Distribution -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Distribución por Tipo</h3>
+      
+      <div class="space-y-4">
+        {% for type in discount_types %}
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-slate-700">
+              {% if type.discount_type == 'PERCENTAGE' %}
+                Porcentaje
+              {% elif type.discount_type == 'FIXED_AMOUNT' %}
+                Cantidad Fija
+              {% else %}
+                Precio Fijo
+              {% endif %}
+            </span>
+            <span class="text-sm text-slate-600">{{ type.count }} usos</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2">
+            <div class="h-2 rounded-full transition-all
+              {% if type.discount_type == 'PERCENTAGE' %}bg-blue-500
+              {% elif type.discount_type == 'FIXED_AMOUNT' %}bg-green-500
+              {% else %}bg-purple-500{% endif %}"
+              style="width: {% widthratio type.count total_discounts_applied 100 %}%"></div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-sm text-slate-500 text-center py-8">Sin datos disponibles</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Revenue Impact -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Impacto en Ingresos</h3>
+      
+      <div class="space-y-4">
+        <div class="p-4 bg-blue-50 rounded-lg">
+          <div class="text-sm text-blue-600 mb-1">Subtotal Original</div>
+          <div class="text-2xl font-bold text-blue-900">{{ total_subtotal|floatformat:2 }}€</div>
+        </div>
+
+        <div class="flex items-center gap-3 px-4">
+          <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+          </svg>
+          <div class="flex-1">
+            <div class="text-sm text-slate-600">Descuentos Aplicados</div>
+            <div class="font-semibold text-red-600">-{{ total_discount_amount|floatformat:2 }}€</div>
+          </div>
+          <div class="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium">
+            {% widthratio total_discount_amount total_subtotal 100 %}%
+          </div>
+        </div>
+
+        <div class="p-4 bg-green-50 rounded-lg">
+          <div class="text-sm text-green-600 mb-1">Total Final</div>
+          <div class="text-2xl font-bold text-green-900">{{ total_revenue|floatformat:2 }}€</div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-200">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600">ROI Estimado</span>
+            <span class="font-semibold text-[var(--brand-color)]">
+              {% if total_discount_amount > 0 %}
+                {{ roi|floatformat:0 }}%
+              {% else %}
+                N/A
+              {% endif %}
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Basado en ingresos vs descuentos otorgados</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Client Acquisition -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Adquisición de Clientes</h3>
+      
+      <div class="space-y-4">
+        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+          <div>
+            <div class="text-sm text-slate-500">Nuevos Clientes</div>
+            <div class="text-2xl font-bold text-slate-900 mt-1">{{ new_clients_count }}</div>
+          </div>
+          <div class="p-3 bg-green-50 rounded-lg">
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z">
+              </path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+          <div>
+            <div class="text-sm text-slate-500">Clientes Recurrentes</div>
+            <div class="text-2xl font-bold text-slate-900 mt-1">{{ returning_clients_count }}</div>
+          </div>
+          <div class="p-3 bg-blue-50 rounded-lg">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+              </path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="p-4 bg-amber-50 rounded-lg">
+          <div class="text-sm text-amber-600 mb-1">Costo de Adquisición</div>
+          <div class="text-2xl font-bold text-amber-900">
+            {% if new_clients_count > 0 %}
+              {{ acquisition_cost|floatformat:2 }}€
+            {% else %}
+              N/A
+            {% endif %}
+          </div>
+          <p class="text-xs text-slate-600 mt-1">Por nuevo cliente</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Best Performing Day -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Mejor Día del Período</h3>
+      
+      {% if best_day %}
+      <div class="text-center py-6">
+        <div class="text-5xl font-bold text-[var(--brand-color)] mb-2">
+          {{ best_day.date|date:"d" }}
+        </div>
+        <div class="text-lg text-slate-600 mb-4">{{ best_day.date|date:"F Y" }}</div>
+        
+        <div class="grid grid-cols-2 gap-4 mt-6">
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <div class="text-sm text-slate-500">Usos</div>
+            <div class="text-xl font-bold text-slate-900 mt-1">{{ best_day.usage_count }}</div>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-lg">
+            <div class="text-sm text-slate-500">Ingresos</div>
+            <div class="text-xl font-bold text-slate-900 mt-1">{{ best_day.total_amount|floatformat:0 }}€</div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-500 text-center py-8">Sin datos disponibles</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -29,7 +29,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
 
+    # Third-party
+    "corsheaders",
+    "django_celery_beat",
+    "django_celery_results",
+    "rest_framework",
+    "rest_framework.authtoken",
+    
     # Project apps
     "accounts.apps.AccountsConfig",
     "organizations",
@@ -39,25 +47,48 @@ INSTALLED_APPS = [
     "activities",
     "services",
     "products",
+    "providers",
     "memberships",
+    "discounts",
     "finance",
     "sales",
     "reporting",
     "marketing",
+    "routines",
+    "gamification",  # Sistema de gamificación
+    "public_portal",  # Portal público y widgets
+    "saas_billing",  # SaaS billing and subscriptions
+    "superadmin",  # Superadmin panel
+    "api",
 ]
+
+# --------------------------------------------------
+# REST FRAMEWORK
+# --------------------------------------------------
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 
 # --------------------------------------------------
 # MIDDLEWARE
 # --------------------------------------------------
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",  # Internacionalización
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-
+    "saas_billing.middleware.SubscriptionMiddleware",
     # Custom
     "accounts.middleware.CurrentGymMiddleware",
 ]
@@ -83,7 +114,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.gym_permissions",
-
+                "saas_billing.context_processors.subscription_warnings",
+                "saas_billing.context_processors.system_branding",
+                "core.context_processors.translations",
             ],
         },
     },
@@ -108,7 +141,12 @@ DATABASES = {
 # --------------------------------------------------
 AUTH_USER_MODEL = "accounts.User"
 
-AUTH_PASSWORD_VALIDATORS = []
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
@@ -122,6 +160,18 @@ TIME_ZONE = os.getenv("TIME_ZONE", "Europe/Madrid")
 
 USE_I18N = True
 USE_TZ = True
+
+# Idiomas soportados
+from django.utils.translation import gettext_lazy as _
+LANGUAGES = [
+    ('es', _('Español')),
+    ('en', _('English')),
+]
+
+# Rutas de archivos de traducción
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 # --------------------------------------------------
 # STATIC FILES
@@ -140,3 +190,73 @@ MEDIA_ROOT = BASE_DIR / "media"
 # DEFAULTS
 # --------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --------------------------------------------------
+# CACHING (Optimización de rendimiento)
+# --------------------------------------------------
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,  # 5 minutos por defecto
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000
+        }
+    }
+}
+
+# --------------------------------------------------
+# CELERY CONFIGURATION
+# --------------------------------------------------
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_CACHE_BACKEND = "default"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+# --------------------------------------------------
+# SECURITY SETTINGS (Production)
+# --------------------------------------------------
+if not DEBUG:
+    # HTTPS Settings
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Cookie Security
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_AGE = 3600  # 1 hora
+    
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    
+    # Content Security
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # Validate SECRET_KEY
+    if SECRET_KEY == "dev-secret-key":
+        raise ValueError("❌ SECURITY ERROR: SECRET_KEY debe configurarse en producción")
+else:
+    # Development: Cookies más permisivas
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_AGE = 86400  # 24 horas
+
+# Rate Limiting (Desarrollo y Producción)
+RATELIMIT_ENABLE = True
+RATELIMIT_VIEW_DEFAULT = '100/h'  # 100 requests por hora por defecto
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+

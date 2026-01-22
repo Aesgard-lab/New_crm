@@ -9,7 +9,7 @@ class GymSettingsForm(forms.ModelForm):
             'address', 'city', 'zip_code', 'province', 'country',
             'phone', 'email', 'website',
             'instagram', 'facebook', 'tiktok', 'youtube',
-            'brand_color', 'logo'
+            'brand_color', 'logo', 'language'
         ]
         widgets = {
             'commercial_name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Ej: Qombo Arganzuela'}),
@@ -33,4 +33,5 @@ class GymSettingsForm(forms.ModelForm):
             
             'brand_color': forms.TextInput(attrs={'type': 'color', 'class': 'h-10 w-20 rounded p-1 border border-slate-200 cursor-pointer'}),
             'logo': forms.FileInput(attrs={'class': 'w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'}),
+            'language': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
         }

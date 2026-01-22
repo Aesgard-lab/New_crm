@@ -1,0 +1,70 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Editar Permisos{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> >
+<a href="{% url 'role_list' %}" class="hover:underline">Roles</a> > {{ role.name }}
+{% endblock %}
+{% block page_title %}Editar Permisos: {{ role.name }}{% endblock %}
+
+{% block content %}
+<form method="POST" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for module, permissions in structured_permissions.items %}
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">{{ module }}</h3>
+                <label class="text-xs flex items-center gap-2 cursor-pointer text-slate-500 hover:text-indigo-600">
+                    <input type="checkbox" onclick="toggleGroup(this)"
+                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    Seleccionar Todo
+                </label>
+            </div>
+            <div class="p-5 space-y-3">
+                {% for perm in permissions %}
+                <label class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                    <input type="checkbox" name="permissions" value="{{ perm.codename }}" {% if perm.is_active %}checked{% endif %}
+                        class="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                    <div>
+                        <span class="block text-sm font-medium text-slate-800">{{ perm.label }}</span>
+                        <!-- <span class="block text-[10px] text-slate-400 font-mono">{{ perm.codename }}</span> -->
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Sticky Footer Actions -->
+    <div
+        class="fixed bottom-0 left-0 right-0 lg:left-64 bg-white border-t border-slate-200 p-4 z-40 flex items-center justify-between shadow-lg">
+        <div class="text-sm text-slate-500">
+            Editando permisos para <strong>{{ role.name }}</strong>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'role_list' %}"
+                class="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition-colors">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="px-6 py-2.5 bg-[var(--brand-color)] text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:opacity-90 transition-all transform hover:scale-105">
+                Guardar Permisos
+            </button>
+        </div>
+    </div>
+    <!-- Spacer for sticky footer -->
+    <div class="h-20"></div>
+</form>
+
+<script>
+    function toggleGroup(source) {
+        // Find all checkboxes in the same container (card)
+        const container = source.closest('.bg-white');
+        const checkboxes = container.querySelectorAll('input[name="permissions"]');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+    }
+</script>
+{% endblock %}

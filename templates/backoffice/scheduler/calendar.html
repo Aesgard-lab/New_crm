@@ -6,55 +6,88 @@
 {% endblock %}
 
 {% block content %}
-<div class="h-[calc(100vh-140px)] flex flex-col">
+<div class="h-[calc(100vh-140px)] flex gap-4 -mx-4 md:-mx-6 -mb-4 md:-mb-6" x-data="{ staffSidebar: true, selectedStaffIds: [] }">
 
-    <!-- Toolbar / Filters -->
-    <div
-        class="mb-4 flex flex-wrap gap-4 items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-        <div class="flex items-center gap-2">
-            <!-- Room Filter -->
-            <select id="roomFilter"
-                class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
-                <option value="">Todas las Salas</option>
-                {% for room in rooms %}
-                <option value="{{ room.id }}">{{ room.name }}</option>
-                {% endfor %}
-            </select>
-
-            <button
-                class="text-sm font-medium text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors">
-                Filtrar Staff
-            </button>
+    <!-- Staff Sidebar -->
+    <div x-show="staffSidebar" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="-translate-x-full opacity-0" x-transition:enter-end="translate-x-0 opacity-100"
+        class="w-56 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col flex-shrink-0 ml-4 md:ml-6">
+        <div class="p-3 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="font-bold text-slate-800 text-sm">Staff</h3>
+                <button @click="staffSidebar = false; resizeCalendar()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-500">Selecciona para filtrar</p>
         </div>
-
-        <div class="flex items-center gap-3">
-            <button onclick="calendar.changeView('timeGridDay')"
-                class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Día</button>
-            <button onclick="calendar.changeView('timeGridWeek')"
-                class="text-sm px-3 py-1.5 rounded-lg bg-slate-100 font-bold text-slate-800">Semana</button>
-            <button onclick="calendar.changeView('dayGridMonth')"
-                class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Mes</button>
-
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
-
-            <button onclick="triggerNewClassModal()"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                Nueva Clase
-            </button>
+        <div class="flex-1 overflow-y-auto p-2">
+            <div class="space-y-1" id="staffList">
+                <!-- Staff items will be populated by JS -->
+            </div>
         </div>
     </div>
 
-    <!-- Calendar Container -->
-    <div class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-2 relative">
-        <div id="calendar" class="h-full"></div>
+    <!-- Main Calendar Area -->
+    <div class="flex-1 flex flex-col min-w-0 mr-4 md:mr-6">
+        <!-- Toolbar / Filters -->
+        <div
+            class="mb-4 flex flex-wrap gap-4 items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+            <div class="flex items-center gap-2">
+                <!-- Toggle Sidebar -->
+                <button @click="staffSidebar = !staffSidebar; setTimeout(resizeCalendar, 250)"
+                    class="text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+                    :class="staffSidebar ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50'">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    Panel Staff
+                </button>
 
-        <!-- Loading Indicator -->
-        <div id="loading" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 hidden">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                <!-- Room Filter -->
+                <select id="roomFilter"
+                    class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Todas las Salas</option>
+                    {% for room in rooms %}
+                    <option value="{{ room.id }}">{{ room.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="calendar.changeView('timeGridDay')"
+                    class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Día</button>
+                <button onclick="calendar.changeView('timeGridWeek')"
+                    class="text-sm px-3 py-1.5 rounded-lg bg-slate-100 font-bold text-slate-800">Semana</button>
+                <button onclick="calendar.changeView('dayGridMonth')"
+                    class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Mes</button>
+
+                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+                <button onclick="triggerNewClassModal()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Nueva Clase
+                </button>
+            </div>
+        </div>
+
+        <!-- Calendar Container -->
+        <div class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative">
+            <div id="calendar" class="h-full w-full p-2"></div>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 hidden">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            </div>
         </div>
     </div>
 
@@ -67,6 +100,46 @@
         --fc-border-color: #f1f5f9;
         --fc-today-bg-color: #f8fafc;
         --fc-event-border-color: transparent;
+        height: 100% !important;
+        width: 100% !important;
+    }
+
+    /* Force calendar to expand fully */
+    .fc-view-harness {
+        height: 100% !important;
+    }
+
+    /* Expand day columns to fill available space */
+    .fc-col-header-cell,
+    .fc-timegrid-col {
+        min-width: 120px !important;
+    }
+
+    .fc-scrollgrid {
+        width: 100% !important;
+    }
+
+    .fc-scrollgrid-sync-table {
+        width: 100% !important;
+    }
+
+    /* Force header table to be 100% width */
+    .fc-col-header table {
+        width: 100% !important;
+    }
+
+    /* Force time grid body to be 100% width */
+    .fc-timegrid-body table {
+        width: 100% !important;
+    }
+
+    .fc-timegrid-axis {
+        width: 60px !important;
+    }
+
+    /* Expand header cells */
+    .fc-col-header {
+        width: 100% !important;
     }
 
     .fc-toolbar-title {
@@ -94,17 +167,160 @@
     }
 
     .fc-event {
-        border-radius: 6px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        padding: 2px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        padding: 0;
         font-size: 0.85rem;
         cursor: pointer;
-        transition: transform 0.1s;
+        transition: all 0.2s ease;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        overflow: hidden;
     }
 
     .fc-event:hover {
-        transform: scale(1.02);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         z-index: 5;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+    
+    /* Better text shadows for readability */
+    .fc-event .fc-content {
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Ensure minimum height for events */
+    .fc-timegrid-event {
+        min-height: 80px !important;
+    }
+    
+    /* Increase slot height for better readability */
+    .fc-timegrid-slot {
+        height: 3.5em !important;
+    }
+    
+    /* Better spacing for slot labels */
+    .fc-timegrid-slot-label {
+        vertical-align: middle !important;
+    }
+    
+    /* Tooltip styles */
+    .event-tooltip {
+        position: absolute;
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        z-index: 9999;
+        pointer-events: none;
+        font-size: 13px;
+        min-width: 250px;
+        backdrop-filter: blur(10px);
+        animation: tooltipFadeIn 0.2s ease-out;
+    }
+    
+    @keyframes tooltipFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .event-tooltip::before {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 20px;
+        width: 12px;
+        height: 12px;
+        background: #1e293b;
+        transform: rotate(45deg);
+        border-radius: 2px;
+    }
+    
+    .event-tooltip-title {
+        font-weight: 700;
+        font-size: 15px;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .event-tooltip-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0;
+        font-size: 12px;
+    }
+    
+    .event-tooltip-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+    
+    .event-tooltip-label {
+        color: rgba(255, 255, 255, 0.7);
+        min-width: 70px;
+    }
+    
+    .event-tooltip-value {
+        font-weight: 600;
+        flex: 1;
+    }
+    
+    .event-tooltip-capacity-bar {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    
+    .event-tooltip-capacity-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    /* Month View Event Colors - Force background colors to show */
+    .fc-daygrid-event {
+        border-radius: 4px !important;
+        padding: 2px 4px !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-width: 1px !important;
+    }
+
+    /* Ensure background color shows in month view */
+    .fc-daygrid-event .fc-event-main {
+        color: white !important;
+    }
+
+    /* Force the event to inherit the background color set by FullCalendar */
+    .fc-daygrid-event.fc-event {
+        opacity: 1 !important;
+    }
+
+    /* Additional specificity for FullCalendar's default rendering */
+    .fc .fc-daygrid-event {
+        background-color: var(--fc-event-bg-color, inherit) !important;
+        border-color: var(--fc-event-border-color, inherit) !important;
+    }
+
+    /* Ensure event dots have color too */
+    .fc-daygrid-event-dot {
+        border-color: var(--fc-event-border-color, inherit) !important;
     }
 
     .fc-timegrid-event-harness-inset .fc-timegrid-event {
@@ -359,19 +575,1061 @@
     </div>
 </div>
 
-<!-- EDIT MODAL (Placeholder) -->
-<div x-data="{ open: false, title: '' }" @open-edit-modal.window="open = true; title = $event.detail.title"
-    class="relative z-50">
-    <div x-show="open" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
-    <div x-show="open" class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" @click.away="open = false">
-            <h3 class="text-lg font-bold text-slate-800 mb-2" x-text="'Editar: ' + title"></h3>
-            <p class="text-slate-500 text-sm mb-4">Aquí irán las opciones de asistencia, cancelación, etc.</p>
-            <button @click="open = false"
-                class="w-full bg-slate-100 py-2 rounded-lg font-bold text-slate-600">Cerrar</button>
+<!-- SESSION DETAIL SLIDEOUT PANEL -->
+<div x-data="sessionDetailPanel()" @open-edit-modal.window="openSession($event.detail.id)" class="relative z-50">
+
+    <!-- Backdrop -->
+    <div x-show="open" x-transition.opacity @click="close()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm">
+    </div>
+
+    <!-- Slideout Panel -->
+    <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full"
+        x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+        class="fixed inset-y-0 right-0 w-full max-w-xl bg-white shadow-2xl flex flex-col">
+
+        <!-- HEADER -->
+        <div class="p-5 border-b border-slate-100"
+            :style="'background: linear-gradient(135deg, ' + (session.activity?.color || '#3B82F6') + '15, white)'">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="w-3 h-3 rounded-full"
+                            :style="'background:' + (session.activity?.color || '#3B82F6')"></span>
+                        <span class="text-xs font-bold uppercase tracking-wide text-slate-500"
+                            x-text="session.status === 'CANCELLED' ? 'CANCELADA' : (session.status === 'COMPLETED' ? 'COMPLETADA' : 'PROGRAMADA')"></span>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900" x-text="session.activity?.name || 'Cargando...'"></h2>
+                    <p class="text-sm text-slate-500 mt-1">
+                        <span x-text="formatDate(session.start_datetime)"></span> ·
+                        <span x-text="formatTime(session.start_datetime)"></span> - <span
+                            x-text="formatTime(session.end_datetime)"></span>
+                    </p>
+                </div>
+                <button @click="close()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-3 gap-3 mt-4">
+                <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
+                    <p class="text-xs text-slate-400 uppercase font-bold">Sala</p>
+                    <p class="font-semibold text-slate-700 truncate" x-text="session.room?.name || 'Sin sala'"></p>
+                </div>
+                <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
+                    <p class="text-xs text-slate-400 uppercase font-bold">Instructor</p>
+                    <p class="font-semibold text-slate-700 truncate" x-text="session.staff?.name || 'Sin asignar'"></p>
+                </div>
+                <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
+                    <p class="text-xs text-slate-400 uppercase font-bold">Aforo</p>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-800"
+                            x-text="session.attendee_count + '/' + session.max_capacity"></span>
+                        <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500 rounded-full transition-all"
+                                :style="'width:' + session.utilization + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="flex border-b border-slate-100 bg-slate-50/50">
+            <button @click="activeTab = 'attendees'"
+                :class="activeTab === 'attendees' ? 'border-b-2 border-blue-500 text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'"
+                class="flex-1 py-3 text-sm font-bold transition-colors">
+                👥 Asistentes <span class="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 rounded-full"
+                    x-text="session.attendee_count || 0"></span>
+            </button>
+            <button @click="activeTab = 'waitlist'" x-show="session.has_waitlist"
+                :class="activeTab === 'waitlist' ? 'border-b-2 border-orange-500 text-orange-600 bg-white' : 'text-slate-500 hover:text-slate-700'"
+                class="flex-1 py-3 text-sm font-bold transition-colors">
+                📋 Lista Espera <span class="ml-1 text-xs bg-orange-100 text-orange-700 px-1.5 rounded-full"
+                    x-text="session.waitlist?.length || 0"></span>
+            </button>
+            <button @click="activeTab = 'edit'"
+                :class="activeTab === 'edit' ? 'border-b-2 border-slate-500 text-slate-800 bg-white' : 'text-slate-500 hover:text-slate-700'"
+                class="flex-1 py-3 text-sm font-bold transition-colors">
+                ✏️ Editar
+            </button>
+        </div>
+
+        <!-- TAB CONTENT -->
+        <div class="flex-1 overflow-y-auto">
+
+            <!-- ATTENDEES TAB -->
+            <div x-show="activeTab === 'attendees'" class="p-4">
+                <!-- Search & Add -->
+                <div class="relative mb-4">
+                    <input type="text" x-model="clientSearch" @input.debounce.300ms="searchClients()"
+                        placeholder="Buscar cliente para añadir..."
+                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+
+                    <!-- Search Results Dropdown -->
+                    <div x-show="searchResults.length > 0"
+                        class="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-10 max-h-56 overflow-y-auto">
+                        <template x-for="client in searchResults" :key="client.id">
+                            <div
+                                class="w-full flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors text-left">
+                                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600"
+                                    x-text="client.name.charAt(0)"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-sm text-slate-800 truncate" x-text="client.name"></p>
+                                    <p class="text-xs text-slate-400 truncate" x-text="client.email"></p>
+                                </div>
+                                <div class="flex gap-1">
+                                    <button @click="addAttendee(client.id)"
+                                        class="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                                        + Clase
+                                    </button>
+                                    <button @click="addToWaitlist(client.id)" x-show="session.activity?.allow_waitlist"
+                                        class="text-xs font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200">
+                                        ⏳ Espera
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Quick Client Creation Button -->
+                <button @click="showQuickCreateForm = !showQuickCreateForm" type="button"
+                    class="w-full mb-4 text-sm font-bold py-2 px-4 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span x-text="showQuickCreateForm ? 'Cancelar' : '➕ Crear Ficha Rápida'"></span>
+                </button>
+
+                <!-- Quick Client Creation Form -->
+                <div x-show="showQuickCreateForm" x-transition.scale
+                    class="mb-4 p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                    <h4 class="text-sm font-bold text-green-800 mb-3">Crear Cliente Rápido</h4>
+                    <form @submit.prevent="createQuickClient()" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-green-700 mb-1">Nombre *</label>
+                                <input type="text" x-model="quickClientForm.first_name" required
+                                    class="w-full text-sm rounded-lg border-green-200 focus:border-green-500 focus:ring-green-500"
+                                    placeholder="Juan">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-green-700 mb-1">Apellidos *</label>
+                                <input type="text" x-model="quickClientForm.last_name" required
+                                    class="w-full text-sm rounded-lg border-green-200 focus:border-green-500 focus:ring-green-500"
+                                    placeholder="García">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-green-700 mb-1">Email</label>
+                            <input type="email" x-model="quickClientForm.email"
+                                class="w-full text-sm rounded-lg border-green-200 focus:border-green-500 focus:ring-green-500"
+                                placeholder="juan@ejemplo.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-green-700 mb-1">Teléfono</label>
+                            <input type="tel" x-model="quickClientForm.phone_number"
+                                class="w-full text-sm rounded-lg border-green-200 focus:border-green-500 focus:ring-green-500"
+                                placeholder="+34 600 000 000">
+                        </div>
+                        <p class="text-xs text-green-600">* Al menos email o teléfono es requerido</p>
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="flex-1 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors text-sm">
+                                ✓ Crear y Añadir a Clase
+                            </button>
+                            <button type="button"
+                                @click="showQuickCreateForm = false; quickClientForm = {first_name: '', last_name: '', email: '', phone_number: ''}"
+                                class="py-2 px-4 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-colors text-sm">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Bulk Actions -->
+                <div class="flex gap-2 mb-4" x-show="session.attendees?.length > 0">
+                    <button @click="markAllAttended()"
+                        class="flex-1 text-xs font-bold py-2 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
+                        ✓ Marcar Todos
+                    </button>
+                    <button @click="sendEmailToAll()"
+                        class="flex-1 text-xs font-bold py-2 px-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
+                        📧 Email a Todos
+                    </button>
+                    <button @click="exportPhones()"
+                        class="text-xs font-bold py-2 px-3 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
+                        📲
+                    </button>
+                </div>
+
+                <!-- Attendees List -->
+                <div class="space-y-2">
+                    <template x-for="att in session.attendees" :key="att.id">
+                        <div class="flex items-start gap-3 p-3 rounded-xl hover:opacity-90 transition-all group relative"
+                            :class="att.is_late_cancel ? 'bg-red-50 border-2 border-red-200' : 'bg-slate-50 hover:bg-slate-100'">
+                            <!-- Avatar -->
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0"
+                                x-text="att.name.charAt(0)"></div>
+
+                            <!-- Main Content -->
+                            <div class="flex-1 min-w-0">
+                                <!-- Name Row with Badges -->
+                                <div class="flex items-center gap-2 flex-wrap mb-1">
+                                    <p class="font-semibold text-slate-800 truncate" x-text="att.name"></p>
+
+                                    <!-- Attendance Rate Badge -->
+                                    <span x-show="att.attendance_rate !== undefined"
+                                        :class="att.attendance_rate >= 80 ? 'bg-green-100 text-green-700' : att.attendance_rate >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
+                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        📊 <span x-text="att.attendance_rate + '%'"></span>
+                                    </span>
+
+                                    <!-- Recurring Badge -->
+                                    <span x-show="att.is_recurring"
+                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                        🔄 <span
+                                            x-text="'Serie (' + (att.future_sessions_count + 1) + ' clases)'"></span>
+                                    </span>
+
+                                    <!-- Membership Badge -->
+                                    <template x-if="att.membership">
+                                        <span
+                                            class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                            💳 <span x-text="att.membership.name"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="!att.membership">
+                                        <span
+                                            class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                            ⚠️ Sin cuota activa
+                                        </span>
+                                    </template>
+
+                                    <!-- Note Icon with Enhanced Tooltip -->
+                                    <div x-show="att.note" class="relative group/note">
+                                        <svg class="w-4 h-4 text-amber-500 cursor-help" fill="currentColor"
+                                            viewBox="0 0 20 20">
+                                            <path
+                                                d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z">
+                                            </path>
+                                            <path d="M3 8a2 2 0 012-2v10h8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"></path>
+                                        </svg>
+                                        <!-- Enhanced Tooltip -->
+                                        <div x-show="att.note"
+                                            class="invisible group-hover/note:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-slate-800 text-white text-xs rounded-lg p-3 shadow-xl">
+                                            <div class="font-semibold mb-1 text-amber-300">📝 Nota Importante:</div>
+                                            <div class="text-slate-200 mb-2 leading-relaxed" x-text="att.note?.content">
+                                            </div>
+                                            <div class="text-slate-400 text-[10px]"
+                                                x-text="att.note ? new Date(att.note.created_at).toLocaleDateString('es-ES') + ' - ' + att.note.author : ''">
+                                            </div>
+                                            <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                                                <div class="w-2 h-2 bg-slate-800 rotate-45"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Info Row -->
+                                <div class="flex items-center gap-2 text-xs mb-1">
+                                    <a :href="'tel:' + att.phone" x-show="att.phone"
+                                        class="text-blue-600 hover:underline flex items-center gap-1">
+                                        📞 <span x-text="att.phone"></span>
+                                    </a>
+                                    <!-- WhatsApp Button -->
+                                    <a :href="'https://wa.me/' + (att.phone ? att.phone.replace(/[^0-9]/g, '') : '')" 
+                                       x-show="att.phone"
+                                       target="_blank"
+                                       class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
+                                       :title="'WhatsApp a ' + att.name">
+                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                        </svg>
+                                    </a>
+                                    <a :href="'mailto:' + att.email" x-show="att.email"
+                                        class="text-blue-600 hover:underline flex items-center gap-1">
+                                        📧 <span x-text="att.email" class="truncate max-w-[150px]"></span>
+                                    </a>
+                                </div>
+
+                                <!-- Cancellation Status Row -->
+                                <div x-show="att.cancellation" class="flex items-center gap-1 text-[11px] mt-2">
+                                    <template x-if="att.cancellation?.can_cancel">
+                                        <div
+                                            class="flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg>
+                                            <span>Puede cancelar hasta</span>
+                                            <span class="font-semibold"
+                                                x-text="new Date(att.cancellation.deadline).toLocaleString('es-ES', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="att.cancellation?.is_late">
+                                        <div
+                                            class="flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-1 rounded">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg>
+                                            <span>Cancelación tardía - Penalización</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!att.cancellation?.can_cancel && !att.cancellation?.is_late">
+                                        <div class="flex items-center gap-1 text-red-700 bg-red-50 px-2 py-1 rounded">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg>
+                                            <span>Ya no puede cancelar</span>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Visit Status (if cancelled) -->
+                                <div x-show="att.visit_status?.status === 'CANCELLED'" class="mt-2">
+                                    <div :class="att.visit_status?.cancellation_type === 'EARLY' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-200'"
+                                        class="text-[11px] font-semibold px-2 py-1 rounded border inline-flex items-center gap-1">
+                                        <span
+                                            x-text="att.visit_status?.cancellation_type === 'EARLY' ? '🟢 Cancelación Temprana' : '🔴 Cancelación Tardía'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Attendance Status Buttons -->
+                            <div class="flex flex-col gap-1 shrink-0">
+                                <!-- Attended Button -->
+                                <button @click="markAttendance(att.booking_id, 'ATTENDED')"
+                                    :class="att.attendance_status === 'ATTENDED' ? 'bg-green-500 text-white ring-2 ring-green-300' : 'bg-green-50 text-green-600 hover:bg-green-100'"
+                                    class="px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                                    title="Asistió">
+                                    <span x-show="att.attendance_status === 'ATTENDED'">✓</span>
+                                    <span>Asistió</span>
+                                </button>
+                                
+                                <!-- No Show Button -->
+                                <button @click="markAttendance(att.booking_id, 'NO_SHOW')"
+                                    :class="att.attendance_status === 'NO_SHOW' ? 'bg-red-500 text-white ring-2 ring-red-300' : 'bg-red-50 text-red-600 hover:bg-red-100'"
+                                    class="px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                                    title="No asistió">
+                                    <span x-show="att.attendance_status === 'NO_SHOW'">✗</span>
+                                    <span>No Vino</span>
+                                </button>
+                                
+                                <!-- Late Cancel Button -->
+                                <button @click="markAttendance(att.booking_id, 'LATE_CANCEL')"
+                                    :class="att.attendance_status === 'LATE_CANCEL' ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'"
+                                    class="px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                                    title="Canceló tarde">
+                                    <span x-show="att.attendance_status === 'LATE_CANCEL'">⚠</span>
+                                    <span>Canceló</span>
+                                </button>
+                                
+                                <!-- Remove Button -->
+                                <button @click="confirmRemove = att.id; cancelStep = null; cancelScope = null"
+                                    class="opacity-0 group-hover:opacity-100 px-2 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all text-[10px] font-bold">
+                                    × Quitar
+                                </button>
+                            </div>
+
+                            <!-- Remove Confirmation Mini Modal -->
+                            <div x-show="confirmRemove === att.id"
+                                class="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex items-center justify-center z-10">
+                                <div class="p-3 text-center">
+                                    <!-- Step 1: Choose scope (single or series) -->
+                                    <div x-show="!cancelStep">
+                                        <p class="text-xs text-slate-600 mb-2 font-semibold">¿De cuántas clases
+                                            eliminar?</p>
+                                        <div class="flex gap-2">
+                                            <button @click="cancelScope = 'single'; cancelStep = 'type'"
+                                                class="px-3 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg text-xs hover:bg-slate-200">
+                                                Solo esta
+                                            </button>
+                                            <button @click="cancelScope = 'future'; cancelStep = 'type'"
+                                                x-show="att.is_recurring"
+                                                class="px-3 py-1.5 bg-orange-500 text-white font-bold rounded-lg text-xs hover:bg-orange-600">
+                                                Serie completa
+                                            </button>
+                                            <button @click="confirmRemove = null; cancelStep = null; cancelScope = null"
+                                                class="px-2 py-1.5 text-slate-400 font-bold rounded-lg text-xs hover:bg-slate-100">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 2: Choose cancellation type -->
+                                    <div x-show="cancelStep === 'type'">
+                                        <p class="text-xs text-slate-600 mb-1 font-semibold">¿Qué acción realizar?</p>
+                                        <p class="text-[10px] text-slate-500 mb-2"
+                                            x-text="att.cancellation?.can_cancel ? 'Puede cancelar sin penalización' : 'Cancelación tardía con penalización'">
+                                        </p>
+                                        <div class="flex flex-col gap-2">
+                                            <button @click="removeAttendee(att.id, cancelScope, 'EARLY')"
+                                                class="px-3 py-2 bg-green-500 text-white font-bold rounded-lg text-xs hover:bg-green-600 transition-colors">
+                                                🟢 Cancelación Temprana
+                                            </button>
+                                            <button @click="removeAttendee(att.id, cancelScope, 'LATE')"
+                                                class="px-3 py-2 bg-red-500 text-white font-bold rounded-lg text-xs hover:bg-red-600 transition-colors">
+                                                🔴 Cancelación Tardía
+                                            </button>
+                                            <button @click="removeAttendee(att.id, cancelScope, 'WAITLIST')"
+                                                x-show="session.activity && session.activity.allow_waitlist"
+                                                class="px-3 py-2 bg-amber-500 text-white font-bold rounded-lg text-xs hover:bg-amber-600 transition-colors">
+                                                ⏳ Pasar a Lista de Espera
+                                            </button>
+                                            <button @click="cancelStep = null; cancelScope = null"
+                                                class="px-2 py-1.5 text-slate-400 font-bold rounded-lg text-xs hover:bg-slate-100">
+                                                ← Volver
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div x-show="!session.attendees || session.attendees.length === 0"
+                        class="text-center py-8 text-slate-400">
+                        <p class="text-4xl mb-2">👤</p>
+                        <p class="text-sm">No hay asistentes aún</p>
+                    </div>
+                </div>
+
+                <!-- WAITLIST PREVIEW IN ATTENDEES TAB -->
+                <div x-show="session.waitlist && session.waitlist.length > 0" class="mt-4">
+                    <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-3">
+                        <h4 class="text-xs font-bold text-yellow-800 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z">
+                                </path>
+                            </svg>
+                            Lista de Espera (<span x-text="session.waitlist?.length || 0"></span>)
+                        </h4>
+                        <div class="space-y-1">
+                            <template x-for="(entry, index) in (session.waitlist || []).slice(0, 3)" :key="entry.id">
+                                <div class="flex items-center gap-2 text-xs">
+                                    <span class="font-bold text-yellow-700" x-text="'#' + (index + 1)"></span>
+                                    <span class="text-yellow-800" x-text="entry.name"></span>
+                                </div>
+                            </template>
+                            <div x-show="(session.waitlist?.length || 0) > 3" class="text-xs text-yellow-600 italic">
+                                + <span x-text="(session.waitlist?.length || 0) - 3"></span> más...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WAITLIST TAB -->
+            <div x-show="activeTab === 'waitlist'" class="p-4">
+                <div class="mb-4 p-3 bg-orange-50 rounded-xl border border-orange-100">
+                    <p class="text-xs text-orange-700">
+                        <strong>Lista de espera:</strong> Los clientes serán promovidos automáticamente cuando se libere
+                        un espacio.
+                    </p>
+                </div>
+
+                <!-- Bulk Action -->
+                <button @click="sendEmailToWaitlist()" x-show="session.waitlist?.length > 0"
+                    class="w-full mb-4 text-xs font-bold py-2 px-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors">
+                    📧 Email a Lista de Espera
+                </button>
+
+                <div class="space-y-2">
+                    <template x-for="(entry, index) in (session.waitlist || [])" :key="entry.id">
+                        <div
+                            class="flex items-center gap-3 p-3 bg-orange-50/50 rounded-xl border border-orange-100 group">
+                            <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 font-bold text-sm"
+                                x-text="'#' + (index + 1)"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-slate-800 truncate" x-text="entry.name"></p>
+                                <div class="flex items-center gap-2 text-xs">
+                                    <a :href="'tel:' + entry.phone" x-show="entry.phone"
+                                        class="text-blue-600 hover:underline">📞 <span x-text="entry.phone"></span></a>
+                                    <a :href="'mailto:' + entry.email" x-show="entry.email"
+                                        class="text-blue-600 hover:underline">📧</a>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="promoteFromWaitlist(entry.id)"
+                                    class="px-3 py-1.5 text-xs font-bold bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm">
+                                    ⬆️ Pasar a Clase
+                                </button>
+                                <button @click="removeFromWaitlist(entry.id)"
+                                    class="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-all">
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div x-show="!session.waitlist || session.waitlist.length === 0"
+                        class="text-center py-8 text-slate-400">
+                        <p class="text-4xl mb-2">📋</p>
+                        <p class="text-sm">Lista de espera vacía</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EDIT TAB -->
+            <div x-show="activeTab === 'edit'" class="p-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha</label>
+                    <input type="date" x-model="editForm.date" class="w-full rounded-xl border-slate-200">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hora Inicio</label>
+                        <input type="time" x-model="editForm.start_time" class="w-full rounded-xl border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hora Fin</label>
+                        <input type="time" x-model="editForm.end_time" class="w-full rounded-xl border-slate-200">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Instructor</label>
+                    <select x-model="editForm.staff_id" class="w-full rounded-xl border-slate-200">
+                        <option value="">Sin asignar</option>
+                        {% for s in staff_list %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sala</label>
+                    <select x-model="editForm.room_id" class="w-full rounded-xl border-slate-200">
+                        <option value="">Sin sala</option>
+                        {% for room in rooms %}
+                        <option value="{{ room.id }}">{{ room.name }} ({{ room.capacity }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Aforo Máximo</label>
+                    <input type="number" x-model="editForm.max_capacity" min="1"
+                        class="w-full rounded-xl border-slate-200">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Notas Internas</label>
+                    <textarea x-model="editForm.notes" rows="3" class="w-full rounded-xl border-slate-200 text-sm"
+                        placeholder="Notas solo visibles para el staff..."></textarea>
+                </div>
+
+                <button @click="confirmSave = true"
+                    class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20">
+                    💾 Guardar Cambios
+                </button>
+
+                <!-- Save Confirmation -->
+                <div x-show="confirmSave" class="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <p class="text-sm text-blue-700 mb-3">¿Cómo deseas aplicar los cambios?</p>
+                    <div class="flex gap-2">
+                        <button @click="saveChanges('single')"
+                            class="flex-1 py-2 bg-white text-blue-600 font-bold rounded-lg border border-blue-200 text-xs hover:bg-blue-50">
+                            Solo esta clase
+                        </button>
+                        <button @click="saveChanges('future')" x-show="session.rule_id !== null && session.rule_id !== undefined"
+                            class="flex-1 py-2 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700">
+                            Esta y futuras
+                        </button>
+                        <button @click="confirmSave = false"
+                            class="py-2 px-3 text-slate-500 font-bold rounded-lg text-xs hover:bg-slate-100">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER ACTIONS -->
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50">
+            <div class="flex gap-2">
+                <button @click="confirmCancel = true"
+                    class="flex-1 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors text-sm">
+                    ❌ Cancelar Clase
+                </button>
+                <button @click="duplicateSession()"
+                    class="py-2.5 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm">
+                    📋 Duplicar
+                </button>
+            </div>
+
+            <!-- Cancel Confirmation -->
+            <div x-show="confirmCancel" class="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                <p class="text-sm text-red-700 mb-3">¿Cómo deseas cancelar?</p>
+                <div class="flex gap-2">
+                    <button @click="cancelSession('single')"
+                        class="flex-1 py-2 bg-white text-red-600 font-bold rounded-lg border border-red-200 text-xs hover:bg-red-50">
+                        Solo esta clase
+                    </button>
+                    <button @click="cancelSession('future')" x-show="session.rule_id !== null && session.rule_id !== undefined"
+                        class="flex-1 py-2 bg-red-600 text-white font-bold rounded-lg text-xs hover:bg-red-700">
+                        Esta y futuras
+                    </button>
+                    <button @click="confirmCancel = false"
+                        class="py-2 px-3 text-slate-500 font-bold rounded-lg text-xs hover:bg-slate-100">
+                        ✕
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+    function sessionDetailPanel() {
+        return {
+            open: false,
+            loading: false,
+            activeTab: 'attendees',
+            confirmCancel: false,
+            confirmSave: false,
+            confirmRemove: null,
+            cancelStep: null,
+            cancelScope: null,
+            sessionId: null,
+            session: {},
+            clientSearch: '',
+            searchResults: [],
+            showQuickCreateForm: false,
+            quickClientForm: {
+                first_name: '',
+                last_name: '',
+                email: '',
+                phone_number: ''
+            },
+            editForm: {
+                staff_id: '',
+                room_id: '',
+                max_capacity: 0,
+                notes: '',
+                date: '',
+                start_time: '',
+                end_time: ''
+            },
+
+            async openSession(eventId, resetTab = true) {
+                // Extract DB ID from event ID (format: sess_123)
+                const dbId = eventId.replace('sess_', '');
+                this.sessionId = dbId;
+                this.open = true;
+                this.loading = true;
+                if (resetTab) {
+                    this.activeTab = 'attendees';
+                }
+                this.confirmCancel = false;
+                this.confirmSave = false;
+                this.confirmRemove = null;
+
+                try {
+                    const res = await fetch(`/activities/api/session/${dbId}/`);
+                    if (res.ok) {
+                        this.session = await res.json();
+                        
+                        // Ensure waitlist is always an array
+                        if (!this.session.waitlist) {
+                            this.session.waitlist = [];
+                        }
+                        
+                        // Parse date and time from start_datetime
+                        const startDate = new Date(this.session.start_datetime);
+                        const endDate = new Date(this.session.end_datetime);
+                        
+                        // Format date as YYYY-MM-DD
+                        const dateStr = startDate.getFullYear() + '-' + 
+                                       String(startDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                                       String(startDate.getDate()).padStart(2, '0');
+                        
+                        // Format time as HH:MM
+                        const startTimeStr = String(startDate.getHours()).padStart(2, '0') + ':' + 
+                                            String(startDate.getMinutes()).padStart(2, '0');
+                        const endTimeStr = String(endDate.getHours()).padStart(2, '0') + ':' + 
+                                          String(endDate.getMinutes()).padStart(2, '0');
+                        
+                        // Populate edit form - Convert IDs to strings to match select values
+                        this.editForm = {
+                            staff_id: this.session.staff?.id ? String(this.session.staff.id) : '',
+                            room_id: this.session.room?.id ? String(this.session.room.id) : '',
+                            max_capacity: this.session.max_capacity,
+                            notes: this.session.notes || '',
+                            date: dateStr,
+                            start_time: startTimeStr,
+                            end_time: endTimeStr
+                        };
+                        
+                        console.log('Edit form populated:', this.editForm);
+                        console.log('Staff ID:', this.editForm.staff_id, typeof this.editForm.staff_id);
+                        console.log('Session rule_id:', this.session.rule_id);
+                    } else {
+                        console.error('Failed to load session');
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+                this.loading = false;
+            },
+
+            close() {
+                this.open = false;
+                this.session = {};
+                this.searchResults = [];
+                this.clientSearch = '';
+            },
+
+            formatDate(iso) {
+                if (!iso) return '';
+                const d = new Date(iso);
+                return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            },
+
+            formatTime(iso) {
+                if (!iso) return '';
+                const d = new Date(iso);
+                return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            },
+
+            async searchClients() {
+                if (this.clientSearch.length < 2) {
+                    this.searchResults = [];
+                    return;
+                }
+                const res = await fetch(`/activities/api/session/${this.sessionId}/search-clients/?q=${encodeURIComponent(this.clientSearch)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    this.searchResults = data.clients;
+                }
+            },
+
+            async addAttendee(clientId) {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/attendees/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_id: clientId })
+                });
+                if (res.ok) {
+                    this.openSession('sess_' + this.sessionId, false); // Refresh without resetting tab
+                    this.clientSearch = '';
+                    this.searchResults = [];
+                    window.calendar.refetchEvents();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Error al añadir');
+                }
+            },
+
+            async addToWaitlist(clientId) {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/waitlist/add/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_id: clientId })
+                });
+                if (res.ok) {
+                    this.openSession('sess_' + this.sessionId, false);
+                    this.clientSearch = '';
+                    this.searchResults = [];
+                    window.calendar.refetchEvents();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Error al añadir a espera');
+                }
+            },
+
+            async createQuickClient() {
+                // Validate at least one contact method
+                if (!this.quickClientForm.email && !this.quickClientForm.phone_number) {
+                    alert('⚠️ Debes proporcionar al menos un email o teléfono');
+                    return;
+                }
+
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                try {
+                    const res = await fetch('/activities/api/quick-client/create/', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.quickClientForm)
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        // Success - automatically add to session
+                        await this.addAttendee(data.client.id);
+
+                        // Reset form and hide
+                        this.quickClientForm = {
+                            first_name: '',
+                            last_name: '',
+                            email: '',
+                            phone_number: ''
+                        };
+                        this.showQuickCreateForm = false;
+
+                        alert(`✅ Cliente "${data.client.name}" creado y añadido a la clase`);
+                    } else {
+                        // Error handling
+                        if (res.status === 409 && data.existing_client_id) {
+                            // Duplicate client - offer to add existing one
+                            if (confirm(`⚠️ ${data.error}\n\n¿Deseas añadir este cliente existente a la clase?`)) {
+                                await this.addAttendee(data.existing_client_id);
+                                this.quickClientForm = {
+                                    first_name: '',
+                                    last_name: '',
+                                    email: '',
+                                    phone_number: ''
+                                };
+                                this.showQuickCreateForm = false;
+                            }
+                        } else {
+                            alert('❌ ' + (data.error || 'Error al crear cliente'));
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('❌ Error de conexión');
+                }
+            },
+
+            async removeAttendee(clientId, mode = 'single', cancellationType = 'EARLY') {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/attendees/${clientId}/remove/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode, cancellation_type: cancellationType })
+                });
+                if (res.ok) {
+                    this.confirmRemove = null;
+                    this.cancelStep = null;
+                    this.cancelScope = null;
+                    await this.openSession('sess_' + this.sessionId, false);
+                    window.calendar.refetchEvents();
+                    const data = await res.json();
+
+                    let message = '';
+
+                    // Handle waitlist action
+                    if (cancellationType === 'WAITLIST' && data.moved_to_waitlist) {
+                        message = data.message || `✅ Cliente movido a lista de espera`;
+                    } else {
+                        // Handle standard cancellation
+                        const cancelText = cancellationType === 'EARLY' ? '🟢 temprana' : '🔴 tardía';
+
+                        if (data.removed > 1) {
+                            message = `✅ Cliente eliminado de ${data.removed} clases con cancelación ${cancelText}`;
+                        } else {
+                            message = `✅ Cliente eliminado con cancelación ${cancelText}`;
+                        }
+
+                        // Add promotion message if someone was promoted from waitlist
+                        if (data.promoted) {
+                            message += `\n\n${data.message || ''}`;
+                        }
+                    }
+
+                    alert(message);
+                }
+            },
+
+            async promoteFromWaitlist(entryId) {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/waitlist/${entryId}/promote/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf }
+                });
+                if (res.ok) {
+                    this.openSession('sess_' + this.sessionId, false); // Refresh without resetting tab
+                    window.calendar.refetchEvents();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Error al promocionar');
+                }
+            },
+
+            async removeFromWaitlist(entryId) {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/waitlist/${entryId}/remove/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf }
+                });
+                if (res.ok) {
+                    if (this.session.waitlist) {
+                        this.session.waitlist = this.session.waitlist.filter(w => w.id !== entryId);
+                    }
+                }
+            },
+
+            async markAttendance(bookingId, status) {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/attendance/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        booking_id: bookingId, 
+                        status: status 
+                    })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    // Update local state for immediate feedback
+                    const attendee = this.session.attendees.find(a => a.booking_id === bookingId);
+                    if (attendee) {
+                        attendee.attendance_status = status;
+                    }
+                    
+                    // Show feedback
+                    const statusText = {
+                        'ATTENDED': '✅ Marcado como asistido',
+                        'NO_SHOW': '❌ Marcado como no asistió',
+                        'LATE_CANCEL': '⚠️ Marcado como cancelación tardía'
+                    };
+                    
+                    // Optional: show a quick toast notification
+                    this.showToast(statusText[status] || 'Actualizado');
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Error al marcar asistencia');
+                }
+            },
+
+            async markAllAttended() {
+                if (!confirm('¿Marcar todos los asistentes como presentes?')) return;
+                
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const bookingIds = this.session.attendees
+                    .filter(a => a.attendance_status !== 'ATTENDED')
+                    .map(a => a.booking_id);
+                
+                if (bookingIds.length === 0) {
+                    alert('ℹ️ Todos ya están marcados como asistidos');
+                    return;
+                }
+                
+                const res = await fetch(`/activities/api/session/${this.sessionId}/attendance/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        booking_ids: bookingIds, 
+                        status: 'ATTENDED' 
+                    })
+                });
+                
+                if (res.ok) {
+                    // Refresh session data
+                    await this.openSession('sess_' + this.sessionId, false);
+                    alert(`✅ ${bookingIds.length} asistentes marcados como presentes`);
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Error al marcar asistencias');
+                }
+            },
+
+            showToast(message) {
+                // Simple toast notification (you can enhance this)
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 right-4 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            },
+
+            async sendEmailToAll() {
+                alert('📧 Función de envío masivo de emails en desarrollo');
+                // TODO: Implement bulk email functionality
+            },
+
+            async exportPhones() {
+                const phones = this.session.attendees
+                    .filter(a => a.phone)
+                    .map(a => `${a.name}: ${a.phone}`)
+                    .join('\n');
+                
+                if (phones) {
+                    navigator.clipboard.writeText(phones);
+                    alert('📲 Teléfonos copiados al portapapeles');
+                } else {
+                    alert('ℹ️ No hay teléfonos disponibles');
+                }
+            },
+
+            async saveChanges(mode = 'single') {
+                console.log('Guardando cambios...', mode, this.editForm);
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                try {
+                    const res = await fetch(`/activities/api/session/${this.sessionId}/update/`, {
+                        method: 'POST',
+                        headers: { 
+                            'X-CSRFToken': csrf, 
+                            'Content-Type': 'application/json' 
+                        },
+                        body: JSON.stringify({
+                            ...this.editForm,
+                            mode: mode
+                        })
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.confirmSave = false;
+                        // Reload session without resetting the active tab
+                        await this.openSession('sess_' + this.sessionId, false);
+                        // Force calendar refresh
+                        window.calendar.refetchEvents();
+                        alert(mode === 'single' ? '✅ Cambios guardados en esta clase' : `✅ Cambios aplicados a ${data.updated || 1} clase(s)`);
+                    } else {
+                        const errorData = await res.json();
+                        console.error('Error saving:', errorData);
+                        alert('❌ Error al guardar: ' + (errorData.error || 'Error desconocido'));
+                    }
+                } catch (error) {
+                    console.error('Error en saveChanges:', error);
+                    alert('❌ Error de conexión al guardar cambios');
+                }
+            },
+
+            async cancelSession(mode) {
+                const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const res = await fetch(`/activities/api/session/${this.sessionId}/cancel/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ ${data.cancelled} clase(s) cancelada(s)`);
+                    this.close();
+                    window.calendar.refetchEvents();
+                } else {
+                    const errorData = await res.json();
+                    alert('❌ Error al cancelar: ' + (errorData.error || 'Error desconocido'));
+                }
+            },
+
+            duplicateSession() {
+                alert('🚧 Funcionalidad de duplicar en desarrollo');
+            }
+        }
+    }
+</script>
 
 <!-- FullCalendar JS -->
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
@@ -386,10 +1644,23 @@
             firstDay: 1,
             slotMinTime: '06:00:00',
             slotMaxTime: '23:00:00',
+            slotDuration: '00:30:00',  // 30 minutos por slot para más altura
+            slotLabelInterval: '01:00', // Etiquetas cada hora
             allDaySlot: false,
             selectable: true,
             selectMirror: true,
             nowIndicator: true,
+            eventDisplay: 'block',
+            displayEventTime: true,
+            displayEventEnd: false,
+            expandRows: true,
+            height: '100%',
+            slotLabelFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+                meridiem: false,
+                hour12: false
+            },
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -421,6 +1692,98 @@
                     detail: { title: info.event.title, id: info.event.id }
                 }));
             },
+            
+            eventDidMount: function(info) {
+                // Create tooltip on hover
+                let tooltip = null;
+                
+                info.el.addEventListener('mouseenter', function(e) {
+                    const event = info.event;
+                    const props = event.extendedProps;
+                    
+                    // Format times
+                    const startTime = event.start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    const endTime = event.end ? event.end.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+                    
+                    // Calculate capacity percentage
+                    const attendees = props.attendees || 0;
+                    const maxCapacity = props.max_capacity || 0;
+                    const percentage = maxCapacity > 0 ? Math.round((attendees / maxCapacity) * 100) : 0;
+                    const capacityColor = percentage >= 90 ? '#ef4444' : percentage >= 70 ? '#f59e0b' : '#10b981';
+                    
+                    // Create tooltip HTML
+                    const tooltipHTML = `
+                        <div class="event-tooltip-title">${event.title}</div>
+                        <div class="event-tooltip-row">
+                            <svg class="event-tooltip-icon" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="event-tooltip-label">Horario:</span>
+                            <span class="event-tooltip-value">${startTime} - ${endTime}</span>
+                        </div>
+                        ${props.staff ? `
+                        <div class="event-tooltip-row">
+                            <svg class="event-tooltip-icon" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="event-tooltip-label">Instructor:</span>
+                            <span class="event-tooltip-value">${props.staff}</span>
+                        </div>
+                        ` : ''}
+                        ${props.type === 'session' ? `
+                        <div class="event-tooltip-row">
+                            <svg class="event-tooltip-icon" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                            </svg>
+                            <span class="event-tooltip-label">Ocupación:</span>
+                            <span class="event-tooltip-value">${attendees}/${maxCapacity > 0 ? maxCapacity : '∞'} plazas (${percentage}%)</span>
+                        </div>
+                        <div class="event-tooltip-capacity-bar">
+                            <div class="event-tooltip-capacity-fill" style="width: ${percentage}%; background-color: ${capacityColor};"></div>
+                        </div>
+                        ` : ''}
+                    `;
+                    
+                    // Create and position tooltip
+                    tooltip = document.createElement('div');
+                    tooltip.className = 'event-tooltip';
+                    tooltip.innerHTML = tooltipHTML;
+                    document.body.appendChild(tooltip);
+                    
+                    // Position tooltip above the event
+                    const rect = info.el.getBoundingClientRect();
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    
+                    let top = rect.top - tooltipRect.height - 12;
+                    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                    
+                    // Adjust if tooltip goes off screen
+                    if (top < 0) {
+                        top = rect.bottom + 12;
+                        tooltip.style.transform = 'translateY(0)';
+                        // Move arrow to top
+                        const arrow = tooltip.querySelector('::before');
+                        if (arrow) {
+                            tooltip.style.setProperty('--arrow-position', 'top');
+                        }
+                    }
+                    
+                    if (left < 10) left = 10;
+                    if (left + tooltipRect.width > window.innerWidth - 10) {
+                        left = window.innerWidth - tooltipRect.width - 10;
+                    }
+                    
+                    tooltip.style.top = top + 'px';
+                    tooltip.style.left = left + 'px';
+                });
+                
+                info.el.addEventListener('mouseleave', function() {
+                    if (tooltip) {
+                        tooltip.remove();
+                        tooltip = null;
+                    }
+                });
+            },
 
             eventDrop: function (info) {
                 // Trigger Drag Confirmation Modal
@@ -430,29 +1793,56 @@
             },
 
             eventContent: function (arg) {
+                // Only custom render for timeGrid views, let month view use default
+                if (arg.view.type.includes('dayGrid')) {
+                    return true; // Use default rendering for month view
+                }
+
                 let timeText = arg.timeText;
                 let title = arg.event.title;
                 let attendees = arg.event.extendedProps.attendees || 0;
                 let max = arg.event.extendedProps.max_capacity || 0;
                 let staff = arg.event.extendedProps.staff || '';
+                
+                // Calculate fill percentage for visual indicator
+                let fillPercentage = max > 0 ? Math.round((attendees / max) * 100) : 0;
+                let fillColor = fillPercentage >= 90 ? 'bg-red-500' : fillPercentage >= 70 ? 'bg-amber-500' : 'bg-green-500';
 
                 let html = `
-                    <div class="fc-content h-full flex flex-col justify-between p-1 relative">
-                        <!-- Top: Time -->
-                        <div class="text-[10px] uppercase tracking-wide opacity-90 font-semibold leading-tight">${timeText}</div>
+                    <div class="fc-content h-full flex flex-col p-2.5 gap-1.5 relative">
+                        <!-- Fill indicator bar at bottom -->
+                        ${arg.event.extendedProps.type === 'session' && max > 0 ? 
+                            `<div class="absolute bottom-0 left-0 right-0 h-1 bg-black/10">
+                                <div class="${fillColor} h-full transition-all" style="width: ${fillPercentage}%"></div>
+                            </div>` 
+                        : ''}
                         
-                        <!-- Center: Title -->
-                        <div class="flex-1 flex flex-col items-center justify-center text-center leading-tight">
-                            <div class="font-bold text-xs md:text-sm line-clamp-2">${title}</div>
-                            <div class="text-[10px] opacity-80 truncate w-full px-1">${staff}</div>
+                        <!-- Time Row -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-white/95 drop-shadow-sm">${timeText}</span>
+                            ${arg.event.extendedProps.type === 'session' ?
+                                `<span class="flex items-center gap-1 bg-black/20 backdrop-blur-sm rounded-md px-2 py-1 text-white">
+                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                                    </svg>
+                                    <span class="font-bold text-xs">${attendees}/${max > 0 ? max : '∞'}</span>
+                                </span>`
+                            : ''}
                         </div>
-
-                        <!-- Bottom Left: Capacity (Only for sessions) -->
-                        ${arg.event.extendedProps.type === 'session' ?
-                        `<div class="absolute bottom-1 left-1 flex items-center gap-0.5 text-[10px] bg-black/20 rounded px-1.5 py-0.5 backdrop-blur-sm">
-                                <svg class="w-3 h-3 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                                <span class="font-bold">${attendees}/${max > 0 ? max : '∞'}</span>
-                             </div>`
+                        
+                        <!-- Title -->
+                        <div class="font-bold text-base leading-tight text-white drop-shadow-md line-clamp-3 pr-1" style="word-break: break-word;">
+                            ${title}
+                        </div>
+                        
+                        <!-- Staff -->
+                        ${staff ? 
+                            `<div class="flex items-center gap-1 text-xs text-white/90 truncate">
+                                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="truncate drop-shadow-sm">${staff}</span>
+                            </div>` 
                         : ''}
                     </div>
                 `;
@@ -463,12 +1853,151 @@
 
         calendar.render();
         window.calendar = calendar;
+
+        // Initialize staff data from backend and load event counts
+        initializeStaffData();
     });
+
+    // Initialize staff data from Django backend
+    const staffListFromBackend = {{ staff_list_json|safe }};
+    
+    // Global staff data with counts
+    window.staffData = [];
+    let currentRoomFilter = '';
+
+    // Initialize staff data and count their events
+    async function initializeStaffData() {
+        try {
+            // Fetch calendar events to count per staff
+            const response = await fetch('{% url "api_calendar_events" %}');
+            const events = await response.json();
+            
+            // Count events per staff
+            const staffCounts = {};
+            events.forEach(event => {
+                const staffId = event.extendedProps?.staff_id;
+                if (staffId) {
+                    staffCounts[staffId] = (staffCounts[staffId] || 0) + 1;
+                }
+            });
+            
+            // Combine backend staff list with event counts
+            window.staffData = staffListFromBackend.map(staff => ({
+                id: staff.id,
+                name: staff.name,
+                count: staffCounts[staff.id] || 0
+            })).sort((a, b) => b.count - a.count);
+            
+            // Populate sidebar
+            populateStaffSidebar();
+        } catch (error) {
+            console.error('Error loading staff data:', error);
+            // Fallback: use backend data without counts
+            window.staffData = staffListFromBackend.map(staff => ({
+                id: staff.id,
+                name: staff.name,
+                count: 0
+            }));
+            populateStaffSidebar();
+        }
+    }
+
+    // Populate staff sidebar with checkboxes
+    function populateStaffSidebar() {
+        const staffList = document.getElementById('staffList');
+        if (!staffList) return;
+        
+        staffList.innerHTML = window.staffData.map(staff => `
+            <label class="flex items-center px-2.5 py-2 rounded-lg hover:bg-blue-50 transition-colors border border-slate-100 cursor-pointer group">
+                <input 
+                    type="checkbox" 
+                    value="${staff.id}" 
+                    onchange="toggleStaffFilter(${staff.id})"
+                    class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 mr-2 flex-shrink-0"
+                />
+                <div class="flex justify-between items-center flex-1 min-w-0">
+                    <span class="font-medium text-slate-700 text-xs group-hover:text-blue-600 truncate pr-1">${staff.name}</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-700 flex-shrink-0">
+                        ${staff.count}
+                    </span>
+                </div>
+            </label>
+        `).join('');
+    }
+
+    // Toggle staff filter
+    function toggleStaffFilter(staffId) {
+        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+        if (!alpineData) return;
+        
+        const index = alpineData.selectedStaffIds.indexOf(staffId);
+        if (index > -1) {
+            alpineData.selectedStaffIds.splice(index, 1);
+        } else {
+            alpineData.selectedStaffIds.push(staffId);
+        }
+        
+        applyFilters();
+    }
+
+    // Apply all filters
+    function applyFilters() {
+        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+        const selectedStaffIds = alpineData?.selectedStaffIds || [];
+        const events = window.calendar.getEvents();
+        
+        events.forEach(event => {
+            let show = true;
+            
+            // Room filter
+            if (currentRoomFilter) {
+                const eventRoom = event.extendedProps?.room_id;
+                if (eventRoom && eventRoom != currentRoomFilter) {
+                    show = false;
+                }
+            }
+            
+            // Staff filter - only filter if at least one staff is selected
+            if (selectedStaffIds.length > 0) {
+                const eventStaff = event.extendedProps?.staff_id;
+                if (!eventStaff || !selectedStaffIds.includes(eventStaff)) {
+                    show = false;
+                }
+            }
+            
+            // Show/hide event
+            const el = event.el;
+            if (el) {
+                el.style.display = show ? '' : 'none';
+            }
+        });
+    }
+
+    // Room filter change
+    document.addEventListener('DOMContentLoaded', function() {
+        const roomFilter = document.getElementById('roomFilter');
+        if (roomFilter) {
+            roomFilter.addEventListener('change', function() {
+                currentRoomFilter = this.value;
+                applyFilters();
+            });
+        }
+    });
+
+    // Resize calendar when sidebar toggles
+    function resizeCalendar() {
+        if (window.calendar) {
+            window.calendar.updateSize();
+        }
+    }
 
     function triggerNewClassModal() {
         window.dispatchEvent(new CustomEvent('open-create-modal', {
             detail: { start: new Date().toISOString(), end: '' }
         }));
     }
+
+    // Global applyFilters function for Alpine.js
+    window.applyFilters = applyFilters;
 </script>
 {% endblock %}

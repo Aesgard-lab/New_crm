@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; color: #111827; background: #f9fafb; }
+        h1, h2, h3, h4 { margin: 0; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .muted { color: #6b7280; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th { text-align: left; padding: 10px 8px; background: #f3f4f6; font-size: 12px; color: #374151; text-transform: uppercase; }
+        td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        .right { text-align: right; }
+        .total { background: #111827; color: white; padding: 18px; border-radius: 14px; text-align: right; margin-top: 12px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 8px; background: #e0f2fe; color: #0ea5e9; font-weight: 600; font-size: 12px; }
+        .small { font-size: 13px; color: #4b5563; }
+    </style>
+</head>
+<body>
+    <div style="text-align:center; margin-bottom: 20px;">
+        {% if gym.logo %}
+            <img src="{{ gym.logo.url }}" alt="Logo" style="max-height:60px; margin-bottom:8px;">
+        {% endif %}
+        <h1>Factura</h1>
+        <p class="muted">{{ order.invoice_number|default:"Pendiente" }}</p>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>{{ gym.commercial_name|default:gym.name }}</h3>
+            {% if gym.legal_name %}<p class="small">Razón social: {{ gym.legal_name }}</p>{% endif %}
+            {% if gym.tax_id %}<p class="small">CIF/NIF: {{ gym.tax_id }}</p>{% endif %}
+            {% if gym.address %}<p class="small">{{ gym.address }}{% if gym.city %}, {{ gym.city }}{% endif %}{% if gym.province %}, {{ gym.province }}{% endif %}{% if gym.zip_code %} ({{ gym.zip_code }}){% endif %}</p>{% endif %}
+            {% if gym.phone %}<p class="small">Tel: {{ gym.phone }}</p>{% endif %}
+            {% if gym.email %}<p class="small">Email: {{ gym.email }}</p>{% endif %}
+            {% if gym.website %}<p class="small">Web: {{ gym.website }}</p>{% endif %}
+        </div>
+        <div class="card">
+            <h3>Cliente</h3>
+            {% if order.client %}
+                <p class="small">{{ order.client.first_name }} {{ order.client.last_name }}</p>
+                {% if order.client.dni %}<p class="small">DNI/NIE: {{ order.client.dni }}</p>{% endif %}
+                {% if order.client.email %}<p class="small">Email: {{ order.client.email }}</p>{% endif %}
+                {% if order.client.phone_number %}<p class="small">Tel: {{ order.client.phone_number }}</p>{% endif %}
+                {% if order.client.address %}<p class="small">{{ order.client.address }}</p>{% endif %}
+            {% else %}
+                <p class="small">Cliente no especificado</p>
+            {% endif %}
+            <p class="small" style="margin-top:8px;">Fecha: {{ order.created_at|date:"d/m/Y H:i" }}</p>
+            <p class="small">Estado: <span class="badge">{{ order.get_status_display }}</span></p>
+            {% if order.created_by %}
+            <p class="small">Cobrado por: {{ order.created_by.get_full_name|default:order.created_by.email }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Detalle de la factura</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Concepto</th>
+                    <th>Cant.</th>
+                    <th class="right">P. Unit.</th>
+                    <th class="right">Dto.</th>
+                    <th class="right">IVA %</th>
+                    <th class="right">Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td class="right">{{ item.unit_price|floatformat:2 }}€</td>
+                    <td class="right">{{ item.discount_amount|floatformat:2 }}€</td>
+                    <td class="right">{{ item.tax_rate|floatformat:2 }}%</td>
+                    <td class="right">{{ item.subtotal|floatformat:2 }}€</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h4>Pagos</h4>
+            {% if payments %}
+                {% for p in payments %}
+                    <p class="small">{{ p.payment_method.name }}: {{ p.amount|floatformat:2 }}€{% if p.transaction_id %} ({{ p.transaction_id }}){% endif %}</p>
+                {% endfor %}
+            {% else %}
+                <p class="small">Sin pagos registrados.</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h4>Totales</h4>
+            <p class="small">Base imponible: {{ order.total_base|default:0|floatformat:2 }}€</p>
+            <p class="small">IVA: {{ order.total_tax|default:0|floatformat:2 }}€</p>
+            <p class="small">Descuento: {{ order.total_discount|default:0|floatformat:2 }}€</p>
+            <div class="total">
+                <div style="opacity:0.85; font-size:12px;">Total a pagar</div>
+                <div style="font-size:22px; font-weight:700;">{{ order.total_amount|floatformat:2 }}€</div>
+            </div>
+        </div>
+    </div>
+
+    <p class="muted" style="text-align:center; margin-top:20px;">Gracias por su confianza.</p>
+</body>
+</html>

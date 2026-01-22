@@ -1,11 +1,27 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
+# URLs config
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # Admin Django
     path("admin/", admin.site.urls),
 
-    # Backoffice (panel interno del gym)
+    # PWA Offline page
+    path("offline/", TemplateView.as_view(template_name="offline.html"), name="offline"),
+
+    # SaaS Billing (Webhooks, etc)
+    path("billing/", include("saas_billing.urls")),
+
+    # Public Portal y Widgets Embebibles - DEBE IR ANTES DEL BACKOFFICE
+    path("public/", include("public_portal.urls")),
+    path("embed/", include(("public_portal.embed_urls", "embed"), namespace="embed")),
+    
+    # Superadmin Panel
+    path("superadmin/", include(("superadmin.urls", "superadmin"), namespace="superadmin")),
+
     # Backoffice (panel interno del gym)
     path("", include("backoffice.urls")),
     path("staff/", include("staff.urls")),
@@ -17,10 +33,20 @@ urlpatterns = [
     path("finance/", include("finance.urls")),
     path("marketing/", include("marketing.urls")),
     path("reporting/", include("reporting.urls")),
-]
+    path("routines/", include("routines.urls")),
+    path("gamification/", include(("gamification.urls", "gamification"), namespace="gamification")),
+    path("providers/", include(("providers.urls", "providers"), namespace="providers")),
 
-from django.conf import settings
-from django.conf.urls.static import static
+    # Member Portal (App Socios)
+    path("portal/", include("clients.urls")),
+
+    # Organizations / Franchise
+    path("organizations/", include("organizations.urls")),
+
+    # Mobile API
+    path("api/", include("api.urls")),
+]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else settings.STATIC_ROOT)

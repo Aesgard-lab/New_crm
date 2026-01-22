@@ -85,14 +85,37 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="font-bold text-blue-900 text-sm">Recurrencia (Suscripción)</span>
-                    {{ form.is_recurring }}
-                </div>
+        <div
+            class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-200 shadow-sm pt-4 border-t border-slate-100">
+            <h3 class="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Configuración de Cuota
+            </h3>
 
-                <div class="grid grid-cols-2 gap-3 mb-3">
+            <!-- Is Recurring Toggle -->
+            <div class="bg-white rounded-lg p-4 mb-4 border-2 border-blue-100">
+                <label class="flex items-center justify-between cursor-pointer group">
+                    <div class="flex items-center gap-3">
+                        {{ form.is_recurring }}
+                        <div>
+                            <span
+                                class="font-bold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">Cuota
+                                Recurrente (Suscripción)</span>
+                            <p class="text-xs text-slate-500 mt-0.5">Se cobra automáticamente cada período</p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">AUTOMÁTICA</span>
+                </label>
+            </div>
+
+            <!-- Frequency Settings -->
+            <div class="bg-white rounded-lg p-4 mb-4 border border-slate-200">
+                <label class="block text-xs font-bold text-slate-700 mb-3 uppercase tracking-wide">Frecuencia de
+                    Cobro</label>
+                <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Cada...</label>
                         {{ form.frequency_amount }}
@@ -102,26 +125,87 @@
                         {{ form.frequency_unit }}
                     </div>
                 </div>
-
-                <div class="flex items-center gap-2 pt-2 border-t border-blue-200/50">
-                    {{ form.prorate_first_month }}
-                    <label class="text-xs text-slate-600">Prorratear primer ciclo</label>
-                </div>
-                <div class="flex items-center gap-2 mt-2">
-                    {{ form.is_membership }}
-                    <label class="text-xs text-blue-800 font-bold">Contabiliza como SOCIO</label>
-                </div>
+                <p class="text-[10px] text-slate-400 mt-2">Ejemplo: "Cada 1 Mes" = Cobro mensual</p>
             </div>
 
-            <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="font-bold text-amber-900 text-sm">Bonos / Packs</span>
+            <!-- Additional Options -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-white rounded-lg p-3 border border-slate-200">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ form.prorate_first_month }}
+                        <div>
+                            <span class="text-xs font-medium text-slate-700">Prorratear primer ciclo</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Ajustar primer cobro proporcionalmente</p>
+                        </div>
+                    </label>
                 </div>
-                <div class="space-y-3">
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border-2 border-green-200">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ form.is_membership }}
+                        <div>
+                            <span class="text-xs font-bold text-green-800">✓ Contabiliza como SOCIO</span>
+                            <p class="text-[10px] text-green-600 mt-0.5">Cuenta en estadísticas de miembros</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pause Configuration (Only for Recurring) -->
+        <div class="pt-6 border-t border-slate-100">
+            <div class="bg-purple-50 p-5 rounded-xl border border-purple-100">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-bold text-purple-900 text-sm">Configuración de Pausas</span>
+                        <span class="text-[10px] bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full">Solo
+                            Cuotas</span>
+                    </div>
+                    {{ form.allow_pause }}
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Días de Validez</label>
-                        {{ form.pack_validity_days }}
-                        <p class="text-[10px] text-amber-700 mt-1">Dejar vacío para sin caducidad.</p>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Cargo por Pausa (€)</label>
+                        {{ form.pause_fee }}
+                        <p class="text-[10px] text-purple-700 mt-1">Cargo único al activar</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Pausas al Año</label>
+                        {{ form.pause_max_per_year }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Días Mínimos</label>
+                        {{ form.pause_min_days }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Días Máximos</label>
+                        {{ form.pause_max_days }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Anticipación</label>
+                        {{ form.pause_advance_notice_days }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 pt-3 border-t border-purple-200/50">
+                    <div class="flex items-center gap-2">
+                        {{ form.pause_allows_gym_access }}
+                        <label class="text-xs text-slate-600">Permite Acceso</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {{ form.pause_allows_booking }}
+                        <label class="text-xs text-slate-600">Permite Reservas</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {{ form.pause_extends_end_date }}
+                        <label class="text-xs text-slate-600">Extiende Fecha</label>
                     </div>
                 </div>
             </div>
@@ -137,6 +221,49 @@
                 <label class="text-sm font-medium">Venta Online</label>
             </div>
         </div>
+    </div>
+
+    <!-- Propagation (Franchise Owners Only) -->
+    {% if form.propagate_to_gyms %}
+    <div class="mt-8 pt-6 border-t border-slate-200 bg-slate-50/50 -mx-6 px-6 pb-6 rounded-b-xl">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                </svg>
+            </span>
+            <div>
+                <h3 class="font-bold text-slate-900 text-sm">Propagar a Franquicia</h3>
+                <p class="text-xs text-slate-500">Copia o actualiza esta cuota en otros gimnasios.</p>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase">Seleccionar Gimnasios</label>
+                <button type="button"
+                    onclick="document.querySelectorAll('input[name=\'propagate_to_gyms\']').forEach(c => c.checked = true)"
+                    class="text-[10px] font-bold text-[var(--brand-color)] hover:underline">
+                    Seleccionar Todos
+                </button>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {% for checkbox in form.propagate_to_gyms %}
+                <label
+                    class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-[var(--brand-color)] hover:shadow-sm transition-all">
+                    {{ checkbox.tag }}
+                    <span class="text-xs font-medium text-slate-700 truncate">{{ checkbox.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <p class="text-[10px] text-slate-400 mt-2">
+                <strong>Nota:</strong> Se copiarán también las reglas de acceso (creando categorías si faltan).
+            </p>
+        </div>
+    </div>
+    {% endif %}
     </div>
 
     <!-- ACCESS RULES SECTION -->

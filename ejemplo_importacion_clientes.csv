@@ -1,0 +1,6 @@
+nombre,apellido,email,teléfono,dni,fecha_nacimiento,género,dirección,estado
+Juan,García López,juan.garcia@example.com,+34 612 345 678,12345678A,1990-05-15,M,Calle Principal 123 Madrid,ACTIVE
+María,Rodríguez Martín,maria.rodriguez@example.com,+34 678 901 234,98765432B,1985-08-22,F,Calle Secundaria 456 Barcelona,ACTIVE
+Carlos,López Sánchez,carlos.lopez@example.com,+34 645 123 456,11111111C,1992-03-10,M,Avenida Central 789 Valencia,LEAD
+Ana,Martínez García,ana.martinez@example.com,+34 667 234 567,22222222D,1988-11-30,F,Paseo del Prado 101 Madrid,ACTIVE
+Pedro,González Ruiz,pedro.gonzalez@example.com,+34 689 456 789,33333333E,1995-07-18,M,Calle de la Paz 202 Barcelona,LEAD

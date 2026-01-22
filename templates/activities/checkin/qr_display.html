@@ -1,0 +1,317 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Check-in QR - {{ session.activity.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qr-display-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, {{ gym.brand_color|default:"#0f172a" }} 0%, #1e293b 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    
+    .qr-card {
+        background: white;
+        border-radius: 2rem;
+        padding: 3rem;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        max-width: 500px;
+        width: 100%;
+    }
+    
+    .qr-code-wrapper {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        display: inline-block;
+        margin: 1.5rem 0;
+    }
+    
+    .qr-code-wrapper canvas,
+    .qr-code-wrapper img {
+        display: block;
+    }
+    
+    .session-info {
+        margin-top: 2rem;
+    }
+    
+    .session-time {
+        font-size: 4rem;
+        font-weight: 700;
+        color: {{ gym.brand_color|default:"#0f172a" }};
+        line-height: 1;
+    }
+    
+    .session-name {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-top: 0.5rem;
+    }
+    
+    .session-details {
+        color: #64748b;
+        font-size: 1.1rem;
+        margin-top: 0.5rem;
+    }
+    
+    .attendee-counter {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: #f1f5f9;
+        border-radius: 1rem;
+    }
+    
+    .counter-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+    
+    .counter-label {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .scan-instruction {
+        color: white;
+        font-size: 1.25rem;
+        margin-top: 2rem;
+        opacity: 0.9;
+    }
+    
+    .refresh-indicator {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.1);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Animación de check-in exitoso */
+    .checkin-toast {
+        position: fixed;
+        top: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 1rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        display: none;
+        z-index: 1000;
+    }
+    
+    .checkin-toast.show {
+        display: block;
+        animation: slideDown 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+    }
+    
+    @keyframes slideDown {
+        from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+        to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+    
+    @keyframes fadeOut {
+        to { opacity: 0; }
+    }
+    
+    /* Fullscreen button */
+    .fullscreen-btn {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.2);
+        color: white;
+        border: none;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .fullscreen-btn:hover {
+        background: rgba(255,255,255,0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="qr-display-container" id="qrContainer">
+    <!-- Toast para check-ins -->
+    <div class="checkin-toast" id="checkinToast"></div>
+    
+    <!-- Botón fullscreen -->
+    <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Pantalla completa">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+        </svg>
+    </button>
+    
+    <div class="qr-card">
+        <!-- Logo del gimnasio -->
+        {% if gym.logo %}
+        <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-16 mx-auto mb-4">
+        {% endif %}
+        
+        <!-- Código QR -->
+        <div class="qr-code-wrapper">
+            <div id="qrCode"></div>
+        </div>
+        
+        <!-- Info de la sesión -->
+        <div class="session-info">
+            <div class="session-time" id="sessionTime">{{ session.start_datetime|time:"H:i" }}</div>
+            <div class="session-name">{{ session.activity.name }}</div>
+            <div class="session-details">
+                {% if session.room %}{{ session.room.name }} • {% endif %}
+                {% if session.staff %}{{ session.staff.user.first_name }}{% endif %}
+            </div>
+        </div>
+        
+        <!-- Contador de asistentes -->
+        <div class="attendee-counter">
+            <div class="counter-number">
+                <span id="checkinCount">0</span> / <span id="maxCapacity">{{ session.max_capacity }}</span>
+            </div>
+            <div class="counter-label">Check-ins realizados</div>
+        </div>
+    </div>
+    
+    <p class="scan-instruction">
+        📱 Escanea el QR con tu móvil para confirmar asistencia
+    </p>
+    
+    <div class="refresh-indicator">
+        QR se renueva en <span id="refreshCounter">--</span>s
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+    const sessionId = {{ session.id }};
+    const apiUrl = "{% url 'qr_display_api' session.id %}";
+    let currentToken = "";
+    let refreshInterval;
+    let countdownInterval;
+    let lastCheckinCount = 0;
+    
+    // Generar QR
+    function updateQR(url) {
+        const container = document.getElementById('qrCode');
+        container.innerHTML = '';
+        
+        QRCode.toCanvas(url, {
+            width: 280,
+            margin: 0,
+            color: {
+                dark: '#0f172a',
+                light: '#ffffff'
+            }
+        }, function(error, canvas) {
+            if (error) console.error(error);
+            container.appendChild(canvas);
+        });
+    }
+    
+    // Actualizar datos del QR
+    async function refreshQRData() {
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            
+            if (data.token !== currentToken) {
+                currentToken = data.token;
+                const fullUrl = window.location.origin + data.url;
+                updateQR(fullUrl);
+            }
+            
+            // Actualizar contador
+            document.getElementById('checkinCount').textContent = data.checkins || 0;
+            document.getElementById('maxCapacity').textContent = data.max_capacity || '--';
+            
+            // Mostrar toast si hay nuevo check-in
+            if (data.checkins > lastCheckinCount && lastCheckinCount > 0) {
+                showCheckinToast();
+            }
+            lastCheckinCount = data.checkins || 0;
+            
+            // Iniciar countdown
+            startCountdown(data.refresh_in);
+            
+        } catch (error) {
+            console.error('Error actualizando QR:', error);
+        }
+    }
+    
+    // Countdown visual
+    function startCountdown(seconds) {
+        if (countdownInterval) clearInterval(countdownInterval);
+        
+        let remaining = seconds;
+        document.getElementById('refreshCounter').textContent = remaining;
+        
+        countdownInterval = setInterval(() => {
+            remaining--;
+            document.getElementById('refreshCounter').textContent = remaining;
+            
+            if (remaining <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+    }
+    
+    // Toast de check-in
+    function showCheckinToast() {
+        const toast = document.getElementById('checkinToast');
+        toast.textContent = '✅ ¡Nuevo check-in!';
+        toast.classList.remove('show');
+        void toast.offsetWidth; // Trigger reflow
+        toast.classList.add('show');
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+    
+    // Fullscreen
+    function toggleFullscreen() {
+        const container = document.getElementById('qrContainer');
+        
+        if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => {
+                console.log('Error:', err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+    
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshQRData();
+        
+        // Refrescar cada 5 segundos para verificar nuevos check-ins
+        refreshInterval = setInterval(refreshQRData, 5000);
+    });
+    
+    // Limpiar al salir
+    window.addEventListener('beforeunload', function() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        if (countdownInterval) clearInterval(countdownInterval);
+    });
+</script>
+{% endblock %}

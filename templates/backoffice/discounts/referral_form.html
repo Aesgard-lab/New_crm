@@ -1,0 +1,74 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title|default:"Nuevo Programa de Referidos" }}</div>
+<div class="text-sm text-slate-500">Configura los descuentos para quien refiere y el referido.</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-4xl mx-auto space-y-6" novalidate>
+  {% csrf_token %}
+
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">Datos del programa</h2>
+
+    {% if form.non_field_errors %}
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre</label>
+        {{ form.name }}
+        {% if form.name.errors %}<p class="text-xs text-red-500 mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Estado</label>
+        {{ form.is_active }}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento para quien refiere</label>
+        {{ form.referrer_discount }}
+        {% if form.referrer_discount.errors %}<p class="text-xs text-red-500 mt-1">{{ form.referrer_discount.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento para referido</label>
+        {{ form.referred_discount }}
+        {% if form.referred_discount.errors %}<p class="text-xs text-red-500 mt-1">{{ form.referred_discount.errors.0 }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Bonus adicional (opcional)</label>
+        {{ form.bonus_discount }}
+        {% if form.bonus_discount.errors %}<p class="text-xs text-red-500 mt-1">{{ form.bonus_discount.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Límite de usos</label>
+        {{ form.usage_limit }}
+        {% if form.usage_limit.errors %}<p class="text-xs text-red-500 mt-1">{{ form.usage_limit.errors.0 }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold text-slate-700 mb-1">Descripción</label>
+      {{ form.description }}
+      {% if form.description.errors %}<p class="text-xs text-red-500 mt-1">{{ form.description.errors.0 }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-3">
+    <a href="{% url 'referral_program_list' %}" class="px-5 py-2 rounded-xl text-slate-600 hover:bg-slate-100">Cancelar</a>
+    <button type="submit"
+      class="px-6 py-2 rounded-xl bg-[var(--brand-color)] text-white font-semibold hover:opacity-90">
+      Guardar programa
+    </button>
+  </div>
+</form>
+{% endblock %}

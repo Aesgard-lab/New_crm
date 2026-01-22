@@ -35,3 +35,12 @@ staticfiles/
 .vscode/
 test_output.txt
 verify_*.py
+
+.env
+
+
+*_error.txt
+check_output.txt
+*_snippet
+run_custom_test.py
+

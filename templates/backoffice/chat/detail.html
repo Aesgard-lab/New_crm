@@ -1,0 +1,210 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid" x-data="chatApp()">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'chat_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+            <div>
+                <h1 class="h4 mb-0">
+                    💬 {{ chat_room.client.first_name }} {{ chat_room.client.last_name }}
+                    {% if chat_room.client.has_portal_access %}
+                    <span class="badge bg-success bg-opacity-10 text-success ms-2" 
+                          title="Tiene acceso al portal">
+                        <i class="bi bi-phone"></i> App
+                    </span>
+                    {% endif %}
+                </h1>
+                <small class="text-muted">{{ chat_room.client.user.email }}</small>
+            </div>
+        </div>
+        <a href="{% url 'client_detail' chat_room.client.id %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-person"></i> Ver Perfil
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm" style="height: calc(100vh - 250px);">
+                <!-- Messages Container -->
+                <div class="card-body overflow-auto" id="messagesContainer" style="height: calc(100% - 80px);">
+                    <div class="d-flex flex-column gap-3">
+                        {% if messages %}
+                            {% for msg in messages %}
+                            <div class="d-flex {% if msg.is_from_client %}justify-content-start{% else %}justify-content-end{% endif %}">
+                                <div class="{% if msg.is_from_client %}bg-light{% else %}bg-primary text-white{% endif %} rounded-3 p-3" 
+                                     style="max-width: 70%;">
+                                    {% if msg.is_from_client %}
+                                    <div class="small fw-bold text-primary mb-1">
+                                        {{ msg.sender.get_full_name|default:"Cliente" }}
+                                    </div>
+                                    {% endif %}
+                                    <div class="mb-1" style="white-space: pre-wrap;">{{ msg.message }}</div>
+                                    <div class="small {% if msg.is_from_client %}text-muted{% else %}text-white-50{% endif %} text-end">
+                                        {{ msg.created_at|date:"H:i" }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                                <p class="mt-3">Aún no hay mensajes. Empieza la conversación.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Input Form -->
+                <div class="card-footer bg-white border-top">
+                    <form @submit.prevent="sendMessage" class="d-flex gap-2">
+                        <input 
+                            type="text" 
+                            x-model="newMessage"
+                            placeholder="Escribe tu mensaje..."
+                            class="form-control"
+                            :disabled="sending"
+                        >
+                        <button 
+                            type="submit"
+                            class="btn btn-primary"
+                            :disabled="sending || !newMessage.trim()"
+                        >
+                            <i class="bi bi-send-fill"></i>
+                            <span x-show="!sending">Enviar</span>
+                            <span x-show="sending">...</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function chatApp() {
+    return {
+        newMessage: '',
+        sending: false,
+        lastMessageId: {{ messages.last.id|default:0 }},
+        pollingInterval: null,
+        
+        init() {
+            // Scroll to bottom on load
+            this.$nextTick(() => {
+                this.scrollToBottom();
+            });
+            
+            // Start polling for new messages every 3 seconds
+            this.startPolling();
+        },
+        
+        async sendMessage() {
+            if (!this.newMessage.trim() || this.sending) return;
+            
+            this.sending = true;
+            
+            try {
+                const response = await fetch("{% url 'chat_send_message' chat_room.id %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        message: this.newMessage
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Add message to UI
+                    this.addMessageToUI(data.message, false);
+                    this.newMessage = '';
+                    this.lastMessageId = data.message.id;
+                } else {
+                    alert('Error al enviar mensaje: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            } finally {
+                this.sending = false;
+            }
+        },
+        
+        startPolling() {
+            this.pollingInterval = setInterval(() => {
+                this.pollNewMessages();
+            }, 3000);
+        },
+        
+        async pollNewMessages() {
+            try {
+                const response = await fetch(
+                    `{% url 'chat_poll_messages' chat_room.id %}?last_message_id=${this.lastMessageId}`
+                );
+                const data = await response.json();
+                
+                if (data.success && data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        this.addMessageToUI(msg, msg.is_from_client);
+                        this.lastMessageId = msg.id;
+                    });
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        },
+        
+        addMessageToUI(message, isFromClient) {
+            const container = document.getElementById('messagesContainer').querySelector('.d-flex.flex-column');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `d-flex ${isFromClient ? 'justify-content-start' : 'justify-content-end'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `${isFromClient ? 'bg-light' : 'bg-primary text-white'} rounded-3 p-3`;
+            bubble.style.maxWidth = '70%';
+            
+            let content = '';
+            if (isFromClient) {
+                content += `<div class="small fw-bold text-primary mb-1">${message.sender_name || 'Cliente'}</div>`;
+            }
+            content += `<div class="mb-1" style="white-space: pre-wrap;">${this.escapeHtml(message.text)}</div>`;
+            content += `<div class="small ${isFromClient ? 'text-muted' : 'text-white-50'} text-end">${message.created_at}</div>`;
+            
+            bubble.innerHTML = content;
+            messageDiv.appendChild(bubble);
+            container.appendChild(messageDiv);
+            
+            this.scrollToBottom();
+        },
+        
+        scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        },
+        
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+        
+        destroy() {
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

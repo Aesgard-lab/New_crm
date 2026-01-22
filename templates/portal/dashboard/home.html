@@ -1,0 +1,424 @@
+{% extends "portal/base.html" %}
+
+{% block title %}{{ client.gym.name|default:"Mi Gym" }}{% endblock %}
+
+{% block header %}
+<!-- Modern Header con Logo -->
+<header class="glass sticky top-0 z-30 border-b border-slate-100 pt-safe">
+    <div class="p-5 flex justify-between items-center">
+        <!-- Logo y Nombre del Gym -->
+        <div class="flex items-center gap-3">
+            {% if client.gym.logo %}
+            <img src="{{ client.gym.logo.url }}" class="h-10 w-10 object-contain rounded-lg"
+                alt="{{ client.gym.name }}">
+            {% else %}
+            <div class="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold text-lg"
+                style="background-color: var(--brand-color);">
+                {{ client.gym.name|slice:":1" }}
+            </div>
+            {% endif %}
+            <div>
+                <h1 class="font-bold text-lg text-slate-900">{{ client.gym.name }}</h1>
+                <p class="text-xs text-slate-500">Hola, {{ client.first_name }}</p>
+            </div>
+        </div>
+
+        <!-- User Avatar -->
+        <div class="flex items-center gap-3">
+            {% if client.photo %}
+            <img src="{{ client.photo.url }}" class="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100">
+            {% else %}
+            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
+                style="background-color: var(--brand-color);">
+                {{ client.first_name|slice:":1" }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 animate-slide-up">
+
+    <!-- Hero Carousel - Anuncios Publicitarios -->
+    <div id="ads-carousel" class="swiper hero-carousel rounded-2xl overflow-hidden shadow-lg" style="display: none;">
+        <div class="swiper-wrapper" id="ads-container"></div>
+        <div class="swiper-pagination"></div>
+    </div>
+
+    <!-- Weekly Stats Cards -->
+    <div class="grid grid-cols-3 gap-3">
+        <!-- Visitas Semanales -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+            <div class="text-3xl font-bold text-brand mb-1">{{ weekly_visits }}</div>
+            <div class="text-xs text-slate-500 font-medium">Esta semana</div>
+        </div>
+
+        <!-- Visitas Mensuales -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+            <div class="text-3xl font-bold text-emerald-600 mb-1">{{ monthly_visits }}</div>
+            <div class="text-xs text-slate-500 font-medium">Este mes</div>
+        </div>
+
+        <!-- Racha -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center">
+            <div class="text-3xl font-bold text-orange-600 mb-1">{{ current_streak }}</div>
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-1">
+                <span>🔥</span> Racha
+            </div>
+        </div>
+    </div>
+
+    <!-- Digital Card con Branding y Sesiones -->
+    <div class="gradient-brand rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden card-modern">
+        <!-- Decorative elements -->
+        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full bg-white opacity-5 blur-2xl"></div>
+
+        <div class="flex justify-between items-start mb-6 relative z-10">
+            <div class="flex-1">
+                <p class="text-white/70 text-xs font-medium uppercase tracking-wide mb-1">Tu Membresía</p>
+                {% with membership|default_if_none:pending_membership as current_membership %}
+                <h3 class="text-2xl font-bold leading-tight mb-1">{{ current_membership.name|default:"Sin Membresía
+                    Activa" }}</h3>
+                {% if membership %}
+                <p class="text-white/60 text-xs">Válida hasta {{ membership.end_date|date:"d M Y" }}</p>
+                {% elif pending_membership %}
+                <p class="text-white/60 text-xs">Empieza el {{ pending_membership.start_date|date:"d M Y" }}</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+            <!-- Gym Logo Badge -->
+            {% if client.gym.logo %}
+            <div class="bg-white/10 backdrop-blur-sm p-2 rounded-xl">
+                <img src="{{ client.gym.logo.url }}" class="w-8 h-8 object-contain" alt="{{ client.gym.name }}">
+            </div>
+            {% else %}
+            <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sesiones Restantes (si aplica) -->
+        {% if membership and not membership.is_unlimited %}
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-6 relative z-10">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-white/80 text-xs font-medium">Sesiones disponibles</span>
+                <span class="text-white font-bold text-lg">{{ membership.sessions_remaining|default:"0" }} / {{
+                    membership.sessions_total }}</span>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <div class="bg-white h-full rounded-full transition-all duration-500"
+                    style="width: {{ membership.usage_percentage|default:0 }}%"></div>
+            </div>
+            <p class="text-white/60 text-xs mt-2">{{ membership.usage_percentage|default:0 }}% utilizado</p>
+        </div>
+        {% elif membership and membership.is_unlimited %}
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-6 relative z-10 text-center">
+            <div class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-white font-bold">Acceso Ilimitado</span>
+            </div>
+            <p class="text-white/60 text-xs mt-1">Disfruta de todas las clases sin límite</p>
+        </div>
+        {% endif %}
+
+        {% if membership_required and not membership and allow_pay_next_fee %}
+        <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 mb-6 relative z-10 border border-white/20">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-white font-semibold text-sm">Pagar siguiente cuota</p>
+                    {% if pending_membership %}
+                    <p class="text-white/70 text-xs mt-1">El cobro activa la cuota que comienza el {{
+                        pending_membership.start_date|date:"d M Y" }}.</p>
+                    {% else %}
+                    <p class="text-white/70 text-xs mt-1">Necesitas tener la cuota pagada para poder reservar.</p>
+                    {% endif %}
+                    <div class="mt-3">
+                        <form action="{% url 'portal_pay_next' %}" method="POST">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white text-[var(--brand-color)] shadow-lg hover:scale-[1.01] active:scale-95 transition-transform">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                                    </path>
+                                </svg>
+                                Pagar siguiente cuota
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- QR / Barcode modernizado -->
+    <div class="bg-white p-4 rounded-2xl mx-auto max-w-[220px] flex flex-col items-center shadow-xl relative z-10">
+        <!-- Barcode mejorado -->
+        <div class="h-16 w-full flex items-center justify-center mb-3 relative overflow-hidden rounded-lg">
+            <div class="absolute inset-0 bg-gradient-to-r from-slate-100 via-white to-slate-100"></div>
+            <div class="relative h-12 w-full"
+                style="background-image: repeating-linear-gradient(90deg, #0f172a 0px, #0f172a 3px, transparent 3px, transparent 8px);">
+            </div>
+        </div>
+        <p class="text-slate-900 font-mono text-base font-bold tracking-[0.3em]">{{
+            client.access_code|default:"0000" }}</p>
+        <p class="text-slate-500 text-xs mt-2">Código de acceso</p>
+    </div>
+    <p class="text-center text-white/70 text-xs mt-4 font-medium relative z-10">Escanea este código en recepción</p>
+</div>
+
+<!-- Quick Actions - Modernizado -->
+<div class="grid grid-cols-2 gap-4">
+    <a href="{% url 'portal_bookings' %}"
+        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col items-center justify-center gap-3 card-modern group">
+        <div
+            class="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+            </svg>
+        </div>
+        <div class="text-center">
+            <span class="text-sm font-bold text-slate-900 block">Reservar</span>
+            <span class="text-xs text-slate-500">Clases y actividades</span>
+        </div>
+    </a>
+
+    <a href="{% url 'portal_routines' %}"
+        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col items-center justify-center gap-3 card-modern group">
+        <div
+            class="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                </path>
+            </svg>
+        </div>
+        <div class="text-center">
+            <span class="text-sm font-bold text-slate-900 block">Mi Rutina</span>
+            <span class="text-xs text-slate-500">Entrenamientos</span>
+        </div>
+    </a>
+</div>
+
+<!-- Próximas Clases - Modernizado -->
+<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+            </svg>
+            Próximas Clases
+        </h3>
+        <a href="{% url 'portal_bookings' %}" class="text-xs font-bold text-brand hover:underline">Ver todas</a>
+    </div>
+
+    {% if next_bookings %}
+    <div class="space-y-3">
+        {% for booking in next_bookings|slice:":3" %}
+        <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="flex-shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white text-xs font-bold"
+                style="background-color: var(--brand-color);">
+                <span class="text-lg leading-none">{{ booking.date|date:"d" }}</span>
+                <span class="text-[10px] uppercase opacity-80">{{ booking.date|date:"M" }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-slate-900 truncate">{{ booking.concept }}</p>
+                <p class="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {{ booking.check_in_time|time:"H:i" }}
+                </p>
+            </div>
+            <div class="flex-shrink-0">
+                <span class="inline-block px-2 py-1 rounded-lg bg-green-100 text-green-700 text-[10px] font-bold">
+                    CONFIRMADA
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+            </svg>
+        </div>
+        <p class="text-slate-600 text-sm font-medium mb-1">No tienes clases próximas</p>
+        <p class="text-slate-400 text-xs mb-4">Reserva tu próxima clase ahora</p>
+        <a href="{% url 'portal_bookings' %}"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-bold"
+            style="background-color: var(--brand-color);">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Reservar Clase
+        </a>
+    </div>
+    {% endif %}
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Cargar anuncios publicitarios desde la API
+    document.addEventListener('DOMContentLoaded', async function () {
+        try {
+            const response = await fetch('/marketing/api/advertisements/active/?position=HERO_CAROUSEL');
+            if (!response.ok) throw new Error('Error loading ads');
+
+            const data = await response.json();
+            const ads = data.results || [];
+
+            if (ads.length === 0) {
+                console.log('No hay anuncios activos');
+                return;
+            }
+
+            // Mostrar el carousel
+            const carousel = document.getElementById('ads-carousel');
+            const container = document.getElementById('ads-container');
+            carousel.style.display = 'block';
+
+            // Crear slides
+            ads.forEach((ad, index) => {
+                // Track impression
+                fetch(`/marketing/api/advertisements/${ad.id}/impression/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                }).catch(err => console.error('Error tracking impression:', err));
+
+                // Crear slide
+                const slide = document.createElement('div');
+                slide.className = 'swiper-slide';
+
+                const imageUrl = ad.image_mobile_url || ad.image_url;
+                const bgColor = ad.background_color || '#9333ea';
+
+                slide.innerHTML = `
+                    <div class="relative h-64 flex items-center justify-center" style="background: linear-gradient(135deg, ${bgColor} 0%, ${adjustBrightness(bgColor, -20)} 100%);">
+                        ${imageUrl ? `<img src="${imageUrl}" class="absolute inset-0 w-full h-full object-cover" alt="${ad.title}">` : ''}
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                        <div class="relative z-10 text-center text-white p-8">
+                            <div class="text-4xl mb-4">🎉</div>
+                            <h2 class="text-3xl font-bold mb-2">${ad.title}</h2>
+                            ${ad.cta ? `
+                                <button onclick="handleCTA(${ad.id}, '${ad.cta.action}')" class="mt-4 bg-white text-purple-600 px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-gray-100 transition-all transform hover:scale-105">
+                                    ${ad.cta.text}
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(slide);
+            });
+
+            // Inicializar Swiper
+            new Swiper('.hero-carousel', {
+                autoplay: {
+                    delay: (ads[0]?.duration_seconds || 5) * 1000,
+                    disableOnInteraction: false,
+                },
+                pagination: {
+                    el: '.swiper-pagination',
+                    clickable: true,
+                },
+                loop: ads.length > 1,
+                speed: 600,
+            });
+
+        } catch (error) {
+            console.error('Error loading advertisements:', error);
+        }
+    });
+
+    // Handle CTA clicks
+    async function handleCTA(adId, action) {
+        try {
+            const response = await fetch(`/marketing/api/advertisements/${adId}/click/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ action: action })
+            });
+
+            if (!response.ok) throw new Error('Error tracking click');
+
+            const data = await response.json();
+            console.log('Click registrado:', data);
+
+            // Redirigir según la acción
+            if (data.redirect_to) {
+                if (action === 'EXTERNAL_URL') {
+                    window.open(data.redirect_to, '_blank');
+                } else {
+                    window.location.href = data.redirect_to;
+                }
+            }
+        } catch (error) {
+            console.error('Error tracking click:', error);
+        }
+    }
+
+    // Helper para obtener CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Helper para ajustar brillo de color
+    function adjustBrightness(hex, percent) {
+        const num = parseInt(hex.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255))
+            .toString(16).slice(1);
+    }
+</script>
+{% endblock %}

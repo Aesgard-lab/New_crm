@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reservar Clase - {{ client.gym.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-color: {{ client.gym.brand_color|default:'#0f172a' }};
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+        }
+        .bg-brand {
+            background-color: var(--brand-color);
+        }
+        .text-brand {
+            color: var(--brand-color);
+        }
+        .btn-brand {
+            background-color: var(--brand-color);
+        }
+        .btn-brand:hover {
+            filter: brightness(1.1);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen pb-20">
+
+    <!-- Header -->
+    <header class="bg-white/95 backdrop-blur-xl p-4 sticky top-0 z-10 shadow-sm flex items-center gap-4">
+        <a href="{% url 'portal_home' %}"
+            class="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <h1 class="font-bold text-xl text-slate-800">Reservar Clase</h1>
+    </header>
+
+    <main class="p-4 space-y-6">
+
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+            <div
+                class="p-3 rounded-xl text-sm font-medium {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if membership_required and not active_membership and allow_pay_next_fee %}
+        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm space-y-2">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-inner">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-amber-800">Debes pagar tu siguiente cuota para reservar.</p>
+                    {% if pending_membership %}
+                    <p class="text-xs text-amber-700 mt-1">La nueva cuota comenzará el {{ pending_membership.start_date|date:"d M Y" }} tras el cobro.</p>
+                    {% endif %}
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <a href="{% url 'portal_shop' %}"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white shadow-md active:scale-95 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Pagar siguiente cuota
+                        </a>
+                        <span class="text-xs text-amber-700">Una vez pagada, podrás confirmar reservas al instante.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Date Strip -->
+        <div class="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            {% for d in dates %}
+            <a href="?date={{ d.date|date:'Y-m-d' }}"
+                class="flex-shrink-0 w-16 h-24 rounded-3xl flex flex-col items-center justify-center transition-all
+                      {% if d.date == selected_date %}bg-brand text-white shadow-xl scale-105{% else %}bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300 active:scale-95{% endif %}">
+                <span class="text-xs opacity-80 uppercase font-medium">{{ d.day_name }}</span>
+                <span class="text-2xl font-bold mt-1">{{ d.day_num }}</span>
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Class List -->
+        <div>
+            <h2 class="font-bold text-slate-800 mb-4">{{ selected_date|date:"l d F"|capfirst }}</h2>
+            <div class="space-y-4">
+
+                {% for session in sessions %}
+                <div
+                    class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md flex gap-4 relative overflow-hidden transition-all">
+                    {% if session.is_full and not session.user_booked %}
+                    <div class="absolute inset-0 bg-slate-50/70 pointer-events-none z-10"></div>
+                    {% endif %}
+
+                    <div
+                        class="w-20 h-20 rounded-2xl flex flex-col items-center justify-center flex-shrink-0 shadow-sm
+                                {% if session.user_booked %}bg-emerald-100 text-emerald-700{% else %}bg-brand bg-opacity-10 text-brand{% endif %}">
+                        <span class="text-sm font-bold">{{ session.start_datetime|time:"H:i" }}</span>
+                        <span class="text-xs opacity-75 font-medium mt-0.5">
+                            {{ session.duration }}m
+                        </span>
+                    </div>
+
+                    <div class="flex-1 z-0">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-slate-800 leading-tight">{{ session.activity.name }}</h3>
+                                <p class="text-xs text-slate-500 mt-1">Sala: {{ session.room.name|default:"General" }}
+                                </p>
+                                {% if session.staff %}
+                                <p class="text-xs text-slate-500">Coach: {{ session.staff.user.first_name }}</p>
+                                {% endif %}
+                            </div>
+
+                            {% if session.user_booked %}
+                            <span
+                                class="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-md flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                INSCRITO
+                            </span>
+                            {% else %}
+                            {% if session.is_full %}
+                            <span
+                                class="text-xs font-medium bg-red-100 text-red-700 px-2 py-1 rounded-md">Completo</span>
+                            {% else %}
+                            <span class="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                                {{ session.attendee_count }}/{{ session.max_capacity }}
+                            </span>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+
+                        <div class="mt-3 flex items-center justify-end">
+                            {% if session.user_booked %}
+                            <form method="POST" action="{% url 'portal_book_session' session.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="cancel">
+                                <button type="submit"
+                                    class="text-sm font-bold text-red-500 hover:text-red-700 px-5 py-2.5 hover:bg-red-50 rounded-2xl transition-all active:scale-95">
+                                    Cancelar Reserva
+                                </button>
+                            </form>
+                            {% else %}
+                            {% if session.is_full %}
+                            <button disabled
+                                class="bg-slate-200 text-slate-400 text-sm font-bold px-5 py-2.5 rounded-2xl cursor-not-allowed">
+                                Lista Espera
+                            </button>
+                            {% else %}
+                            <form method="POST" action="{% url 'portal_book_session' session.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="book">
+                                <button type="submit"
+                                    class="btn-brand text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-xl active:scale-95 transition-all">
+                                    Reservar Plaza
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-12">
+                    <div
+                        class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-slate-500 font-medium">No hay clases programadas para este día.</p>
+                </div>
+                {% endfor %}
+
+            </div>
+        </div>
+
+    </main>
+
+</body>
+
+</html>

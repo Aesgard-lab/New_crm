@@ -2,12 +2,24 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from accounts.decorators import require_gym_permission
-from .models import TaxRate, PaymentMethod, FinanceSettings
-from .forms import TaxRateForm, PaymentMethodForm, FinanceSettingsForm
+from .models import TaxRate, PaymentMethod, FinanceSettings, Supplier, ExpenseCategory, Expense
+from .forms import (
+    TaxRateForm,
+    PaymentMethodForm,
+    FinanceSettingsForm,
+    GymOpeningHoursForm,
+    AppSettingsForm,
+    SupplierForm,
+    ExpenseCategoryForm,
+    ExpenseForm,
+    ExpenseQuickPayForm,
+)
 from datetime import datetime, timedelta, date
-from django.db.models import Sum, Count
-from django.db.models.functions import TruncDate
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import TruncDate, TruncMonth
 from sales.models import Order
+from django.utils import timezone
+from django.http import JsonResponse
 
 @login_required
 @require_gym_permission('finance.view_finance') 
@@ -47,6 +59,28 @@ def settings_view(request):
         'settings_form': settings_form,
     }
     return render(request, 'backoffice/finance/settings.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def client_app_settings(request):
+    gym = request.gym
+    finance_settings, _ = FinanceSettings.objects.get_or_create(gym=gym)
+
+    if request.method == 'POST':
+        form = AppSettingsForm(request.POST, instance=finance_settings)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Ajustes de la app del cliente actualizados.')
+            return redirect('client_app_settings')
+    else:
+        form = AppSettingsForm(instance=finance_settings)
+
+    context = {
+        'title': 'App del Cliente',
+        'form': form,
+    }
+    return render(request, 'backoffice/app/settings.html', context)
 
 # --- Tax Rates ---
 
@@ -172,15 +206,18 @@ def billing_dashboard(request):
     gym = request.gym
     
     # 1. Date Filters
-    date_range = request.GET.get('range', 'today') # today, yesterday, week, month, custom
+    date_range = request.GET.get('range', 'month') # today, yesterday, week, month, custom
     date_start_str = request.GET.get('start')
     date_end_str = request.GET.get('end')
     
     today = date.today()
-    start_date = today
+    start_date = today.replace(day=1)  # Default to start of current month
     end_date = today # Inclusive
     
-    if date_range == 'yesterday':
+    if date_range == 'today':
+        start_date = today
+        end_date = today
+    elif date_range == 'yesterday':
         start_date = today - timedelta(days=1)
         end_date = start_date
     elif date_range == 'week':
@@ -215,34 +252,65 @@ def billing_dashboard(request):
         count=Count('id')
     )
     
-    # 3. Chart Data (Daily Trend)
-    # Group by Date
+    # 3. Chart Data - Multiple Granularities
+    # Daily data
     daily_data = orders_qs.annotate(day=TruncDate('created_at')).values('day').annotate(total=Sum('total_amount')).order_by('day')
     
-    chart_labels = []
-    chart_values = []
-    
-    # Fill gaps if needed, or just plot points
+    daily_labels = []
+    daily_values = []
     for entry in daily_data:
-        chart_labels.append(entry['day'].strftime('%d/%m'))
-        chart_values.append(float(entry['total']))
+        daily_labels.append(entry['day'].strftime('%d/%m'))
+        daily_values.append(float(entry['total']) if entry['total'] else 0)
+    
+    # Monthly data (for year view)
+    monthly_data = orders_qs.annotate(month=TruncMonth('created_at')).values('month').annotate(total=Sum('total_amount')).order_by('month')
+    
+    monthly_labels = []
+    monthly_values = []
+    for entry in monthly_data:
+        monthly_labels.append(entry['month'].strftime('%b %Y'))
+        monthly_values.append(float(entry['total']) if entry['total'] else 0)
         
     # 4. Filters (for dropdowns)
     payment_methods = PaymentMethod.objects.filter(gym=gym, is_active=True)
     
     # 5. Scheduled Payments (Cobros Futuros / Recurrentes)
     from clients.models import ClientMembership
+    
+    # Filter scheduled payments by date range if provided
+    scheduled_range = request.GET.get('scheduled_range', 'month')
+    scheduled_start = today  # Always start from today
+    # Default: until end of current month
+    scheduled_end = (today.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    
+    if scheduled_range == 'today':
+        scheduled_end = today
+    elif scheduled_range == 'week':
+        scheduled_end = today + timedelta(days=7)
+    elif scheduled_range == 'month':
+        # Until end of current month
+        scheduled_end = (today.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    
+    # Get scheduled payments - Remove is_recurring filter to get all active memberships
     scheduled_payments = ClientMembership.objects.filter(
         client__gym=gym,
-        is_recurring=True,
-        # status__in=['ACTIVE', 'PENDING'] # Depending on definition
-        status='ACTIVE'
+        status='ACTIVE',
+        end_date__gte=scheduled_start,  # End date >= today
+        end_date__lte=scheduled_end      # End date <= range end
     ).select_related('client').order_by('end_date')
+    
+    # If no results with these filters, broaden to show more data
+    if not scheduled_payments.exists():
+        scheduled_payments = ClientMembership.objects.filter(
+            client__gym=gym,
+            status='ACTIVE'
+        ).select_related('client').order_by('-end_date')[:20]  # Show last 20 active memberships
 
     context = {
         'title': 'Informe de Facturación',
         'orders': orders_qs.order_by('-created_at'), # Pass explicit queryset
         'scheduled_payments': scheduled_payments,
+        'today': today,  # For template date comparisons
         'metrics': {
             'total': aggregates['total_income'] or 0,
             'tax': aggregates['total_tax'] or 0,
@@ -250,17 +318,480 @@ def billing_dashboard(request):
             'count': aggregates['count'] or 0
         },
         'chart': {
-            'labels': chart_labels,
-            'values': chart_values
+            'daily': {
+                'labels': daily_labels,
+                'values': daily_values
+            },
+            'monthly': {
+                'labels': monthly_labels,
+                'values': monthly_values
+            }
         },
         'filters': {
             'range': date_range,
             'start': start_date.strftime('%Y-%m-%d'),
             'end': end_date.strftime('%Y-%m-%d'),
-            'methods': payment_methods
+            'methods': payment_methods,
+            'scheduled_range': scheduled_range
         },
         'debug_start': start_date,
         'debug_end': end_date
     }
     
     return render(request, 'backoffice/finance/billing_dashboard.html', context)
+@login_required
+@require_gym_permission('finance.change_financesettings')
+def hardware_settings(request):
+    """
+    Manage POS Hardware (Terminals, Printers).
+    """
+    from .models import PosDevice
+    gym = request.gym
+    devices = PosDevice.objects.filter(gym=gym).order_by('-created_at')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create':
+            name = request.POST.get('name')
+            device_type = request.POST.get('device_type')
+            identifier = request.POST.get('identifier')
+            if name and device_type:
+                PosDevice.objects.create(gym=gym, name=name, device_type=device_type, identifier=identifier)
+                messages.success(request, 'Dispositivo añadido correctamente')
+            else:
+                messages.error(request, 'Faltan datos obligatorios')
+                
+        elif action == 'delete':
+            device_id = request.POST.get('device_id')
+            PosDevice.objects.filter(gym=gym, id=device_id).delete()
+            messages.success(request, 'Dispositivo eliminado')
+            
+        return redirect('hardware_settings')
+            
+    return render(request, 'backoffice/settings/system/hardware.html', {
+        'devices': devices,
+        'device_types': PosDevice.msg_types
+    })
+
+
+# --- Gym Opening Hours ---
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def gym_opening_hours(request):
+    """Vista para editar horarios de apertura del gym"""
+    from organizations.models import GymOpeningHours
+    
+    gym = request.gym
+    
+    # Obtener o crear horarios (OneToOne relation)
+    opening_hours, created = GymOpeningHours.objects.get_or_create(gym=gym)
+    
+    if request.method == 'POST':
+        form = GymOpeningHoursForm(request.POST, instance=opening_hours)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '✅ Horarios de apertura actualizados correctamente')
+            return redirect('gym_opening_hours')
+    else:
+        form = GymOpeningHoursForm(instance=opening_hours)
+    
+    context = {
+        'title': 'Horarios de Apertura',
+        'form': form,
+        'gym': gym,
+        'opening_hours': opening_hours,
+    }
+    return render(request, 'backoffice/finance/opening_hours.html', context)
+
+
+# ==================== EXPENSE MANAGEMENT ====================
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_list(request):
+    """Listado de gastos con filtros avanzados"""
+    gym = request.gym
+    expenses = Expense.objects.filter(gym=gym).select_related('supplier', 'category', 'payment_method', 'created_by')
+    
+    # Filtros rápidos de fecha
+    date_filter = request.GET.get('date_filter')
+    today = timezone.now().date()
+    
+    if date_filter == 'today':
+        date_from = date_to = today
+        expenses = expenses.filter(issue_date=today)
+    elif date_filter == 'week':
+        date_from = today - timedelta(days=today.weekday())  # Lunes de esta semana
+        date_to = date_from + timedelta(days=6)  # Domingo
+        expenses = expenses.filter(issue_date__range=[date_from, date_to])
+    elif date_filter == 'month':
+        date_from = today.replace(day=1)
+        # Último día del mes
+        if today.month == 12:
+            date_to = today.replace(month=12, day=31)
+        else:
+            date_to = (today.replace(month=today.month + 1, day=1) - timedelta(days=1))
+        expenses = expenses.filter(issue_date__range=[date_from, date_to])
+    elif date_filter == 'quarter':
+        quarter = (today.month - 1) // 3
+        date_from = today.replace(month=quarter * 3 + 1, day=1)
+        if quarter == 3:
+            date_to = today.replace(month=12, day=31)
+        else:
+            date_to = (today.replace(month=(quarter + 1) * 3 + 1, day=1) - timedelta(days=1))
+        expenses = expenses.filter(issue_date__range=[date_from, date_to])
+    else:
+        # Filtros personalizados
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        if date_from:
+            expenses = expenses.filter(issue_date__gte=date_from)
+        if date_to:
+            expenses = expenses.filter(issue_date__lte=date_to)
+    
+    # Otros filtros
+    supplier_id = request.GET.get('supplier')
+    category_id = request.GET.get('category')
+    status = request.GET.get('status')
+    is_recurring = request.GET.get('is_recurring')
+    
+    if supplier_id:
+        expenses = expenses.filter(supplier_id=supplier_id)
+    if category_id:
+        expenses = expenses.filter(category_id=category_id)
+    if status:
+        expenses = expenses.filter(status=status)
+    if is_recurring:
+        expenses = expenses.filter(is_recurring=is_recurring == 'yes')
+    
+    # Estadísticas
+    stats = expenses.aggregate(
+        total_base=Sum('base_amount'),
+        total_tax=Sum('tax_amount'),
+        total=Sum('total_amount'),
+        total_paid=Sum('paid_amount'),
+        count=Count('id')
+    )
+    
+    # Gastos pendientes y vencidos
+    pending_count = expenses.filter(status='PENDING').count()
+    overdue_count = expenses.filter(status='OVERDUE').count()
+    
+    # Para los filtros
+    suppliers = Supplier.objects.filter(gym=gym, is_active=True)
+    categories = ExpenseCategory.objects.filter(gym=gym, is_active=True)
+    
+    context = {
+        'title': 'Gestión de Gastos',
+        'expenses': expenses.order_by('-issue_date'),
+        'stats': stats,
+        'pending_count': pending_count,
+        'overdue_count': overdue_count,
+        'suppliers': suppliers,
+        'categories': categories,
+        'STATUS_CHOICES': Expense.STATUS_CHOICES,
+        # Mantener filtros en el contexto
+        'filter_date_from': date_from,
+        'filter_date_to': date_to,
+        'filter_supplier': supplier_id,
+        'filter_category': category_id,
+        'filter_status': status,
+        'filter_is_recurring': is_recurring,
+    }
+    return render(request, 'backoffice/finance/expense_list.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_create(request):
+    """Crear nuevo gasto"""
+    gym = request.gym
+    
+    if request.method == 'POST':
+        form = ExpenseForm(request.POST, request.FILES, gym=gym)
+        if form.is_valid():
+            expense = form.save(commit=False)
+            expense.gym = gym
+            expense.created_by = request.user
+            expense.save()
+            form.save_m2m()  # Guardar productos relacionados
+            
+            messages.success(request, f'✅ Gasto "{expense.concept}" creado correctamente')
+            return redirect('expense_list')
+    else:
+        form = ExpenseForm(gym=gym)
+    
+    context = {
+        'title': 'Nuevo Gasto',
+        'form': form,
+        'is_edit': False,
+    }
+    return render(request, 'backoffice/finance/expense_form.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_edit(request, pk):
+    """Editar gasto existente"""
+    gym = request.gym
+    expense = get_object_or_404(Expense, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        form = ExpenseForm(request.POST, request.FILES, instance=expense, gym=gym)
+        if form.is_valid():
+            expense = form.save()
+            messages.success(request, f'✅ Gasto "{expense.concept}" actualizado correctamente')
+            return redirect('expense_list')
+    else:
+        form = ExpenseForm(instance=expense, gym=gym)
+    
+    context = {
+        'title': f'Editar: {expense.concept}',
+        'form': form,
+        'expense': expense,
+        'is_edit': True,
+    }
+    return render(request, 'backoffice/finance/expense_form.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_delete(request, pk):
+    """Eliminar gasto"""
+    gym = request.gym
+    expense = get_object_or_404(Expense, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        concept = expense.concept
+        expense.delete()
+        messages.success(request, f'✅ Gasto "{concept}" eliminado correctamente')
+        return redirect('expense_list')
+    
+    context = {
+        'title': 'Confirmar Eliminación',
+        'expense': expense,
+    }
+    return render(request, 'backoffice/finance/expense_confirm_delete.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_mark_paid(request, pk):
+    """Marcar gasto como pagado (quick action)"""
+    gym = request.gym
+    expense = get_object_or_404(Expense, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        form = ExpenseQuickPayForm(request.POST, gym=gym)
+        if form.is_valid():
+            payment_date = form.cleaned_data.get('payment_date') or timezone.now().date()
+            payment_method = form.cleaned_data.get('payment_method')
+            
+            expense.mark_as_paid(payment_date=payment_date, payment_method=payment_method)
+            messages.success(request, f'✅ Gasto "{expense.concept}" marcado como pagado')
+            return redirect('expense_list')
+    else:
+        form = ExpenseQuickPayForm(gym=gym)
+    
+    context = {
+        'expense': expense,
+        'form': form,
+    }
+    return render(request, 'backoffice/finance/expense_mark_paid_modal.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_generate_recurring(request):
+    """Generar gastos recurrentes pendientes (cron job o manual)"""
+    gym = request.gym
+    generated_count = 0
+    
+    # Buscar gastos recurrentes que necesitan generar nueva ocurrencia
+    recurring_expenses = Expense.objects.filter(
+        gym=gym,
+        is_recurring=True,
+        is_active_recurrence=True,
+        next_generation_date__lte=timezone.now().date()
+    )
+    
+    for expense in recurring_expenses:
+        new_expense = expense.generate_next_occurrence()
+        if new_expense:
+            generated_count += 1
+    
+    if generated_count > 0:
+        messages.success(request, f'✅ Se generaron {generated_count} gasto(s) recurrente(s)')
+    else:
+        messages.info(request, 'No hay gastos recurrentes pendientes de generar')
+    
+    return redirect('expense_list')
+
+
+# ==================== SUPPLIER MANAGEMENT ====================
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def supplier_list(request):
+    """Listado de proveedores"""
+    gym = request.gym
+    suppliers = Supplier.objects.filter(gym=gym).order_by('name')
+    
+    context = {
+        'title': 'Proveedores',
+        'suppliers': suppliers,
+    }
+    return render(request, 'backoffice/finance/supplier_list.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def supplier_create(request):
+    """Crear nuevo proveedor"""
+    gym = request.gym
+    
+    if request.method == 'POST':
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            supplier = form.save(commit=False)
+            supplier.gym = gym
+            supplier.save()
+            messages.success(request, f'✅ Proveedor "{supplier.name}" creado correctamente')
+            return redirect('supplier_list')
+    else:
+        form = SupplierForm()
+    
+    context = {
+        'title': 'Nuevo Proveedor',
+        'form': form,
+    }
+    return render(request, 'backoffice/finance/supplier_form.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def supplier_edit(request, pk):
+    """Editar proveedor"""
+    gym = request.gym
+    supplier = get_object_or_404(Supplier, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        form = SupplierForm(request.POST, instance=supplier)
+        if form.is_valid():
+            supplier = form.save()
+            messages.success(request, f'✅ Proveedor "{supplier.name}" actualizado correctamente')
+            return redirect('supplier_list')
+    else:
+        form = SupplierForm(instance=supplier)
+    
+    context = {
+        'title': f'Editar: {supplier.name}',
+        'form': form,
+        'supplier': supplier,
+    }
+    return render(request, 'backoffice/finance/supplier_form.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def supplier_delete(request, pk):
+    """Eliminar proveedor (soft delete)"""
+    gym = request.gym
+    supplier = get_object_or_404(Supplier, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        supplier.is_active = False
+        supplier.save()
+        messages.success(request, f'✅ Proveedor "{supplier.name}" desactivado')
+        return redirect('supplier_list')
+    
+    context = {
+        'title': 'Confirmar Desactivación',
+        'supplier': supplier,
+    }
+    return render(request, 'backoffice/finance/supplier_confirm_delete.html', context)
+
+
+# ==================== CATEGORY MANAGEMENT ====================
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def category_list(request):
+    """Listado de categorías de gastos"""
+    gym = request.gym
+    categories = ExpenseCategory.objects.filter(gym=gym).order_by('name')
+    
+    context = {
+        'title': 'Categorías de Gastos',
+        'categories': categories,
+    }
+    return render(request, 'backoffice/finance/category_list.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def category_create(request):
+    """Crear nueva categoría"""
+    gym = request.gym
+    
+    if request.method == 'POST':
+        form = ExpenseCategoryForm(request.POST)
+        if form.is_valid():
+            category = form.save(commit=False)
+            category.gym = gym
+            category.save()
+            messages.success(request, f'✅ Categoría "{category.name}" creada correctamente')
+            return redirect('category_list')
+    else:
+        form = ExpenseCategoryForm()
+    
+    context = {
+        'title': 'Nueva Categoría',
+        'form': form,
+    }
+    return render(request, 'backoffice/finance/category_form.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def category_edit(request, pk):
+    """Editar categoría"""
+    gym = request.gym
+    category = get_object_or_404(ExpenseCategory, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        form = ExpenseCategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            category = form.save()
+            messages.success(request, f'✅ Categoría "{category.name}" actualizada correctamente')
+            return redirect('category_list')
+    else:
+        form = ExpenseCategoryForm(instance=category)
+    
+    context = {
+        'title': f'Editar: {category.name}',
+        'form': form,
+        'category': category,
+    }
+    return render(request, 'backoffice/finance/category_form.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def category_delete(request, pk):
+    """Eliminar categoría (soft delete)"""
+    gym = request.gym
+    category = get_object_or_404(ExpenseCategory, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        category.is_active = False
+        category.save()
+        messages.success(request, f'✅ Categoría "{category.name}" desactivada')
+        return redirect('category_list')
+    
+    context = {
+        'title': 'Confirmar Desactivación',
+        'category': category,
+    }
+    return render(request, 'backoffice/finance/category_confirm_delete.html', context)

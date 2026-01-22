@@ -1,0 +1,471 @@
+{% extends "backoffice/base.html" %}
+{% load static analytics_tags %}
+
+{% block title %}Reporte de Instructores - {{ gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+    }
+    
+    .instructor-card {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.3s;
+    }
+    
+    .instructor-card:hover {
+        border-color: var(--brand-color, #007bff);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .instructor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .instructor-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .instructor-rating {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.1rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--brand-color, #007bff);
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 20px 0;
+    }
+    
+    .ranking-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .ranking-table th,
+    .ranking-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .ranking-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .ranking-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .rank-1 { background: linear-gradient(135deg, #FFD700, #FFA500); color: white; }
+    .rank-2 { background: linear-gradient(135deg, #C0C0C0, #808080); color: white; }
+    .rank-3 { background: linear-gradient(135deg, #CD7F32, #8B4513); color: white; }
+    .rank-other { background: #e9ecef; color: #6c757d; }
+    
+    .utilization-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .utilization-progress {
+        flex: 1;
+        height: 24px;
+        background: #e9ecef;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .utilization-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--brand-color, #007bff), var(--brand-color-hover, #0056b3));
+        transition: width 0.5s ease;
+    }
+    
+    .filter-bar {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+    
+    .tabs {
+        display: flex;
+        gap: 10px;
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 24px;
+    }
+    
+    .tab {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-weight: 500;
+        color: #6c757d;
+        transition: all 0.3s;
+    }
+    
+    .tab:hover {
+        color: var(--brand-color, #007bff);
+    }
+    
+    .tab.active {
+        color: var(--brand-color, #007bff);
+        border-bottom-color: var(--brand-color, #007bff);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">👨‍🏫 Reporte de Instructores</h1>
+            <p class="text-muted">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}</p>
+        </div>
+        <div>
+            <a href="{% url 'analytics_dashboard' %}" class="btn btn-outline-secondary">
+                ← Volver al Dashboard
+            </a>
+            <a href="{% url 'export_report_csv' %}?type=staff&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+               class="btn btn-success">
+                📥 Exportar CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="filter-bar">
+        <div class="row">
+            <div class="col-md-3">
+                <label>Fecha Inicio</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-3">
+                <label>Fecha Fin</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-4">
+                <label>Instructor</label>
+                <select name="staff_id" class="form-control">
+                    <option value="">-- Todos los instructores --</option>
+                    {% for staff in staff_list %}
+                        <option value="{{ staff.id }}" {% if staff.id|stringformat:"s" == selected_staff_id %}selected{% endif %}>
+                            {{ staff.user.first_name }} {{ staff.user.last_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    🔍 Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- KPI Global de Utilización -->
+    <div class="report-container">
+        <h3 class="h5 mb-4">📊 Utilización Global de Staff</h3>
+        <div class="text-center">
+            <h2 class="display-4 text-primary">{{ staff_utilization|floatformat:1 }}%</h2>
+            <p class="text-muted">de la capacidad de instructores está siendo utilizada</p>
+        </div>
+    </div>
+
+    <!-- Tabs de Rankings -->
+    <div class="tabs">
+        <button class="tab active" onclick="showRanking('attendance')">
+            📊 Por Asistencia
+        </button>
+        <button class="tab" onclick="showRanking('rating')">
+            ⭐ Por Rating
+        </button>
+        <button class="tab" onclick="showRanking('classes')">
+            📅 Por Clases
+        </button>
+        <button class="tab" onclick="showRanking('clients')">
+            👥 Por Clientes
+        </button>
+    </div>
+
+    <!-- Ranking por Asistencia -->
+    <div class="report-container" id="ranking-attendance">
+        <h3 class="h5 mb-4">🏆 Top Instructores por Asistencia Total</h3>
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Instructor</th>
+                    <th>Clases</th>
+                    <th>Asistencia Total</th>
+                    <th>Promedio/Clase</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instructor in top_by_attendance %}
+                <tr>
+                    <td>
+                        <span class="rank-badge {% if forloop.counter == 1 %}rank-1{% elif forloop.counter == 2 %}rank-2{% elif forloop.counter == 3 %}rank-3{% else %}rank-other{% endif %}">
+                            {{ forloop.counter }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ instructor.staff__user__first_name }} {{ instructor.staff__user__last_name }}</strong>
+                    </td>
+                    <td>{{ instructor.classes_taught }}</td>
+                    <td><strong class="text-primary">{{ instructor.total_attendance }}</strong></td>
+                    <td>{{ instructor.avg_attendance|floatformat:1 }}</td>
+                    <td>
+                        {% if instructor.avg_rating %}
+                            <span class="text-warning">⭐</span> {{ instructor.avg_rating|floatformat:1 }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No hay datos disponibles</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Ranking por Rating -->
+    <div class="report-container" id="ranking-rating" style="display: none;">
+        <h3 class="h5 mb-4">⭐ Top Instructores por Rating</h3>
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Instructor</th>
+                    <th>Rating</th>
+                    <th>Clases</th>
+                    <th>Asistencia</th>
+                    <th>Clientes Únicos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instructor in top_by_rating %}
+                <tr>
+                    <td>
+                        <span class="rank-badge {% if forloop.counter == 1 %}rank-1{% elif forloop.counter == 2 %}rank-2{% elif forloop.counter == 3 %}rank-3{% else %}rank-other{% endif %}">
+                            {{ forloop.counter }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ instructor.staff__user__first_name }} {{ instructor.staff__user__last_name }}</strong>
+                    </td>
+                    <td>
+                        <strong class="text-warning">⭐ {{ instructor.avg_rating|floatformat:2 }}</strong>
+                    </td>
+                    <td>{{ instructor.classes_taught }}</td>
+                    <td>{{ instructor.total_attendance }}</td>
+                    <td>{{ instructor.unique_clients }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No hay datos disponibles</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Performance Detallado (si se selecciona un instructor) -->
+    {% if selected_staff_id and staff_performance %}
+    <div class="report-container">
+        <h3 class="h5 mb-4">📈 Performance Detallado</h3>
+        
+        {% for perf in staff_performance %}
+        <div class="instructor-card">
+            <div class="instructor-header">
+                <div class="instructor-name">
+                    {{ perf.staff__user__first_name }} {{ perf.staff__user__last_name }}
+                </div>
+                <div class="instructor-rating">
+                    {% if perf.avg_rating %}
+                        <span class="text-warning">⭐</span>
+                        <strong>{{ perf.avg_rating|floatformat:1 }}</strong>
+                    {% else %}
+                        <span class="text-muted">Sin ratings</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ perf.classes_taught }}</div>
+                    <div class="stat-label">Clases Impartidas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ perf.total_attendance }}</div>
+                    <div class="stat-label">Asistencia Total</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ perf.avg_attendance|floatformat:1 }}</div>
+                    <div class="stat-label">Promedio/Clase</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ perf.unique_clients }}</div>
+                    <div class="stat-label">Clientes Únicos</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Gráfica Comparativa -->
+    <div class="report-container">
+        <h3 class="h5 mb-4">📊 Comparativa de Instructores</h3>
+        <div class="chart-container">
+            <canvas id="instructorComparisonChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Cambiar entre rankings
+    function showRanking(type) {
+        // Ocultar todos
+        document.getElementById('ranking-attendance').style.display = 'none';
+        document.getElementById('ranking-rating').style.display = 'none';
+        
+        // Mostrar el seleccionado
+        document.getElementById('ranking-' + type).style.display = 'block';
+        
+        // Actualizar tabs
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+    
+    // Gráfica comparativa
+    const comparisonCtx = document.getElementById('instructorComparisonChart').getContext('2d');
+    const instructorData = {{ top_by_attendance|safe|default:"[]" }};
+    
+    new Chart(comparisonCtx, {
+        type: 'bar',
+        data: {
+            labels: instructorData.slice(0, 10).map(i => 
+                `${i.staff__user__first_name} ${i.staff__user__last_name}`
+            ),
+            datasets: [
+                {
+                    label: 'Total Asistencia',
+                    data: instructorData.slice(0, 10).map(i => i.total_attendance),
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Promedio por Clase',
+                    data: instructorData.slice(0, 10).map(i => i.avg_attendance),
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Total Asistencia'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Promedio por Clase'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Top 10 Instructores - Comparativa'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

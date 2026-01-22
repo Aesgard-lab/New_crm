@@ -1,4 +1,5 @@
 {% extends "backoffice/base.html" %}
+{% load gym_tags %}
 
 {% block title %}Dashboard · New CRM{% endblock %}
 {% block breadcrumb %}Backoffice{% endblock %}
@@ -10,6 +11,7 @@
   <select name="gym_id" class="text-sm rounded-2xl border border-slate-300 px-3 py-2 bg-white">
     {% for m in request.user.gym_memberships.all %}
     <option value="{{ m.gym_id }}" {% if m.gym_id == request.session.current_gym_id %}selected{% endif %}>
+
       {{ m.gym.name }}
     </option>
     {% endfor %}
@@ -66,7 +68,18 @@
           {% endif %}
           <span class="text-slate-400">vs mes anterior</span>
         </div>
+        <div class="mt-3 pt-3 border-t border-slate-200">
+          <div class="text-[11px] text-slate-400">Sin impuestos:</div>
+          <div class="text-sm font-bold text-slate-600">{{ stats.revenue_net }} €</div>
+        </div>
       </div>
+    </div>
+
+    <!-- Taxes (Stimulated) - Movido junto a Facturación -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Impuestos Estimados</div>
+      <div class="text-3xl font-bold text-slate-900">{{ stats.taxes_current }} €</div>
+      <div class="text-sm text-slate-400 mt-2">IVA Recaudado</div>
     </div>
 
     <!-- Members -->
@@ -78,12 +91,210 @@
       </div>
     </div>
 
-    <!-- Taxes (Stimulated) -->
-    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-      <div class="text-sm font-medium text-slate-500 mb-1">Impuestos Estimados</div>
-      <div class="text-3xl font-bold text-slate-900">{{ stats.taxes_current }} €</div>
-      <div class="text-sm text-slate-400 mt-2">IVA Recaudado</div>
+    <!-- NUEVO: Revenue Forecast -->
+    <div
+      class="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl border border-indigo-200 shadow-sm relative overflow-hidden group">
+      <div
+        class="absolute right-0 top-0 w-24 h-24 bg-indigo-300 opacity-10 rounded-bl-full group-hover:scale-110 transition-transform">
+      </div>
+      <div class="relative z-10">
+        <div class="text-sm font-medium text-slate-600 mb-1">📊 Próx. Mes (Predicción)</div>
+        <div class="text-3xl font-bold text-indigo-900">
+          {% if forecast.forecast %}
+          {{ forecast.forecast.0.predicted }} €
+          {% else %}
+          - €
+          {% endif %}
+        </div>
+        <div class="flex items-center justify-between mt-3">
+          <div class="flex items-center gap-1 text-xs">
+            {% if forecast.trend == 'CRECIENTE' %}
+            <span class="text-emerald-600 font-bold">{{ forecast.trend_icon }} Crecimiento</span>
+            {% elif forecast.trend == 'DECRECIENTE' %}
+            <span class="text-red-600 font-bold">{{ forecast.trend_icon }} Decrecimiento</span>
+            {% else %}
+            <span class="text-slate-500 font-bold">{{ forecast.trend_icon }} Estable</span>
+            {% endif %}
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+            {% if forecast.forecast %}
+            {{ forecast.forecast.0.confidence }}
+            {% else %}
+            -
+            {% endif %}
+          </span>
+        </div>
+      </div>
     </div>
+
+    <!-- NUEVO: Break-Even (Punto de Equilibrio) -->
+    <div class="bg-white p-6 rounded-2xl border-2 
+    {% if breakeven.status == 'POSITIVO' %}border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50{% elif breakeven.status == 'EN CAMINO' %}border-yellow-300 bg-gradient-to-br from-yellow-50 to-amber-50{% elif breakeven.status == 'LARGO PLAZO' %}border-orange-300 bg-gradient-to-br from-orange-50 to-red-50{% elif breakeven.status == 'CRÍTICO' %}border-red-400 bg-gradient-to-br from-red-50 to-pink-50{% else %}border-slate-200{% endif %} shadow-sm relative overflow-hidden group">
+      
+      <div class="absolute right-0 top-0 w-24 h-24 
+      {% if breakeven.status == 'POSITIVO' %}bg-emerald-300{% elif breakeven.status == 'EN CAMINO' %}bg-yellow-300{% elif breakeven.status == 'LARGO PLAZO' %}bg-orange-300{% elif breakeven.status == 'CRÍTICO' %}bg-red-300{% else %}bg-slate-300{% endif %} opacity-10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
+      
+      <div class="relative z-10">
+        <div class="text-sm font-medium 
+        {% if breakeven.status == 'POSITIVO' %}text-emerald-700{% elif breakeven.status == 'EN CAMINO' %}text-yellow-700{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-700{% elif breakeven.status == 'CRÍTICO' %}text-red-700{% else %}text-slate-600{% endif %} mb-1 flex items-center gap-2">
+          <span class="text-lg">{{ breakeven.status_icon }}</span> Punto de Equilibrio
+        </div>
+        
+        <div class="text-3xl font-bold 
+        {% if breakeven.accumulated_balance >= 0 %}text-emerald-900{% else %}text-red-900{% endif %}">
+          {{ breakeven.accumulated_balance|floatformat:0 }} €
+        </div>
+        
+        <div class="text-xs text-slate-500 mt-1">Balance Acumulado</div>
+        
+        <div class="mt-3 pt-3 border-t border-slate-200/50 space-y-1 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-600">Ingresos mes:</span>
+            <span class="font-bold text-emerald-700">+{{ breakeven.current_month_revenue|floatformat:0 }} €</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-600">Gastos mes:</span>
+            <span class="font-bold text-red-700">-{{ breakeven.current_month_expenses|floatformat:0 }} €</span>
+          </div>
+          <div class="flex justify-between font-bold">
+            <span class="text-slate-900">Balance mes:</span>
+            <span class="{% if breakeven.current_balance >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">
+              {{ breakeven.current_balance|floatformat:0 }} €
+            </span>
+          </div>
+        </div>
+        
+        {% if breakeven.has_data %}
+          {% if breakeven.months_to_breakeven and breakeven.months_to_breakeven > 0 %}
+          <div class="mt-3 pt-3 border-t border-slate-200/50">
+            <div class="text-xs 
+            {% if breakeven.status == 'EN CAMINO' %}text-yellow-700{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-700{% else %}text-slate-600{% endif %} font-medium">
+              Equilibrio estimado en:
+            </div>
+            <div class="text-lg font-bold 
+            {% if breakeven.status == 'EN CAMINO' %}text-yellow-900{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-900{% else %}text-slate-900{% endif %} mt-1">
+              {{ breakeven.months_to_breakeven }} meses
+            </div>
+            <div class="text-[10px] text-slate-500">{{ breakeven.breakeven_date }}</div>
+          </div>
+          {% elif breakeven.months_to_breakeven == 0 %}
+          <div class="mt-3 pt-3 border-t border-emerald-200/50">
+            <div class="text-xs text-emerald-700 font-bold flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-4v16M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              ¡Ya estás en equilibrio positivo!
+            </div>
+          </div>
+          {% else %}
+          <div class="mt-3 pt-3 border-t border-red-200/50">
+            <div class="text-xs text-red-700 font-bold flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              Revisar costos y crecimiento
+            </div>
+          </div>
+          {% endif %}
+        {% else %}
+        <div class="mt-3 pt-3 border-t border-slate-200/50 text-xs text-slate-500 italic">
+          Necesitas al menos 3 meses de datos
+        </div>
+        {% endif %}
+        
+        <a href="{% url 'expense_list' %}" class="text-xs 
+        {% if breakeven.status == 'POSITIVO' %}text-emerald-700 hover:text-emerald-800{% elif breakeven.status == 'EN CAMINO' %}text-yellow-700 hover:text-yellow-800{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-700 hover:text-orange-800{% elif breakeven.status == 'CRÍTICO' %}text-red-700 hover:text-red-800{% else %}text-slate-600 hover:text-slate-700{% endif %} font-medium mt-3 inline-block">
+          Ver finanzas →
+        </a>
+      </div>
+    </div>
+
+    <!-- NEW: Active Memberships Card -->
+    <div
+      class="bg-gradient-to-br from-emerald-50 to-green-50 p-6 rounded-2xl border-2 border-emerald-200 shadow-sm relative overflow-hidden group">
+      <div
+        class="absolute right-0 top-0 w-24 h-24 bg-emerald-300 opacity-10 rounded-bl-full group-hover:scale-110 transition-transform">
+      </div>
+      <div class="relative z-10">
+        <div class="text-sm font-medium text-emerald-700 mb-1 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z">
+            </path>
+          </svg>
+          Membresías Activas
+        </div>
+        <div class="text-3xl font-bold text-emerald-900">{{ membership_stats.active }}</div>
+        <div class="flex items-center gap-3 mt-3 text-xs">
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 bg-amber-500 rounded-full"></span>
+            <span class="text-slate-600">
+              <span class="font-bold text-amber-600">{{ membership_stats.expiring_soon }}</span> expiran pronto
+            </span>
+          </div>
+        </div>
+        <a href="/memberships/" class="text-xs text-emerald-700 hover:text-emerald-800 font-medium mt-2 inline-block">
+          Ver todas →
+        </a>
+      </div>
+    </div>
+
+    <!-- Goals Progress Card -->
+    {% if goals %}
+    <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-2xl border border-purple-200 shadow-sm">
+      <div class="text-sm font-medium text-purple-700 mb-3 flex items-center gap-2">
+        <span class="text-lg">🎯</span> Objetivos del Mes
+      </div>
+
+      {% for goal_data in goals %}
+      <div class="space-y-3">
+        {% if goal_data.progress_members is not None %}
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-700 font-medium">👥 Socios</span>
+            <span
+              class="text-xs font-bold {% if goal_data.progress_members >= 100 %}text-emerald-600{% elif goal_data.progress_members >= 80 %}text-green-600{% elif goal_data.progress_members >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
+              {{ goal_data.progress_members|floatformat:1 }}%
+            </span>
+          </div>
+          <div class="w-full bg-white/70 rounded-full h-2 overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all duration-500 {% if goal_data.progress_members >= 100 %}bg-emerald-500{% elif goal_data.progress_members >= 80 %}bg-green-500{% elif goal_data.progress_members >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+              style="width: {% if goal_data.progress_members > 100 %}100{% else %}{{ goal_data.progress_members|floatformat:0 }}{% endif %}%">
+            </div>
+          </div>
+          <div class="text-xs text-slate-600 mt-1">{{ stats.active_members }}/{{ goal_data.goal.target_members }}</div>
+        </div>
+        {% endif %}
+
+        {% if goal_data.progress_revenue is not None %}
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-700 font-medium">💰 Facturación</span>
+            <span
+              class="text-xs font-bold {% if goal_data.progress_revenue >= 100 %}text-emerald-600{% elif goal_data.progress_revenue >= 80 %}text-green-600{% elif goal_data.progress_revenue >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
+              {{ goal_data.progress_revenue|floatformat:1 }}%
+            </span>
+          </div>
+          <div class="w-full bg-white/70 rounded-full h-2 overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all duration-500 {% if goal_data.progress_revenue >= 100 %}bg-emerald-500{% elif goal_data.progress_revenue >= 80 %}bg-green-500{% elif goal_data.progress_revenue >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+              style="width: {% if goal_data.progress_revenue > 100 %}100{% else %}{{ goal_data.progress_revenue|floatformat:0 }}{% endif %}%">
+            </div>
+          </div>
+          <div class="text-xs text-slate-600 mt-1">{{ stats.revenue_current }}€/{{
+            goal_data.goal.target_revenue|floatformat:0 }}€</div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <a href="{% url 'gym_goals_list' %}"
+        class="text-xs text-purple-700 hover:text-purple-900 font-medium mt-3 inline-block">
+        Ver todos los objetivos →
+      </a>
+    </div>
+    {% endif %}
 
     <!-- Quick Actions (Minimal) -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -115,48 +326,190 @@
         </a>
       </div>
     </div>
+
+    <!-- Staff Kiosk Access -->
+    {% has_gym_perm 'staff.view_staffprofile' as can_view_staff %}
+    {% if can_view_staff %}
+    <div class="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+      <div class="absolute right-0 top-0 w-32 h-32 bg-emerald-300 opacity-10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
+      <div class="relative z-10">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+              </path>
+            </svg>
+          </div>
+          <div>
+            <div class="text-sm font-bold text-emerald-900">Kiosco de Fichaje</div>
+            <div class="text-xs text-emerald-600">Control de Personal</div>
+          </div>
+        </div>
+        
+        <div class="space-y-2 mb-4">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600">Online ahora:</span>
+            <span class="font-bold text-emerald-700">{{ staff_online_count|default:0 }}</span>
+          </div>
+        </div>
+
+        <a href="{% url 'staff_kiosk' %}" target="_blank"
+          class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md hover:shadow-lg group">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+          </svg>
+          Abrir Kiosco
+          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          </svg>
+        </a>
+        
+        <div class="mt-3 pt-3 border-t border-emerald-100">
+          <a href="{% url 'staff_list' %}" class="text-xs text-emerald-700 hover:text-emerald-800 font-medium flex items-center justify-center gap-1 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+            Ver todos los empleados
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
+
+  <!-- Objetivos Section (Si existen) -->
+  {% if goals %}
+  <div class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <span class="text-2xl">🎯</span> Objetivos Actuales
+        </h3>
+        <p class="text-sm text-slate-600 mt-1">Seguimiento de rendimiento del período</p>
+      </div>
+      <a href="{% url 'gym_goals_list' %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition">
+        Ver Todos →
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for goal_data in goals %}
+      <div class="bg-white rounded-xl p-4 border border-purple-100 shadow-sm">
+        <div class="text-xs font-bold text-purple-600 uppercase tracking-wider mb-3">
+          {{ goal_data.goal.get_period_display }}
+        </div>
+
+        {% if goal_data.goal.target_members and goal_data.progress_members is not None %}
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-slate-700">👥 Socios</span>
+            <span class="text-sm font-bold text-slate-900">
+              {{ goal_data.progress_members|floatformat:0 }}%
+            </span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all"
+              style="width: {{ goal_data.progress_members|floatformat:0 }}%"></div>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">
+            Meta: {{ goal_data.goal.target_members }}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if goal_data.goal.target_revenue and goal_data.progress_revenue is not None %}
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-slate-700">💰 Facturación</span>
+            <span class="text-sm font-bold text-slate-900">
+              {{ goal_data.progress_revenue|floatformat:0 }}%
+            </span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-500 to-green-600 h-full rounded-full transition-all"
+              style="width: {{ goal_data.progress_revenue|floatformat:0 }}%"></div>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">
+            Meta: {{ goal_data.goal.target_revenue|floatformat:0 }}€
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Charts & Tables Row -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <!-- Risk Table -->
+    <!-- Risk Table - IMPROVED -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-        <h3 class="font-bold text-slate-800">⚠️ Clientes en Riesgo</h3>
-        <span class="text-xs font-medium bg-red-100 text-red-600 px-2 py-1 rounded-full">{{ risk_clients|length }}
-          Detectados</span>
+        <h3 class="font-bold text-slate-800">⚠️ Clientes en Riesgo (Scoring)</h3>
+        <span class="text-xs font-medium bg-red-100 text-red-600 px-2 py-1 rounded-full">
+          {% if risk_clients_enhanced %}{{ risk_clients_enhanced|length }}{% else %}0{% endif %}
+          Detectados
+        </span>
       </div>
-      <div class="flex-1 overflow-y-auto max-h-[400px]">
-        {% if risk_clients %}
-        <table class="w-full text-sm text-left">
-          <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
-            <tr>
-              <th class="px-4 py-3">Cliente</th>
-              <th class="px-4 py-3">Razón</th>
-              <th class="px-4 py-3">Nivel</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            {% for item in risk_clients %}
-            <tr class="hover:bg-slate-50 cursor-pointer" data-url="{% url 'client_detail' item.client.id %}"
-              onclick="window.location=this.dataset.url;">
-              <td class="px-4 py-3 font-medium text-slate-900">{{ item.client.first_name }} {{ item.client.last_name }}
-              </td>
-              <td class="px-4 py-3 text-slate-500">{{ item.reason }}</td>
-              <td class="px-4 py-3">
+      <div class="flex-1 overflow-y-auto max-h-[500px]">
+        {% if risk_clients_enhanced %}
+        <div class="divide-y divide-slate-100">
+          {% for client in risk_clients_enhanced %}
+          <div class="p-4 hover:bg-slate-50 cursor-pointer border-l-4 transition-all"
+            data-url="{% url 'client_detail' client.id %}" onclick="window.location=this.dataset.url;"
+            style="border-left-color: {% if client.level == 'CRÍTICO' %}#dc2626{% elif client.level == 'ALTO' %}#f97316{% else %}#eab308{% endif %};">
+
+            <!-- Header con nombre y score -->
+            <div class="flex items-start justify-between mb-2">
+              <div>
+                <div class="font-bold text-slate-900">{{ client.name }}</div>
+                <div class="text-xs text-slate-400">{{ client.email }}</div>
+              </div>
+              <!-- Score Badge -->
+              <div class="flex flex-col items-end gap-1">
+                <div class="text-2xl font-black text-slate-900">{{ client.score }}</div>
                 <span
-                  class="px-2 py-1 rounded-full text-[10px] font-bold 
-                                    {% if item.level == 'CRITICAL' %}bg-red-100 text-red-700{% else %}bg-orange-100 text-orange-700{% endif %}">
-                  {{ item.level }}
+                  class="text-[9px] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap
+                  {% if client.level == 'CRÍTICO' %}bg-red-100 text-red-700{% elif client.level == 'ALTO' %}bg-orange-100 text-orange-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                  {{ client.level }}
                 </span>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+              </div>
+            </div>
+
+            <!-- Risk Factors -->
+            {% if client.factors %}
+            <div class="space-y-1.5 mb-3">
+              {% for factor in client.factors %}
+              <div class="flex items-start gap-2">
+                <div
+                  class="text-[10px] font-bold min-w-[20px] h-5 rounded-full 
+                  {% if factor.type == 'billing' %}bg-red-100 text-red-700{% elif factor.type == 'expiry' %}bg-orange-100 text-orange-700{% elif factor.type == 'inactive' %}bg-yellow-100 text-yellow-700{% elif factor.type == 'new_client' %}bg-blue-100 text-blue-700{% else %}bg-slate-100 text-slate-700{% endif %} flex items-center justify-center">
+                  +{{ factor.points }}
+                </div>
+                <div class="text-xs text-slate-600 leading-tight flex-1">{{ factor.text }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Action Urgency -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span class="text-[10px] text-slate-500 font-medium">Acción en {{ client.days_to_action }} días</span>
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
         {% else %}
         <div class="p-8 text-center text-slate-400 text-sm">
+          <svg class="w-12 h-12 mx-auto mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
           No hay clientes en riesgo detectados.
         </div>
         {% endif %}
@@ -194,19 +547,140 @@
       </div>
     </div>
 
-    <!-- Chart (Placeholder for Phase 2) -->
-    <div
-      class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex flex-col items-center justify-center text-center">
-      <div class="bg-blue-50 p-4 rounded-full mb-4">
-        <svg class="w-8 h-8 text-[var(--brand-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
-        </svg>
+    <!-- Revenue Chart -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+        <h3 class="font-bold text-slate-800">📈 Evolución de Ingresos (30 días)</h3>
+        <span class="text-xs font-medium text-slate-400">Actualizado hoy</span>
       </div>
-      <h3 class="font-bold text-slate-900 mb-1">Analítica Avanzada</h3>
-      <p class="text-sm text-slate-500">Próximamente verás aquí la evolución gráfica de tus ingresos y retención.</p>
+      <div class="p-4 flex-1">
+        <canvas id="revenueChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- NUEVO: Forecast Trimestral -->
+    <div
+      class="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-purple-200 flex justify-between items-center">
+        <h3 class="font-bold text-slate-800">🔮 Previsión Trimestral</h3>
+        <span class="text-[10px] px-2 py-1 rounded-full font-bold bg-purple-100 text-purple-700">
+          Basado en {{ forecast.historical_data_points }} meses
+        </span>
+      </div>
+      <div class="p-5 flex-1 flex flex-col justify-between">
+        <!-- Metric Summary -->
+        <div class="space-y-4 mb-5">
+          <!-- Total Trimestral -->
+          <div class="bg-white bg-opacity-50 rounded-lg p-4">
+            <div class="text-xs text-slate-600 font-medium mb-1">Total Proyectado (3 meses)</div>
+            <div class="text-3xl font-bold text-purple-900">{{ forecast.total_quarterly }} €</div>
+            <div class="text-xs text-slate-500 mt-1">Promedio: {{ forecast.monthly_avg }} €/mes</div>
+          </div>
+
+          <!-- Trend Indicator -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white bg-opacity-50 rounded-lg p-3">
+              <div class="text-[10px] text-slate-600 font-bold mb-1">TENDENCIA</div>
+              <div
+                class="text-sm font-bold 
+                {% if forecast.trend == 'CRECIENTE' %}text-emerald-700{% elif forecast.trend == 'DECRECIENTE' %}text-red-700{% else %}text-slate-600{% endif %}">
+                {{ forecast.trend_icon }} {{ forecast.trend }}
+              </div>
+            </div>
+            <div class="bg-white bg-opacity-50 rounded-lg p-3">
+              <div class="text-[10px] text-slate-600 font-bold mb-1">HISTÓRICO</div>
+              <div class="text-sm font-bold text-slate-900">{{ forecast.historical_avg }} €</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Forecast Bar -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold text-slate-700 mb-3">Desglose Mensual</div>
+          {% for month_forecast in forecast.forecast %}
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-medium text-slate-700">{{ month_forecast.month_short }}</span>
+              <span class="font-bold text-slate-900">{{ month_forecast.predicted }} €</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all"
+                style="width: {% widthratio month_forecast.predicted forecast.total_quarterly 100 %}%"></div>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[9px] text-slate-400">Confianza: {{ month_forecast.confidence_pct }}%</span>
+              <span class="text-[9px] font-bold text-slate-500">{{ month_forecast.confidence }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
     </div>
 
   </div>
 </div>
+
+<!-- Chart.js Script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const chartData = {
+      labels: {{ chart_data.labels| safe
+  }},
+    values: {{ chart_data.values | safe }}
+    };
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartData.labels,
+      datasets: [{
+        label: 'Ingresos (€)',
+        data: chartData.values,
+        fill: true,
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        borderColor: 'rgba(99, 102, 241, 1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: 'rgba(99, 102, 241, 1)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          padding: 12,
+          titleFont: { size: 12 },
+          bodyFont: { size: 14, weight: 'bold' },
+          callbacks: {
+            label: function (context) {
+              return context.parsed.y.toFixed(2) + ' €';
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { borderDash: [2, 4], color: 'rgba(148, 163, 184, 0.2)' },
+          ticks: {
+            font: { size: 10 },
+            callback: function (value) { return value + '€'; }
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, maxRotation: 0 }
+        }
+      }
+    }
+  });
+  });
+</script>
 {% endblock %}

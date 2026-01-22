@@ -1,0 +1,442 @@
+{% extends 'backoffice/base.html' %}
+
+{% block extra_head %}
+<script src="https://js.stripe.com/v3/"></script>
+{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-100">Facturación y Suscripción</h1>
+            <p class="text-slate-400">Gestiona tu plan y métodos de pago</p>
+        </div>
+        <div>
+            <a href="{% url 'saas_billing:portal_session' %}"
+                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700 text-sm font-medium transition flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Gestionar Pagos en Stripe
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Plan Actual -->
+        <div class="lg:col-span-2">
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 p-6 mb-6">
+                <h2 class="text-lg font-semibold text-white mb-4">Tu Plan Actual</h2>
+
+                {% if subscription %}
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-2xl font-bold text-indigo-400">{{ subscription.plan.name }}</h3>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                    {% if subscription.status == 'ACTIVE' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                    {% elif subscription.status == 'PAST_DUE' %}bg-rose-500/10 text-rose-400 border border-rose-500/20
+                                    {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
+                                {{ subscription.get_status_display }}
+                            </span>
+                        </div>
+                        <p class="text-slate-400 mb-4">{{ subscription.plan.description }}</p>
+
+                        <div class="flex gap-6 text-sm">
+                            <div>
+                                <p class="text-slate-500 mb-1">Precio</p>
+                                <p class="text-white font-medium">{{ subscription.plan.price_monthly }}€ / mes</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-500 mb-1">Próxima Renovación</p>
+                                <p class="text-white font-medium">{{ subscription.current_period_end|date:"d M, Y" }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-slate-500 mb-1">Pagos</p>
+                                <p class="text-white font-medium text-capitalize">{{
+                                    subscription.billing_frequency|lower }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right">
+                        <!-- Future: Upgrade Plan Button -->
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700">
+                    <h4 class="text-sm font-medium text-slate-300 mb-4 uppercase tracking-wider">Módulos Incluidos</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {% for module in subscription.plan.get_enabled_modules %}
+                        <span
+                            class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-700 text-slate-300 border border-slate-600">
+                            {{ module }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <svg class="w-12 h-12 text-slate-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p class="text-slate-400 mb-4">No tienes una suscripción activa.</p>
+                    <p class="text-sm text-slate-500">Contacta con soporte para activar tu plan.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Invoices -->
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 overflow-hidden">
+                <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-white">Facturas Recientes</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-slate-900/50 text-slate-400 text-xs uppercase">
+                                <th class="px-6 py-3 font-medium">Numero</th>
+                                <th class="px-6 py-3 font-medium">Fecha</th>
+                                <th class="px-6 py-3 font-medium">Importe</th>
+                                <th class="px-6 py-3 font-medium">Estado</th>
+                                <th class="px-6 py-3 font-medium text-right">Descargar</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700">
+                            {% for invoice in invoices %}
+                            <tr class="text-sm hover:bg-white/5 transition">
+                                <td class="px-6 py-4 font-mono text-slate-300">{{ invoice.invoice_number }}</td>
+                                <td class="px-6 py-4 text-slate-400">{{ invoice.issue_date|date:"d M Y" }}</td>
+                                <td class="px-6 py-4 text-white font-medium">{{ invoice.total_amount }}€</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-0.5 rounded text-xs font-medium
+                                        {% if invoice.status == 'PAID' %}bg-emerald-500/10 text-emerald-400
+                                        {% elif invoice.status == 'PENDING' %}bg-amber-500/10 text-amber-400
+                                        {% else %}bg-rose-500/10 text-rose-400{% endif %}">
+                                        {{ invoice.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="{% url 'saas_billing:download_invoice' invoice.id %}"
+                                        class="text-indigo-400 hover:text-indigo-300 text-xs font-medium">
+                                        PDF
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-slate-500">
+                                    No hay facturas disponibles.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Usage -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Payment Methods Card -->
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Métodos de Pago</h3>
+                    <button onclick="openAddCardModal()" 
+                        class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Añadir
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    {% if payment_methods %}
+                        {% for pm in payment_methods %}
+                        <div class="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                                <div>
+                                    <p class="text-white font-medium text-sm capitalize">{{ pm.card.brand }}</p>
+                                    <p class="text-slate-400 text-xs">•••• {{ pm.card.last4 }}</p>
+                                </div>
+                            </div>
+                            <button onclick="deletePaymentMethod('{{ pm.id }}')" 
+                                class="text-red-400 hover:text-red-300 text-xs">
+                                Eliminar
+                            </button>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <svg class="w-12 h-12 text-slate-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            <p class="text-slate-500 text-sm">No hay métodos de pago</p>
+                            <button onclick="openAddCardModal()" 
+                                class="mt-2 text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+                                Añadir tarjeta
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-6">Uso del Plan</h3>
+
+                {% if subscription %}
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-slate-400">Socios Activos</span>
+                            <span class="text-white font-medium">
+                                {% if subscription.plan.max_members %}
+                                <span class="text-indigo-400">124</span> / {{ subscription.plan.max_members }}
+                                {% else %}
+                                124 / ∞
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if subscription.plan.max_members %}
+                        <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-indigo-500 h-full rounded-full" style="width: 45%"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-slate-500 text-sm">Información de uso no disponible.</p>
+                {% endif %}
+            </div>
+
+            <div class="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">Ayuda y Soporte</h3>
+                <p class="text-sm text-slate-400 mb-4">
+                    ¿Tienes dudas sobre tu facturación o quieres cambiar de plan?
+                </p>
+                <a href="#" class="text-sm text-indigo-400 hover:text-indigo-300 font-medium flex items-center">
+                    Contactar Soporte
+                    <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Card Modal -->
+<div id="addCardModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50">
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 w-full max-w-md mx-4">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-white">Añadir Tarjeta de Pago</h3>
+            <button onclick="closeAddCardModal()" class="text-slate-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <form id="payment-form">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-300 mb-2">
+                    Datos de la Tarjeta
+                    <span class="text-slate-500 text-xs ml-2">(Número, Caducidad y CVV)</span>
+                </label>
+                <div id="card-element" class="p-4 bg-slate-900 rounded-lg border border-slate-700">
+                    <!-- Stripe Card Element incluye: Número de tarjeta, MM/YY, CVV -->
+                </div>
+            </div>
+            <div id="card-errors" class="text-red-400 text-sm mb-4 hidden"></div>
+            
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-4">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Tus datos están seguros y encriptados por Stripe</span>
+            </div>
+            
+            <button type="submit" id="submit-button" 
+                class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition disabled:opacity-50">
+                <span id="button-text">Guardar Tarjeta</span>
+                <span id="button-spinner" class="hidden">Procesando...</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Initialize Stripe
+    const stripeKey = '{{ STRIPE_PUBLISHABLE_KEY }}';
+    
+    if (!stripeKey) {
+        console.error('Stripe publishable key not configured');
+    }
+    
+    const stripe = stripeKey ? Stripe(stripeKey) : null;
+    let elements = null;
+    let cardElement = null;
+    
+    function openAddCardModal() {
+        if (!stripe) {
+            alert('La configuración de pagos no está disponible. Contacta con soporte.');
+            return;
+        }
+        
+        const modal = document.getElementById('addCardModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Initialize Stripe Elements
+        if (!elements) {
+            elements = stripe.elements();
+            cardElement = elements.create('card', {
+                style: {
+                    base: {
+                        color: '#ffffff',
+                        fontSize: '16px',
+                        '::placeholder': {
+                            color: '#94a3b8',
+                        },
+                    },
+                    invalid: {
+                        color: '#f87171',
+                    },
+                },
+            });
+            cardElement.mount('#card-element');
+            
+            cardElement.on('change', (event) => {
+                const displayError = document.getElementById('card-errors');
+                if (event.error) {
+                    displayError.textContent = event.error.message;
+                    displayError.classList.remove('hidden');
+                } else {
+                    displayError.textContent = '';
+                    displayError.classList.add('hidden');
+                }
+            });
+        }
+    }
+    
+    function closeAddCardModal() {
+        const modal = document.getElementById('addCardModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const submitButton = document.getElementById('submit-button');
+        const buttonText = document.getElementById('button-text');
+        const buttonSpinner = document.getElementById('button-spinner');
+        
+        submitButton.disabled = true;
+        buttonText.classList.add('hidden');
+        buttonSpinner.classList.remove('hidden');
+        
+        try {
+            // Create SetupIntent
+            const response = await fetch('{% url "saas_billing:create_setup_intent" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Confirm card setup
+            const result = await stripe.confirmCardSetup(data.clientSecret, {
+                payment_method: {
+                    card: cardElement,
+                }
+            });
+            
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+            
+            // Save payment method
+            const saveResponse = await fetch('{% url "saas_billing:save_payment_method" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    payment_method_id: result.setupIntent.payment_method
+                })
+            });
+            
+            const saveData = await saveResponse.json();
+            
+            if (saveData.error) {
+                throw new Error(saveData.error);
+            }
+            
+            // Success - reload page
+            window.location.reload();
+            
+        } catch (error) {
+            const displayError = document.getElementById('card-errors');
+            displayError.textContent = error.message;
+            displayError.classList.remove('hidden');
+            
+            submitButton.disabled = false;
+            buttonText.classList.remove('hidden');
+            buttonSpinner.classList.add('hidden');
+        }
+    });
+    
+    async function deletePaymentMethod(paymentMethodId) {
+        if (!confirm('¿Estás seguro de que quieres eliminar este método de pago?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('{% url "saas_billing:delete_payment_method" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    payment_method_id: paymentMethodId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Success - reload page
+            window.location.reload();
+            
+        } catch (error) {
+            alert('Error al eliminar el método de pago: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

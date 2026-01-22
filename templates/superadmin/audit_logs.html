@@ -1,0 +1,82 @@
+﻿{% extends 'superadmin/base.html' %}
+
+{% block header %}Log de Auditoría{% endblock %}
+
+{% block content %}
+<div class="glass-panel rounded-xl">
+    <div class="p-6 border-b border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <!-- Filters -->
+        <form method="get" class="flex-1 flex gap-4">
+            <select name="action" onchange="this.form.submit()"
+                class="bg-gray-900 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5">
+                <option value="">Todas las Acciones</option>
+                {% for action_code, action_label in action_types %}
+                <option value="{{ action_code }}" {% if action_filter == action_code %}selected{% endif %}>{{ action_label
+                    }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="admin" onchange="this.form.submit()"
+                class="bg-gray-900 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5">
+                <option value="">Todos los Admins</option>
+                {% for admin_user in superadmins %}
+                <option value="{{ admin_user.id }}" {% if admin_filter|add:"0" == admin_user.id %}selected{% endif %}>
+                    {{ admin_user.get_full_name|default:admin_user.email }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="text-gray-400 text-xs uppercase bg-gray-900/50">
+                    <th class="px-6 py-3">Fecha y Hora</th>
+                    <th class="px-6 py-3">Admin</th>
+                    <th class="px-6 py-3">Acción</th>
+                    <th class="px-6 py-3">Objetivo</th>
+                    <th class="px-6 py-3">Descripción</th>
+                    <th class="px-6 py-3">IP</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for log in logs %}
+                <tr class="text-sm hover:bg-white/5 font-mono">
+                    <td class="px-6 py-4 text-gray-400 text-xs">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                    <td class="px-6 py-4 text-white font-medium">{{ log.superadmin.email }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-0.5 text-xs rounded border 
+                        {% if 'CREATE' in log.action %}bg-green-500/10 text-green-400 border-green-500/20
+                        {% elif 'DELETE' in log.action %}bg-red-500/10 text-red-400 border-red-500/20
+                        {% elif 'GOD_MODE' in log.action %}bg-purple-500/10 text-purple-400 border-purple-500/20
+                        {% else %}bg-blue-500/10 text-blue-400 border-blue-500/20{% endif %}">
+                            {{ log.action }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-300">
+                        {% if log.target_gym %}
+                        Gym: {{ log.target_gym.name }}
+                        {% elif log.target_franchise %}
+                        Franchise: {{ log.target_franchise.name }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 max-w-xs truncate" title="{{ log.description }}">
+                        {{ log.description }}
+                    </td>
+                    <td class="px-6 py-4 text-gray-500 text-xs">{{ log.ip_address }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        No hay logs registrados que coincidan con los filtros.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

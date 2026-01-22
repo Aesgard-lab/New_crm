@@ -9,6 +9,12 @@ class Room(models.Model):
     capacity = models.PositiveIntegerField(_("Aforo Máximo"))
     layout_configuration = models.JSONField(_("Configuración de Diseño"), default=dict, blank=True)
     
+    class Meta:
+        permissions = [
+            ("access_calendar", "Acceder al Calendario de Clases"),
+            ("create_class_sessions", "Crear Sesiones de Clases"),
+        ]
+    
     def __str__(self):
         return f"{self.name} ({self.gym.name})"
 
@@ -37,29 +43,70 @@ class Activity(models.Model):
     ], default='MEDIUM')
     video_url = models.URLField(_("Video URL"), blank=True)
     
+    # Check-in QR configuration per activity
+    qr_checkin_enabled = models.BooleanField(
+        _("Check-in QR habilitado"), 
+        default=False,
+        help_text=_("Permite a los clientes marcar asistencia escaneando QR")
+    )
+    
+    # Online Visibility
+    is_visible_online = models.BooleanField(
+        _("Visible en Horario Público"),
+        default=False,
+        help_text=_("Si se activa, la actividad aparecerá en el horario público de la web/app")
+    )
+    
     eligible_staff = models.ManyToManyField(StaffProfile, related_name='qualified_activities', blank=True)
-    cancellation_policy = models.ForeignKey('CancellationPolicy', on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')
+    policy = models.ForeignKey('ActivityPolicy', on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')
+
+    class Meta:
+        permissions = [
+            ("access_calendar", "Acceder al Calendario de Clases"),
+            ("manage_activity_sessions", "Gestionar Sesiones de Actividades"),
+        ]
 
     def __str__(self):
         return self.name
 
-class CancellationPolicy(models.Model):
+class ActivityPolicy(models.Model):
     PENALTY_CHOICES = [
         ('STRIKE', 'Strike (Falta)'),
         ('FEE', 'Cobro Monetario'),
         ('FORFEIT', 'Pérdida de Crédito'),
     ]
+
+    WINDOW_MODE_CHOICES = [
+        ('RELATIVE_START', _("Horas antes del inicio")),
+        ('FIXED_TIME', _("Días antes (hora fija)")),
+    ]
+
+    WAITLIST_MODE_CHOICES = [
+        ('AUTO_PROMOTE', _("Auto-Promoción (Automático)")),
+        ('BROADCAST', _("Broadcast (Primero en llegar)")),
+    ]
     
-    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='cancellation_policies')
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='activity_policies')
     name = models.CharField(_("Nombre de la Política"), max_length=100)
-    window_hours = models.PositiveIntegerField(_("Ventana de Cancelación (Horas)"), help_text=_("Horas antes de la clase para cancelar sin penalización"))
     
+    # Booking Configuration
+    booking_window_mode = models.CharField(_("Modo de Apertura"), max_length=20, choices=WINDOW_MODE_CHOICES, default='RELATIVE_START')
+    booking_window_value = models.PositiveIntegerField(_("Valor Antelación"), default=48, help_text=_("Horas (si es relativo) o Días (si es fijo)"))
+    booking_time_release = models.TimeField(_("Hora de Apertura"), null=True, blank=True, help_text=_("Solo si el modo es Hora Fija (ej: 00:00)"))
+
+    # Cancellation Configuration
+    cancellation_window_hours = models.PositiveIntegerField(_("Ventana de Cancelación (Horas)"), help_text=_("Horas antes de la clase para cancelar sin penalización"))
     penalty_type = models.CharField(_("Tipo de Penalización"), max_length=20, choices=PENALTY_CHOICES, default='FORFEIT')
     fee_amount = models.DecimalField(_("Monto de Multa"), max_digits=6, decimal_places=2, null=True, blank=True, help_text=_("Solo si el tipo es Cobro Monetario"))
-    
+
+    # Waitlist Configuration
+    waitlist_enabled = models.BooleanField(_("Lista de Espera Activa"), default=True)
+    waitlist_mode = models.CharField(_("Modo de Lista"), max_length=20, choices=WAITLIST_MODE_CHOICES, default='AUTO_PROMOTE')
+    waitlist_limit = models.PositiveIntegerField(_("Límite Lista Espera"), default=0, help_text=_("0 = Sin límite"))
+    auto_promote_cutoff_hours = models.PositiveIntegerField(_("Cierre Auto-Promoción (Horas)"), default=1, help_text=_("Horas antes donde la lista deja de correr sola"))
     
     def __str__(self):
-        return f"{self.name} ({self.window_hours}h)"
+        return f"{self.name}"
 
 class ScheduleRule(models.Model):
     """
@@ -136,3 +183,437 @@ class ActivitySession(models.Model):
         if self.max_capacity == 0: return 0
         return (self.attendees.count() / self.max_capacity) * 100
 
+
+
+class ActivitySessionBooking(models.Model):
+    """
+    Representa una reserva de un cliente para una sesión de actividad específica.
+    """
+    STATUS_CHOICES = [
+        ('CONFIRMED', _("Confirmada")),
+        ('CANCELLED', _("Cancelada")),
+        ('PENDING', _("Pendiente de Pago")), # Si requiere pago previo
+    ]
+    
+    ATTENDANCE_STATUS_CHOICES = [
+        ('PENDING', _("Pendiente")),  # Reserva confirmada pero aún no ha pasado la clase
+        ('ATTENDED', _("Asistió")),  # Marcado como asistido
+        ('NO_SHOW', _("No Asistió")),  # Marcado como ausente
+        ('LATE_CANCEL', _("Canceló Tarde")),  # Canceló después de la ventana permitida
+    ]
+
+    session = models.ForeignKey(ActivitySession, on_delete=models.CASCADE, related_name='bookings')
+    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='bookings')
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED')
+    attendance_status = models.CharField(
+        max_length=20, 
+        choices=ATTENDANCE_STATUS_CHOICES, 
+        default='PENDING',
+        help_text=_("Estado de asistencia a la clase")
+    )
+    booked_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Flags adicionales
+    attended = models.BooleanField(default=False)  # Mantener por compatibilidad, se sincroniza con attendance_status
+    marked_by = models.ForeignKey(
+        StaffProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='marked_attendances',
+        help_text=_("Staff que marcó la asistencia")
+    )
+    marked_at = models.DateTimeField(null=True, blank=True, help_text=_("Cuándo se marcó la asistencia"))
+    
+    class Meta:
+        unique_together = ('session', 'client')
+        ordering = ['-booked_at']
+        verbose_name = _("Reserva de Clase")
+        verbose_name_plural = _("Reservas de Clases")
+
+    def __str__(self):
+        return f"Reserva: {self.client} - {self.session}"
+    
+    def mark_attendance(self, status, staff=None):
+        """
+        Marca el estado de asistencia y sincroniza el flag 'attended'
+        """
+        from django.utils import timezone
+        self.attendance_status = status
+        self.attended = (status == 'ATTENDED')
+        self.marked_by = staff
+        self.marked_at = timezone.now()
+        self.save()
+        
+        # Si marca como cancelado tarde, actualizar el estado general
+        if status == 'LATE_CANCEL':
+            self.status = 'CANCELLED'
+            self.save()
+
+
+class WaitlistEntry(models.Model):
+    STATUS_CHOICES = [
+        ('WAITING', _("En espera")),
+        ('PROMOTED', _("Promovido (Dentro)")),
+        ('EXPIRED', _("Expirado")),
+        ('CANCELLED', _("Cancelado")),
+    ]
+
+    session = models.ForeignKey(ActivitySession, on_delete=models.CASCADE, related_name='waitlist_entries')
+    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='waitlist_entries')
+    joined_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='WAITING')
+    promoted_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ('session', 'client')
+        ordering = ['joined_at']
+
+    def __str__(self):
+        return f"{self.client} in waitlist for {self.session} ({self.status})"
+
+
+class ReviewSettings(models.Model):
+    """
+    Configuración global para el sistema de valoraciones de clases.
+    """
+    gym = models.OneToOneField(Gym, on_delete=models.CASCADE, related_name='review_settings')
+    
+    # Activación
+    enabled = models.BooleanField(default=False, help_text="Activar sistema de valoraciones")
+    
+    # Timing
+    delay_hours = models.PositiveIntegerField(default=3, help_text="Horas después de clase para solicitar review")
+    
+    # Frecuencia
+    REQUEST_MODE_CHOICES = [
+        ('ALL', 'Solicitar a todos los asistentes'),
+        ('RANDOM', 'Solicitud aleatoria'),
+    ]
+    request_mode = models.CharField(max_length=20, choices=REQUEST_MODE_CHOICES, default='RANDOM')
+    random_probability = models.PositiveIntegerField(
+        default=30, 
+        help_text="Probabilidad % de solicitar review (solo si modo aleatorio)"
+    )
+    
+    # Incentivos
+    points_per_review = models.PositiveIntegerField(default=10, help_text="Puntos de fidelidad por dejar review")
+    
+    # Visibilidad
+    reviews_public = models.BooleanField(default=False, help_text="Reviews visibles públicamente")
+    require_approval = models.BooleanField(default=True, help_text="Requiere aprobación del staff antes de publicar")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Review Settings - {self.gym.name}"
+
+
+class ClassReview(models.Model):
+    """
+    Valoración de una clase por un cliente.
+    """
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='class_reviews')
+    session = models.ForeignKey(ActivitySession, on_delete=models.CASCADE, related_name='reviews')
+    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='class_reviews')
+    staff = models.ForeignKey(StaffProfile, on_delete=models.CASCADE, related_name='received_reviews')
+    
+    # Valoraciones (1-5 estrellas)
+    instructor_rating = models.PositiveIntegerField(help_text="Valoración del instructor (1-5)")
+    class_rating = models.PositiveIntegerField(help_text="Valoración de la clase (1-5)")
+    
+    # Comentario opcional
+    comment = models.TextField(blank=True)
+    
+    # Tags predefinidos (JSON array)
+    tags = models.JSONField(default=list, blank=True, help_text="Tags: Limpio, Intenso, Amigable, etc.")
+    
+    # Estado
+    is_approved = models.BooleanField(default=False)
+    is_public = models.BooleanField(default=False)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        StaffProfile, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='approved_reviews'
+    )
+    
+    class Meta:
+        unique_together = ('session', 'client')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Review by {self.client} - {self.session.activity.name} ({self.instructor_rating}⭐)"
+    
+    @property
+    def average_rating(self):
+        return (self.instructor_rating + self.class_rating) / 2
+
+
+class ReviewRequest(models.Model):
+    """
+    Solicitud de review enviada a un cliente.
+    """
+    STATUS_CHOICES = [
+        ('PENDING', 'Pendiente'),
+        ('COMPLETED', 'Completada'),
+        ('EXPIRED', 'Expirada'),
+    ]
+    
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='review_requests')
+    session = models.ForeignKey(ActivitySession, on_delete=models.CASCADE, related_name='review_requests')
+    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='review_requests')
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(help_text="Fecha límite para completar la review")
+    
+    # Notificación
+    email_sent = models.BooleanField(default=False)
+    popup_created = models.BooleanField(default=False)
+    
+    class Meta:
+        unique_together = ('session', 'client')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Review Request - {self.client} for {self.session}"
+
+
+class AttendanceSettings(models.Model):
+    """
+    Configuración global para el sistema de asistencias/check-in del gimnasio.
+    """
+    CHECKIN_MODE_CHOICES = [
+        ('STAFF_ONLY', _("Solo el staff marca asistencia")),
+        ('QR_ENABLED', _("Clientes pueden marcar con QR")),
+        ('BOTH', _("Ambos métodos disponibles")),
+    ]
+    
+    gym = models.OneToOneField(Gym, on_delete=models.CASCADE, related_name='attendance_settings')
+    
+    # Modo de check-in global
+    checkin_mode = models.CharField(
+        _("Modo de Check-in"),
+        max_length=20,
+        choices=CHECKIN_MODE_CHOICES,
+        default='STAFF_ONLY',
+        help_text=_("Define cómo los clientes pueden marcar asistencia")
+    )
+    
+    # Ventana de tiempo para check-in QR
+    qr_checkin_minutes_before = models.PositiveIntegerField(
+        _("Minutos antes de clase"),
+        default=15,
+        help_text=_("Minutos antes del inicio que se permite el check-in")
+    )
+    qr_checkin_minutes_after = models.PositiveIntegerField(
+        _("Minutos después del inicio"),
+        default=30,
+        help_text=_("Minutos después del inicio que se permite el check-in")
+    )
+    
+    # QR dinámico (seguridad)
+    qr_refresh_seconds = models.PositiveIntegerField(
+        _("Renovar QR cada (segundos)"),
+        default=30,
+        help_text=_("Segundos para renovar el código QR (seguridad)")
+    )
+    
+    # Mensaje de confirmación
+    checkin_success_message = models.CharField(
+        _("Mensaje de éxito"),
+        max_length=200,
+        default="✅ ¡Check-in completado! Te esperamos en clase.",
+        help_text=_("Mensaje mostrado al cliente tras check-in exitoso")
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _("Configuración de Asistencias")
+        verbose_name_plural = _("Configuraciones de Asistencias")
+    
+    def __str__(self):
+        return f"Attendance Settings - {self.gym.name}"
+
+
+class SessionCheckin(models.Model):
+    """
+    Registro de check-in a una sesión de clase.
+    Registra quién, cuándo y cómo se hizo el check-in.
+    """
+    CHECKIN_METHOD_CHOICES = [
+        ('STAFF', _("Marcado por Staff")),
+        ('QR', _("Escaneado QR por cliente")),
+        ('APP', _("Desde App del cliente")),
+        ('AUTO', _("Automático (reserva previa)")),
+    ]
+    
+    session = models.ForeignKey(
+        ActivitySession, 
+        on_delete=models.CASCADE, 
+        related_name='checkins'
+    )
+    client = models.ForeignKey(
+        'clients.Client', 
+        on_delete=models.CASCADE, 
+        related_name='class_checkins'
+    )
+    
+    # Método de check-in
+    method = models.CharField(
+        _("Método de check-in"),
+        max_length=20,
+        choices=CHECKIN_METHOD_CHOICES,
+        default='STAFF'
+    )
+    
+    # Verificación - token usado para QR (previene reutilización)
+    qr_token = models.CharField(max_length=64, blank=True, null=True)
+    
+    # Staff que hizo el check-in (si aplica)
+    checked_by = models.ForeignKey(
+        StaffProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='checkins_performed'
+    )
+    
+    # Timestamps
+    checked_in_at = models.DateTimeField(auto_now_add=True)
+    
+    # IP para auditoría (opcional)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ('session', 'client')
+        ordering = ['-checked_in_at']
+        verbose_name = _("Check-in de Sesión")
+        verbose_name_plural = _("Check-ins de Sesiones")
+    
+    def __str__(self):
+        return f"{self.client} → {self.session} ({self.get_method_display()})"
+
+
+class ScheduleSettings(models.Model):
+    """
+    Configuración del sistema de horarios y programación de clases.
+    Controla validaciones y restricciones para evitar conflictos.
+    """
+    gym = models.OneToOneField(
+        Gym,
+        on_delete=models.CASCADE,
+        related_name='schedule_settings',
+        verbose_name=_("Gimnasio")
+    )
+    
+    # === VALIDACIONES DE CONFLICTOS ===
+    allow_room_overlaps = models.BooleanField(
+        default=False,
+        verbose_name=_("Permitir solapamiento de salas"),
+        help_text=_("Si está desactivado, no se podrán crear clases simultáneas en la misma sala")
+    )
+    
+    allow_staff_overlaps = models.BooleanField(
+        default=False,
+        verbose_name=_("Permitir solapamiento de instructores"),
+        help_text=_("Si está desactivado, un instructor no podrá impartir dos clases a la vez")
+    )
+    
+    min_break_between_classes = models.IntegerField(
+        default=0,
+        verbose_name=_("Descanso mínimo entre clases (minutos)"),
+        help_text=_("Tiempo mínimo que debe pasar entre dos clases del mismo instructor")
+    )
+    
+    max_consecutive_classes = models.IntegerField(
+        default=0,
+        verbose_name=_("Máximo de clases consecutivas"),
+        help_text=_("Número máximo de clases seguidas que puede impartir un instructor (0 = sin límite)")
+    )
+    
+    # === RESTRICCIONES DE RESERVAS ===
+    max_advance_booking_days = models.IntegerField(
+        default=30,
+        verbose_name=_("Días máximos de antelación para reservar"),
+        help_text=_("Cuántos días de antelación pueden reservar los clientes (0 = sin límite)")
+    )
+    
+    min_advance_booking_hours = models.IntegerField(
+        default=0,
+        verbose_name=_("Horas mínimas de antelación para reservar"),
+        help_text=_("Mínimo de horas de antelación para hacer una reserva")
+    )
+    
+    allow_cancellation = models.BooleanField(
+        default=True,
+        verbose_name=_("Permitir cancelación de reservas"),
+        help_text=_("Los clientes pueden cancelar sus reservas")
+    )
+    
+    cancellation_deadline_hours = models.IntegerField(
+        default=2,
+        verbose_name=_("Plazo para cancelar (horas)"),
+        help_text=_("Horas mínimas de antelación para cancelar sin penalización")
+    )
+    
+    # === LISTAS DE ESPERA ===
+    enable_waitlist = models.BooleanField(
+        default=True,
+        verbose_name=_("Habilitar lista de espera"),
+        help_text=_("Permitir lista de espera cuando una clase está llena")
+    )
+    
+    auto_assign_from_waitlist = models.BooleanField(
+        default=True,
+        verbose_name=_("Asignar automáticamente desde lista de espera"),
+        help_text=_("Asignar plaza automáticamente cuando alguien cancela")
+    )
+    
+    # === NOTIFICACIONES ===
+    notify_class_changes = models.BooleanField(
+        default=True,
+        verbose_name=_("Notificar cambios de clases"),
+        help_text=_("Enviar notificaciones cuando se modifica o cancela una clase")
+    )
+    
+    reminder_hours_before = models.IntegerField(
+        default=2,
+        verbose_name=_("Recordatorio (horas antes)"),
+        help_text=_("Enviar recordatorio X horas antes de la clase (0 = desactivado)")
+    )
+    
+    # === METADATOS ===
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _("Configuración de Horarios")
+        verbose_name_plural = _("Configuraciones de Horarios")
+        permissions = [
+            ("access_schedule_settings", "Acceder a Configuración de Horarios"),
+            ("modify_schedule_settings", "Modificar Configuración de Horarios"),
+        ]
+        
+    def __str__(self):
+        return f"Configuración de horarios - {self.gym.name}"
+    
+    @classmethod
+    def get_for_gym(cls, gym):
+        """Obtener o crear configuración para un gimnasio"""
+        config, created = cls.objects.get_or_create(gym=gym)
+        return config

@@ -1,0 +1,78 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Tienda - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">Tienda</h1>
+    <p class="text-slate-600">Productos y merchandising disponible</p>
+</div>
+
+{% if products %}
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    {% for product in products %}
+    <div class="bg-white rounded-2xl border-2 border-slate-200 shadow-lg hover:shadow-xl hover:border-[var(--brand-color)] transition-all">
+        {% if product.image %}
+        <div class="relative h-48 overflow-hidden rounded-t-2xl bg-slate-50">
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-contain p-4">
+            {% if product.stock_quantity and product.stock_quantity < 5 %}
+            <div class="absolute top-2 right-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
+                ¡Últimas {{ product.stock_quantity }} unidades!
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="h-48 bg-slate-100 rounded-t-2xl flex items-center justify-center">
+            <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+        </div>
+        {% endif %}
+        
+        <div class="p-4">
+            {% if product.category %}
+            <div class="text-xs font-bold text-slate-500 uppercase mb-1">{{ product.category.name }}</div>
+            {% endif %}
+            
+            <h3 class="font-bold text-slate-900 mb-2">{{ product.name }}</h3>
+            
+            {% if product.description %}
+            <p class="text-xs text-slate-600 mb-3 line-clamp-2">{{ product.description }}</p>
+            {% endif %}
+            
+            <div class="flex items-baseline gap-2 mb-3">
+                <span class="text-2xl font-bold brand-color">{{ product.price|floatformat:2 }}€</span>
+                {% if product.tax_included %}
+                <span class="text-xs text-slate-500">IVA incl.</span>
+                {% endif %}
+            </div>
+            
+            {% if user.is_authenticated %}
+            <button onclick="addToCart({{ product.id }})" 
+                    class="w-full brand-bg text-white font-bold py-2 px-4 rounded-xl hover:opacity-90 transition-opacity text-sm">
+                🛒 Añadir al Carrito
+            </button>
+            {% else %}
+            <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_shop' slug=settings.public_slug %}" 
+               class="block w-full text-center brand-bg text-white font-bold py-2 px-4 rounded-xl hover:opacity-90 transition-opacity text-sm">
+                🛒 Añadir al Carrito
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-12">
+    <div class="text-6xl mb-4">🛍️</div>
+    <h3 class="text-xl font-bold text-slate-900 mb-2">Tienda no disponible</h3>
+    <p class="text-slate-600">Próximamente dispondremos de productos</p>
+</div>
+{% endif %}
+
+<script>
+function addToCart(productId) {
+    alert('Carrito de compra en desarrollo. Próximamente disponible.');
+}
+</script>
+{% endblock %}

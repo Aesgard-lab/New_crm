@@ -87,6 +87,23 @@ def list_payment_methods(client):
         print(f"Error listing methods: {e}")
         return []
 
+def detach_payment_method(client, payment_method_id):
+    """Detach a saved card from Stripe for the given client."""
+    pub_key, secret_key = get_keys(client.gym)
+    if not secret_key:
+        raise Exception("Stripe no configurado")
+
+    stripe.api_key = secret_key
+    try:
+        pm = stripe.PaymentMethod.retrieve(payment_method_id)
+        # Ensure it belongs to this customer before detaching
+        if pm.customer and client.stripe_customer_id and pm.customer != client.stripe_customer_id:
+            raise Exception("La tarjeta no pertenece a este cliente")
+        stripe.PaymentMethod.detach(payment_method_id)
+        return True
+    except Exception as e:
+        raise Exception(str(e))
+
 def charge_client(client, amount_eur, payment_method_id, description="Venta"):
     """
     Charges a client's saved payment method.

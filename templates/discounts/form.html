@@ -1,0 +1,359 @@
+{% extends "base/base.html" %}
+{% load gym_tags %}
+
+{% block title %}{% if discount %}Editar{% else %}Crear{% endif %} Descuento{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-6">
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-6">
+    <a href="{% url 'discount_list' %}"
+      class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+      <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    </a>
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900">
+        {% if discount %}Editar Descuento{% else %}Crear Nuevo Descuento{% endif %}
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">Configura códigos promocionales y ofertas especiales</p>
+    </div>
+  </div>
+
+  <form method="post" class="max-w-5xl">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Form -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Basic Information -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Información Básica</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Nombre del Descuento *
+              </label>
+              {{ form.name }}
+              {% if form.name.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Código *
+              </label>
+              {{ form.code }}
+              <p class="mt-1 text-xs text-slate-500">Código único que los clientes usarán para aplicar el descuento</p>
+              {% if form.code.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.code.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Descripción
+              </label>
+              {{ form.description }}
+              {% if form.description.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Discount Type & Value -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Tipo y Valor del Descuento</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Tipo de Descuento *
+              </label>
+              {{ form.discount_type }}
+              {% if form.discount_type.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.discount_type.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Porcentaje (%)
+                </label>
+                {{ form.percentage_value }}
+                <p class="mt-1 text-xs text-slate-500">Para descuentos porcentuales</p>
+                {% if form.percentage_value.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.percentage_value.errors.0 }}</p>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                  Cantidad/Precio (€)
+                </label>
+                {{ form.fixed_amount }}
+                <p class="mt-1 text-xs text-slate-500">Para descuentos fijos</p>
+                {% if form.fixed_amount.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.fixed_amount.errors.0 }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Compra Mínima (€)
+              </label>
+              {{ form.min_purchase_amount }}
+              <p class="mt-1 text-xs text-slate-500">Monto mínimo requerido para aplicar el descuento</p>
+              {% if form.min_purchase_amount.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.min_purchase_amount.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Descuento Máximo (€)
+              </label>
+              {{ form.max_discount_amount }}
+              <p class="mt-1 text-xs text-slate-500">Límite máximo del descuento (útil para descuentos porcentuales)</p>
+              {% if form.max_discount_amount.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.max_discount_amount.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Applies To -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Se Aplica A</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Categoría *
+              </label>
+              {{ form.applies_to }}
+              {% if form.applies_to.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.applies_to.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Planes de Membresía
+              </label>
+              {{ form.membership_plans }}
+              <p class="mt-1 text-xs text-slate-500">Ctrl+Click para seleccionar múltiples</p>
+              {% if form.membership_plans.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.membership_plans.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Servicios
+              </label>
+              {{ form.services }}
+              <p class="mt-1 text-xs text-slate-500">Ctrl+Click para seleccionar múltiples</p>
+              {% if form.services.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.services.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Productos
+              </label>
+              {{ form.products }}
+              <p class="mt-1 text-xs text-slate-500">Ctrl+Click para seleccionar múltiples</p>
+              {% if form.products.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.products.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Audience -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Audiencia Objetivo</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Tipo de Cliente *
+              </label>
+              {{ form.target_type }}
+              {% if form.target_type.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.target_type.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Clientes Específicos
+              </label>
+              {{ form.specific_clients }}
+              <p class="mt-1 text-xs text-slate-500">Ctrl+Click para seleccionar múltiples</p>
+              {% if form.specific_clients.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.specific_clients.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Grupos de Clientes
+              </label>
+              {{ form.client_groups }}
+              <p class="mt-1 text-xs text-slate-500">Ctrl+Click para seleccionar múltiples</p>
+              {% if form.client_groups.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.client_groups.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Etiquetas de Clientes
+              </label>
+              {{ form.client_tags }}
+              <p class="mt-1 text-xs text-slate-500">Ctrl+Click para seleccionar múltiples</p>
+              {% if form.client_tags.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.client_tags.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Status -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Estado</h3>
+          
+          <div class="flex items-center">
+            <input type="checkbox" id="is_active" name="is_active" 
+              {% if form.is_active.value %}checked{% endif %}
+              class="w-4 h-4 text-[var(--brand-color)] border-slate-300 rounded focus:ring-[var(--brand-color)]">
+            <label for="is_active" class="ml-2 text-sm text-slate-700">
+              Activar descuento
+            </label>
+          </div>
+        </div>
+
+        <!-- Validity Period -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Período de Validez</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Válido Desde *
+              </label>
+              {{ form.valid_from }}
+              {% if form.valid_from.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.valid_from.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Válido Hasta *
+              </label>
+              {{ form.valid_until }}
+              {% if form.valid_until.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.valid_until.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage Limits -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4">Límites de Uso</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Máximo de Usos Totales
+              </label>
+              {{ form.max_uses }}
+              <p class="mt-1 text-xs text-slate-500">Dejar en blanco para ilimitado</p>
+              {% if form.max_uses.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.max_uses.errors.0 }}</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Usos por Cliente
+              </label>
+              {{ form.max_uses_per_client }}
+              <p class="mt-1 text-xs text-slate-500">Dejar en blanco para ilimitado</p>
+              {% if form.max_uses_per_client.errors %}
+              <p class="mt-1 text-sm text-red-600">{{ form.max_uses_per_client.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <button type="submit"
+            class="w-full px-4 py-3 bg-[var(--brand-color)] text-white rounded-lg hover:opacity-90 transition-all font-medium">
+            {% if discount %}Guardar Cambios{% else %}Crear Descuento{% endif %}
+          </button>
+          <a href="{% url 'discount_list' %}"
+            class="mt-3 block w-full px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all text-center font-medium">
+            Cancelar
+          </a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const discountType = document.getElementById('id_discount_type');
+  const percentageField = document.getElementById('id_percentage_value');
+  const fixedField = document.getElementById('id_fixed_amount');
+
+  function updateFieldVisibility() {
+    const type = discountType.value;
+    if (type === 'PERCENTAGE') {
+      percentageField.parentElement.parentElement.classList.remove('opacity-50');
+      fixedField.parentElement.parentElement.classList.add('opacity-50');
+      percentageField.disabled = false;
+      fixedField.disabled = true;
+    } else {
+      percentageField.parentElement.parentElement.classList.add('opacity-50');
+      fixedField.parentElement.parentElement.classList.remove('opacity-50');
+      percentageField.disabled = true;
+      fixedField.disabled = false;
+    }
+  }
+
+  discountType.addEventListener('change', updateFieldVisibility);
+  updateFieldVisibility();
+
+  // Auto-generate code from name
+  const nameField = document.getElementById('id_name');
+  const codeField = document.getElementById('id_code');
+  
+  nameField.addEventListener('blur', function() {
+    if (!codeField.value) {
+      const code = nameField.value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .substring(0, 15);
+      codeField.value = code;
+    }
+  });
+});
+</script>
+{% endblock %}

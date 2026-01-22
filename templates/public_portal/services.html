@@ -1,0 +1,88 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Servicios - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">Nuestros Servicios</h1>
+    <p class="text-slate-600">Descubre todos los servicios que ofrecemos</p>
+</div>
+
+{% if services %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    {% for service in services %}
+    <div class="bg-white rounded-2xl border-2 border-slate-200 shadow-lg hover:shadow-xl hover:border-[var(--brand-color)] transition-all">
+        {% if service.image %}
+        <div class="relative h-48 overflow-hidden rounded-t-2xl">
+            <img src="{{ service.image.url }}" alt="{{ service.name }}" class="w-full h-full object-cover">
+            {% if service.category %}
+            <div class="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-bold text-slate-900">
+                {{ service.category.name }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="p-6">
+            <h3 class="text-xl font-bold text-slate-900 mb-2">{{ service.name }}</h3>
+            
+            {% if service.description %}
+            <p class="text-sm text-slate-600 mb-4 line-clamp-3">{{ service.description }}</p>
+            {% endif %}
+            
+            <div class="space-y-2 mb-4">
+                {% if service.duration %}
+                <div class="flex items-center gap-2 text-sm text-slate-700">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>{{ service.duration }} minutos</span>
+                </div>
+                {% endif %}
+                
+                {% if service.price %}
+                <div class="flex items-center gap-2 text-sm text-slate-700">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="font-bold text-lg brand-color">{{ service.price|floatformat:2 }}€</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if user.is_authenticated %}
+            <button onclick="bookService({{ service.id }})" 
+                    class="w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
+                Reservar Servicio
+            </button>
+            {% else %}
+            <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_services' slug=settings.public_slug %}" 
+               class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
+                Reservar Servicio
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-12">
+    <div class="text-6xl mb-4">💆</div>
+    <h3 class="text-xl font-bold text-slate-900 mb-2">Servicios no disponibles</h3>
+    <p class="text-slate-600">Contacta con el gimnasio para más información</p>
+    
+    {% if gym.phone %}
+    <a href="tel:{{ gym.phone }}" 
+       class="inline-block mt-6 brand-bg text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity">
+        📞 Llamar al {{ gym.phone }}
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+function bookService(serviceId) {
+    alert('Reserva de servicios en desarrollo. Próximamente disponible.');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,202 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Comprar Plan - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Breadcrumb -->
+    <div class="mb-6">
+        <a href="{% url 'public_pricing' slug=settings.public_slug %}" class="text-sm text-slate-600 hover:text-[var(--brand-color)]">
+            ← Volver a precios
+        </a>
+    </div>
+    
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2">
+            <!-- Resumen del Plan -->
+            <div class="p-8 brand-bg text-white">
+                <h2 class="text-2xl font-bold mb-6">Resumen de Compra</h2>
+                
+                {% if plan.image %}
+                <img src="{{ plan.image.url }}" alt="{{ plan.name }}" class="w-full h-32 object-cover rounded-xl mb-4 opacity-90">
+                {% endif %}
+                
+                <h3 class="text-3xl font-bold mb-2">{{ plan.name }}</h3>
+                
+                {% if plan.description %}
+                <p class="text-sm opacity-90 mb-6">{{ plan.description|linebreaksbr }}</p>
+                {% endif %}
+                
+                <!-- Precio -->
+                <div class="bg-white bg-opacity-20 rounded-xl p-4 mb-6">
+                    <div class="text-sm opacity-90 mb-1">Total a pagar</div>
+                    <div class="text-4xl font-bold">{{ plan.final_price|floatformat:2 }}€</div>
+                    {% if plan.is_recurring %}
+                    <div class="text-sm opacity-90 mt-1">Cada {{ plan.get_frequency_display_custom }}</div>
+                    {% else %}
+                    <div class="text-sm opacity-90 mt-1">Pago único</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Características -->
+                <div class="space-y-2">
+                    <p class="text-sm font-bold mb-2">✨ Incluye:</p>
+                    
+                    {% if plan.is_recurring %}
+                    <div class="flex items-start gap-2 text-sm">
+                        <span>✓</span>
+                        <span>Renovación automática</span>
+                    </div>
+                    {% else %}
+                    <div class="flex items-start gap-2 text-sm">
+                        <span>✓</span>
+                        <span>Válido {{ plan.pack_validity_days }} días</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% for rule in plan.access_rules.all %}
+                    <div class="flex items-start gap-2 text-sm">
+                        <span>✓</span>
+                        <span>
+                            {% if rule.quantity == 0 %}Ilimitado{% else %}{{ rule.quantity }} sesiones{% endif %}
+                            {% if rule.activity %} - {{ rule.activity.name }}{% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Formulario de Pago -->
+            <div class="p-8">
+                <h3 class="text-xl font-bold text-slate-900 mb-6">Método de Pago</h3>
+                
+                <form method="post" id="paymentForm">
+                    {% csrf_token %}
+                    
+                    <!-- Método de pago -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-3">
+                            Selecciona método de pago
+                        </label>
+                        
+                        <div class="space-y-3">
+                            {% for method in payment_methods %}
+                            <label class="flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-[var(--brand-color)] transition-colors">
+                                <input type="radio" name="payment_method" value="{{ method.id }}" 
+                                       {% if forloop.first %}checked{% endif %}
+                                       class="w-4 h-4 text-[var(--brand-color)]">
+                                <div class="flex-1">
+                                    <div class="font-bold text-slate-900">{{ method.name }}</div>
+                                    {% if method.description %}
+                                    <div class="text-xs text-slate-600">{{ method.description }}</div>
+                                    {% endif %}
+                                </div>
+                                {% if method.gateway == 'STRIPE' %}
+                                <img src="https://cdn.brandfolder.io/KGT2DTA4/at/8vbr8k4mr5xjwk4hxq4t9vs/Stripe_wordmark_-_blurple.svg" 
+                                     alt="Stripe" class="h-5">
+                                {% elif method.gateway == 'REDSYS' %}
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Redsys_logo.svg/200px-Redsys_logo.svg.png" 
+                                     alt="Redsys" class="h-6">
+                                {% endif %}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Contrato (si es necesario) -->
+                    {% if plan.contract_required %}
+                    <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                        <div class="flex items-start gap-2">
+                            <input type="checkbox" id="acceptContract" required 
+                                   class="mt-1 w-4 h-4 text-[var(--brand-color)]">
+                            <label for="acceptContract" class="text-sm text-slate-700">
+                                He leído y acepto los 
+                                <a href="#" class="text-[var(--brand-color)] underline" target="_blank">
+                                    términos y condiciones del contrato
+                                </a>
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Términos generales -->
+                    <div class="mb-6">
+                        <label class="flex items-start gap-2">
+                            <input type="checkbox" required class="mt-1 w-4 h-4 text-[var(--brand-color)]">
+                            <span class="text-sm text-slate-600">
+                                Acepto la 
+                                <a href="#" class="text-[var(--brand-color)] underline">política de privacidad</a>
+                                y 
+                                <a href="#" class="text-[var(--brand-color)] underline">condiciones de uso</a>
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <!-- Botón de compra -->
+                    <button type="submit" 
+                            class="w-full brand-bg text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity">
+                        🔒 Proceder al Pago ({{ plan.final_price|floatformat:2 }}€)
+                    </button>
+                    
+                    <p class="text-xs text-slate-500 mt-4 text-center">
+                        🔐 Pago seguro con cifrado SSL
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Información de seguridad -->
+    <div class="mt-8 text-center text-sm text-slate-600">
+        <p class="mb-2">
+            🛡️ Tus datos están protegidos con los más altos estándares de seguridad
+        </p>
+        <p class="text-xs">
+            No almacenamos información de tarjetas. Todos los pagos son procesados de forma segura.
+        </p>
+    </div>
+</div>
+
+<script>
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const button = this.querySelector('button[type="submit"]');
+    const originalText = button.textContent;
+    
+    button.disabled = true;
+    button.textContent = '⏳ Procesando...';
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.redirect_url) {
+                // Redirigir a pasarela de pago externa
+                window.location.href = data.redirect_url;
+            } else {
+                // Pago completado (ej: efectivo, transferencia)
+                window.location.href = data.success_url;
+            }
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo procesar el pago'));
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al procesar el pago. Por favor, inténtalo de nuevo.');
+        button.disabled = false;
+        button.textContent = originalText;
+    });
+});
+</script>
+{% endblock %}

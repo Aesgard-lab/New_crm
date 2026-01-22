@@ -1,0 +1,161 @@
+{% extends "portal/base.html" %}
+{% block title %}Mis Tarjetas{% endblock %}
+{% block content %}
+<div class="space-y-6" x-data="cardManager()">
+    <div class="card-modern">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <p class="text-xs text-slate-500 uppercase font-semibold">Métodos de pago</p>
+                <h1 class="text-xl font-bold text-slate-900">Mis tarjetas</h1>
+            </div>
+            <a href="{% url 'portal_profile' %}" class="text-sm text-slate-500 hover:text-slate-700">Volver</a>
+        </div>
+
+        {% if cards %}
+        <div class="space-y-3">
+            {% for card in cards %}
+            <div class="p-4 border border-slate-200 rounded-2xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                        {{ card.card.brand|upper|default:"CARD" }}
+                    </div>
+                    <div>
+                        <p class="font-semibold text-slate-800">**** **** **** {{ card.card.last4 }}</p>
+                        <p class="text-xs text-slate-500">Caduca {{ card.card.exp_month }}/{{ card.card.exp_year }}</p>
+                    </div>
+                </div>
+                {% if allow_delete %}
+                <button @click="deleteCard('{{ card.id }}')" class="text-sm font-semibold text-red-600 hover:text-red-700">Eliminar</button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">No tienes tarjetas guardadas.</p>
+        {% endif %}
+    </div>
+
+    <div class="card-modern" x-show="!isAdding">
+        <button @click="startAdd()"
+            class="w-full text-left">
+            <div class="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-gradient-to-r from-slate-50 to-white">
+                <div class="absolute -right-8 -top-6 w-32 h-32 bg-[var(--brand-color)]/10 rounded-full blur-2xl"></div>
+                <div class="p-4 flex items-center gap-3 relative">
+                    <div class="w-12 h-12 rounded-xl bg-[var(--brand-color)] text-white flex items-center justify-center shadow-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m3 0h6m-6 0a3 3 0 11-6 0 3 3 0 016 0zm-6 0v3a2 2 0 002 2h10a2 2 0 002-2v-3"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-slate-500">Método de pago</p>
+                        <p class="text-base font-semibold text-slate-900">Añadir tarjeta</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-[var(--brand-color)]/10 flex items-center justify-center text-[var(--brand-color)]">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </button>
+    </div>
+
+    <div class="card-modern space-y-3" x-show="isAdding">
+        <h3 class="font-semibold text-slate-800">Añadir tarjeta</h3>
+        <div id="payment-element" class="min-h-[60px]"></div>
+        <p class="text-xs text-slate-500">Guardaremos esta tarjeta para próximos cobros.</p>
+        <div class="flex gap-2">
+            <button @click="confirmCard()" class="flex-1 bg-[var(--brand-color)] text-white font-bold py-3 rounded-xl" x-text="isSubmitting ? 'Guardando...' : 'Guardar tarjeta'"></button>
+            <button @click="cancelAdd()" class="px-4 py-3 rounded-xl border border-slate-200 text-slate-600">Cancelar</button>
+        </div>
+        <p class="text-sm text-red-600" x-show="error" x-text="error"></p>
+    </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+function cardManager() {
+    return {
+        isAdding: false,
+        isSubmitting: false,
+        error: '',
+        stripe: null,
+        elements: null,
+        startAdd() {
+            this.isAdding = true;
+            this.error = '';
+            if (!this.stripe) {
+                this.stripe = Stripe('{{ stripe_public_key }}');
+            }
+            this.loadSetupIntent();
+        },
+        cancelAdd() {
+            this.isAdding = false;
+            this.error = '';
+            if (this.elements) {
+                this.elements = null;
+                document.getElementById('payment-element').innerHTML = '';
+            }
+        },
+        async loadSetupIntent() {
+            try {
+                const res = await fetch('{% url "portal_get_stripe_setup" %}');
+                const data = await res.json();
+                if (!res.ok) {
+                    this.error = data.error || 'No se pudo iniciar el guardado.';
+                    return;
+                }
+                const appearance = { theme: 'stripe' };
+                this.elements = this.stripe.elements({ clientSecret: data.client_secret, appearance });
+                const paymentElement = this.elements.create('payment');
+                paymentElement.mount('#payment-element');
+            } catch (e) {
+                this.error = 'Error de red al iniciar la tarjeta.';
+            }
+        },
+        async confirmCard() {
+            if (this.isSubmitting) return;
+            this.isSubmitting = true;
+            this.error = '';
+            try {
+                const { error } = await this.stripe.confirmSetup({
+                    elements: this.elements,
+                    confirmParams: { return_url: window.location.href },
+                    redirect: 'if_required'
+                });
+                if (error) {
+                    this.error = error.message || 'No se pudo guardar la tarjeta.';
+                } else {
+                    window.location.reload();
+                }
+            } catch (e) {
+                this.error = 'Error al guardar la tarjeta.';
+            } finally {
+                this.isSubmitting = false;
+            }
+        },
+        async deleteCard(id) {
+            if (!confirm('¿Eliminar esta tarjeta?')) return;
+            try {
+                const res = await fetch(`{% url 'portal_delete_payment_method' 'pm_placeholder' %}`.replace('pm_placeholder', id), {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': this.getCsrfToken() }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'No se pudo eliminar.');
+                }
+            } catch (e) {
+                alert('Error de red al eliminar.');
+            }
+        },
+        getCsrfToken() {
+            const match = document.cookie.match(/csrftoken=([^;]+)/);
+            return match ? match[1] : '';
+        }
+    }
+}
+</script>
+{% endblock %}

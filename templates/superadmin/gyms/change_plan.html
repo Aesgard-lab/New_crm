@@ -1,0 +1,61 @@
+{% extends 'superadmin/base.html' %}
+
+{% block header %}Cambiar Plan de Suscripción{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-white mb-4">Seleccionar Nuevo Plan para {{ gym.name }}</h3>
+
+            <div class="space-y-4">
+                {% for plan in plans %}
+                <label
+                    class="relative flex items-start p-4 cursor-pointer bg-gray-900/50 rounded-lg border border-gray-800 hover:border-indigo-500 hover:bg-gray-800 transition">
+                    <div class="min-w-0 flex-1 text-sm">
+                        <div class="font-medium text-white flex items-center justify-between">
+                            {{ plan.name }}
+                            <span class="text-indigo-400 font-bold">{{ plan.price_monthly }}€ / mes</span>
+                        </div>
+                        <p class="text-gray-400 mt-1">{{ plan.description }}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            {% for module in plan.get_enabled_modules %}
+                            <span
+                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-700 text-gray-300">
+                                {{ module }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="ml-3 flex items-center h-5">
+                        <input type="radio" name="plan" value="{{ plan.id }}" class="sr-only peer" {% if
+                            gym.subscription and gym.subscription.plan.id==plan.id %}checked{% endif %}>
+                        <div
+                            class="peer-checked:border-indigo-500 peer-checked:bg-indigo-600 w-4 h-4 rounded-full border-2 border-gray-600 flex items-center justify-center">
+                            <div
+                                class="w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity">
+                            </div>
+                        </div>
+                    </div>
+                </label>
+                {% empty %}
+                <p class="text-gray-400 text-center py-4">No hay planes activos disponibles.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'superadmin:gym_detail' gym.id %}"
+                class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-lg shadow-indigo-500/20 transition">
+                Guardar Cambios
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

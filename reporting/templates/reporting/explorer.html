@@ -3,6 +3,7 @@
 {% block page_title %}Audiencias y Reportes{% endblock %}
 
 {% block content %}
+<div style="background: #ff0; color: #000; font-size: 20px; padding: 16px; text-align: center;">DEBUG: ESTÁS VIENDO EL TEMPLATE reporting/explorer.html</div>
 <div class="flex flex-col h-[calc(100vh-120px)]" x-data="audienceExplorer">
 
     <!-- HEADER -->
@@ -18,14 +19,14 @@
             </div>
         </div>
         <div class="flex gap-3">
-            <button
+            <a href="{% url 'export_clients_csv' %}?{{ request.GET.urlencode }}"
                 class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
                 Exportar CSV
-            </button>
+            </a>
             <button
                 class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,12 +60,152 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Estado</label>
                     <select name="status" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
-                        <option value="all" {% if filters.status=='all' %}selected{% endif %}>Todos</option>
-                        <option value="ACTIVE" {% if filters.status=='ACTIVE' %}selected{% endif %}>Activo</option>
-                        <option value="INACTIVE" {% if filters.status=='INACTIVE' %}selected{% endif %}>Inactivo
+                        <option value="all" {% if filters.status == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="ACTIVE" {% if filters.status == 'ACTIVE' %}selected{% endif %}>Activo</option>
+                        <option value="INACTIVE" {% if filters.status == 'INACTIVE' %}selected{% endif %}>Inactivo
                         </option>
-                        <option value="LEAD" {% if filters.status=='LEAD' %}selected{% endif %}>Prospecto</option>
+                        <option value="LEAD" {% if filters.status == 'LEAD' %}selected{% endif %}>Prospecto</option>
+                        <option value="PAUSED" {% if filters.status == 'PAUSED' %}selected{% endif %}>Excedencia</option>
+                        <option value="BLOCKED" {% if filters.status == 'BLOCKED' %}selected{% endif %}>Bloqueado</option>
                     </select>
+                </div>
+
+                <!-- Company -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de cliente</label>
+                    <select name="company" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.company == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="company" {% if filters.company == 'company' %}selected{% endif %}>Solo empresas</option>
+                        <option value="individual" {% if filters.company == 'individual' %}selected{% endif %}>Solo particulares</option>
+                    </select>
+                </div>
+
+                <!-- Tipo de cuota (MembershipPlan) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de cuota</label>
+                    <select name="membership_plan" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.membership_plan == 'all' %}selected{% endif %}>Todas</option>
+                        {% for plan in membership_plans %}
+                        <option value="{{ plan.id }}" {% if filters.membership_plan == plan.id|stringformat:'s' %}selected{% endif %}>{{ plan.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Servicio -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Servicio</label>
+                    <select name="service" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.service == 'all' %}selected{% endif %}>Todos</option>
+                        {% for service in services %}
+                        <option value="{{ service.id }}" {% if filters.service == service.id|stringformat:'s' %}selected{% endif %}>{{ service.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Producto -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Producto</label>
+                    <select name="product" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.product == 'all' %}selected{% endif %}>Todos</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" {% if filters.product == product.id|stringformat:'s' %}selected{% endif %}>{{ product.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Origen de alta -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Origen de alta</label>
+                    <select name="created_from" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.created_from == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="app" {% if filters.created_from == 'app' %}selected{% endif %}>App</option>
+                        <option value="backoffice" {% if filters.created_from == 'backoffice' %}selected{% endif %}>Backoffice</option>
+                    </select>
+                </div>
+
+                <!-- Género -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Género</label>
+                    <select name="gender" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="M" {% if filters.gender == 'M' %}selected{% endif %}>Masculino</option>
+                        <option value="F" {% if filters.gender == 'F' %}selected{% endif %}>Femenino</option>
+                        <option value="O" {% if filters.gender == 'O' %}selected{% endif %}>Otro</option>
+                        <option value="X" {% if filters.gender == 'X' %}selected{% endif %}>No especificado</option>
+                    </select>
+                </div>
+
+                <!-- Edad (rango) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Edad</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" name="age_min" min="0" max="120" value="{{ filters.age_min }}" placeholder="Desde" class="w-full rounded-lg border-slate-200 text-xs" />
+                        <input type="number" name="age_max" min="0" max="120" value="{{ filters.age_max }}" placeholder="Hasta" class="w-full rounded-lg border-slate-200 text-xs" />
+                    </div>
+                </div>
+
+                <!-- Tipo de cuota (MembershipPlan) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de cuota</label>
+                    <select name="membership_plan" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.membership_plan == 'all' %}selected{% endif %}>Todas</option>
+                        {% for plan in membership_plans %}
+                        <option value="{{ plan.id }}" {% if filters.membership_plan == plan.id|stringformat:'s' %}selected{% endif %}>{{ plan.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Servicio -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Servicio</label>
+                    <select name="service" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.service == 'all' %}selected{% endif %}>Todos</option>
+                        {% for service in services %}
+                        <option value="{{ service.id }}" {% if filters.service == service.id|stringformat:'s' %}selected{% endif %}>{{ service.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Producto -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Producto</label>
+                    <select name="product" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.product == 'all' %}selected{% endif %}>Todos</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" {% if filters.product == product.id|stringformat:'s' %}selected{% endif %}>{{ product.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Origen de alta -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Origen de alta</label>
+                    <select name="created_from" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.created_from == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="app" {% if filters.created_from == 'app' %}selected{% endif %}>App</option>
+                        <option value="backoffice" {% if filters.created_from == 'backoffice' %}selected{% endif %}>Backoffice</option>
+                    </select>
+                </div>
+
+                <!-- Género -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Género</label>
+                    <select name="gender" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500">
+                        <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>Todos</option>
+                        <option value="M" {% if filters.gender == 'M' %}selected{% endif %}>Masculino</option>
+                        <option value="F" {% if filters.gender == 'F' %}selected{% endif %}>Femenino</option>
+                        <option value="O" {% if filters.gender == 'O' %}selected{% endif %}>Otro</option>
+                        <option value="X" {% if filters.gender == 'X' %}selected{% endif %}>No especificado</option>
+                    </select>
+                </div>
+
+                <!-- Edad (rango) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Edad</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" name="age_min" min="0" max="120" value="{{ filters.age_min }}" placeholder="Desde" class="w-full rounded-lg border-slate-200 text-xs" />
+                        <input type="number" name="age_max" min="0" max="120" value="{{ filters.age_max }}" placeholder="Hasta" class="w-full rounded-lg border-slate-200 text-xs" />
+                    </div>
                 </div>
 
                 <!-- Date Range -->
@@ -78,15 +219,40 @@
                     </div>
                 </div>
 
+                {% if custom_fields %}
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Campos personalizados</label>
+                    <div class="space-y-2">
+                        {% for field in custom_fields %}
+                        <div>
+                            <label class="text-xs text-slate-500">{{ field.name }}</label>
+                            {% if field.field_type == 'TOGGLE' %}
+                                <select name="cf_{{ field.slug }}" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500 mt-1">
+                                    <option value="">Todos</option>
+                                    <option value="true" {% if field.selected_value == 'true' %}selected{% endif %}>Sí</option>
+                                    <option value="false" {% if field.selected_value == 'false' %}selected{% endif %}>No</option>
+                                </select>
+                            {% else %}
+                                <select name="cf_{{ field.slug }}" class="w-full rounded-lg border-slate-200 text-sm focus:ring-indigo-500 mt-1">
+                                    <option value="">Todos</option>
+                                    {% for option in field.options.all %}
+                                    <option value="{{ option.value }}" {% if field.selected_value == option.value %}selected{% endif %}>{{ option.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Tags -->
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Etiquetas</label>
                     <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
                         {% for tag in tags %}
                         <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                            <input type="checkbox" name="tags" value="{{ tag.id }}" {% if tag.id in
-                                filters.selected_tags %}checked{% endif %}
-                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <input type="checkbox" name="tags" value="{{ tag.id }}" {% if tag.id in filters.selected_tags %}checked{% endif %} class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                             <span class="flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full" style="background-color: {{ tag.color }}"></span>
                                 {{ tag.name }}
@@ -131,6 +297,7 @@
                             <th class="px-6 py-4">Estado</th>
                             <th class="px-6 py-4">Alta</th>
                             <th class="px-6 py-4">Ultima Visita</th>
+                            <th class="px-6 py-4">Campos</th>
                             <th class="px-6 py-4 text-right">Gasto Total</th>
                             <th class="px-6 py-4"></th>
                         </tr>
@@ -160,6 +327,9 @@
                                     {% else %}bg-slate-50 text-slate-500 border-slate-100{% endif %}">
                                     {{ client.get_status_display }}
                                 </span>
+                                {% if client.is_company_client %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 ml-2">Empresa</span>
+                                {% endif %}
                             </td>
                             <td class="px-6 py-3 text-xs">{{ client.created_at|date:"d/m/Y" }}</td>
                             <td class="px-6 py-3 text-xs text-slate-400">
@@ -169,9 +339,17 @@
                                 Nunca
                                 {% endif %}
                             </td>
+                            <td class="px-6 py-3">
+                                <div class="flex flex-wrap gap-1">
+                                    {% for slug, value in client.custom_field_values.items %}
+                                    <span class="text-[10px] px-2 py-0.5 rounded-md border bg-slate-50 border-slate-200 text-slate-700">{{ value }}</span>
+                                    {% empty %}
+                                    <span class="text-xs text-slate-400">Sin datos</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
                             <td class="px-6 py-3 text-right font-mono text-slate-900">
-                                <!-- Mock spend, or real if available -->
-                                --
+                                {% if client.total_spent %}{{ client.total_spent|floatformat:2 }} €{% else %}0.00 €{% endif %}
                             </td>
                             <td class="px-6 py-3 text-right">
                                 <button
@@ -186,7 +364,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="p-12 text-center text-slate-400">
+                            <td colspan="7" class="p-12 text-center text-slate-400">
                                 No se encontraron clientes con estos filtros.
                             </td>
                         </tr>

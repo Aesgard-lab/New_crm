@@ -1,0 +1,193 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Superadmin{% endblock %} | New CRM SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0f172a',
+                            800: '#1e293b',
+                            700: '#334155',
+                        },
+                        brand: {
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-950 text-slate-200 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
+            <div class="h-16 flex items-center px-6 border-b border-gray-800">
+                <div class="font-bold text-xl tracking-tight text-white">
+                    <span class="text-indigo-500">SaaS</span> Admin
+                </div>
+            </div>
+
+            <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">General</div>
+
+                <a href="{% url 'superadmin:dashboard' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if request.resolver_match.url_name == 'dashboard' %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    Dashboard
+                </a>
+
+                <div class="mt-8 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Gestión</div>
+
+                <a href="{% url 'superadmin:gym_list' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'gyms' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Gimnasios
+                </a>
+
+                <a href="{% url 'superadmin:franchise_list' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'franchises' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Franquicias
+                </a>
+
+                <div class="mt-8 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Facturación
+                </div>
+
+                <a href="{% url 'superadmin:plan_list' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'plans' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Planes
+                </a>
+
+                <a href="{% url 'superadmin:billing_config' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'billing-config' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configuración
+                </a>
+
+                <div class="mt-8 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Seguridad</div>
+
+                <a href="{% url 'superadmin:audit_logs' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'audit-logs' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Audit Logs
+                </a>
+
+                <div class="mt-8 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Mantenimiento
+                </div>
+
+                <a href="{% url 'superadmin:system_status' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'system' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.066 2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Estado del Sistema
+                </a>
+            </nav>
+
+            <div class="border-t border-gray-800 p-4">
+                <a href="/" class="flex items-center text-gray-400 hover:text-white">
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span class="text-sm font-medium">Volver al Backoffice</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-black">
+            <header
+                class="h-16 flex items-center justify-between px-8 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 border-b border-gray-800">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">{% block header %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/admin/" target="_blank" class="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-medium rounded-lg transition border border-gray-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Admin Django
+                    </a>
+                    <div class="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+                        <span class="text-xs font-medium text-indigo-400">Superadmin Mode</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-8">
+                {% if messages %}
+                <div class="mb-6 space-y-2">
+                    {% for message in messages %}
+                    <div
+                        class="px-4 py-3 rounded-lg flex items-center {% if message.tags == 'success' %}bg-green-500/10 text-green-400 border border-green-500/20{% elif message.tags == 'error' %}bg-red-500/10 text-red-400 border border-red-500/20{% else %}bg-blue-500/10 text-blue-400 border border-blue-500/20{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

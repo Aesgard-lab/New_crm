@@ -1,0 +1,283 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Reporte de Valoraciones</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Análisis de reviews de clases</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Total Reviews</h3>
+            <p class="text-3xl font-bold text-slate-900">{{ total_reviews }}</p>
+        </div>
+        
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Rating Promedio Instructor</h3>
+            <p class="text-3xl font-bold text-amber-500">{{ avg_instructor_rating }}/5 ⭐</p>
+        </div>
+        
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Rating Promedio Clase</h3>
+            <p class="text-3xl font-bold text-indigo-500">{{ avg_class_rating }}/5 ⭐</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <!-- Staff Filter -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Instructor</label>
+                <select name="staff" class="w-full rounded-xl border-slate-200">
+                    <option value="">Todos</option>
+                    {% for staff_member in all_staff %}
+                    <option value="{{ staff_member.id }}" {% if filters.staff_id == staff_member.id|stringformat:"s" %}selected{% endif %}>
+                        {{ staff_member.user.first_name }} {{ staff_member.user.last_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Period Filter -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Período</label>
+                <select name="period" id="period-select" class="w-full rounded-xl border-slate-200">
+                    <option value="day" {% if filters.period == 'day' %}selected{% endif %}>Hoy</option>
+                    <option value="week" {% if filters.period == 'week' %}selected{% endif %}>Última Semana</option>
+                    <option value="month" {% if filters.period == 'month' %}selected{% endif %}>Este Mes</option>
+                    <option value="custom" {% if filters.period == 'custom' %}selected{% endif %}>Personalizado</option>
+                </select>
+            </div>
+            
+            <!-- Custom Date Range (shown when period=custom) -->
+            <div id="date-from-container" style="display: {% if filters.period == 'custom' %}block{% else %}none{% endif %}">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Desde</label>
+                <input type="date" name="date_from" value="{{ filters.date_from }}" class="w-full rounded-xl border-slate-200">
+            </div>
+            
+            <div id="date-to-container" style="display: {% if filters.period == 'custom' %}block{% else %}none{% endif %}">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Hasta</label>
+                <input type="date" name="date_to" value="{{ filters.date_to }}" class="w-full rounded-xl border-slate-200">
+            </div>
+            
+            <!-- Min Rating Filter -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Rating Mínimo</label>
+                <select name="min_rating" class="w-full rounded-xl border-slate-200">
+                    <option value="">Todos</option>
+                    <option value="1" {% if filters.min_rating == '1' %}selected{% endif %}>⭐ 1+</option>
+                    <option value="2" {% if filters.min_rating == '2' %}selected{% endif %}>⭐ 2+</option>
+                    <option value="3" {% if filters.min_rating == '3' %}selected{% endif %}>⭐ 3+</option>
+                    <option value="4" {% if filters.min_rating == '4' %}selected{% endif %}>⭐ 4+</option>
+                    <option value="5" {% if filters.min_rating == '5' %}selected{% endif %}>⭐ 5</option>
+                </select>
+            </div>
+            
+            <div class="flex items-end gap-2">
+                <button type="submit" class="flex-1 bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white px-4 py-2 rounded-xl font-bold transition-colors">
+                    Filtrar
+                </button>
+                <a href="{% url 'export_reviews_csv' %}?{{ request.GET.urlencode }}" 
+                   class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold transition-colors">
+                    📥 CSV
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Staff Rankings -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h3 class="font-bold text-slate-800 mb-4">🏆 Ranking de Instructores</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-500 font-medium">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold uppercase text-xs">Instructor</th>
+                        <th class="px-4 py-3 text-center font-semibold uppercase text-xs">Reviews</th>
+                        <th class="px-4 py-3 text-center font-semibold uppercase text-xs">Rating Instructor</th>
+                        <th class="px-4 py-3 text-center font-semibold uppercase text-xs">Rating Clase</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for stat in staff_stats %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 font-medium text-slate-700">
+                            {{ stat.session__instructor__user__first_name }} {{ stat.session__instructor__user__last_name }}
+                        </td>
+                        <td class="px-4 py-3 text-center text-slate-600">{{ stat.total_reviews }}</td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="font-bold {% if stat.avg_instructor_rating >= 4.5 %}text-emerald-600{% elif stat.avg_instructor_rating >= 4.0 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                                {{ stat.avg_instructor_rating|floatformat:2 }} ⭐
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="font-bold text-indigo-600">
+                                {{ stat.avg_class_rating|floatformat:2 }} ⭐
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-4 text-center text-slate-400">No hay datos de staff</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Most Common Tags -->
+    {% if tag_counts %}
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h3 class="font-bold text-slate-800 mb-4">🏷️ Etiquetas Más Comunes</h3>
+        <div class="flex flex-wrap gap-2">
+            {% for tag, count in tag_counts %}
+            <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium">
+                {{ tag }} <span class="text-indigo-400">({{ count }})</span>
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Reviews Table -->
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800">Reviews Recientes</h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-500 font-medium">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Fecha</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Cliente</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Actividad</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Instructor</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Rating Instructor</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Rating Clase</th>
+                        <th class="px-6 py-3 text-left font-semibold uppercase text-xs">Comentario</th>
+                        <th class="px-6 py-3 text-center font-semibold uppercase text-xs">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for review in reviews %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 text-slate-600 text-xs">
+                            {{ review.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-6 py-3 font-medium text-slate-700">
+                            {{ review.client.first_name }} {{ review.client.last_name }}
+                        </td>
+                        <td class="px-6 py-3 text-slate-600">
+                            {{ review.session.activity.name }}
+                        </td>
+                        <td class="px-6 py-3 text-slate-600">
+                            {{ review.session.instructor.user.first_name }} {{ review.session.instructor.user.last_name }}
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="font-bold text-amber-600">{{ review.instructor_rating }} ⭐</span>
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="font-bold text-indigo-600">{{ review.class_rating }} ⭐</span>
+                        </td>
+                        <td class="px-6 py-3 text-slate-600 max-w-xs truncate">
+                            {{ review.comment|default:"Sin comentario" }}
+                            {% if review.tags %}
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                {% for tag in review.tags %}
+                                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <div class="flex flex-col gap-1 items-center">
+                                <button onclick="toggleApproval({{ review.id }})" 
+                                        class="approval-btn-{{ review.id }} text-xs px-2 py-1 rounded {% if review.is_approved %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">
+                                    {% if review.is_approved %}✓ Aprobado{% else %}✗ Pendiente{% endif %}
+                                </button>
+                                <button onclick="togglePublic({{ review.id }})" 
+                                        class="public-btn-{{ review.id }} text-xs px-2 py-1 rounded {% if review.is_public %}bg-blue-100 text-blue-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                                    {% if review.is_public %}👁️ Público{% else %}🔒 Privado{% endif %}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-8 text-center text-slate-400">
+                            No hay reviews con los filtros seleccionados
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Settings Link -->
+    <div class="text-center">
+        <a href="{% url 'review_settings' %}" 
+           class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-colors">
+            ⚙️ Configurar Sistema de Reviews
+        </a>
+    </div>
+</div>
+
+<script>
+// Show/hide custom date fields based on period selection
+document.getElementById('period-select').addEventListener('change', function() {
+    const isCustom = this.value === 'custom';
+    document.getElementById('date-from-container').style.display = isCustom ? 'block' : 'none';
+    document.getElementById('date-to-container').style.display = isCustom ? 'block' : 'none';
+});
+
+// Toggle approval status
+function toggleApproval(reviewId) {
+    fetch(`/activities/reviews/${reviewId}/approve/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const btn = document.querySelector(`.approval-btn-${reviewId}`);
+        if (data.is_approved) {
+            btn.className = 'approval-btn-' + reviewId + ' text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700';
+            btn.textContent = '✓ Aprobado';
+        } else {
+            btn.className = 'approval-btn-' + reviewId + ' text-xs px-2 py-1 rounded bg-rose-100 text-rose-700';
+            btn.textContent = '✗ Pendiente';
+        }
+    });
+}
+
+// Toggle public visibility
+function togglePublic(reviewId) {
+    fetch(`/activities/reviews/${reviewId}/public/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const btn = document.querySelector(`.public-btn-${reviewId}`);
+        if (data.is_public) {
+            btn.className = 'public-btn-' + reviewId + ' text-xs px-2 py-1 rounded bg-blue-100 text-blue-700';
+            btn.textContent = '👁️ Público';
+        } else {
+            btn.className = 'public-btn-' + reviewId + ' text-xs px-2 py-1 rounded bg-slate-100 text-slate-600';
+            btn.textContent = '🔒 Privado';
+        }
+    });
+}
+</script>
+{% endblock %}
