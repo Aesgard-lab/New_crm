@@ -278,6 +278,31 @@ def client_detail(request, client_id):
     # Document Templates for selector
     document_templates = DocumentTemplate.objects.filter(gym=gym, is_active=True).order_by('name')
 
+    # Access Control - Historial de accesos físicos (entrada/salida)
+    try:
+        from access_control.models import AccessLog, ClientAccessCredential
+        access_logs = AccessLog.objects.filter(
+            client=client
+        ).select_related('device', 'device__zone').order_by('-timestamp')[:50]
+        
+        # Credenciales de acceso del cliente
+        access_credentials = ClientAccessCredential.objects.filter(
+            client=client, is_active=True
+        ).order_by('-created_at')
+    except:
+        access_logs = []
+        access_credentials = []
+
+    # Taquillas asignadas al cliente
+    try:
+        from lockers.models import LockerAssignment
+        locker_assignments = LockerAssignment.objects.filter(
+            client=client,
+            status='ACTIVE'
+        ).select_related('locker', 'locker__zone').order_by('-start_date')
+    except:
+        locker_assignments = []
+
     context = {
         'client': client,
         'title': f'{client.first_name} {client.last_name}',
@@ -298,6 +323,9 @@ def client_detail(request, client_id):
         'custom_fields': custom_fields,
         'custom_field_options': custom_field_options,
         'custom_field_values': custom_field_values,
+        'access_logs': access_logs,
+        'access_credentials': access_credentials,
+        'locker_assignments': locker_assignments,
     }
     return render(request, "backoffice/clients/detail.html", context)
 

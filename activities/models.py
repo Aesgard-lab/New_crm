@@ -57,6 +57,13 @@ class Activity(models.Model):
         help_text=_("Si se activa, la actividad aparecerá en el horario público de la web/app")
     )
     
+    # Spot Booking - Reserva de puesto específico
+    allow_spot_booking = models.BooleanField(
+        _("Permitir reserva de puesto"),
+        default=False,
+        help_text=_("Permite a los clientes elegir un puesto/máquina específico al reservar")
+    )
+    
     eligible_staff = models.ManyToManyField(StaffProfile, related_name='qualified_activities', blank=True)
     policy = models.ForeignKey('ActivityPolicy', on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')
 
@@ -204,6 +211,14 @@ class ActivitySessionBooking(models.Model):
 
     session = models.ForeignKey(ActivitySession, on_delete=models.CASCADE, related_name='bookings')
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='bookings')
+    
+    # Spot booking - Puesto reservado
+    spot_number = models.PositiveIntegerField(
+        _("Número de puesto"),
+        null=True,
+        blank=True,
+        help_text=_("Número de puesto/máquina reservado (si la actividad lo permite)")
+    )
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED')
     attendance_status = models.CharField(

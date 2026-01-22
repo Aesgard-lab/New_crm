@@ -1,0 +1,213 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Asignar Taquilla a {{ client.first_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'clients' %}" class="text-[var(--brand-color)] hover:underline">Clientes</a>
+<span class="mx-2 text-slate-400">/</span>
+<a href="{% url 'client_detail' client.id %}" class="text-[var(--brand-color)] hover:underline">{{ client.first_name }} {{ client.last_name }}</a>
+<span class="mx-2 text-slate-400">/</span>
+Asignar Taquilla
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'client_detail' client.id %}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+        </svg>
+    </div>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">Asignar Taquilla</h1>
+        <p class="text-sm text-slate-500">{{ client.first_name }} {{ client.last_name }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-xl" x-data="assignLocker()">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
+        <!-- Info del cliente -->
+        <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg">
+                {{ client.first_name|slice:":1" }}{{ client.last_name|slice:":1" }}
+            </div>
+            <div>
+                <p class="font-medium text-slate-800">{{ client.first_name }} {{ client.last_name }}</p>
+                <p class="text-sm text-slate-500">{{ client.email }}</p>
+            </div>
+        </div>
+        
+        <!-- Selección de zona -->
+        <div>
+            <label for="zone" class="block text-sm font-medium text-slate-700 mb-1">
+                Zona de taquillas *
+            </label>
+            <select name="zone" id="zone" x-model="selectedZone" @change="loadLockers()"
+                    class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    required>
+                <option value="">Selecciona una zona...</option>
+                {% for zone in zones %}
+                <option value="{{ zone.id }}">{{ zone.name }} ({{ zone.available_lockers }} disponibles)</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <!-- Selección de taquilla -->
+        <div x-show="selectedZone">
+            <label for="locker" class="block text-sm font-medium text-slate-700 mb-1">
+                Taquilla *
+            </label>
+            <div x-show="loadingLockers" class="text-sm text-slate-500 py-2">
+                <svg class="animate-spin h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Cargando taquillas...
+            </div>
+            <template x-if="!loadingLockers && availableLockers.length > 0">
+                <div class="grid grid-cols-4 gap-2">
+                    <template x-for="locker in availableLockers" :key="locker.id">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="locker" :value="locker.id" class="sr-only peer" x-model="selectedLocker">
+                            <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 hover:border-indigo-300 transition-colors text-center">
+                                <div class="font-bold text-slate-800" x-text="locker.number"></div>
+                                <div class="text-xs text-slate-500" x-text="locker.size"></div>
+                                <div class="text-xs text-indigo-600 font-medium" x-text="locker.price ? locker.price + '€/mes' : 'Gratis'"></div>
+                            </div>
+                        </label>
+                    </template>
+                </div>
+            </template>
+            <template x-if="!loadingLockers && availableLockers.length === 0">
+                <p class="text-amber-600 text-sm py-2">No hay taquillas disponibles en esta zona.</p>
+            </template>
+        </div>
+        
+        <!-- Fechas -->
+        <div class="grid grid-cols-2 gap-4" x-show="selectedLocker">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha inicio *
+                </label>
+                <input type="date" name="start_date" id="start_date" 
+                       value="{% now 'Y-m-d' %}"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       required>
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha fin
+                </label>
+                <input type="date" name="end_date" id="end_date" 
+                       :disabled="indefinite"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors disabled:bg-slate-100">
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2" x-show="selectedLocker">
+            <input type="checkbox" id="indefinite" x-model="indefinite"
+                   class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+            <label for="indefinite" class="text-sm text-slate-600">Asignación indefinida</label>
+        </div>
+        
+        <!-- Precio y fianza -->
+        <div class="grid grid-cols-2 gap-4" x-show="selectedLocker">
+            <div>
+                <label for="monthly_price" class="block text-sm font-medium text-slate-700 mb-1">
+                    Precio mensual (€)
+                </label>
+                <input type="number" name="monthly_price" id="monthly_price" 
+                       :value="selectedLockerPrice" step="0.01" min="0"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+            </div>
+            <div>
+                <label for="deposit" class="block text-sm font-medium text-slate-700 mb-1">
+                    Fianza (€)
+                </label>
+                <input type="number" name="deposit" id="deposit" 
+                       value="" step="0.01" min="0"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+            </div>
+        </div>
+        
+        <!-- Llave -->
+        <div class="flex items-center gap-2" x-show="selectedLocker">
+            <input type="checkbox" id="key_delivered" name="key_delivered"
+                   class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+            <label for="key_delivered" class="text-sm text-slate-600">Llave entregada al cliente</label>
+        </div>
+        
+        <!-- Notas -->
+        <div x-show="selectedLocker">
+            <label for="notes" class="block text-sm font-medium text-slate-700 mb-1">
+                Notas
+            </label>
+            <textarea name="notes" id="notes" rows="2"
+                      class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                      placeholder="Notas opcionales..."></textarea>
+        </div>
+        
+        <!-- Acciones -->
+        <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+            <a href="{% url 'client_detail' client.id %}" class="btn-white px-6 py-2.5">Cancelar</a>
+            <button type="submit" class="btn-brand px-6 py-2.5" :disabled="!selectedLocker">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Asignar Taquilla
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+function assignLocker() {
+    return {
+        selectedZone: '',
+        selectedLocker: null,
+        selectedLockerPrice: 0,
+        availableLockers: [],
+        loadingLockers: false,
+        indefinite: false,
+        
+        async loadLockers() {
+            if (!this.selectedZone) {
+                this.availableLockers = [];
+                return;
+            }
+            
+            this.loadingLockers = true;
+            this.selectedLocker = null;
+            
+            try {
+                const response = await fetch(`{% url 'lockers:api_available_lockers' %}?zone_id=${this.selectedZone}`);
+                const data = await response.json();
+                this.availableLockers = data.lockers || [];
+            } catch (error) {
+                console.error('Error loading lockers:', error);
+                this.availableLockers = [];
+            }
+            
+            this.loadingLockers = false;
+        },
+        
+        init() {
+            this.$watch('selectedLocker', (value) => {
+                if (value) {
+                    const locker = this.availableLockers.find(l => l.id == value);
+                    this.selectedLockerPrice = locker ? locker.price : 0;
+                }
+            });
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -36,6 +36,8 @@ urlpatterns = [
     path("routines/", include("routines.urls")),
     path("gamification/", include(("gamification.urls", "gamification"), namespace="gamification")),
     path("providers/", include(("providers.urls", "providers"), namespace="providers")),
+    path("access/", include(("access_control.urls", "access_control"), namespace="access_control")),
+    path("lockers/", include(("lockers.urls", "lockers"), namespace="lockers")),
 
     # Member Portal (App Socios)
     path("portal/", include("clients.urls")),

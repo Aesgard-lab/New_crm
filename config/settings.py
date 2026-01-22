@@ -60,6 +60,8 @@ INSTALLED_APPS = [
     "saas_billing",  # SaaS billing and subscriptions
     "superadmin",  # Superadmin panel
     "api",
+    "access_control",  # Control de acceso con tornos/puertas
+    "lockers",  # Gestión de taquillas
 ]
 
 # --------------------------------------------------

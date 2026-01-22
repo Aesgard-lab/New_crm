@@ -33,7 +33,7 @@ class ActivityCategoryForm(forms.ModelForm):
 class ActivityForm(forms.ModelForm):
     class Meta:
         model = Activity
-        fields = ['name', 'category', 'description', 'image', 'color', 'duration', 'base_capacity', 'intensity_level', 'video_url', 'eligible_staff', 'policy', 'qr_checkin_enabled', 'is_visible_online']
+        fields = ['name', 'category', 'description', 'image', 'color', 'duration', 'base_capacity', 'intensity_level', 'video_url', 'eligible_staff', 'policy', 'qr_checkin_enabled', 'is_visible_online', 'allow_spot_booking']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
             'category': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
@@ -47,6 +47,7 @@ class ActivityForm(forms.ModelForm):
             'policy': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'qr_checkin_enabled': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_visible_online': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'allow_spot_booking': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
         }
     
     propagate_to_gyms = forms.ModelMultipleChoiceField(

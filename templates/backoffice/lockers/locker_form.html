@@ -1,0 +1,118 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{% if locker %}Editar{% else %}Nueva{% endif %} Taquilla{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'lockers:dashboard' %}" class="text-[var(--brand-color)] hover:underline">Taquillas</a>
+<span class="mx-2 text-slate-400">/</span>
+<a href="{% url 'lockers:zone_detail' zone.id %}" class="text-[var(--brand-color)] hover:underline">{{ zone.name }}</a>
+<span class="mx-2 text-slate-400">/</span>
+{% if locker %}Editar Taquilla {{ locker.number }}{% else %}Nueva Taquilla{% endif %}
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'lockers:zone_detail' zone.id %}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">{% if locker %}Editar Taquilla {{ locker.number }}{% else %}Nueva Taquilla{% endif %}</h1>
+        <p class="text-sm text-slate-500">{{ zone.name }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-xl">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
+        <!-- Número y zona -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="id_number" class="block text-sm font-medium text-slate-700 mb-1">
+                    Número de taquilla *
+                </label>
+                <input type="text" name="number" id="id_number" 
+                       value="{{ locker.number|default:'' }}"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       placeholder="Ej: 101" required>
+            </div>
+            
+            <div>
+                <label for="id_size" class="block text-sm font-medium text-slate-700 mb-1">
+                    Tamaño *
+                </label>
+                <select name="size" id="id_size" 
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                    <option value="S" {% if locker.size == 'S' %}selected{% endif %}>Pequeña (S)</option>
+                    <option value="M" {% if locker.size == 'M' or not locker %}selected{% endif %}>Mediana (M)</option>
+                    <option value="L" {% if locker.size == 'L' %}selected{% endif %}>Grande (L)</option>
+                    <option value="XL" {% if locker.size == 'XL' %}selected{% endif %}>Extra Grande (XL)</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Precio y estado -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="id_monthly_price" class="block text-sm font-medium text-slate-700 mb-1">
+                    Precio mensual (€)
+                </label>
+                <input type="number" name="monthly_price" id="id_monthly_price" 
+                       value="{{ locker.monthly_price|default:'' }}" step="0.01" min="0"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       placeholder="Ej: 15.00">
+            </div>
+            
+            <div>
+                <label for="id_status" class="block text-sm font-medium text-slate-700 mb-1">
+                    Estado *
+                </label>
+                <select name="status" id="id_status" 
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                    <option value="available" {% if locker.status == 'available' or not locker %}selected{% endif %}>Disponible</option>
+                    <option value="maintenance" {% if locker.status == 'maintenance' %}selected{% endif %}>En mantenimiento</option>
+                    <option value="inactive" {% if locker.status == 'inactive' %}selected{% endif %}>Inactiva</option>
+                    {% if locker.status == 'occupied' %}
+                    <option value="occupied" selected disabled>Ocupada (liberar primero)</option>
+                    {% endif %}
+                </select>
+            </div>
+        </div>
+        
+        <!-- Notas -->
+        <div>
+            <label for="id_notes" class="block text-sm font-medium text-slate-700 mb-1">
+                Notas internas
+            </label>
+            <textarea name="notes" id="id_notes" rows="3"
+                      class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                      placeholder="Notas sobre la taquilla (opcional)">{{ locker.notes|default:'' }}</textarea>
+        </div>
+        
+        <!-- Acciones -->
+        <div class="flex items-center justify-between pt-6 border-t border-slate-100">
+            <div>
+                {% if locker %}
+                <a href="{% url 'lockers:locker_delete' locker.id %}" 
+                   class="text-red-600 hover:text-red-700 text-sm font-medium">
+                    Eliminar taquilla
+                </a>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'lockers:zone_detail' zone.id %}" class="btn-white px-6 py-2.5">Cancelar</a>
+                <button type="submit" class="btn-brand px-6 py-2.5">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    {% if locker %}Guardar Cambios{% else %}Crear Taquilla{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

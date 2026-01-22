@@ -27,7 +27,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="clientDetail">
+<div x-data="clientDetail">
 
     <!-- Modal de Alertas Emergentes -->
     <div x-show="showAlerts && alerts.length > 0" x-transition.opacity
@@ -88,208 +88,226 @@
         </div>
     </div>
 
-    <!-- Columna Izquierda: Perfil -->
-    <div class="space-y-6">
-        <!-- Card Principal -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-6 text-center">
-            <div class="relative w-24 h-24 mx-auto mb-4">
-                {% if client.photo %}
-                <img class="w-full h-full rounded-full object-cover border-4 border-slate-50"
-                    src="{{ client.photo.url }}">
-                {% else %}
-                <div
-                    class="w-full h-full rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl font-bold uppercase border-4 border-slate-50">
-                    {{ client.first_name|slice:":2" }}
-                </div>
-                {% endif %}
-
-                <div class="absolute bottom-0 right-0 w-6 h-6 rounded-full border-4 border-white
-                {% if client.status == 'ACTIVE' %}bg-emerald-500
-                {% elif client.status == 'INACTIVE' %}bg-slate-400
-                {% elif client.status == 'BLOCKED' %}bg-red-500
-                {% else %}bg-blue-500{% endif %}">
-                </div>
-            </div>
-
-            <h2 class="text-xl font-bold text-slate-900">
-                <a href="{% url 'client_edit' client.id %}"
-                    class="hover:text-[var(--brand-color)] transition-colors inline-flex items-center gap-2 group"
-                    title="Editar perfil">
-                    {{ client.first_name }} {{ client.last_name }}
-                    <svg class="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                </a>
-            </h2>
-            <p class="text-sm text-slate-500 mb-2">{{ client.email|default:"Sin email" }}</p>
-
-            <!-- Email Notifications Toggle -->
-            <div class="mb-4 flex justify-center">
-                <button @click="toggleEmailNotifications()"
-                    :class="emailNotifications ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-slate-100 text-slate-400 border-slate-300'"
-                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border font-medium transition-all hover:scale-105 active:scale-95"
-                    title="Click para cambiar">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                        </path>
-                    </svg>
-                    <span x-text="emailNotifications ? 'Recibe emails' : 'Emails desactivados'"></span>
-                </button>
-            </div>
-
-            {% if client.has_portal_access %}
-            <div class="mb-4">
-                <span
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-green-100 text-green-700 border border-green-300 font-medium"
-                    title="El cliente tiene acceso al portal">
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                            d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                    </svg>
-                    Tiene acceso al portal
-                </span>
-            </div>
-            {% endif %}
-
-            <div class="flex flex-wrap gap-2 justify-center mb-6">
-                <!-- Groups (Hierarchy) -->
-                {% for group in client.groups.all %}
-                <span class="text-[10px] px-2 py-0.5 rounded-md border bg-slate-100 text-slate-600 border-slate-200">
-                    {{ group }}
-                </span>
-                {% endfor %}
-
-                <!-- Tags -->
-                {% for tag in client.tags.all %}
-                <span class="text-[10px] px-2 py-0.5 rounded-md border"
-                    style="--tag-color: {{ tag.color }}; --tag-bg: {{ tag.color }}10; --tag-border: {{ tag.color }}30; background-color: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-color);">
-                    {{ tag.name }}
-                </span>
-                {% endfor %}
-            </div>
-
-            <div class="border-t border-slate-100 pt-4 text-left space-y-3">
-                <div>
-                    <span class="text-xs text-slate-400 block uppercase tracking-wide">Teléfono</span>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-medium text-slate-700">{{ client.phone_number|default:"--" }}</span>
-                        {% if client.phone_number %}
-                        <a href="https://wa.me/{{ client.phone_number|cut:' '|cut:'+'|cut:'-' }}" 
-                           target="_blank"
-                           title="Abrir WhatsApp con {{ client.first_name }}"
-                           class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors shadow-sm hover:shadow-md">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                            </svg>
-                        </a>
+    <!-- Layout Principal -->
+    <div class="space-y-6" x-data="{ activeTab: 'general' }">
+        
+        <!-- Cabecera del Cliente - Diseño Horizontal -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Foto y Estado -->
+                <div class="flex items-center gap-4 md:border-r md:border-slate-100 md:pr-6">
+                    <div class="relative flex-shrink-0">
+                        {% if client.photo %}
+                        <img class="w-20 h-20 rounded-2xl object-cover border-2 border-slate-100"
+                            src="{{ client.photo.url }}">
+                        {% else %}
+                        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 text-2xl font-bold uppercase">
+                            {{ client.first_name|slice:":2" }}
+                        </div>
                         {% endif %}
+                        <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-3 border-white
+                            {% if client.status == 'ACTIVE' %}bg-emerald-500
+                            {% elif client.status == 'INACTIVE' %}bg-slate-400
+                            {% elif client.status == 'BLOCKED' %}bg-red-500
+                            {% else %}bg-blue-500{% endif %}">
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <span class="text-xs text-slate-400 block uppercase tracking-wide">DNI</span>
-                    <span class="text-sm font-medium text-slate-700">{{ client.dni|default:"--" }}</span>
-                </div>
-                <div>
-                    <span class="text-xs text-slate-400 block uppercase tracking-wide">Fecha Nacimiento</span>
-                    <span class="text-sm font-medium text-slate-700">{{ client.birth_date|date:"d/m/Y"|default:"--" }}</span>
-                </div>
-                <div>
-                    <span class="text-xs text-slate-400 block uppercase tracking-wide">Dirección</span>
-                    <span class="text-sm font-medium text-slate-700">{{ client.address|default:"--" }}</span>
-                </div>
-                {% if custom_fields %}
-                {% for field in custom_fields %}
-                {% if field.display_value %}
-                <div>
-                    <span class="text-xs text-slate-400 block uppercase tracking-wide">{{ field.name }}</span>
-                    <span class="text-sm font-medium text-slate-700">{{ field.display_value }}</span>
-                </div>
-                {% endif %}
-                {% endfor %}
-                {% endif %}
-                <div>
-                    <span class="text-xs text-slate-400 block uppercase tracking-wide">Tipo de cliente</span>
-                    <span class="text-sm font-medium text-slate-700">{% if client.is_company_client %}Empresa{% else
-                        %}Particular{% endif %}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notas -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-6">
-            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Notas Internas</h3>
-            <div class="space-y-4 max-h-80 overflow-y-auto mb-4 pr-1">
-                {% for note in notes %}
-                <div class="p-3 rounded-xl border relative group
-                    {% if note.type == 'VIP' %}bg-amber-50 border-amber-200
-                    {% elif note.type == 'WARNING' %}bg-yellow-50 border-yellow-200
-                    {% elif note.type == 'DANGER' %}bg-red-50 border-red-200
-                    {% else %}bg-slate-50 border-slate-100{% endif %}">
-
-                    <p
-                        class="text-sm {% if note.type == 'DANGER' %}text-red-800{% else %}text-slate-600{% endif %} mb-1">
-                        {% if note.type == 'VIP' %}⭐ {% endif %}
-                        {% if note.type == 'DANGER' %}🔥 {% endif %}
-                        {{ note.text }}
-                    </p>
-                    <div class="text-xs text-slate-400 flex justify-between items-center mt-2">
-                        <span>{{ note.author.first_name|default:"Staff" }} · {{ note.created_at|date:"d M" }}</span>
-                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <!-- Edit Action -->
-                            <a href="{% url 'client_edit_note' note.id %}"
-                                class="text-slate-400 hover:text-[var(--brand-color)] transition-colors" title="Editar">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
-                                    </path>
-                                </svg>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <a href="{% url 'client_edit' client.id %}" class="hover:text-[var(--brand-color)] transition-colors">
+                                {{ client.first_name }} {{ client.last_name }}
                             </a>
-                            <!-- Delete Action -->
-                            <form action="{% url 'client_delete_note' note.id %}" method="post"
-                                onsubmit="return confirm('¿Borrar nota?');">
-                                {% csrf_token %}
-                                <button type="submit" class="text-red-400 hover:text-red-600 transition-colors"
-                                    title="Borrar">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                        </path>
-                                    </svg>
-                                </button>
-                            </form>
+                            {% if client.has_portal_access %}
+                            <span class="px-2 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded-full">Portal</span>
+                            {% endif %}
+                        </h2>
+                        <p class="text-sm text-slate-500">{{ client.email|default:"Sin email" }}</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            {% for tag in client.tags.all %}
+                            <span class="text-[10px] px-2 py-0.5 rounded-md border"
+                                style="background-color: {{ tag.color }}15; border-color: {{ tag.color }}40; color: {{ tag.color }};">
+                                {{ tag.name }}
+                            </span>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
-                {% empty %}
-                <div class="text-center text-slate-400 text-sm py-4">No hay notas</div>
-                {% endfor %}
-            </div>
 
-            <!-- Note Form -->
-            <form action="{% url 'client_add_note' client.id %}" method="post"
-                class="mt-2 pt-2 border-t border-slate-100">
-                {% csrf_token %}
-                {{ note_form.type }}
-                {{ note_form.text }}
-                <div class="flex items-center justify-between mt-2">
-                    <label class="flex items-center text-xs text-slate-500 gap-2">
-                        {{ note_form.is_popup }}
-                        Alert Popup
-                    </label>
-                    <button type="submit"
-                        class="bg-white text-slate-500 border border-slate-200 px-3 py-1 rounded-lg text-xs font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors">
-                        Añadir
+                <!-- Datos de Contacto - Grid Horizontal -->
+                <div class="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide block">Teléfono</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-sm font-medium text-slate-700">{{ client.phone_number|default:"--" }}</span>
+                            {% if client.phone_number %}
+                            <a href="https://wa.me/{{ client.phone_number|cut:' '|cut:'+'|cut:'-' }}" target="_blank"
+                               class="w-5 h-5 rounded bg-green-500 hover:bg-green-600 text-white flex items-center justify-center">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide block">DNI</span>
+                        <span class="text-sm font-medium text-slate-700">{{ client.dni|default:"--" }}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide block">Nacimiento</span>
+                        <span class="text-sm font-medium text-slate-700">{{ client.birth_date|date:"d/m/Y"|default:"--" }}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide block">Tipo</span>
+                        <span class="text-sm font-medium text-slate-700">{% if client.is_company_client %}Empresa{% else %}Particular{% endif %}</span>
+                    </div>
+                    {% if client.address %}
+                    <div class="col-span-2">
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide block">Dirección</span>
+                        <span class="text-sm font-medium text-slate-700">{{ client.address }}</span>
+                    </div>
+                    {% endif %}
+                    {% for field in custom_fields %}
+                    {% if field.display_value %}
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide block">{{ field.name }}</span>
+                        <span class="text-sm font-medium text-slate-700">{{ field.display_value }}</span>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Acciones Rápidas -->
+                <div class="flex md:flex-col gap-2 md:border-l md:border-slate-100 md:pl-6">
+                    <button @click="toggleEmailNotifications()"
+                        :class="emailNotifications ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs border font-medium transition-all hover:scale-105">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        <span x-text="emailNotifications ? 'Emails ON' : 'Emails OFF'"></span>
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Columna Derecha: Historial -->
-    <div class="lg:col-span-2 space-y-6">
+        <!-- Grid de 2 columnas: Notas + Pestañas de Contenido -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Columna Notas (1/4) -->
+            <div class="lg:col-span-1">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 sticky top-4">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center justify-between">
+                        Notas
+                        <span class="text-slate-400 font-normal">{{ notes|length }}</span>
+                    </h3>
+                    <div class="space-y-2 max-h-[400px] overflow-y-auto mb-3 pr-1">
+                        {% for note in notes %}
+                        <div class="p-2 rounded-lg border text-xs relative group
+                            {% if note.type == 'VIP' %}bg-amber-50 border-amber-200
+                            {% elif note.type == 'WARNING' %}bg-yellow-50 border-yellow-200
+                            {% elif note.type == 'DANGER' %}bg-red-50 border-red-200
+                            {% else %}bg-slate-50 border-slate-100{% endif %}">
+                            <p class="{% if note.type == 'DANGER' %}text-red-800{% else %}text-slate-600{% endif %}">
+                                {% if note.type == 'VIP' %}⭐{% endif %}{% if note.type == 'DANGER' %}🔥{% endif %}
+                                {{ note.text|truncatewords:15 }}
+                            </p>
+                            <div class="text-[10px] text-slate-400 mt-1 flex justify-between items-center">
+                                <span>{{ note.author.first_name|default:"Staff" }} · {{ note.created_at|date:"d/m" }}</span>
+                                <div class="flex gap-1 opacity-0 group-hover:opacity-100">
+                                    <a href="{% url 'client_edit_note' note.id %}" class="text-slate-400 hover:text-[var(--brand-color)]">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                    </a>
+                                    <form action="{% url 'client_delete_note' note.id %}" method="post" onsubmit="return confirm('¿Borrar?');" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-red-400 hover:text-red-600"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-slate-400 text-xs py-4">Sin notas</p>
+                        {% endfor %}
+                    </div>
+                    <!-- Formulario Añadir Nota -->
+                    <form action="{% url 'client_add_note' client.id %}" method="post" class="border-t border-slate-100 pt-3">
+                        {% csrf_token %}
+                        <div class="mb-2">{{ note_form.type }}</div>
+                        {{ note_form.text }}
+                        <div class="flex items-center justify-between mt-2">
+                            <label class="flex items-center text-[10px] text-slate-500 gap-1">{{ note_form.is_popup }} Popup</label>
+                            <button type="submit" class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-medium hover:bg-slate-200">Añadir</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Columna Contenido (3/4) -->
+            <div class="lg:col-span-3">
+            
+            <!-- Navegación de Pestañas -->
+            <div class="bg-white border border-slate-200 rounded-2xl mb-6 overflow-hidden">
+                <div class="flex overflow-x-auto scrollbar-hide">
+                    <button @click="activeTab = 'general'"
+                        :class="activeTab === 'general' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 min-w-[100px] px-3 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="hidden sm:inline">General</span>
+                        {% if client.documents.count > 0 %}
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-600">{{ client.documents.count }}</span>
+                        {% endif %}
+                    </button>
+                    <button @click="activeTab = 'memberships'"
+                        :class="activeTab === 'memberships' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 min-w-[100px] px-3 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Membresías</span>
+                        {% if memberships %}
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700">{{ memberships|length }}</span>
+                        {% endif %}
+                    </button>
+                    <button @click="activeTab = 'activity'"
+                        :class="activeTab === 'activity' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 min-w-[100px] px-3 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Actividad</span>
+                    </button>
+                    <button @click="activeTab = 'training'"
+                        :class="activeTab === 'training' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 min-w-[100px] px-3 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Entreno</span>
+                        {% if client_routines %}
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-indigo-100 text-indigo-700">{{ client_routines|length }}</span>
+                        {% endif %}
+                    </button>
+                    <button @click="activeTab = 'sales'"
+                        :class="activeTab === 'sales' ? 'border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 min-w-[100px] px-3 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Ventas</span>
+                        {% if client.orders.count > 0 %}
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-700">{{ client.orders.count }}</span>
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Contenido de Pestañas -->
+            <div class="space-y-6">
+                
+                <!-- TAB: General -->
+                <div x-show="activeTab === 'general'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-6">
 
         <!-- Gestión Documental -->
         <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="documentManager()">
@@ -449,122 +467,11 @@
                 };
             }
         </script>
-
-        <!-- Rutinas de Entrenamiento -->
-        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden mb-6" x-data="routineHandler()">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">Rutinas de Entrenamiento</h3>
-                <div class="flex gap-2">
-                    <button @click="createPersonal()"
-                        class="text-xs font-medium text-slate-500 hover:text-indigo-600 hover:underline">
-                        + Nueva en Blanco
-                    </button>
-                    <button @click="showAssignModal = true"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-indigo-200">
-                        Asignar Plantilla
-                    </button>
                 </div>
-            </div>
+                <!-- FIN TAB: General -->
 
-            <div class="p-6">
-                {% if client_routines %}
-                <div class="space-y-3">
-                    {% for cr in client_routines %}
-                    <div
-                        class="flex items-center justify-between p-3 border border-indigo-100 rounded-xl bg-indigo-50/30 hover:bg-indigo-50 transition-colors group">
-                        <!-- Routine Info -->
-                        <div class="flex items-center gap-3">
-                            <div class="bg-white p-2 rounded-lg border border-indigo-200 text-indigo-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
-                                    </path>
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-slate-800 text-sm">{{ cr.routine.name }}</div>
-                                <div class="text-xs text-slate-500">
-                                    Inicio: {{ cr.start_date|date:"d M Y" }} · {{ cr.routine.get_goal_display }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <a href="{% url 'routine_detail' cr.routine.id %}"
-                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg shadow-sm">
-                            Abrir Editor
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="text-slate-400 text-sm text-center py-4">No tiene rutinas asignadas.</p>
-                {% endif %}
-            </div>
-
-            <!-- Modal Assign -->
-            <div x-show="showAssignModal" style="display: none;"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-                <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-slate-900">Asignar Plantilla</h3>
-                        <button @click="showAssignModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
-                    </div>
-                    <div class="p-6">
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Selecciona una plantilla:</label>
-                        <select x-model="selectedTemplate"
-                            class="w-full px-3 py-2 border border-slate-200 rounded-xl mb-4 bg-white">
-                            <option value="">-- Elegir --</option>
-                            {% for t in routine_templates %}
-                            <option value="{{ t.id }}">{{ t.name }} ({{ t.get_difficulty_display }})</option>
-                            {% endfor %}
-                        </select>
-                        <button @click="assignTemplate()" :disabled="!selectedTemplate"
-                            class="w-full bg-indigo-600 text-white py-2 rounded-xl font-bold disabled:opacity-50 hover:bg-indigo-700 transition-colors">
-                            Asignar y Copiar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                function routineHandler() {
-                    return {
-                        showAssignModal: false,
-                        selectedTemplate: '',
-                        clientId: {{ client.id }
-                },
-                    
-                    async assignTemplate() {
-                    if (!this.selectedTemplate) return;
-
-                    const res = await fetch(`/routines/api/clients/${this.clientId}/assign/`, {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ template_id: this.selectedTemplate })
-                    });
-                    const data = await res.json();
-                    if (data.status === 'success') location.reload();
-                    else alert('Error: ' + data.message);
-                },
-                    
-                    async createPersonal() {
-                    if (!confirm('¿Crear rutina personalizada en blanco?')) return;
-
-                    const res = await fetch(`/routines/api/clients/${this.clientId}/create-personal/`, {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-                    });
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        // Redirect to builder
-                        window.location.href = `/backoffice/routines/${data.routine_id}/builder/`;
-                    }
-                    else alert('Error: ' + data.message);
-                }
-                }
-            }
-            </script>
-        </section>
+                <!-- TAB: Membresías -->
+                <div x-show="activeTab === 'memberships'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-6">
 
         <!-- Métodos de Pago (Stripe & Redsys) -->
         <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="stripeCardHandler()">
@@ -1183,11 +1090,16 @@
                 };
             }
         </script>
+                </div>
+                <!-- FIN TAB: Membresías -->
 
-        <!-- Visitas y Reservas -->
+                <!-- TAB: Actividad -->
+                <div x-show="activeTab === 'activity'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-6">
+
+        <!-- Reservas y Asistencias a Clases -->
         <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">Historial de Accesos</h3>
+                <h3 class="font-semibold text-slate-900">Reservas y Asistencias</h3>
             </div>
             <div class="p-6">
                 {% if visits %}
@@ -1201,8 +1113,7 @@
                                 {% if visit.status == 'SCHEDULED' %}📅{% else %}📍{% endif %}
                             </div>
                             <div>
-                                <div class="text-sm font-medium text-slate-800">{{ visit.concept|default:"Acceso
-                                    General" }}</div>
+                                <div class="text-sm font-medium text-slate-800">{{ visit.concept|default:"Clase" }}</div>
                                 <div class="text-xs text-slate-400">{{ visit.date|date:"l d M, Y" }} · {{
                                     visit.check_in_time|time:"H:i"|default:"--" }}</div>
                             </div>
@@ -1217,10 +1128,352 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-slate-400 text-sm text-center py-4">Sin registro de visitas todavía.</p>
+                <p class="text-slate-400 text-sm text-center py-4">Sin reservas de clases todavía.</p>
                 {% endif %}
             </div>
         </section>
+
+        <!-- Control de Acceso (Entradas/Salidas físicas) -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="accessControl()">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Historial de Accesos</h3>
+                <div class="flex items-center gap-2">
+                    <button @click="registerAccess('ENTRY')" 
+                            class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14"></path>
+                        </svg>
+                        Entrada
+                    </button>
+                    <button @click="registerAccess('EXIT')" 
+                            class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H3"></path>
+                        </svg>
+                        Salida
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <!-- Mensaje de estado -->
+                <div x-show="message" x-transition 
+                     :class="messageType === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'"
+                     class="mb-4 px-4 py-2 rounded-lg border text-sm flex items-center gap-2">
+                    <span x-text="message"></span>
+                </div>
+                
+                {% if access_logs %}
+                <div class="space-y-3">
+                    {% for log in access_logs|slice:":10" %}
+                    <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center 
+                                {% if log.direction == 'ENTRY' %}bg-green-100 text-green-600{% else %}bg-orange-100 text-orange-600{% endif %}">
+                                {% if log.direction == 'ENTRY' %}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14"></path>
+                                </svg>
+                                {% else %}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H3"></path>
+                                </svg>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-slate-800">
+                                    {% if log.direction == 'ENTRY' %}Entrada{% else %}Salida{% endif %}
+                                    {% if log.status == 'MANUAL' %}<span class="text-xs text-slate-400">(manual)</span>{% endif %}
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    {{ log.timestamp|date:"d/m/Y" }} a las {{ log.timestamp|time:"H:i:s" }}
+                                    {% if log.device %} · {{ log.device.name }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            {% if log.status == 'GRANTED' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">OK</span>
+                            {% elif log.status == 'DENIED' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Denegado</span>
+                            {% elif log.status == 'MANUAL' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Manual</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if access_logs.count > 10 %}
+                <a href="{% url 'access_control:log_list' %}?client={{ client.id }}" 
+                   class="mt-4 block text-center text-sm text-[var(--brand-color)] hover:underline">
+                    Ver historial completo ({{ access_logs.count }} registros)
+                </a>
+                {% endif %}
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">Sin registro de accesos todavía.</p>
+                {% endif %}
+            </div>
+        </section>
+        
+        <script>
+            function accessControl() {
+                return {
+                    message: '',
+                    messageType: '',
+                    
+                    async registerAccess(direction) {
+                        try {
+                            const response = await fetch('{% url "access_control:api_manual_access" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}'
+                                },
+                                body: JSON.stringify({
+                                    client_id: {{ client.id }},
+                                    direction: direction
+                                })
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                this.message = data.message;
+                                this.messageType = 'success';
+                                // Recargar después de 1.5 segundos
+                                setTimeout(() => location.reload(), 1500);
+                            } else {
+                                this.message = data.error || 'Error al registrar acceso';
+                                this.messageType = 'error';
+                            }
+                        } catch (error) {
+                            this.message = 'Error de conexión';
+                            this.messageType = 'error';
+                        }
+                        
+                        // Ocultar mensaje después de 5 segundos
+                        setTimeout(() => this.message = '', 5000);
+                    }
+                };
+            }
+        </script>
+
+        <!-- Taquillas Asignadas -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Taquillas Asignadas</h3>
+                <a href="{% url 'lockers:assign_to_client' client.id %}" 
+                   class="text-xs font-medium text-[var(--brand-color)] hover:underline flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Asignar
+                </a>
+            </div>
+            <div class="p-6">
+                {% if locker_assignments %}
+                <div class="space-y-3">
+                    {% for assignment in locker_assignments %}
+                    <div class="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-colors">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                                <span class="text-lg font-bold text-indigo-700">{{ assignment.locker.number }}</span>
+                            </div>
+                            <div>
+                                <div class="font-medium text-slate-800">
+                                    Taquilla {{ assignment.locker.number }}
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    {{ assignment.locker.zone.name }} · {{ assignment.locker.get_size_display }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm">
+                                {% if assignment.end_date %}
+                                    {% if assignment.days_remaining == 0 %}
+                                    <span class="text-amber-600 font-medium">Vence hoy</span>
+                                    {% elif assignment.days_remaining <= 7 %}
+                                    <span class="text-amber-600">{{ assignment.days_remaining }} días</span>
+                                    {% else %}
+                                    <span class="text-slate-600">hasta {{ assignment.end_date|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="text-green-600">Indefinida</span>
+                                {% endif %}
+                            </div>
+                            {% if assignment.monthly_price %}
+                            <div class="text-xs text-slate-400">{{ assignment.monthly_price }}€/mes</div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4">
+                            {% if assignment.key_delivered %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-700" title="Llave entregada">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                                Llave
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-500" title="Llave pendiente">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Sin llave
+                            </span>
+                            {% endif %}
+                        </div>
+                        <a href="{% url 'lockers:release' assignment.id %}" 
+                           class="ml-3 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                           title="Liberar taquilla">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                            </svg>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-6">
+                    <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                    </svg>
+                    <p class="text-sm text-slate-400 mb-3">Sin taquillas asignadas</p>
+                    <a href="{% url 'lockers:assign_to_client' client.id %}" 
+                       class="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand-color)] hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Asignar taquilla
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+                </div>
+                <!-- FIN TAB: Actividad -->
+
+                <!-- TAB: Entrenamiento -->
+                <div x-show="activeTab === 'training'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-6">
+
+        <!-- Rutinas de Entrenamiento -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="routineHandler()">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-semibold text-slate-900">Rutinas de Entrenamiento</h3>
+                <div class="flex gap-2">
+                    <button @click="createPersonal()"
+                        class="text-xs font-medium text-slate-500 hover:text-indigo-600 hover:underline">
+                        + Nueva en Blanco
+                    </button>
+                    <button @click="showAssignModal = true"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-indigo-200">
+                        Asignar Plantilla
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                {% if client_routines %}
+                <div class="space-y-3">
+                    {% for cr in client_routines %}
+                    <div
+                        class="flex items-center justify-between p-3 border border-indigo-100 rounded-xl bg-indigo-50/30 hover:bg-indigo-50 transition-colors group">
+                        <!-- Routine Info -->
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white p-2 rounded-lg border border-indigo-200 text-indigo-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800 text-sm">{{ cr.routine.name }}</div>
+                                <div class="text-xs text-slate-500">
+                                    Inicio: {{ cr.start_date|date:"d M Y" }} · {{ cr.routine.get_goal_display }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="{% url 'routine_detail' cr.routine.id %}"
+                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg shadow-sm">
+                            Abrir Editor
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">No tiene rutinas asignadas.</p>
+                {% endif %}
+            </div>
+
+            <!-- Modal Assign -->
+            <div x-show="showAssignModal" style="display: none;"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+                <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-900">Asignar Plantilla</h3>
+                        <button @click="showAssignModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                    </div>
+                    <div class="p-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Selecciona una plantilla:</label>
+                        <select x-model="selectedTemplate"
+                            class="w-full px-3 py-2 border border-slate-200 rounded-xl mb-4 bg-white">
+                            <option value="">-- Elegir --</option>
+                            {% for t in routine_templates %}
+                            <option value="{{ t.id }}">{{ t.name }} ({{ t.get_difficulty_display }})</option>
+                            {% endfor %}
+                        </select>
+                        <button @click="assignTemplate()" :disabled="!selectedTemplate"
+                            class="w-full bg-indigo-600 text-white py-2 rounded-xl font-bold disabled:opacity-50 hover:bg-indigo-700 transition-colors">
+                            Asignar y Copiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function routineHandler() {
+                    return {
+                        showAssignModal: false,
+                        selectedTemplate: '',
+                        clientId: {{ client.id }},
+                    
+                    async assignTemplate() {
+                    if (!this.selectedTemplate) return;
+
+                    const res = await fetch(`/routines/api/clients/${this.clientId}/assign/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ template_id: this.selectedTemplate })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') location.reload();
+                    else alert('Error: ' + data.message);
+                },
+                    
+                    async createPersonal() {
+                    if (!confirm('¿Crear rutina personalizada en blanco?')) return;
+
+                    const res = await fetch(`/routines/api/clients/${this.clientId}/create-personal/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        // Redirect to builder
+                        window.location.href = `/backoffice/routines/${data.routine_id}/builder/`;
+                    }
+                    else alert('Error: ' + data.message);
+                }
+                }
+            }
+            </script>
+        </section>
+                </div>
+                <!-- FIN TAB: Entrenamiento -->
+
+                <!-- TAB: Ventas -->
+                <div x-show="activeTab === 'sales'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="space-y-6">
 
         <!-- Compras (Orders) - Enhanced with expandable rows -->
         <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="purchaseHistory()">
@@ -1661,7 +1914,20 @@
                     }
                 }
             }
+        </script>
+                </div>
+                <!-- FIN TAB: Ventas -->
 
+            </div>
+            <!-- Fin Contenido de Pestañas -->
+            
+        </div>
+        <!-- Fin Columna Derecha -->
+
+    </div>
+    <!-- Fin Layout Principal con Pestañas -->
+
+    <script>
             // Initialize clientDetail data
             document.addEventListener('alpine:init', () => {
                 Alpine.data('clientDetail', () => ({

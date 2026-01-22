@@ -1,0 +1,257 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Asignar Taquilla {{ locker.number }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'lockers:dashboard' %}" class="text-[var(--brand-color)] hover:underline">Taquillas</a>
+<span class="mx-2 text-slate-400">/</span>
+<a href="{% url 'lockers:zone_detail' locker.zone.id %}" class="text-[var(--brand-color)] hover:underline">{{ locker.zone.name }}</a>
+<span class="mx-2 text-slate-400">/</span>
+Asignar Taquilla {{ locker.number }}
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'lockers:zone_detail' locker.zone.id %}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+        <span class="text-xl font-bold text-green-700">{{ locker.number }}</span>
+    </div>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">Asignar Taquilla {{ locker.number }}</h1>
+        <p class="text-sm text-slate-500">{{ locker.zone.name }} • {{ locker.get_size_display }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-xl" x-data="{ 
+    indefinite: false,
+    searchClient: '',
+    selectedClient: null 
+}">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
+        <!-- Selección de cliente -->
+        <div>
+            <label for="client_search" class="block text-sm font-medium text-slate-700 mb-1">
+                Cliente *
+            </label>
+            <div class="relative">
+                <input type="text" id="client_search"
+                       x-model="searchClient"
+                       @input.debounce.300ms="searchClients()"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       placeholder="Buscar por nombre, email o teléfono..."
+                       autocomplete="off">
+                <input type="hidden" name="client" id="id_client" :value="selectedClient?.id">
+                
+                <!-- Dropdown de resultados -->
+                <div id="client_results" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg hidden max-h-60 overflow-y-auto">
+                    <!-- Se llena dinámicamente con JS -->
+                </div>
+            </div>
+            
+            <!-- Cliente seleccionado -->
+            <template x-if="selectedClient">
+                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold">
+                            <span x-text="selectedClient.initials"></span>
+                        </div>
+                        <div>
+                            <p class="font-medium text-green-800" x-text="selectedClient.name"></p>
+                            <p class="text-sm text-green-600" x-text="selectedClient.email"></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="selectedClient = null; searchClient = ''" class="text-green-600 hover:text-green-800">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </template>
+        </div>
+        
+        <!-- Fechas -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="id_start_date" class="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha de inicio *
+                </label>
+                <input type="date" name="start_date" id="id_start_date" 
+                       value="{% now 'Y-m-d' %}"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       required>
+            </div>
+            
+            <div>
+                <label for="id_end_date" class="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha de fin
+                </label>
+                <input type="date" name="end_date" id="id_end_date" 
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors disabled:bg-slate-100 disabled:text-slate-400"
+                       :disabled="indefinite">
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <input type="checkbox" id="indefinite" x-model="indefinite"
+                   class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+            <label for="indefinite" class="text-sm text-slate-600">Asignación indefinida (sin fecha de fin)</label>
+        </div>
+        
+        <!-- Precio y fianza -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="id_monthly_price" class="block text-sm font-medium text-slate-700 mb-1">
+                    Precio mensual (€)
+                </label>
+                <input type="number" name="monthly_price" id="id_monthly_price" 
+                       value="{{ locker.monthly_price|default:'' }}" step="0.01" min="0"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       placeholder="Precio mensual">
+                <p class="mt-1 text-xs text-slate-500">Precio por defecto de la taquilla: {{ locker.monthly_price|default:"No definido" }}€</p>
+            </div>
+            
+            <div>
+                <label for="id_deposit" class="block text-sm font-medium text-slate-700 mb-1">
+                    Fianza (€)
+                </label>
+                <input type="number" name="deposit" id="id_deposit" 
+                       value="" step="0.01" min="0"
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       placeholder="Fianza opcional">
+            </div>
+        </div>
+        
+        <!-- Entrega de llave -->
+        <div class="flex items-center gap-2">
+            <input type="checkbox" id="key_delivered" name="key_delivered"
+                   class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+            <label for="key_delivered" class="text-sm text-slate-600">Llave entregada al cliente</label>
+        </div>
+        
+        <!-- Notas -->
+        <div>
+            <label for="id_notes" class="block text-sm font-medium text-slate-700 mb-1">
+                Notas
+            </label>
+            <textarea name="notes" id="id_notes" rows="2"
+                      class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                      placeholder="Notas sobre la asignación (opcional)"></textarea>
+        </div>
+        
+        <!-- Acciones -->
+        <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+            <a href="{% url 'lockers:zone_detail' locker.zone.id %}" class="btn-white px-6 py-2.5">Cancelar</a>
+            <button type="submit" class="btn-brand px-6 py-2.5">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Asignar Taquilla
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('client_search');
+    const resultsDiv = document.getElementById('client_results');
+    const hiddenInput = document.getElementById('id_client');
+    let debounceTimer;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            resultsDiv.classList.add('hidden');
+            return;
+        }
+        
+        debounceTimer = setTimeout(function() {
+            fetch(`{% url 'lockers:api_search_clients' %}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.clients && data.clients.length > 0) {
+                        resultsDiv.innerHTML = data.clients.map(client => `
+                            <div class="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
+                                 onclick="selectClient(${client.id}, '${client.first_name} ${client.last_name}', '${client.email || ''}')">
+                                <p class="font-medium text-slate-800">${client.first_name} ${client.last_name}</p>
+                                <p class="text-sm text-slate-500">${client.email || ''} ${client.phone ? '• ' + client.phone : ''}</p>
+                            </div>
+                        `).join('');
+                        resultsDiv.classList.remove('hidden');
+                    } else {
+                        resultsDiv.innerHTML = `
+                            <div class="px-4 py-3 text-slate-500 text-center">
+                                No se encontraron clientes
+                            </div>
+                        `;
+                        resultsDiv.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    resultsDiv.classList.add('hidden');
+                });
+        }, 300);
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.classList.add('hidden');
+        }
+    });
+});
+
+function selectClient(id, name, email) {
+    document.getElementById('id_client').value = id;
+    document.getElementById('client_search').value = name;
+    document.getElementById('client_results').classList.add('hidden');
+    
+    // Crear badge visual
+    const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const container = document.getElementById('client_search').parentElement;
+    
+    // Si ya hay un badge, removerlo
+    const existingBadge = container.querySelector('.selected-client-badge');
+    if (existingBadge) existingBadge.remove();
+    
+    const badge = document.createElement('div');
+    badge.className = 'selected-client-badge mt-3 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between';
+    badge.innerHTML = `
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold">
+                ${initials}
+            </div>
+            <div>
+                <p class="font-medium text-green-800">${name}</p>
+                <p class="text-sm text-green-600">${email}</p>
+            </div>
+        </div>
+        <button type="button" onclick="clearClient()" class="text-green-600 hover:text-green-800">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    container.appendChild(badge);
+    document.getElementById('client_search').style.display = 'none';
+}
+
+function clearClient() {
+    document.getElementById('id_client').value = '';
+    document.getElementById('client_search').value = '';
+    document.getElementById('client_search').style.display = 'block';
+    const badge = document.querySelector('.selected-client-badge');
+    if (badge) badge.remove();
+}
+</script>
+{% endblock %}

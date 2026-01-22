@@ -1,0 +1,129 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{% if zone %}Editar{% else %}Nueva{% endif %} Zona{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'lockers:dashboard' %}" class="text-[var(--brand-color)] hover:underline">Taquillas</a>
+<span class="mx-2 text-slate-400">/</span>
+<a href="{% url 'lockers:zone_list' %}" class="text-[var(--brand-color)] hover:underline">Zonas</a>
+<span class="mx-2 text-slate-400">/</span>
+{% if zone %}Editar{% else %}Nueva{% endif %}
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'lockers:zone_list' %}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">{% if zone %}Editar Zona{% else %}Nueva Zona{% endif %}</h1>
+        <p class="text-sm text-slate-500">{% if zone %}Modifica los datos de la zona{% else %}Crea una nueva zona de taquillas{% endif %}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-2xl">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
+        <!-- Información básica -->
+        <div>
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">Información Básica</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="id_name" class="block text-sm font-medium text-slate-700 mb-1">
+                        Nombre de la zona *
+                    </label>
+                    <input type="text" name="name" id="id_name" 
+                           value="{{ zone.name|default:'' }}"
+                           class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                           placeholder="Ej: Vestuario Hombres" required>
+                </div>
+                
+                <div>
+                    <label for="id_description" class="block text-sm font-medium text-slate-700 mb-1">
+                        Descripción
+                    </label>
+                    <textarea name="description" id="id_description" rows="3"
+                              class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                              placeholder="Descripción opcional de la zona">{{ zone.description|default:'' }}</textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuración visual -->
+        <div class="border-t border-slate-100 pt-6">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">Configuración Visual</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="id_rows" class="block text-sm font-medium text-slate-700 mb-1">
+                        Filas *
+                    </label>
+                    <input type="number" name="rows" id="id_rows" 
+                           value="{{ zone.rows|default:5 }}" min="1" max="20"
+                           class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                           required>
+                    <p class="mt-1 text-xs text-slate-500">Número de filas de taquillas</p>
+                </div>
+                
+                <div>
+                    <label for="id_columns" class="block text-sm font-medium text-slate-700 mb-1">
+                        Columnas *
+                    </label>
+                    <input type="number" name="columns" id="id_columns" 
+                           value="{{ zone.columns|default:10 }}" min="1" max="20"
+                           class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                           required>
+                    <p class="mt-1 text-xs text-slate-500">Número de columnas de taquillas</p>
+                </div>
+                
+                <div x-data="{ color: '{{ zone.color|default:'#6366f1' }}' }">
+                    <label for="id_color" class="block text-sm font-medium text-slate-700 mb-1">
+                        Color identificativo
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <input type="color" name="color" id="id_color" 
+                               x-model="color"
+                               class="w-12 h-10 border border-slate-300 rounded-lg cursor-pointer">
+                        <div class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl bg-slate-50 text-slate-600" x-text="color"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vista previa del grid -->
+        <div class="border-t border-slate-100 pt-6" x-data="{ rows: {{ zone.rows|default:5 }}, cols: {{ zone.columns|default:10 }} }">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">Vista Previa</h3>
+            <p class="text-sm text-slate-500 mb-4">Así se verá la cuadrícula de taquillas (máximo 50 para previsualización)</p>
+            
+            <div class="bg-slate-50 rounded-xl p-4 overflow-x-auto">
+                <div class="grid gap-1" :style="`grid-template-columns: repeat(${cols}, minmax(32px, 1fr));`">
+                    <template x-for="i in Math.min(rows * cols, 50)" :key="i">
+                        <div class="aspect-square rounded bg-indigo-100 border border-indigo-300 flex items-center justify-center text-xs font-medium text-indigo-600"
+                             x-text="i"></div>
+                    </template>
+                </div>
+                <template x-if="rows * cols > 50">
+                    <p class="mt-3 text-sm text-slate-500 text-center">... y <span x-text="(rows * cols) - 50"></span> más</p>
+                </template>
+            </div>
+        </div>
+        
+        <!-- Acciones -->
+        <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+            <a href="{% url 'lockers:zone_list' %}" class="btn-white px-6 py-2.5">Cancelar</a>
+            <button type="submit" class="btn-brand px-6 py-2.5">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                {% if zone %}Guardar Cambios{% else %}Crear Zona{% endif %}
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}

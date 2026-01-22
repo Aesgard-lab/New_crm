@@ -1,0 +1,135 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{% if zone %}Editar{% else %}Nueva{% endif %} Zona{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'access_control:dashboard' %}" class="hover:underline">Control de Acceso</a> >
+<a href="{% url 'access_control:zone_list' %}" class="hover:underline">Zonas</a> >
+{% if zone %}Editar{% else %}Nueva{% endif %}
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+        </svg>
+    </div>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">{% if zone %}Editar{% else %}Nueva{% endif %} Zona</h1>
+        <p class="text-sm text-slate-500">{% if zone %}Modificar configuración{% else %}Crear una nueva zona de acceso{% endif %}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-2xl mx-auto">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-6 space-y-6">
+            <!-- Información básica -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Información de la Zona</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre de la zona *</label>
+                        <input type="text" name="name" value="{{ zone.name|default:'' }}" required
+                               placeholder="Ej: Sala de Musculación, Zona CrossFit"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                        <textarea name="description" rows="2"
+                                  placeholder="Descripción opcional de la zona"
+                                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">{{ zone.description|default:'' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Control de aforo -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Control de Aforo</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Capacidad máxima *</label>
+                        <input type="number" name="max_capacity" value="{{ zone.max_capacity|default:'50' }}" required min="1"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                        <p class="text-xs text-slate-500 mt-1">Número máximo de personas permitidas simultáneamente</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Umbral de alerta (%)</label>
+                        <input type="number" name="warning_threshold" value="{{ zone.warning_threshold|default:'75' }}" min="50" max="100"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                        <p class="text-xs text-slate-500 mt-1">Se mostrará alerta cuando la ocupación supere este porcentaje</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-amber-800">
+                            <strong>Control de aforo:</strong> Cuando la zona alcance la capacidad máxima, los dispositivos de entrada denegarán nuevos accesos automáticamente (si está habilitado).
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Color de identificación -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Apariencia</h3>
+                <div class="flex items-center gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Color identificativo</label>
+                        <input type="color" name="color" value="{{ zone.color|default:'#6366f1' }}"
+                               class="w-20 h-10 border border-slate-300 rounded-lg cursor-pointer">
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-slate-500">Este color se usará para identificar la zona en gráficos y mapas.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Opciones adicionales -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Opciones</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" name="requires_membership" {% if zone.requires_membership %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm font-medium text-slate-700">Requiere membresía activa</span>
+                    </label>
+                    <p class="text-xs text-slate-500 ml-6">Solo clientes con membresía vigente podrán acceder a esta zona</p>
+                    
+                    <label class="flex items-center gap-3 mt-4">
+                        <input type="checkbox" name="enforce_capacity" {% if zone.enforce_capacity or not zone %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm font-medium text-slate-700">Aplicar límite de aforo</span>
+                    </label>
+                    <p class="text-xs text-slate-500 ml-6">Denegar entrada automáticamente cuando se alcance la capacidad máxima</p>
+                    
+                    <label class="flex items-center gap-3 mt-4">
+                        <input type="checkbox" name="is_active" {% if zone.is_active or not zone %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm font-medium text-slate-700">Zona activa</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <a href="{% url 'access_control:zone_list' %}" class="text-sm text-slate-500 hover:text-slate-700">
+                Cancelar
+            </a>
+            <button type="submit" class="btn-brand px-6 py-2">
+                {% if zone %}Guardar Cambios{% else %}Crear Zona{% endif %}
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}

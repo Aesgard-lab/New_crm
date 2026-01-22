@@ -1,0 +1,326 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Alertas de Acceso{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'access_control:dashboard' %}" class="hover:underline">Control de Acceso</a> > Alertas
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+    </div>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">Alertas de Acceso</h1>
+        <p class="text-sm text-slate-500">Incidencias y notificaciones</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'access_control:dashboard' %}" class="btn-brand-outline px-4 py-2 text-sm">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Dashboard
+    </a>
+    {% if unresolved_count > 0 %}
+    <button onclick="resolveAll()" class="btn-brand px-4 py-2 text-sm">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Resolver Todas
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Estadísticas de alertas -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold text-slate-800">{{ total_alerts }}</div>
+                    <div class="text-sm text-slate-500">Total alertas</div>
+                </div>
+                <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl border border-red-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold text-red-600">{{ critical_count }}</div>
+                    <div class="text-sm text-slate-500">Críticas</div>
+                </div>
+                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl border border-amber-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold text-amber-600">{{ unresolved_count }}</div>
+                    <div class="text-sm text-slate-500">Sin resolver</div>
+                </div>
+                <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl border border-green-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-2xl font-bold text-green-600">{{ resolved_today }}</div>
+                    <div class="text-sm text-slate-500">Resueltas hoy</div>
+                </div>
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <form method="get" class="flex flex-wrap items-center gap-4">
+            <select name="severity" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                <option value="">Todas las severidades</option>
+                <option value="CRITICAL" {% if request.GET.severity == 'CRITICAL' %}selected{% endif %}>Crítica</option>
+                <option value="HIGH" {% if request.GET.severity == 'HIGH' %}selected{% endif %}>Alta</option>
+                <option value="MEDIUM" {% if request.GET.severity == 'MEDIUM' %}selected{% endif %}>Media</option>
+                <option value="LOW" {% if request.GET.severity == 'LOW' %}selected{% endif %}>Baja</option>
+            </select>
+            
+            <select name="alert_type" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                <option value="">Todos los tipos</option>
+                <option value="ACCESS_DENIED" {% if request.GET.alert_type == 'ACCESS_DENIED' %}selected{% endif %}>Acceso denegado</option>
+                <option value="DEVICE_OFFLINE" {% if request.GET.alert_type == 'DEVICE_OFFLINE' %}selected{% endif %}>Dispositivo offline</option>
+                <option value="CAPACITY_WARNING" {% if request.GET.alert_type == 'CAPACITY_WARNING' %}selected{% endif %}>Alerta de aforo</option>
+                <option value="TAILGATING" {% if request.GET.alert_type == 'TAILGATING' %}selected{% endif %}>Tailgating</option>
+                <option value="FORCED_ENTRY" {% if request.GET.alert_type == 'FORCED_ENTRY' %}selected{% endif %}>Entrada forzada</option>
+            </select>
+            
+            <select name="status" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                <option value="">Todos los estados</option>
+                <option value="unresolved" {% if request.GET.status == 'unresolved' %}selected{% endif %}>Sin resolver</option>
+                <option value="resolved" {% if request.GET.status == 'resolved' %}selected{% endif %}>Resueltas</option>
+            </select>
+            
+            <button type="submit" class="btn-brand px-4 py-2 text-sm">Filtrar</button>
+            
+            {% if request.GET %}
+            <a href="{% url 'access_control:alert_list' %}" class="text-sm text-slate-500 hover:text-slate-700">Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Lista de alertas -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="divide-y divide-slate-100">
+            {% for alert in alerts %}
+            <div class="p-6 hover:bg-slate-50 transition-colors {% if not alert.is_resolved %}border-l-4 
+                {% if alert.severity == 'CRITICAL' %}border-l-red-500 bg-red-50/30
+                {% elif alert.severity == 'HIGH' %}border-l-orange-500 bg-orange-50/30
+                {% elif alert.severity == 'MEDIUM' %}border-l-amber-500
+                {% else %}border-l-blue-500{% endif %}
+            {% endif %}">
+                <div class="flex items-start gap-4">
+                    <!-- Icono de severidad -->
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                        {% if alert.severity == 'CRITICAL' %}bg-red-100
+                        {% elif alert.severity == 'HIGH' %}bg-orange-100
+                        {% elif alert.severity == 'MEDIUM' %}bg-amber-100
+                        {% else %}bg-blue-100{% endif %}">
+                        {% if alert.severity == 'CRITICAL' %}
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        {% elif alert.severity == 'HIGH' %}
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {% else %}
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Contenido -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h4 class="font-semibold text-slate-800">{{ alert.title }}</h4>
+                                <p class="text-sm text-slate-600 mt-1">{{ alert.message }}</p>
+                            </div>
+                            
+                            <!-- Badge de severidad -->
+                            <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                                {% if alert.severity == 'CRITICAL' %}bg-red-100 text-red-800
+                                {% elif alert.severity == 'HIGH' %}bg-orange-100 text-orange-800
+                                {% elif alert.severity == 'MEDIUM' %}bg-amber-100 text-amber-800
+                                {% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ alert.get_severity_display }}
+                            </span>
+                        </div>
+                        
+                        <!-- Metadatos -->
+                        <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ alert.created_at|date:"d/m/Y H:i" }}
+                            </span>
+                            
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                </svg>
+                                {{ alert.get_alert_type_display }}
+                            </span>
+                            
+                            {% if alert.device %}
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                                </svg>
+                                {{ alert.device.name }}
+                            </span>
+                            {% endif %}
+                            
+                            {% if alert.client %}
+                            <a href="{% url 'client_detail' alert.client.id %}" class="flex items-center gap-1 text-[var(--brand-color)] hover:underline">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                {{ alert.client.full_name }}
+                            </a>
+                            {% endif %}
+                            
+                            {% if alert.is_resolved %}
+                            <span class="flex items-center gap-1 text-green-600">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Resuelta por {{ alert.resolved_by }} - {{ alert.resolved_at|date:"d/m H:i" }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Acciones -->
+                    {% if not alert.is_resolved %}
+                    <button onclick="resolveAlert({{ alert.id }})" 
+                            class="flex-shrink-0 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors">
+                        Resolver
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-12 text-center">
+                <svg class="w-16 h-16 mx-auto text-green-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-slate-800 mb-2">Sin alertas</h3>
+                <p class="text-slate-500">No hay alertas que mostrar con los filtros actuales.</p>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Paginación -->
+        {% if alerts.has_other_pages %}
+        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+            <div class="text-sm text-slate-500">
+                Mostrando {{ alerts.start_index }} - {{ alerts.end_index }} de {{ alerts.paginator.count }} alertas
+            </div>
+            <div class="flex items-center gap-2">
+                {% if alerts.has_previous %}
+                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ alerts.previous_page_number }}" 
+                   class="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50">
+                    Anterior
+                </a>
+                {% endif %}
+                
+                <span class="px-3 py-1 text-sm bg-[var(--brand-color)] text-white rounded">
+                    {{ alerts.number }}
+                </span>
+                
+                {% if alerts.has_next %}
+                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ alerts.next_page_number }}" 
+                   class="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50">
+                    Siguiente
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function resolveAlert(alertId) {
+    if (confirm('¿Marcar esta alerta como resuelta?')) {
+        fetch(`/api/access/alert/${alertId}/resolve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo resolver la alerta'));
+            }
+        })
+        .catch(error => {
+            alert('Error de conexión');
+        });
+    }
+}
+
+function resolveAll() {
+    if (confirm('¿Marcar TODAS las alertas pendientes como resueltas?')) {
+        fetch('/api/access/alerts/resolve-all/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'No se pudieron resolver las alertas'));
+            }
+        })
+        .catch(error => {
+            alert('Error de conexión');
+        });
+    }
+}
+</script>
+{% endblock %}

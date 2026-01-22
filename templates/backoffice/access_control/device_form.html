@@ -1,0 +1,182 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{% if device %}Editar{% else %}Nuevo{% endif %} Dispositivo{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'access_control:dashboard' %}" class="hover:underline">Control de Acceso</a> >
+<a href="{% url 'access_control:device_list' %}" class="hover:underline">Dispositivos</a> >
+{% if device %}Editar{% else %}Nuevo{% endif %}
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+        </svg>
+    </div>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">{% if device %}Editar{% else %}Nuevo{% endif %} Dispositivo</h1>
+        <p class="text-sm text-slate-500">{% if device %}Modificar configuración{% else %}Añadir un nuevo dispositivo de acceso{% endif %}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-2xl mx-auto">
+    {% csrf_token %}
+    
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-6 space-y-6">
+            <!-- Información básica -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Información Básica</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del dispositivo *</label>
+                        <input type="text" name="name" value="{{ device.name|default:'' }}" required
+                               placeholder="Ej: Torno Entrada Principal"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de dispositivo *</label>
+                        <select name="device_type" required
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                            <option value="">Seleccionar...</option>
+                            <option value="TURNSTILE" {% if device.device_type == 'TURNSTILE' %}selected{% endif %}>Torno</option>
+                            <option value="DOOR" {% if device.device_type == 'DOOR' %}selected{% endif %}>Puerta Electrónica</option>
+                            <option value="RFID_READER" {% if device.device_type == 'RFID_READER' %}selected{% endif %}>Lector RFID</option>
+                            <option value="QR_SCANNER" {% if device.device_type == 'QR_SCANNER' %}selected{% endif %}>Escáner QR</option>
+                            <option value="BIOMETRIC" {% if device.device_type == 'BIOMETRIC' %}selected{% endif %}>Biométrico</option>
+                            <option value="GATE" {% if device.device_type == 'GATE' %}selected{% endif %}>Barrera/Gate</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ubicación y zona -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Ubicación</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ubicación física</label>
+                        <input type="text" name="location" value="{{ device.location|default:'' }}"
+                               placeholder="Ej: Recepción, Planta baja"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Zona</label>
+                        <select name="zone"
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                            <option value="">Sin zona específica</option>
+                            {% for zone in zones %}
+                            <option value="{{ zone.id }}" {% if device.zone_id == zone.id %}selected{% endif %}>
+                                {{ zone.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Dirección *</label>
+                        <select name="direction" required
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                            <option value="ENTRY" {% if device.direction == 'ENTRY' %}selected{% endif %}>Solo Entrada</option>
+                            <option value="EXIT" {% if device.direction == 'EXIT' %}selected{% endif %}>Solo Salida</option>
+                            <option value="BOTH" {% if device.direction == 'BOTH' %}selected{% endif %}>Entrada y Salida</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Configuración técnica -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Configuración Técnica</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">ID del dispositivo</label>
+                        <input type="text" name="device_id" value="{{ device.device_id|default:'' }}"
+                               placeholder="Identificador único del hardware"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                        <p class="text-xs text-slate-500 mt-1">Proporcionado por el fabricante del dispositivo</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Dirección IP</label>
+                        <input type="text" name="ip_address" value="{{ device.ip_address|default:'' }}"
+                               placeholder="192.168.1.100"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">API Key</label>
+                        <input type="text" name="api_key" value="{{ device.api_key|default:'' }}"
+                               placeholder="Clave de autenticación"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
+                        <p class="text-xs text-slate-500 mt-1">Para autenticar las peticiones desde el dispositivo</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Credenciales soportadas -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Credenciales Soportadas</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="supports_rfid" {% if device.supports_rfid %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm">RFID/NFC</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="supports_qr" {% if device.supports_qr %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm">QR Code</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="supports_pin" {% if device.supports_pin %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm">PIN</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="supports_fingerprint" {% if device.supports_fingerprint %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm">Huella dactilar</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="supports_face" {% if device.supports_face %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm">Reconocimiento facial</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="supports_bluetooth" {% if device.supports_bluetooth %}checked{% endif %}
+                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                        <span class="text-sm">Bluetooth</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Estado -->
+            <div>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" name="is_active" {% if device.is_active or not device %}checked{% endif %}
+                           class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                    <span class="text-sm font-medium text-slate-700">Dispositivo activo</span>
+                </label>
+                <p class="text-xs text-slate-500 mt-1 ml-6">Los dispositivos inactivos no procesarán solicitudes de acceso</p>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <a href="{% url 'access_control:device_list' %}" class="text-sm text-slate-500 hover:text-slate-700">
+                Cancelar
+            </a>
+            <button type="submit" class="btn-brand px-6 py-2">
+                {% if device %}Guardar Cambios{% else %}Crear Dispositivo{% endif %}
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}

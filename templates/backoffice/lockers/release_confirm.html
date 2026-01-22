@@ -1,0 +1,168 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Liberar Taquilla {{ assignment.locker.number }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'lockers:dashboard' %}" class="text-[var(--brand-color)] hover:underline">Taquillas</a>
+<span class="mx-2 text-slate-400">/</span>
+<a href="{% url 'lockers:zone_detail' assignment.locker.zone.id %}" class="text-[var(--brand-color)] hover:underline">{{ assignment.locker.zone.name }}</a>
+<span class="mx-2 text-slate-400">/</span>
+Liberar Taquilla {{ assignment.locker.number }}
+{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'lockers:zone_detail' assignment.locker.zone.id %}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+    </div>
+    <div>
+        <h1 class="text-xl font-bold text-slate-800">Liberar Taquilla {{ assignment.locker.number }}</h1>
+        <p class="text-sm text-slate-500">Esta acción finalizará la asignación</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+    <!-- Información de la asignación -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <h3 class="font-semibold text-slate-800 mb-4">Detalles de la Asignación</h3>
+        
+        <div class="space-y-4">
+            <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Taquilla</span>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded bg-indigo-100 text-indigo-700 font-bold text-sm">
+                        {{ assignment.locker.number }}
+                    </span>
+                    <span class="text-slate-800">{{ assignment.locker.zone.name }}</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Cliente</span>
+                <a href="{% url 'clients:detail' assignment.client.id %}" class="font-medium text-indigo-600 hover:text-indigo-700">
+                    {{ assignment.client.first_name }} {{ assignment.client.last_name }}
+                </a>
+            </div>
+            
+            <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Fecha de inicio</span>
+                <span class="text-slate-800">{{ assignment.start_date|date:"d/m/Y" }}</span>
+            </div>
+            
+            <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Fecha de fin prevista</span>
+                <span class="text-slate-800">{{ assignment.end_date|date:"d/m/Y"|default:"Indefinida" }}</span>
+            </div>
+            
+            <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Precio mensual</span>
+                <span class="text-slate-800">{{ assignment.monthly_price|default:"—" }}€</span>
+            </div>
+            
+            {% if assignment.deposit %}
+            <div class="flex items-center justify-between py-3 border-b border-slate-100">
+                <span class="text-slate-600">Fianza</span>
+                <span class="text-slate-800 font-medium">{{ assignment.deposit }}€</span>
+            </div>
+            {% endif %}
+            
+            <div class="flex items-center justify-between py-3">
+                <span class="text-slate-600">Llave</span>
+                {% if assignment.key_delivered %}
+                <span class="inline-flex items-center gap-1 text-green-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Entregada
+                </span>
+                {% else %}
+                <span class="text-slate-400">No entregada</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Formulario de liberación -->
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <div>
+                    <h4 class="font-semibold text-amber-800 mb-1">¿Estás seguro?</h4>
+                    <p class="text-sm text-amber-700">
+                        Esta acción liberará la taquilla y finalizará la asignación del cliente.
+                        {% if assignment.key_delivered %}
+                        <strong>Recuerda solicitar la devolución de la llave.</strong>
+                        {% endif %}
+                        {% if assignment.deposit %}
+                        <strong>El cliente tiene una fianza de {{ assignment.deposit }}€ pendiente de devolución.</strong>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Opciones de liberación -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+            <h3 class="font-semibold text-slate-800 mb-4">Opciones de Liberación</h3>
+            
+            <div class="space-y-4">
+                {% if assignment.key_delivered %}
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="key_returned" name="key_returned"
+                           class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                    <label for="key_returned" class="text-sm text-slate-700">
+                        El cliente ha devuelto la llave
+                    </label>
+                </div>
+                {% endif %}
+                
+                {% if assignment.deposit %}
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="deposit_returned" name="deposit_returned"
+                           class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                    <label for="deposit_returned" class="text-sm text-slate-700">
+                        Se ha devuelto la fianza de {{ assignment.deposit }}€
+                    </label>
+                </div>
+                {% endif %}
+                
+                <div>
+                    <label for="release_notes" class="block text-sm font-medium text-slate-700 mb-1">
+                        Notas de liberación
+                    </label>
+                    <textarea name="release_notes" id="release_notes" rows="2"
+                              class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                              placeholder="Motivo de liberación, estado de la taquilla, etc."></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Acciones -->
+        <div class="flex items-center justify-end gap-3">
+            <a href="{% url 'lockers:zone_detail' assignment.locker.zone.id %}" class="btn-white px-6 py-2.5">
+                Cancelar
+            </a>
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                </svg>
+                Liberar Taquilla
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
