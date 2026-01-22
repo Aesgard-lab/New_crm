@@ -34,6 +34,14 @@ class _PromoSectionState extends State<PromoSection> {
   }
 
   Future<void> _loadAdvertisements() async {
+    // TODO: Temporarily disabled - fix API methods
+    setState(() {
+      _ads = [];
+      _isLoading = false;
+    });
+    return;
+    
+    /*
     final api = Provider.of<ApiService>(context, listen: false);
 
     setState(() => _isLoading = true);
@@ -55,6 +63,7 @@ class _PromoSectionState extends State<PromoSection> {
         api.trackAdvertisementImpression(ad.id);
       }
     }
+    */
   }
 
   void _handleAdTap(Advertisement ad) {

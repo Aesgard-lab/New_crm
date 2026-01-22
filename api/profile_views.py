@@ -229,3 +229,182 @@ class MembershipDetailView(views.APIView):
             'active_membership': active_membership,
             'all_memberships': memberships_data,
         })
+
+
+class PaymentMethodsView(views.APIView):
+    """
+    List and create payment methods for a client.
+    
+    GET /api/profile/payment-methods/
+    POST /api/profile/payment-methods/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get client's payment methods
+        from clients.models import ClientPaymentMethod
+        methods = ClientPaymentMethod.objects.filter(client=client).order_by('-is_default', '-created_at')
+        
+        return Response([
+            {
+                'id': m.id,
+                'card_type': m.card_type,
+                'last_4': m.last_4,
+                'expiry_month': m.expiry_month,
+                'expiry_year': m.expiry_year,
+                'cardholder_name': m.cardholder_name,
+                'is_default': m.is_default,
+            }
+            for m in methods
+        ])
+    
+    def post(self, request):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        card_number = request.data.get('card_number', '')
+        expiry_month = request.data.get('expiry_month')
+        expiry_year = request.data.get('expiry_year')
+        cvv = request.data.get('cvv')
+        cardholder_name = request.data.get('cardholder_name', '')
+        
+        # Basic validation
+        if len(card_number) < 13 or len(card_number) > 19:
+            return Response(
+                {'error': 'Número de tarjeta inválido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not expiry_month or not expiry_year:
+            return Response(
+                {'error': 'Fecha de caducidad requerida'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Detect card type
+        card_type = self._detect_card_type(card_number)
+        
+        # Store only last 4 digits (never store full card number in production!)
+        last_4 = card_number[-4:]
+        
+        from clients.models import ClientPaymentMethod
+        
+        # Check if this is the first card (make it default)
+        is_first = not ClientPaymentMethod.objects.filter(client=client).exists()
+        
+        method = ClientPaymentMethod.objects.create(
+            client=client,
+            card_type=card_type,
+            last_4=last_4,
+            expiry_month=int(expiry_month),
+            expiry_year=int(expiry_year),
+            cardholder_name=cardholder_name.upper(),
+            is_default=is_first,
+        )
+        
+        return Response({
+            'id': method.id,
+            'card_type': method.card_type,
+            'last_4': method.last_4,
+            'expiry_month': method.expiry_month,
+            'expiry_year': method.expiry_year,
+            'cardholder_name': method.cardholder_name,
+            'is_default': method.is_default,
+        }, status=status.HTTP_201_CREATED)
+    
+    def _detect_card_type(self, card_number):
+        """Detect card type based on card number prefix."""
+        if card_number.startswith('4'):
+            return 'visa'
+        elif card_number.startswith(('51', '52', '53', '54', '55')):
+            return 'mastercard'
+        elif card_number.startswith(('34', '37')):
+            return 'amex'
+        elif card_number.startswith('6011'):
+            return 'discover'
+        else:
+            return 'other'
+
+
+class PaymentMethodDetailView(views.APIView):
+    """
+    Update or delete a specific payment method.
+    
+    PATCH /api/profile/payment-methods/<id>/
+    DELETE /api/profile/payment-methods/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def patch(self, request, method_id):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        from clients.models import ClientPaymentMethod
+        
+        try:
+            method = ClientPaymentMethod.objects.get(id=method_id, client=client)
+        except ClientPaymentMethod.DoesNotExist:
+            return Response(
+                {'error': 'Método de pago no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Set as default
+        if request.data.get('is_default'):
+            ClientPaymentMethod.objects.filter(client=client).update(is_default=False)
+            method.is_default = True
+            method.save()
+        
+        return Response({
+            'id': method.id,
+            'is_default': method.is_default,
+        })
+    
+    def delete(self, request, method_id):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        from clients.models import ClientPaymentMethod
+        
+        try:
+            method = ClientPaymentMethod.objects.get(id=method_id, client=client)
+        except ClientPaymentMethod.DoesNotExist:
+            return Response(
+                {'error': 'Método de pago no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        was_default = method.is_default
+        method.delete()
+        
+        # If deleted method was default, set another as default
+        if was_default:
+            other_method = ClientPaymentMethod.objects.filter(client=client).first()
+            if other_method:
+                other_method.is_default = True
+                other_method.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)

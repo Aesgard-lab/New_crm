@@ -23,7 +23,9 @@ from .profile_views import (
     ProfileView,
     ChangePasswordView,
     ToggleNotificationsView,
-    MembershipDetailView
+    MembershipDetailView,
+    PaymentMethodsView,
+    PaymentMethodDetailView
 )
 from .shop_views import (
     ShopView,
@@ -85,6 +87,8 @@ urlpatterns = [
     path('profile/change-password/', ChangePasswordView.as_view(), name='api_change_password'),
     path('profile/notifications/', ToggleNotificationsView.as_view(), name='api_toggle_notifications'),
     path('profile/membership/', MembershipDetailView.as_view(), name='api_membership_detail'),
+    path('profile/payment-methods/', PaymentMethodsView.as_view(), name='api_payment_methods'),
+    path('profile/payment-methods/<int:method_id>/', PaymentMethodDetailView.as_view(), name='api_payment_method_detail'),
     
     # Shop (Mobile App)
     path('shop/', ShopView.as_view(), name='api_shop'),

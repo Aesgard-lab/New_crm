@@ -27,6 +27,7 @@ urlpatterns = [
     
     # Settings
     path('settings/', views.marketing_settings_view, name='marketing_settings'),
+    path('settings/test-smtp/', views.test_smtp_email_view, name='test_smtp_email'),
     
     # Popups
     path('popups/', views.popup_list_view, name='marketing_popup_list'),

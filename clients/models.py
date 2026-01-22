@@ -403,3 +403,48 @@ class ClientSale(models.Model):
 
     def __str__(self):
         return f"{self.concept} ({self.amount}€)"
+
+
+class ClientPaymentMethod(models.Model):
+    """
+    Stores payment method information for a client (tokenized, not actual card numbers).
+    In production, this should integrate with a payment gateway like Stripe.
+    """
+    CARD_TYPES = [
+        ('visa', 'Visa'),
+        ('mastercard', 'Mastercard'),
+        ('amex', 'American Express'),
+        ('discover', 'Discover'),
+        ('other', 'Otra'),
+    ]
+    
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="payment_methods")
+    card_type = models.CharField(max_length=20, choices=CARD_TYPES, default='other')
+    last_4 = models.CharField(max_length=4, help_text="Últimos 4 dígitos de la tarjeta")
+    expiry_month = models.IntegerField()
+    expiry_year = models.IntegerField()
+    cardholder_name = models.CharField(max_length=100, blank=True)
+    is_default = models.BooleanField(default=False)
+    
+    # In production, you'd store a payment gateway token here
+    # stripe_payment_method_id = models.CharField(max_length=100, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_default', '-created_at']
+        verbose_name = "Método de Pago"
+        verbose_name_plural = "Métodos de Pago"
+
+    def __str__(self):
+        return f"{self.card_type.upper()} ****{self.last_4}"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one default per client
+        if self.is_default:
+            ClientPaymentMethod.objects.filter(
+                client=self.client, 
+                is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)

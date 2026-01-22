@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import '../models/advertisement.dart';
 
 import 'package:flutter/foundation.dart'; // for kIsWeb
 
@@ -11,7 +12,7 @@ class ApiService {
     if (kIsWeb) return 'http://127.0.0.1:8000/api';
     return 'http://10.0.2.2:8000/api';
   }
-  
+
   String? _token;
   Client? _currentClient;
 
@@ -19,15 +20,15 @@ class ApiService {
 
   Future<List<Gym>> searchGyms(String query) async {
     if (query.length < 2) return [];
-    
+
     try {
       final url = '$baseUrl/gyms/search/?q=$query';
       print('🔍 Searching gyms with URL: $url');
-      
+
       final response = await http.get(Uri.parse(url));
       print('📡 Response status: ${response.statusCode}');
       print('📦 Response body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         print('✅ Found ${data.length} gyms');
@@ -57,7 +58,7 @@ class ApiService {
         final data = json.decode(response.body);
         _token = data['token'];
         _currentClient = Client.fromJson(data['client']);
-        
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
         return true;
@@ -72,7 +73,7 @@ class ApiService {
   Future<bool> checkAuth() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
-    
+
     if (token == null) return false;
 
     try {
@@ -95,7 +96,7 @@ class ApiService {
       return false;
     }
   }
-  
+
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     try {
       final response = await http.post(
@@ -105,11 +106,14 @@ class ApiService {
       );
 
       final data = json.decode(response.body);
-      
+
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['error'] ?? 'Error desconocido'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error desconocido'
+        };
       }
     } catch (e) {
       print('Password reset request error: $e');
@@ -117,7 +121,8 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> confirmPasswordReset(String email, String code, String newPassword) async {
+  Future<Map<String, dynamic>> confirmPasswordReset(
+      String email, String code, String newPassword) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/password-reset/confirm/'),
@@ -130,37 +135,41 @@ class ApiService {
       );
 
       final data = json.decode(response.body);
-      
+
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['error'] ?? 'Error desconocido'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error desconocido'
+        };
       }
     } catch (e) {
       print('Password reset confirm error: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
+
   // ===========================
   // SCHEDULE & BOOKINGS
   // ===========================
-  
-  Future<List<dynamic>> getSchedule({String? startDate, String? endDate, int? activityId}) async {
+
+  Future<List<dynamic>> getSchedule(
+      {String? startDate, String? endDate, int? activityId}) async {
     if (_token == null) return [];
-    
+
     try {
       var url = '$baseUrl/schedule/';
       final params = <String, String>{};
-      
+
       if (startDate != null) params['start_date'] = startDate;
       if (endDate != null) params['end_date'] = endDate;
       if (activityId != null) params['activity_id'] = activityId.toString();
-      
+
       if (params.isNotEmpty) {
-        url += '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+        url += '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
       }
-      
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -178,10 +187,10 @@ class ApiService {
       return [];
     }
   }
-  
+
   Future<List<dynamic>> getActivities() async {
     if (_token == null) return [];
-    
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/activities/'),
@@ -200,12 +209,12 @@ class ApiService {
       return [];
     }
   }
-  
+
   Future<Map<String, dynamic>> bookSession(int sessionId) async {
     if (_token == null) {
       return {'success': false, 'message': 'No autenticado'};
     }
-    
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/bookings/book/'),
@@ -217,23 +226,30 @@ class ApiService {
       );
 
       final data = json.decode(response.body);
-      
+
       if (response.statusCode == 201) {
-        return {'success': true, 'message': data['message'], 'booking': data['booking']};
+        return {
+          'success': true,
+          'message': data['message'],
+          'booking': data['booking']
+        };
       } else {
-        return {'success': false, 'message': data['error'] ?? 'Error al reservar'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error al reservar'
+        };
       }
     } catch (e) {
       print('Error booking session: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
+
   Future<Map<String, dynamic>> cancelBooking(int bookingId) async {
     if (_token == null) {
       return {'success': false, 'message': 'No autenticado'};
     }
-    
+
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/bookings/$bookingId/cancel/'),
@@ -244,21 +260,24 @@ class ApiService {
       );
 
       final data = json.decode(response.body);
-      
+
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
-        return {'success': false, 'message': data['error'] ?? 'Error al cancelar'};
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error al cancelar'
+        };
       }
     } catch (e) {
       print('Error canceling booking: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
+
   Future<List<dynamic>> getMyBookings({String status = 'upcoming'}) async {
     if (_token == null) return [];
-    
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/bookings/my-bookings/?status=$status'),
@@ -277,27 +296,24 @@ class ApiService {
       return [];
     }
   }
-  
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     _token = null;
     _currentClient = null;
   }
-  
+
   // ===========================
-  // ROUTINES
+  // PROFILE
   // ===========================
-  
-  /// Get list of routines assigned to the client
-  Future<Map<String, dynamic>> getRoutines() async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado', 'routines': []};
-    }
-    
+
+  Future<Map<String, dynamic>> getProfile() async {
+    if (_token == null) return {};
+
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/routines/'),
+        Uri.parse('$baseUrl/profile/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
@@ -305,54 +321,271 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'success': true,
-          'count': data['count'],
-          'routines': data['routines'],
-        };
+        return json.decode(response.body);
       }
-      return {'success': false, 'message': 'Error obteniendo rutinas', 'routines': []};
+      return {};
     } catch (e) {
-      print('Error getting routines: $e');
-      return {'success': false, 'message': 'Error de conexión', 'routines': []};
+      print('Error getting profile: $e');
+      return {};
     }
   }
-  
-  /// Get detailed routine with all days and exercises
-  Future<Map<String, dynamic>> getRoutineDetail(int routineId) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+    if (_token == null) return {'success': false};
+
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/routines/$routineId/'),
+      final response = await http.put(
+        Uri.parse('$baseUrl/profile/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
         },
+        body: json.encode(data),
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, 'routine': data};
-      } else if (response.statusCode == 404) {
-        return {'success': false, 'message': 'Rutina no encontrada'};
+        return {'success': true, 'profile': json.decode(response.body)};
       }
-      return {'success': false, 'message': 'Error obteniendo rutina'};
+      return {'success': false};
     } catch (e) {
-      print('Error getting routine detail: $e');
+      print('Error updating profile: $e');
+      return {'success': false};
+    }
+  }
+
+  Future<Map<String, dynamic>> changePassword(
+      String oldPassword, String newPassword) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/profile/change-password/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json
+            .encode({'old_password': oldPassword, 'new_password': newPassword}),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      }
+      return {'success': false, 'message': data['error']};
+    } catch (e) {
+      print('Error changing password: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
-  /// Get detailed info for a single exercise
-  Future<Map<String, dynamic>> getExerciseDetail(int exerciseId) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
+
+  // Payment Methods
+  Future<List<Map<String, dynamic>>> getPaymentMethods() async {
+    if (_token == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/profile/payment-methods/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting payment methods: $e');
+      return [];
     }
-    
+  }
+
+  Future<Map<String, dynamic>> addPaymentMethod({
+    required String cardNumber,
+    required int expiryMonth,
+    required int expiryYear,
+    required String cvv,
+    required String cardholderName,
+  }) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/profile/payment-methods/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({
+          'card_number': cardNumber,
+          'expiry_month': expiryMonth,
+          'expiry_year': expiryYear,
+          'cvv': cvv,
+          'cardholder_name': cardholderName,
+        }),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Error al añadir tarjeta'};
+    } catch (e) {
+      print('Error adding payment method: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  Future<Map<String, dynamic>> setDefaultPaymentMethod(int methodId) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/profile/payment-methods/$methodId/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'is_default': true}),
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false};
+    } catch (e) {
+      print('Error setting default payment method: $e');
+      return {'success': false};
+    }
+  }
+
+  Future<Map<String, dynamic>> deletePaymentMethod(int methodId) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/profile/payment-methods/$methodId/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false};
+    } catch (e) {
+      print('Error deleting payment method: $e');
+      return {'success': false};
+    }
+  }
+
+  Future<Map<String, dynamic>> toggleNotifications(bool enabled) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/profile/notifications/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'notifications_enabled': enabled}),
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false};
+    } catch (e) {
+      print('Error toggling notifications: $e');
+      return {'success': false};
+    }
+  }
+
+  Future<Map<String, dynamic>> getMembership() async {
+    if (_token == null) return {};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/profile/membership/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {};
+    } catch (e) {
+      print('Error getting membership: $e');
+      return {};
+    }
+  }
+
+  // ===========================
+  // NOTIFICATIONS
+  // ===========================
+
+  Future<List<dynamic>> getPopupNotifications() async {
+    if (_token == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/notifications/popup/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Error getting popup notifications: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> dismissPopup(int noteId) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/notifications/popup/$noteId/dismiss/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      }
+      return {'success': false};
+    } catch (e) {
+      print('Error dismissing popup: $e');
+      return {'success': false};
+    }
+  }
+
+  // ===========================
+  // EXERCISE DETAIL
+  // ===========================
+
+  Future<Map<String, dynamic>> getExerciseDetail(int exerciseId) async {
+    if (_token == null) return {};
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/exercises/$exerciseId/'),
@@ -363,31 +596,137 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, 'exercise': data};
-      } else if (response.statusCode == 404) {
-        return {'success': false, 'message': 'Ejercicio no encontrado'};
+        return json.decode(response.body);
       }
-      return {'success': false, 'message': 'Error obteniendo ejercicio'};
+      return {};
     } catch (e) {
       print('Error getting exercise detail: $e');
-      return {'success': false, 'message': 'Error de conexión'};
+      return {};
     }
   }
-  
+
   // ===========================
-  // CHECK-IN QR
+  // BILLING
   // ===========================
-  
-  /// Generate QR token for check-in
-  Future<Map<String, dynamic>> generateCheckinQR() async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+
+  // Billing History
+  Future<List<dynamic>> getBillingHistory() async {
+    if (_token == null) return [];
+
     try {
       final response = await http.get(
+        Uri.parse('$baseUrl/billing/history/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Error getting billing history: $e');
+      return [];
+    }
+  }
+
+  // Chat Messages
+  Future<Map<String, dynamic>> getChatMessages({int page = 1}) async {
+    if (_token == null) return {'messages': [], 'has_next': false};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/chat/messages/?page=$page'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'messages': [], 'has_next': false};
+    } catch (e) {
+      print('Error getting chat messages: $e');
+      return {'messages': [], 'has_next': false};
+    }
+  }
+
+  // Mark Chat as Read
+  Future<void> markChatRead() async {
+    if (_token == null) return;
+
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/chat/read/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+    } catch (e) {
+      print('Error marking chat as read: $e');
+    }
+  }
+
+  // Send Chat Message
+  Future<Map<String, dynamic>> sendChatMessage(String text) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/chat/messages/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'message': text}),
+      );
+
+      if (response.statusCode == 201) {
+        return {'success': true, 'message': json.decode(response.body)};
+      }
+      return {'success': false};
+    } catch (e) {
+      print('Error sending chat message: $e');
+      return {'success': false};
+    }
+  }
+
+  // Generate Check-in QR
+  Future<Map<String, dynamic>> generateCheckinQR() async {
+    if (_token == null) return {'success': false, 'error': 'No autenticado'};
+
+    try {
+      final response = await http.post(
         Uri.parse('$baseUrl/checkin/generate/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'error': 'Error al generar QR'};
+    } catch (e) {
+      print('Error generating QR: $e');
+      return {'success': false, 'error': 'Error de conexión'};
+    }
+  }
+
+  // Get Check-in History
+  Future<Map<String, dynamic>> getCheckinHistory({int limit = 20}) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/checkin/history/?limit=$limit'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
@@ -396,21 +735,19 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {'success': true, ...data};
+        return {'success': true, 'visits': data['history'] ?? []};
       }
-      return {'success': false, 'message': 'Error generando QR'};
+      return {'success': false, 'message': 'Error al cargar historial'};
     } catch (e) {
-      print('Error generating QR token: $e');
+      print('Error getting checkin history: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
-  /// Refresh QR token
+
+  // Refresh Check-in QR
   Future<Map<String, dynamic>> refreshCheckinQR() async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+    if (_token == null) return {'success': false};
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/checkin/refresh/'),
@@ -424,22 +761,20 @@ class ApiService {
         final data = json.decode(response.body);
         return {'success': true, ...data};
       }
-      return {'success': false, 'message': 'Error refrescando QR'};
+      return {'success': false};
     } catch (e) {
-      print('Error refreshing QR token: $e');
-      return {'success': false, 'message': 'Error de conexión'};
+      print('Error refreshing QR: $e');
+      return {'success': false};
     }
   }
-  
-  /// Get check-in history
-  Future<Map<String, dynamic>> getCheckinHistory({int limit = 10}) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado', 'visits': []};
-    }
-    
+
+  // Get Document Detail
+  Future<Map<String, dynamic>> getDocumentDetail(int documentId) async {
+    if (_token == null) return {};
+
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/checkin/history/?limit=$limit'),
+        Uri.parse('$baseUrl/documents/$documentId/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
@@ -447,153 +782,150 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, ...data};
+        return json.decode(response.body);
       }
-      return {'success': false, 'message': 'Error obteniendo historial', 'visits': []};
+      return {};
     } catch (e) {
-      print('Error getting checkin history: $e');
-      return {'success': false, 'message': 'Error de conexión', 'visits': []};
+      print('Error getting document detail: $e');
+      return {};
     }
   }
-  
-  // ===========================
-  // PROFILE
-  // ===========================
-  
-  /// Get client profile
-  Future<Map<String, dynamic>> getProfile() async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/profile/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, 'profile': data};
-      }
-      return {'success': false, 'message': 'Error obteniendo perfil'};
-    } catch (e) {
-      print('Error getting profile: $e');
-      return {'success': false, 'message': 'Error de conexión'};
-    }
-  }
-  
-  /// Update client profile
-  Future<Map<String, dynamic>> updateProfile({
-    String? firstName,
-    String? lastName,
-    String? email,
-    String? phone,
-  }) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
-    try {
-      final Map<String, dynamic> body = {};
-      if (firstName != null) body['first_name'] = firstName;
-      if (lastName != null) body['last_name'] = lastName;
-      if (email != null) body['email'] = email;
-      if (phone != null) body['phone'] = phone;
-      
-      final response = await http.put(
-        Uri.parse('$baseUrl/profile/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-        body: json.encode(body),
-      );
+  // Sign Document
+  Future<Map<String, dynamic>> signDocument(
+      int documentId, String base64signature) async {
+    if (_token == null) return {'success': false};
 
-      final data = json.decode(response.body);
-      
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': data['message'], 'client': data['client']};
-      }
-      return {'success': false, 'message': data['error'] ?? 'Error actualizando perfil'};
-    } catch (e) {
-      print('Error updating profile: $e');
-      return {'success': false, 'message': 'Error de conexión'};
-    }
-  }
-  
-  /// Change password
-  Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/profile/change-password/'),
+        Uri.parse('$baseUrl/documents/$documentId/sign/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'signature': base64signature}),
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'document': json.decode(response.body)};
+      }
+      return {'success': false};
+    } catch (e) {
+      print('Error signing document: $e');
+      return {'success': false};
+    }
+  }
+
+  // Get Documents List
+  Future<Map<String, dynamic>> getDocuments() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/documents/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, 'documents': data is List ? data : []};
+      }
+      return {'success': false, 'message': 'Error al cargar documentos'};
+    } catch (e) {
+      print('Error getting documents: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Get Class History
+  Future<List<dynamic>> getClassHistory() async {
+    if (_token == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/history/classes/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Error getting class history: $e');
+      return [];
+    }
+  }
+
+  // Submit Class Review
+  Future<Map<String, dynamic>> submitClassReview(
+      {required int sessionId,
+      required int instructorRating,
+      required int classRating,
+      required String comment}) async {
+    if (_token == null) return {'success': false};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/history/review/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
         },
         body: json.encode({
-          'current_password': currentPassword,
-          'new_password': newPassword,
+          'session_id': sessionId,
+          'instructor_rating': instructorRating,
+          'class_rating': classRating,
+          'comment': comment
         }),
       );
 
-      final data = json.decode(response.body);
-      
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': data['message']};
+      if (response.statusCode == 201) {
+        return {'success': true};
       }
-      return {'success': false, 'message': data['error'] ?? 'Error cambiando contraseña'};
+      return {'success': false};
     } catch (e) {
-      print('Error changing password: $e');
-      return {'success': false, 'message': 'Error de conexión'};
+      print('Error submitting review: $e');
+      return {'success': false};
     }
   }
-  
-  /// Toggle email notifications
-  Future<Map<String, dynamic>> toggleNotifications(bool enabled) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+
+  // Get Routine Detail
+  Future<Map<String, dynamic>> getRoutineDetail(int routineId) async {
+    if (_token == null) return {};
+
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/profile/notifications/'),
+      final response = await http.get(
+        Uri.parse('$baseUrl/routines/$routineId/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
         },
-        body: json.encode({'enabled': enabled}),
       );
 
-      final data = json.decode(response.body);
-      
       if (response.statusCode == 200) {
-        return {'success': true, 'message': data['message']};
+        return json.decode(response.body);
       }
-      return {'success': false, 'message': data['error'] ?? 'Error actualizando notificaciones'};
+      return {};
     } catch (e) {
-      print('Error toggling notifications: $e');
-      return {'success': false, 'message': 'Error de conexión'};
+      print('Error getting routine detail: $e');
+      return {};
     }
   }
-  
-  /// Get membership details
-  Future<Map<String, dynamic>> getMembershipDetails() async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+
+  // Get Routines List
+  Future<Map<String, dynamic>> getRoutines() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/profile/membership/'),
+        Uri.parse('$baseUrl/routines/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
@@ -602,25 +934,19 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {'success': true, ...data};
+        return {'success': true, 'routines': data is List ? data : []};
       }
-      return {'success': false, 'message': 'Error obteniendo membresía'};
+      return {'success': false, 'message': 'Error al cargar rutinas'};
     } catch (e) {
-      print('Error getting membership: $e');
+      print('Error getting routines: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
-  // ===========================
-  // SHOP
-  // ===========================
-  
-  /// Get shop items (products, services, plans)
+
+  // Get Shop Items
   Future<Map<String, dynamic>> getShop() async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/shop/'),
@@ -632,21 +958,24 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {'success': true, ...data};
+        return {
+          'success': true,
+          'products': data['products'] ?? [],
+          'services': data['services'] ?? [],
+          'membership_plans': data['membership_plans'] ?? []
+        };
       }
-      return {'success': false, 'message': 'Error cargando tienda'};
+      return {'success': false, 'message': 'Error al cargar tienda'};
     } catch (e) {
-      print('Error getting shop: $e');
+      print('Error getting shop items: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
-  /// Request info about an item
-  Future<Map<String, dynamic>> requestInfo(String itemType, int itemId, {String message = ''}) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+
+  // Request Shop Item Info
+  Future<Map<String, dynamic>> requestInfo(String itemType, int itemId) async {
+    if (_token == null) return {'success': false};
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/shop/request-info/'),
@@ -654,331 +983,236 @@ class ApiService {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
         },
-        body: json.encode({
-          'item_type': itemType, // 'product', 'service', 'plan'
-          'item_id': itemId,
-          'message': message,
-        }),
+        body: json.encode({'item_type': itemType, 'item_id': itemId}),
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, ...data};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true};
       }
-      return {'success': false, 'message': 'Error enviando solicitud'};
+      return {'success': false};
     } catch (e) {
       print('Error requesting info: $e');
+      return {'success': false};
+    }
+  }
+
+  // ===== GAMIFICATION =====
+  
+  // Get Gamification Status (progress, level, XP, rank)
+  Future<Map<String, dynamic>> getGamificationStatus() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/gamification/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': 'Error al cargar gamificación'};
+    } catch (e) {
+      print('Error getting gamification status: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }
-  
-  // ===========================
-  // DOCUMENTS
-  // ===========================
-  
-  /// Get documents
-  Future<Map<String, dynamic>> getDocuments({String? status}) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+
+  // Get Leaderboard
+  Future<Map<String, dynamic>> getLeaderboard({String period = 'weekly'}) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
     try {
-      String url = '$baseUrl/documents/';
-      if (status != null) {
-        url += '?status=$status';
+      final response = await http.get(
+        Uri.parse('$baseUrl/gamification/leaderboard/?period=$period'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, 'leaderboard': data is List ? data : []};
       }
-      
+      return {'success': false, 'message': 'Error al cargar ranking'};
+    } catch (e) {
+      print('Error getting leaderboard: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Get Achievements
+  Future<Map<String, dynamic>> getAchievements() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/gamification/achievements/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'unlocked': data['unlocked'] ?? [],
+          'locked': data['locked'] ?? []
+        };
+      }
+      return {'success': false, 'message': 'Error al cargar logros'};
+    } catch (e) {
+      print('Error getting achievements: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Get Challenges
+  Future<Map<String, dynamic>> getChallenges() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/gamification/challenges/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'challenges': data is List ? data : []
+        };
+      }
+      return {'success': false, 'message': 'Error al cargar retos'};
+    } catch (e) {
+      print('Error getting challenges: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Join Challenge
+  Future<Map<String, dynamic>> joinChallenge(int challengeId) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/gamification/challenges/$challengeId/join/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return {'success': true, 'message': data['message'] ?? 'Te has unido al reto'};
+      }
+      final data = json.decode(response.body);
+      return {'success': false, 'message': data['error'] ?? 'Error al unirse al reto'};
+    } catch (e) {
+      print('Error joining challenge: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Get XP History
+  Future<Map<String, dynamic>> getXPHistory({int limit = 20}) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/gamification/xp-history/?limit=$limit'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'transactions': data is List ? data : []
+        };
+      }
+      return {'success': false, 'message': 'Error al cargar historial XP'};
+    } catch (e) {
+      print('Error getting XP history: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // ===========================
+  // ADVERTISEMENTS
+  // ===========================
+
+  Future<List<Advertisement>> getAdvertisements({
+    String screen = 'ALL',
+    String? position,
+  }) async {
+    try {
+      var url = '${baseUrl.replaceAll('/api', '')}/marketing/api/advertisements/active/';
+      final params = <String, String>{};
+
+      params['screen'] = screen;
+      if (position != null) params['position'] = position;
+
+      if (params.isNotEmpty) {
+        url += '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+      }
+
+      print('📢 Fetching advertisements: $url');
+
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
+        headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, ...data};
+        final List<dynamic> data = json.decode(response.body);
+        print('✅ Found ${data.length} advertisements for screen: $screen');
+        return data.map((json) => Advertisement.fromJson(json)).toList();
       }
-      return {'success': false, 'message': 'Error obteniendo documentos'};
+      print('❌ Failed to load advertisements: ${response.statusCode}');
+      return [];
     } catch (e) {
-      print('Error getting documents: $e');
-      return {'success': false, 'message': 'Error de conexión'};
+      print('💥 Error loading advertisements: $e');
+      return [];
     }
   }
-  
-  /// Get document details
-  Future<Map<String, dynamic>> getDocumentDetail(int documentId) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/documents/$documentId/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, ...data};
-      }
-      return {'success': false, 'message': 'Error obteniendo documento'};
-    } catch (e) {
-      print('Error getting document detail: $e');
-      return {'success': false, 'message': 'Error de conexión'};
-    }
-  }
-  
-  /// Sign document (base64 image)
-  Future<Map<String, dynamic>> signDocument(int documentId, String signatureImageBase64) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
+  Future<void> trackAdvertisementImpression(int adId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/documents/$documentId/sign/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-        body: json.encode({
-          'signature_image': signatureImageBase64,
-        }),
-      );
-
-      final data = json.decode(response.body);
-      
-      if (response.statusCode == 200) {
-        return {'success': true, ...data};
-      }
-      return {'success': false, 'message': data['error'] ?? 'Error firmando documento'};
-    } catch (e) {
-      print('Error signing document: $e');
-      return {'success': false, 'message': 'Error de conexión'};
-    }
-  }
-  
-  // ===========================
-  // CHAT
-  // ===========================
-  
-  /// Get chat messages
-  Future<Map<String, dynamic>> getChatMessages({int limit = 50, int offset = 0}) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado', 'messages': []};
-    }
-    
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/chat/messages/?limit=$limit&offset=$offset'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, ...data};
-      }
-      return {'success': false, 'message': 'Error obteniendo chat', 'messages': []};
-    } catch (e) {
-      print('Error getting chat: $e');
-      return {'success': false, 'message': 'Error de conexión', 'messages': []};
-    }
-  }
-  
-  /// Send chat message
-  Future<Map<String, dynamic>> sendChatMessage(String message) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/chat/messages/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-        body: json.encode({'message': message}),
-      );
-
-      final data = json.decode(response.body);
-      
-      if (response.statusCode == 201) {
-        return {'success': true, ...data};
-      }
-      return {'success': false, 'message': data['error'] ?? 'Error enviando mensaje'};
-    } catch (e) {
-      print('Error sending message: $e');
-      return {'success': false, 'message': 'Error de conexión'};
-    }
-  }
-  
-  /// Mark messages as read
-  Future<void> markChatRead() async {
-    if (_token == null) return;
-    try {
+      final url = '${baseUrl.replaceAll('/api', '')}/marketing/api/advertisements/$adId/impression/';
       await http.post(
-        Uri.parse('$baseUrl/chat/read/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
       );
     } catch (e) {
-      print('Error marking read: $e');
+      print('Error tracking impression: $e');
     }
   }
-  
-  // ===========================
-  // NOTIFICATIONS (Popups)
-  // ===========================
-  
-  /// Get active popup notifications
-  Future<List<dynamic>> getPopupNotifications() async {
-    if (_token == null) return [];
-    
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/notifications/popup/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['popups'] ?? [];
-      }
-      return [];
-    } catch (e) {
-      print('Error getting popups: $e');
-      return [];
-    }
-  }
-  
-  /// Dismiss a popup
-  Future<void> dismissPopup(int noteId) async {
-    if (_token == null) return;
-    
+  Future<void> trackAdvertisementClick(int adId) async {
     try {
+      final url = '${baseUrl.replaceAll('/api', '')}/marketing/api/advertisements/$adId/click/';
       await http.post(
-        Uri.parse('$baseUrl/notifications/popup/$noteId/dismiss/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
       );
     } catch (e) {
-      print('Error dismissing popup: $e');
-    }
-  }
-  
-  // ===========================
-  // BILLING
-  // ===========================
-  
-  /// Get billing history (invoices)
-  Future<List<dynamic>> getBillingHistory() async {
-    if (_token == null) return [];
-    
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/billing/history/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['invoices'] ?? [];
-      }
-      return [];
-    } catch (e) {
-      print('Error getting billing history: $e');
-      return [];
-    }
-  }
-  
-  // ===========================
-  // HISTORY & REVIEWS
-  // ===========================
-  
-  /// Get past classes
-  Future<List<dynamic>> getClassHistory({int limit = 20, int offset = 0}) async {
-    if (_token == null) return [];
-    
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/history/classes/?limit=$limit&offset=$offset'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['classes'] ?? [];
-      }
-      return [];
-    } catch (e) {
-      print('Error getting class history: $e');
-      return [];
-    }
-  }
-  
-  /// Submit class review
-  Future<Map<String, dynamic>> submitClassReview({
-    required int sessionId,
-    required int instructorRating,
-    required int classRating,
-    String comment = '',
-  }) async {
-    if (_token == null) {
-      return {'success': false, 'message': 'No autenticado'};
-    }
-    
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/history/reviews/'),
-        headers: {
-          'Authorization': 'Token $_token',
-          'Content-Type': 'application/json'
-        },
-        body: json.encode({
-          'session_id': sessionId,
-          'instructor_rating': instructorRating,
-          'class_rating': classRating,
-          'comment': comment,
-        }),
-      );
-
-      final data = json.decode(response.body);
-      
-      if (response.statusCode == 200) {
-        return {'success': true, ...data};
-      }
-      return {'success': false, 'message': data['error'] ?? 'Error enviando valoración'};
-    } catch (e) {
-      print('Error submitting review: $e');
-      return {'success': false, 'message': 'Error de conexión'};
+      print('Error tracking click: $e');
     }
   }
 }
-
-
-
-
-
-

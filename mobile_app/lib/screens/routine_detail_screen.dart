@@ -333,7 +333,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
   }
 
   Widget _buildDayExercises(RoutineDay day) {
-    if (day.exercises == null || day.exercises!.isEmpty) {
+    if (day.exercises.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -389,9 +389,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
         )),
         child: ListView.builder(
           padding: const EdgeInsets.all(20),
-          itemCount: day.exercises!.length,
+          itemCount: day.exercises.length,
           itemBuilder: (context, index) {
-            final exercise = day.exercises![index];
+            final exercise = day.exercises[index];
             return _buildExerciseCard(exercise, index);
           },
         ),
@@ -478,7 +478,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              exercise.exercise.name,
+                              exercise.name,
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
@@ -493,16 +493,16 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                                   Icons.category_rounded,
                                   size: 14,
                                   color: _getMuscleGroupColor(
-                                      exercise.exercise.muscleGroup),
+                                      exercise.muscleGroup),
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    exercise.exercise.muscleGroup,
+                                    exercise.muscleGroup,
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: _getMuscleGroupColor(
-                                          exercise.exercise.muscleGroup),
+                                          exercise.muscleGroup),
                                       fontWeight: FontWeight.w600,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -514,7 +514,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                         ),
                       ),
                       // Video indicator
-                      if (exercise.exercise.videoUrl.isNotEmpty)
+                      if (exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
@@ -559,28 +559,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
                     ],
                   ),
                 ),
-                // Equipment and notes
-                if (exercise.exercise.equipment.isNotEmpty ||
-                    exercise.notes.isNotEmpty)
+                // Notes section
+                if (exercise.notes.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (exercise.exercise.equipment.isNotEmpty)
-                          _buildInfoRow(
-                            Icons.hardware_rounded,
-                            exercise.exercise.equipment,
-                            const Color(0xFF64748B),
-                          ),
-                        if (exercise.notes.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          _buildInfoRow(
-                            Icons.note_rounded,
-                            exercise.notes,
-                            const Color(0xFF8B5CF6),
-                          ),
-                        ],
+                        _buildInfoRow(
+                          Icons.note_rounded,
+                          exercise.notes,
+                          const Color(0xFF8B5CF6),
+                        ),
                       ],
                     ),
                   ),
@@ -685,7 +675,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
       context,
       MaterialPageRoute(
         builder: (context) => ExerciseDetailScreen(
-          exerciseId: exercise.exercise.id,
+          exercise: exercise,
         ),
       ),
     );

@@ -17,7 +17,7 @@
     </div>
 
 
-    <nav class="mt-8 space-y-1 text-sm">
+    <nav class="mt-8 space-y-1">
       <!-- Superadmin Panel -->
       {% if request.user.is_superuser %}
       <a href="{% url 'superadmin:dashboard' %}"
@@ -97,9 +97,7 @@
           </path>
         </svg>
         Clientes
-        {% if request.gym %}
         <span class="ml-auto bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full group-hover:bg-[var(--brand-color)] group-hover:text-white transition-colors">{{ request.gym.clients.count }}</span>
-        {% endif %}
       </a>
 
       <!-- Memberships Link -->
@@ -141,6 +139,22 @@
             d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
         </svg>
         Productos
+      </a>
+      {% endif %}
+
+      <!-- Activities Link -->
+      {% has_gym_perm 'activities.view_room' as can_view_activities_sidebar %}
+      {% if can_view_activities_sidebar %}
+      <a href="{% url 'activity_list' %}"
+        class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
+        <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor"
+          viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+          </path>
+        </svg>
+        Actividades y Salas
       </a>
       {% endif %}
 
@@ -253,15 +267,24 @@
 
       <!-- Gamificación -->
       {% if request.gym %}
-      <div class="px-4 py-3">
-        <div class="flex items-center gap-3 text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4v16m-4-5a4 4 0 118 0 4 4 0 01-8 0zm0 0h8"></path>
+      <div x-data="{ open: false }">
+        <button @click="open = !open"
+          class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4v16m-4-5a4 4 0 118 0 4 4 0 01-8 0zm0 0h8"></path>
+            </svg>
+            <span>Gamificación</span>
+          </div>
+          <svg class="w-4 h-4 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
-          <span>Gamificación</span>
-        </div>
+        </button>
 
-        <div class="space-y-1">
+        <div x-show="open" x-transition:enter="transition ease-out duration-200"
+          x-transition:enter-start="opacity-0 transform -translate-y-2"
+          x-transition:enter-end="opacity-100 transform translate-y-0" class="ml-4 mt-1 space-y-1">
           <a href="{% url 'gamification:leaderboard' request.gym.id %}"
             class="flex items-center gap-2 px-4 py-2 text-sm text-slate-500 hover:text-[var(--brand-color)] hover:bg-slate-50 rounded-lg transition-all">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,6 +421,18 @@
           </a>
 
           <!-- Configuración -->
+          <!-- Chat -->
+          <a href="{% url 'chat_list' %}"
+            class="flex items-center gap-2 px-4 py-2 text-sm text-slate-500 hover:text-[var(--brand-color)] hover:bg-slate-50 rounded-lg transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+              </path>
+            </svg>
+            Chat
+          </a>
+
+          <!-- Configuración -->
           <a href="{% url 'marketing_settings' %}"
             class="flex items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-[var(--brand-color)] hover:bg-slate-50 rounded-lg transition-all">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,19 +446,6 @@
           </a>
         </div>
       </div>
-
-
-      <!-- Chat Link -->
-      <a href="{% url 'chat_list' %}"
-        class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
-        <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor"
-          viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
-          </path>
-        </svg>
-        Chat
-      </a>
 
       <!-- Staff Section with Submenu -->
       {% has_gym_perm 'staff.view_staffprofile' as can_view_staff %}
@@ -539,21 +561,7 @@
       </div>
       {% endif %}
 
-      <!-- Activities Link -->
-      {% has_gym_perm 'activities.view_room' as can_view_activities %}
-      {% if can_view_activities %}
-      <a href="{% url 'activity_list' %}"
-        class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
-        <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor"
-          viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-          </path>
-        </svg>
-        Actividades y Salas
-      </a>
-      {% endif %}
+
 
       <!-- Providers Link -->
       {% has_gym_perm 'providers.view' as can_view_providers %}
@@ -627,6 +635,21 @@
             </svg>
             Configuración
           </a>
+
+          <!-- Staff Section with Submenu -->
+          {% has_gym_perm 'staff.view_staffprofile' as can_view_staff_settings %}
+          {% if can_view_staff_settings %}
+          <a href="{% url 'staff_list' %}"
+            class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
+            <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+              </path>
+            </svg>
+            Equipo
+          </a>
+          {% endif %}
 
           <!-- Documentos -->
           <a href="{% url 'document_template_list' %}"

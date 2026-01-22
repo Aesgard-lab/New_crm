@@ -168,6 +168,96 @@
             </div>
         </div>
 
+        <!-- SMTP Configuration -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h3 class="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                    </path>
+                </svg>
+                Configuración SMTP
+            </h3>
+            <p class="text-sm text-slate-600 mb-4">Configura el servidor SMTP para enviar emails desde tu gimnasio (campañas, automatizaciones, etc.)</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Servidor SMTP</label>
+                    {{ form.smtp_host }}
+                    <p class="text-xs text-slate-500 mt-1">Ejemplo: smtp.gmail.com</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Puerto</label>
+                    {{ form.smtp_port }}
+                    <p class="text-xs text-slate-500 mt-1">587 para TLS, 465 para SSL</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Usuario SMTP</label>
+                    {{ form.smtp_username }}
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Contraseña SMTP</label>
+                    {{ form.smtp_password }}
+                    <p class="text-xs text-slate-500 mt-1">Se encripta al guardar</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Email Remitente</label>
+                    {{ form.smtp_from_email }}
+                    <p class="text-xs text-slate-500 mt-1">Email que aparecerá como remitente</p>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        {{ form.smtp_use_tls }}
+                        <label class="text-sm text-slate-700">Usar TLS (Recomendado)</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {{ form.smtp_use_ssl }}
+                        <label class="text-sm text-slate-700">Usar SSL</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Signature & Footer -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h3 class="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                    </path>
+                </svg>
+                Firma y Políticas de Email
+            </h3>
+            <p class="text-sm text-slate-600 mb-4">Configura la firma y el texto legal que se añadirá automáticamente a todos los emails enviados.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Logo para Firma</label>
+                    <div class="flex items-start gap-4">
+                        {% if form.instance.email_signature_logo %}
+                        <div class="flex-shrink-0">
+                            <img src="{{ form.instance.email_signature_logo.url }}" alt="Logo firma" class="h-16 w-auto rounded-lg border border-slate-200">
+                        </div>
+                        {% endif %}
+                        <div class="flex-1">
+                            {{ form.email_signature_logo }}
+                            <p class="text-xs text-slate-500 mt-1">Sube un logo o imagen que aparecerá en la firma. Recomendado: PNG transparente, máx 200px de alto.</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Texto de la Firma</label>
+                    {{ form.email_signature }}
+                    <p class="text-xs text-slate-500 mt-1">Se añade después del contenido del email. Puedes usar HTML básico.</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-slate-700 block mb-1">Pie de Email / Políticas de Privacidad</label>
+                    {{ form.email_footer }}
+                    <p class="text-xs text-slate-500 mt-1">Texto legal, política de privacidad, enlace de baja, etc.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="flex items-center justify-end gap-3 pt-4">
             <a href="{% url 'settings_dashboard' %}"

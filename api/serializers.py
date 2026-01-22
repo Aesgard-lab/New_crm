@@ -28,13 +28,13 @@ class ClientProfileSerializer(serializers.ModelSerializer):
     next_bookings = serializers.SerializerMethodField()
     stats = serializers.SerializerMethodField()
     birth_date_formatted = serializers.SerializerMethodField()
-    client_type_display = serializers.SerializerMethodField()
+    status_display = serializers.SerializerMethodField()
     
     class Meta:
         model = Client
         fields = [
             'id', 'gym_name', 'first_name', 'last_name', 'email', 'phone',
-            'dni', 'birth_date', 'birth_date_formatted', 'address', 'client_type', 'client_type_display',
+            'dni', 'birth_date', 'birth_date_formatted', 'address', 'status', 'status_display',
             'user', 'photo', 'access_code', 'active_membership', 
             'next_bookings', 'stats'
         ]
@@ -44,9 +44,9 @@ class ClientProfileSerializer(serializers.ModelSerializer):
             return obj.birth_date.strftime('%d/%m/%Y')
         return ''
     
-    def get_client_type_display(self, obj):
-        if hasattr(obj, 'client_type') and obj.client_type:
-            return obj.get_client_type_display()
+    def get_status_display(self, obj):
+        if hasattr(obj, 'status') and obj.status:
+            return obj.get_status_display()
         return ''
 
     def get_active_membership(self, obj):

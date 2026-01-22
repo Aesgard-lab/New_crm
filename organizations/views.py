@@ -25,6 +25,11 @@ def gym_settings_view(request):
             
             messages.success(request, 'Configuración del gimnasio actualizada.')
             return redirect('gym_settings')
+        else:
+            # Mostrar errores de validación
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'Error en {field}: {error}')
     else:
         form = GymSettingsForm(instance=gym)
         

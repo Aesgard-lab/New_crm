@@ -221,9 +221,9 @@ class _ShopScreenState extends State<ShopScreen>
           screen: 'SHOP',
           title: 'Promociones Exclusivas',
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Plans list
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),

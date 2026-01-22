@@ -15,12 +15,13 @@ class PromoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final api = Provider.of<ApiService>(context, listen: false);
+    // TODO: Temporarily disabled tracking
+    // final api = Provider.of<ApiService>(context, listen: false);
 
     return GestureDetector(
       onTap: () {
-        // Track click
-        api.trackAdvertisementClick(ad.id);
+        // Track click - temporarily disabled
+        // api.trackAdvertisementClick(ad.id);
         
         // Handle CTA action
         if (ad.hasCta && onTap != null) {

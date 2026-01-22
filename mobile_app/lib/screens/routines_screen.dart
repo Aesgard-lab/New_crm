@@ -70,17 +70,17 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
         slivers: [
           _buildSliverAppBar(),
           if (_isLoading)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(
+                    const CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
                       strokeWidth: 3,
                     ),
-                    SizedBox(height: 16),
-                    Text(
+                    const SizedBox(height: 16),
+                    const Text(
                       'Cargando rutinas...',
                       style: TextStyle(
                         color: Color(0xFF64748B),
@@ -155,8 +155,8 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Row(
-                    children: [
+                  Row(
+                    children: const [
                       Icon(
                         Icons.fitness_center_rounded,
                         color: Colors.white,
@@ -469,66 +469,6 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
     ];
     return gradients[index % gradients.length];
   }
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      routine.description.isNotEmpty
-                          ? routine.description
-                          : 'Sin descripción',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF64748B),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildBadge(
-                          '${routine.daysCount} días',
-                          const Color(0xFFF1F5F9),
-                          const Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildBadge(
-                          '${routine.exercisesCount} ejercicios',
-                          const Color(0xFFEEF2FF),
-                          const Color(0xFF6366F1),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: Color(0xFFCBD5E1),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBadge(String text, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: textColor,
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyState() {
     return Center(
@@ -588,9 +528,9 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
                 color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [
+                children: const [
                   Icon(
                     Icons.info_outline_rounded,
                     color: Color(0xFF6366F1),
@@ -666,9 +606,9 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
                 elevation: 0,
                 shadowColor: const Color(0xFF6366F1).withOpacity(0.4),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [
+                children: const [
                   Icon(Icons.refresh_rounded, size: 20),
                   SizedBox(width: 8),
                   Text(

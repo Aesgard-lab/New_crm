@@ -47,6 +47,31 @@ class Gym(models.Model):
     facebook = models.URLField(blank=True, help_text="URL completa")
     tiktok = models.URLField(blank=True, help_text="URL completa")
     youtube = models.URLField(blank=True, help_text="URL completa")
+    
+    # SMTP Configuration (for sending emails)
+    smtp_host = models.CharField(max_length=255, blank=True, help_text="Servidor SMTP (ej: smtp.gmail.com)")
+    smtp_port = models.IntegerField(default=587, help_text="Puerto SMTP (587 para TLS, 465 para SSL)")
+    smtp_use_tls = models.BooleanField(default=True, help_text="Usar TLS/STARTTLS")
+    smtp_use_ssl = models.BooleanField(default=False, help_text="Usar SSL")
+    smtp_username = models.CharField(max_length=255, blank=True, help_text="Usuario/Email SMTP")
+    smtp_password = models.CharField(max_length=255, blank=True, help_text="Contraseña SMTP")
+    smtp_from_email = models.EmailField(blank=True, help_text="Email remitente (From)")
+    
+    # Email Signature & Footer
+    email_signature = models.TextField(
+        blank=True, 
+        help_text="Firma HTML que se añade al final de cada email"
+    )
+    email_signature_logo = models.ImageField(
+        upload_to='email_signatures/',
+        blank=True,
+        null=True,
+        help_text="Logo o imagen para la firma del email"
+    )
+    email_footer = models.TextField(
+        blank=True,
+        help_text="Texto legal/políticas de privacidad para el pie del email"
+    )
 
     # Idioma / Language
     LANGUAGE_CHOICES = [

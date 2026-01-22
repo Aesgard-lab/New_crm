@@ -259,4 +259,23 @@ RATELIMIT_VIEW_DEFAULT = '100/h'  # 100 requests por hora por defecto
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# --------------------------------------------------
+# EMAIL CONFIGURATION
+# --------------------------------------------------
+if DEBUG:
+    # En desarrollo: Muestra los emails en la consola
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # En producción: Configuración SMTP real
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+    
+# Configuración común
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@tucrm.com')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
 

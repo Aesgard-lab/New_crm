@@ -159,23 +159,56 @@ def template_delete_view(request, pk):
     return redirect('marketing_template_list')
 @login_required
 def marketing_settings_view(request):
-    from .forms import MarketingSettingsForm
-    from .models import MarketingSettings
+    """Vista de configuración de marketing - muestra datos SMTP del gimnasio"""
+    return render(request, 'backoffice/marketing/settings.html')
+
+
+@login_required
+def test_smtp_email_view(request):
+    """Enviar email de prueba usando la configuración SMTP del gimnasio"""
     from django.contrib import messages
-    
-    # Get or Create settings for this gym
-    settings, created = MarketingSettings.objects.get_or_create(gym=request.gym)
+    from organizations.email_utils import send_gym_email
     
     if request.method == 'POST':
-        form = MarketingSettingsForm(request.POST, request.FILES, instance=settings)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Configuración actualizada correctamente.')
-            return redirect('marketing_settings')
-    else:
-        form = MarketingSettingsForm(instance=settings)
+        test_email = request.POST.get('test_email')
+        gym = request.gym
         
-    return render(request, 'backoffice/marketing/settings.html', {'form': form})
+        if not gym.smtp_host:
+            messages.error(request, 'No hay configuración SMTP. Configúrala en Ajustes del Gimnasio.')
+            return redirect('marketing_settings')
+        
+        try:
+            sender_name = gym.commercial_name or gym.name
+            base_url = request.build_absolute_uri('/').rstrip('/')
+            
+            # Enviar email de prueba (incluye firma con logo y footer automáticamente)
+            result = send_gym_email(
+                gym=gym,
+                subject=f'✅ Email de prueba desde {sender_name}',
+                body=f'''¡Hola!
+
+Este es un email de prueba enviado desde {sender_name}.
+
+Si recibes este mensaje, la configuración SMTP está funcionando correctamente.
+
+Detalles de la configuración:
+• Servidor: {gym.smtp_host}
+• Puerto: {gym.smtp_port}
+• TLS: {"Sí" if gym.smtp_use_tls else "No"}
+• SSL: {"Sí" if gym.smtp_use_ssl else "No"}''',
+                to_emails=test_email,
+                base_url=base_url
+            )
+            
+            if result:
+                messages.success(request, f'✅ Email de prueba enviado correctamente a {test_email}')
+            else:
+                messages.error(request, '❌ No se pudo enviar el email')
+        except Exception as e:
+            messages.error(request, f'❌ Error al enviar: {str(e)}')
+    
+    return redirect('marketing_settings')
+
 
 # -- Popups --
 

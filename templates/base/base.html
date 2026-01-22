@@ -197,14 +197,14 @@
   <title>{% block title %}Backoffice{% endblock %}</title>
 </head>
 
-<body class="bg-slate-50 text-slate-900">
-  <div class="min-h-screen flex">
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
+  <div class="h-screen flex">
 
     <!-- Sidebar -->
     {% include "base/sidebar.html" %}
 
     <!-- Main -->
-    <main class="flex-1 lg:ml-64 transition-all">
+    <main class="flex-1 lg:ml-64 transition-all h-screen overflow-y-auto">
       <!-- Header -->
       {% include "base/header.html" %}
 
