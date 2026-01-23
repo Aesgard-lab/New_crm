@@ -99,7 +99,12 @@ class PaymentMethodForm(forms.ModelForm):
 class FinanceSettingsForm(forms.ModelForm):
     class Meta:
         model = FinanceSettings
-        fields = ['stripe_public_key', 'stripe_secret_key', 'redsys_merchant_code', 'redsys_merchant_terminal', 'redsys_secret_key', 'redsys_environment', 'currency']
+        fields = [
+            'stripe_public_key', 'stripe_secret_key', 
+            'redsys_merchant_code', 'redsys_merchant_terminal', 'redsys_secret_key', 'redsys_environment', 
+            'currency',
+            'auto_charge_enabled', 'auto_charge_time', 'auto_charge_max_retries', 'auto_charge_retry_days'
+        ]
         widgets = {
             'stripe_public_key': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm', 'placeholder': 'pk_test_...'}),
             'stripe_secret_key': forms.PasswordInput(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm', 'placeholder': 'sk_test_...', 'render_value': True}),
@@ -108,6 +113,10 @@ class FinanceSettingsForm(forms.ModelForm):
             'redsys_secret_key': forms.PasswordInput(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm', 'placeholder': 'sq7H...', 'render_value': True}),
             'redsys_environment': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm'}),
             'currency': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm', 'placeholder': 'EUR'}),
+            'auto_charge_enabled': forms.CheckboxInput(attrs={'class': 'rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5'}),
+            'auto_charge_time': forms.TimeInput(attrs={'type': 'time', 'class': 'w-full rounded-xl border-slate-200 text-sm'}),
+            'auto_charge_max_retries': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm', 'min': '1', 'max': '10'}),
+            'auto_charge_retry_days': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm', 'min': '1', 'max': '30'}),
         }
 
 

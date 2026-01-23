@@ -117,6 +117,16 @@ class FinanceSettings(models.Model):
     # Currency
     currency = models.CharField(_("Moneda Principal"), max_length=3, default='EUR', help_text=_("Ej: EUR, USD"))
 
+    # Automatic Billing Configuration
+    auto_charge_enabled = models.BooleanField(_("Cobro automático habilitado"), default=False, 
+        help_text=_("Si está activo, el sistema intentará cobrar automáticamente las cuotas vencidas"))
+    auto_charge_time = models.TimeField(_("Hora del cobro automático"), default='08:00', 
+        help_text=_("Hora a la que se ejecuta el cobro automático diario"))
+    auto_charge_max_retries = models.PositiveIntegerField(_("Máximo de reintentos"), default=3,
+        help_text=_("Número máximo de intentos de cobro si falla (ej: tarjeta sin fondos, caducada)"))
+    auto_charge_retry_days = models.PositiveIntegerField(_("Días entre reintentos"), default=3,
+        help_text=_("Días que esperar antes de reintentar un cobro fallido"))
+
     # Portal permissions
     allow_client_delete_card = models.BooleanField(default=False, help_text="Permitir que el cliente elimine sus tarjetas guardadas desde la app.")
     allow_client_pay_next_fee = models.BooleanField(default=False, help_text="Permitir que el cliente adelante/pague su siguiente cuota desde la app.")

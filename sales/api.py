@@ -860,15 +860,30 @@ def subscription_charge(request, pk):
             else:
                 membership.end_date = date.today() + delta
             
+            # Reset failed attempts on success
+            from django.utils import timezone
+            membership.failed_charge_attempts = 0
+            membership.last_charge_error = ''
+            membership.last_charge_attempt = timezone.now()
             membership.save()
             
             return JsonResponse({'success': True, 'message': f'Cobrado Correctamente. Nueva fecha: {membership.end_date}'})
         else:
-            # Failed
+            # Failed - update tracking
+            from django.utils import timezone
+            membership.failed_charge_attempts += 1
+            membership.last_charge_attempt = timezone.now()
+            membership.last_charge_error = error_msg[:255] if error_msg else 'Error desconocido'
+            membership.save()
+            
             order.status = 'CANCELLED' # Or failed
             order.internal_notes += f" | Fallo cobro: {error_msg}"
             order.save()
-            return JsonResponse({'error': f'Fallo en el cobro: {error_msg}', 'error_code': 'CHARGE_FAILED'}, status=400)
+            return JsonResponse({
+                'error': f'Fallo en el cobro: {error_msg}', 
+                'error_code': 'CHARGE_FAILED',
+                'attempts': membership.failed_charge_attempts
+            }, status=400)
             
 
 
@@ -955,3 +970,231 @@ def order_update_status(request, order_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+
+@csrf_exempt
+@require_POST
+def bulk_subscription_charge(request):
+    """
+    Attempts to charge multiple subscriptions (ClientMemberships) at once.
+    Returns a summary of successful and failed charges.
+    """
+    try:
+        from clients.models import ClientMembership
+        from memberships.models import MembershipPlan
+        from django.utils import timezone
+        
+        gym = request.gym
+        
+        data = {}
+        if request.body:
+            try:
+                data = json.loads(request.body)
+            except:
+                pass
+        
+        membership_ids = data.get('membership_ids', [])
+        
+        if not membership_ids:
+            return JsonResponse({'error': 'No se proporcionaron membresías para cobrar'}, status=400)
+        
+        results = {
+            'total': len(membership_ids),
+            'success_count': 0,
+            'failed_count': 0,
+            'successful': [],
+            'failed': []
+        }
+        
+        for membership_id in membership_ids:
+            try:
+                membership = ClientMembership.objects.get(pk=membership_id, client__gym=gym)
+                client = membership.client
+                amount = membership.price
+                
+                if amount <= 0:
+                    results['failed'].append({
+                        'membership_id': membership_id,
+                        'client_name': f"{client.first_name} {client.last_name}",
+                        'reason': 'Importe es 0'
+                    })
+                    results['failed_count'] += 1
+                    membership.failed_charge_attempts += 1
+                    membership.last_charge_attempt = timezone.now()
+                    membership.last_charge_error = 'Importe es 0'
+                    membership.save()
+                    continue
+                
+                # Determine payment method
+                provider = None
+                token = None
+                method = None
+                
+                if client.stripe_customer_id:
+                    provider = 'stripe'
+                    if client.stripe_customer_id.startswith('cus_test'):
+                        token = 'pm_card_test_success'
+                    else:
+                        token = client.stripe_customer_id
+                    method = PaymentMethod.objects.filter(gym=gym, name__icontains='Stripe').first()
+                elif client.redsys_tokens.exists():
+                    provider = 'redsys'
+                    merchant_token = client.redsys_tokens.last()
+                    token = merchant_token.id
+                    method = PaymentMethod.objects.filter(gym=gym, name__icontains='Tarjeta').first()
+                
+                if not provider:
+                    results['failed'].append({
+                        'membership_id': membership_id,
+                        'client_name': f"{client.first_name} {client.last_name}",
+                        'reason': 'Sin tarjeta vinculada'
+                    })
+                    results['failed_count'] += 1
+                    membership.failed_charge_attempts += 1
+                    membership.last_charge_attempt = timezone.now()
+                    membership.last_charge_error = 'Sin tarjeta vinculada'
+                    membership.save()
+                    continue
+                
+                if not method:
+                    method = PaymentMethod.objects.filter(gym=gym, is_active=True).first()
+                
+                # Create Order
+                order = Order.objects.create(
+                    gym=gym,
+                    client=client,
+                    status='PENDING',
+                    total_amount=amount,
+                    total_base=amount / Decimal(1.21),
+                    total_tax=amount - (amount / Decimal(1.21)),
+                    created_by=request.user if request.user.is_authenticated else None,
+                    internal_notes=f"Cobro masivo - Renovación: {membership.name}"
+                )
+                
+                from django.contrib.contenttypes.models import ContentType
+                OrderItem.objects.create(
+                    order=order,
+                    content_type=ContentType.objects.get_for_model(ClientMembership),
+                    object_id=membership.id,
+                    description=f"Cuota: {membership.name}",
+                    quantity=1,
+                    unit_price=amount,
+                    subtotal=amount
+                )
+                
+                # Attempt charge
+                success = False
+                transaction_id = None
+                error_msg = ""
+                
+                if provider == 'stripe':
+                    from finance.stripe_utils import charge_client
+                    s_success, s_res = charge_client(client, amount, token)
+                    if s_success:
+                        success = True
+                        transaction_id = s_res
+                    else:
+                        error_msg = str(s_res)
+                        
+                elif provider == 'redsys':
+                    from finance.redsys_utils import get_redsys_client
+                    from finance.models import ClientRedsysToken
+                    from finance.views_redsys import generate_order_id
+                    
+                    try:
+                        r_token = ClientRedsysToken.objects.get(id=token)
+                        r_client = get_redsys_client(gym)
+                        order_code = generate_order_id()
+                        r_success, r_res = r_client.charge_request(order_code, amount, r_token.token, f"Ord {order.id}")
+                        
+                        if r_success:
+                            success = True
+                            transaction_id = order_code
+                        else:
+                            error_msg = "Error Redsys"
+                    except Exception as e:
+                        error_msg = str(e)
+                
+                if success:
+                    OrderPayment.objects.create(
+                        order=order,
+                        payment_method=method,
+                        amount=amount,
+                        transaction_id=transaction_id
+                    )
+                    order.status = 'PAID'
+                    order.save()
+                    
+                    # Extend membership
+                    plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
+                    if plan:
+                        from dateutil.relativedelta import relativedelta
+                        if plan.frequency_unit == 'MONTH':
+                            delta = relativedelta(months=plan.frequency_amount)
+                        elif plan.frequency_unit == 'YEAR':
+                            delta = relativedelta(years=plan.frequency_amount)
+                        elif plan.frequency_unit == 'WEEK':
+                            delta = relativedelta(weeks=plan.frequency_amount)
+                        elif plan.frequency_unit == 'DAY':
+                            delta = timedelta(days=plan.frequency_amount)
+                        else:
+                            delta = relativedelta(months=1)
+                    else:
+                        from dateutil.relativedelta import relativedelta
+                        delta = relativedelta(months=1)
+                    
+                    if membership.end_date:
+                        membership.end_date += delta
+                    else:
+                        membership.end_date = date.today() + delta
+                    
+                    # Reset failed attempts on success
+                    membership.failed_charge_attempts = 0
+                    membership.last_charge_error = ''
+                    membership.last_charge_attempt = timezone.now()
+                    membership.save()
+                    
+                    results['successful'].append({
+                        'membership_id': membership_id,
+                        'client_name': f"{client.first_name} {client.last_name}",
+                        'new_end_date': str(membership.end_date)
+                    })
+                    results['success_count'] += 1
+                else:
+                    order.status = 'CANCELLED'
+                    order.internal_notes += f" | Fallo cobro masivo: {error_msg}"
+                    order.save()
+                    
+                    membership.failed_charge_attempts += 1
+                    membership.last_charge_attempt = timezone.now()
+                    membership.last_charge_error = error_msg[:255] if error_msg else 'Error desconocido'
+                    membership.save()
+                    
+                    results['failed'].append({
+                        'membership_id': membership_id,
+                        'client_name': f"{client.first_name} {client.last_name}",
+                        'reason': error_msg or 'Error desconocido',
+                        'attempts': membership.failed_charge_attempts
+                    })
+                    results['failed_count'] += 1
+                    
+            except ClientMembership.DoesNotExist:
+                results['failed'].append({
+                    'membership_id': membership_id,
+                    'client_name': 'Desconocido',
+                    'reason': 'Membresía no encontrada'
+                })
+                results['failed_count'] += 1
+            except Exception as e:
+                results['failed'].append({
+                    'membership_id': membership_id,
+                    'client_name': 'Error',
+                    'reason': str(e)
+                })
+                results['failed_count'] += 1
+        
+        return JsonResponse(results)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)

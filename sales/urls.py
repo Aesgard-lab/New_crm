@@ -18,4 +18,5 @@ urlpatterns = [
     path('api/order/<int:order_id>/send-ticket/', api.order_send_ticket, name='api_order_send_ticket'),
     path('api/order/<int:order_id>/invoice/', api.order_generate_invoice, name='api_order_generate_invoice'),
     path('api/subscription/<int:pk>/charge/', api.subscription_charge, name='api_subscription_charge'),
+    path('api/subscription/bulk-charge/', api.bulk_subscription_charge, name='api_bulk_subscription_charge'),
 ]

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../api/api_service.dart';
-import '../models/models.dart';
-import 'package:intl/intl.dart';
-import 'billing_screen.dart';
-import 'history_screen.dart';
+import '../widgets/promo_section.dart';
+import 'gamification_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -91,7 +89,7 @@ class ProfileScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Personal Information Section
-                  _SectionTitle(title: 'Información Personal'),
+                  const _SectionTitle(title: 'Información Personal'),
                   const SizedBox(height: 12),
                   _InfoCard(
                     children: [
@@ -104,66 +102,96 @@ class ProfileScreen extends StatelessWidget {
                       _InfoRow(
                         icon: Icons.phone_outlined,
                         label: 'Teléfono',
-                        value: client.phone.isNotEmpty ? client.phone : 'No registrado',
+                        value: client.phone.isNotEmpty ? client.phone : '--',
                       ),
                       const Divider(height: 24),
                       _InfoRow(
                         icon: Icons.badge_outlined,
-                        label: 'ID de Cliente',
-                        value: '#${client.id.toString().padLeft(6, '0')}',
+                        label: 'DNI',
+                        value: client.dni.isNotEmpty ? client.dni : '--',
                       ),
+                      const Divider(height: 24),
+                      _InfoRow(
+                        icon: Icons.cake_outlined,
+                        label: 'FECHA NACIMIENTO',
+                        value: client.birthDate.isNotEmpty
+                            ? client.birthDate
+                            : '--',
+                      ),
+                      const Divider(height: 24),
+                      _InfoRow(
+                        icon: Icons.home_outlined,
+                        label: 'DIRECCIÓN',
+                        value:
+                            client.address.isNotEmpty ? client.address : '--',
+                      ),
+                      if (client.clientType.isNotEmpty) ...[
+                        const Divider(height: 24),
+                        _InfoRow(
+                          icon: Icons.person_outline,
+                          label: 'TIPO DE CLIENTE',
+                          value: client.clientType,
+                        ),
+                      ],
                     ],
                   ),
 
                   const SizedBox(height: 24),
 
                   // Membership Section
-                  _SectionTitle(title: 'Membresía'),
+                  const _SectionTitle(title: 'Membresía'),
                   const SizedBox(height: 12),
                   _MembershipCard(membership: client.activeMembership),
 
                   const SizedBox(height: 24),
 
                   // Access Code Section
-                  _SectionTitle(title: 'Código de Acceso'),
+                  const _SectionTitle(title: 'Código de Acceso'),
                   const SizedBox(height: 12),
                   _AccessCodeCard(accessCode: client.accessCode),
 
                   const SizedBox(height: 24),
 
                   // Stats Section
-                  _SectionTitle(title: 'Estadísticas'),
+                  const _SectionTitle(title: 'Estadísticas'),
                   const SizedBox(height: 12),
                   _StatsCard(stats: client.stats),
 
                   const SizedBox(height: 24),
 
+                  // Promotional Advertisements
+                  const PromoSection(
+                    screen: 'PROFILE',
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                  ),
+
+                  const SizedBox(height: 24),
+
                   // Settings Section
-                  _SectionTitle(title: 'Configuración'),
+                  const _SectionTitle(title: 'Configuración'),
                   const SizedBox(height: 12),
                   _InfoCard(
                     children: [
                       _SettingsRow(
-                        icon: Icons.history,
-                        label: 'Historial de Clases',
+                        icon: Icons.emoji_events_outlined,
+                        label: 'Gamificación',
+                        subtitle: 'Logros, retos y ranking',
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (c) => const HistoryScreen()));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  GamificationScreen(api: api),
+                            ),
+                          );
                         },
                       ),
                       const Divider(height: 24),
                       _SettingsRow(
-                        icon: Icons.receipt_long_outlined,
-                        label: 'Facturación',
+                        icon: Icons.chat_bubble_outline,
+                        label: 'Chat con el Gimnasio',
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (c) => const BillingScreen()));
-                        },
-                      ),
-                      const Divider(height: 24),
-                      _SettingsRow(
-                        icon: Icons.notifications_outlined,
-                        label: 'Notificaciones',
-                        onTap: () {
-                          // TODO: Navigate to notifications settings
+                          Navigator.pushNamed(context, '/chat');
                         },
                       ),
                       const Divider(height: 24),
@@ -171,15 +199,32 @@ class ProfileScreen extends StatelessWidget {
                         icon: Icons.lock_outline,
                         label: 'Cambiar Contraseña',
                         onTap: () {
-                          // TODO: Navigate to change password
+                          _showChangePasswordDialog(context, api);
                         },
                       ),
                       const Divider(height: 24),
                       _SettingsRow(
-                        icon: Icons.help_outline,
-                        label: 'Ayuda y Soporte',
+                        icon: Icons.description_outlined,
+                        label: 'Historial de Clases',
                         onTap: () {
-                          // TODO: Navigate to help
+                          Navigator.pushNamed(context, '/history');
+                        },
+                      ),
+                      const Divider(height: 24),
+                      _SettingsRow(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Facturación',
+                        onTap: () {
+                          Navigator.pushNamed(context, '/billing');
+                        },
+                      ),
+                      const Divider(height: 24),
+                      _SettingsRow(
+                        icon: Icons.credit_card_outlined,
+                        label: 'Método de Pago',
+                        subtitle: 'Gestiona tu tarjeta bancaria',
+                        onTap: () {
+                          Navigator.pushNamed(context, '/payment-methods');
                         },
                       ),
                     ],
@@ -196,7 +241,8 @@ class ProfileScreen extends StatelessWidget {
                           context: context,
                           builder: (ctx) => AlertDialog(
                             title: const Text('Cerrar Sesión'),
-                            content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+                            content: const Text(
+                                '¿Estás seguro que deseas cerrar sesión?'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx),
@@ -333,15 +379,19 @@ class _InfoRow extends StatelessWidget {
                   fontSize: 12,
                   color: Colors.grey[600],
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               const SizedBox(height: 2),
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0F172A),
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 3,
               ),
             ],
           ),
@@ -354,11 +404,13 @@ class _InfoRow extends StatelessWidget {
 class _SettingsRow extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? subtitle;
   final VoidCallback onTap;
 
   const _SettingsRow({
     required this.icon,
     required this.label,
+    this.subtitle,
     required this.onTap,
   });
 
@@ -379,13 +431,26 @@ class _SettingsRow extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0F172A),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+              ],
             ),
           ),
           Icon(Icons.chevron_right, color: Colors.grey[400]),
@@ -449,7 +514,8 @@ class _MembershipCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: status == 'active' ? Colors.green : Colors.orange,
                   borderRadius: BorderRadius.circular(20),
@@ -469,7 +535,8 @@ class _MembershipCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
+                const Icon(Icons.calendar_today,
+                    color: Colors.white70, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   'Vence: $expiresAt',
@@ -638,4 +705,110 @@ class _StatItem extends StatelessWidget {
       ],
     );
   }
+}
+
+void _showChangePasswordDialog(BuildContext context, ApiService api) {
+  final currentPasswordController = TextEditingController();
+  final newPasswordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  bool isLoading = false;
+
+  showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('Cambiar Contraseña'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Contraseña Actual',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: newPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Nueva Contraseña',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirmar Nueva Contraseña',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: isLoading ? null : () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: isLoading
+                ? null
+                : () async {
+                    if (newPasswordController.text !=
+                        confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Las contraseñas no coinciden')),
+                      );
+                      return;
+                    }
+                    if (newPasswordController.text.length < 8) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'La contraseña debe tener al menos 8 caracteres')),
+                      );
+                      return;
+                    }
+
+                    setState(() => isLoading = true);
+
+                    final result = await api.changePassword(
+                      currentPasswordController.text,
+                      newPasswordController.text,
+                    );
+
+                    setState(() => isLoading = false);
+
+                    Navigator.pop(ctx);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['message'] ??
+                              (result['success'] == true
+                                  ? 'Contraseña cambiada exitosamente'
+                                  : 'Error al cambiar contraseña')),
+                          backgroundColor: result['success'] == true
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                      );
+                    }
+                  },
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Cambiar'),
+          ),
+        ],
+      ),
+    ),
+  );
 }

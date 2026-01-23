@@ -333,6 +333,11 @@ class ClientMembership(models.Model):
     sessions_total = models.IntegerField(null=True, blank=True, help_text="Total de sesiones (0 o None = ilimitado)")
     sessions_used = models.IntegerField(default=0, help_text="Sesiones consumidas")
     
+    # Billing tracking
+    failed_charge_attempts = models.IntegerField(default=0, help_text="Intentos de cobro fallidos consecutivos")
+    last_charge_attempt = models.DateTimeField(null=True, blank=True, help_text="Última fecha de intento de cobro")
+    last_charge_error = models.CharField(max_length=255, blank=True, help_text="Último error de cobro")
+    
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_memberships')
     created_at = models.DateTimeField(auto_now_add=True)
 

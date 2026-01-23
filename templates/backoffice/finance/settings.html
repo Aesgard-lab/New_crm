@@ -317,6 +317,81 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Auto Charge Settings -->
+                        <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-100">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="bg-amber-500 p-2 rounded-lg text-white">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-amber-900">Cobro Automático</h4>
+                                    <p class="text-xs text-amber-700">Configuración de reintentos y horario</p>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-5">
+                                <!-- Enable Toggle -->
+                                <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-amber-100">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-800">Habilitar cobro automático</div>
+                                        <p class="text-xs text-slate-500">El sistema intentará cobrar automáticamente las cuotas vencidas</p>
+                                    </div>
+                                    {{ settings_form.auto_charge_enabled }}
+                                </div>
+                                
+                                <!-- Time Setting -->
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                                        <span class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Hora del cobro diario
+                                        </span>
+                                    </label>
+                                    {{ settings_form.auto_charge_time }}
+                                    <p class="text-xs text-slate-400 mt-1">Hora a la que se ejecutan los cobros automáticos cada día</p>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Max Retries -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                                            <span class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                </svg>
+                                                Máximo de reintentos
+                                            </span>
+                                        </label>
+                                        {{ settings_form.auto_charge_max_retries }}
+                                        <p class="text-xs text-slate-400 mt-1">Intentos si falla el cobro</p>
+                                    </div>
+                                    
+                                    <!-- Days Between Retries -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                                            <span class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                </svg>
+                                                Días entre reintentos
+                                            </span>
+                                        </label>
+                                        {{ settings_form.auto_charge_retry_days }}
+                                        <p class="text-xs text-slate-400 mt-1">Esperar X días antes de reintentar</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-amber-100/50 rounded-lg p-3 text-xs text-amber-800">
+                                    <strong>Ejemplo:</strong> Si un cobro falla, el sistema reintentará hasta {{ settings_form.instance.auto_charge_max_retries|default:3 }} veces, 
+                                    esperando {{ settings_form.instance.auto_charge_retry_days|default:3 }} días entre cada intento.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
