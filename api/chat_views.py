@@ -80,7 +80,7 @@ class ChatMessagesView(views.APIView):
                 'attachment_url': msg.attachment.url if msg.attachment else None,
             })
             
-        return Response({'messages': data}) # Returns newest first
+        return Response({'success': True, 'messages': data}) # Returns newest first
 
     def post(self, request):
         try:
