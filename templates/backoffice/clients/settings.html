@@ -8,6 +8,46 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- CONFIGURACIÓN DE RESERVAS CON PAGO PENDIENTE -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900">Configuración de Reservas</h3>
+                <p class="text-sm text-slate-500">Opciones de flexibilidad para clientes con pagos pendientes.</p>
+            </div>
+        </div>
+        <form method="post" class="p-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="booking_settings">
+            <div class="flex items-start gap-4">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="allow_booking_with_pending_payment" 
+                           class="sr-only peer" 
+                           {% if gym.allow_booking_with_pending_payment %}checked{% endif %}>
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-slate-900">Permitir reservas con pago pendiente</h4>
+                    <p class="text-sm text-slate-500 mt-1">
+                        Permite que los clientes con una suscripción activa pero con el pago del periodo actual pendiente puedan seguir haciendo reservas de clases. 
+                        Útil para gimnasios con domiciliaciones bancarias donde el cobro puede tardar unos días.
+                    </p>
+                </div>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button type="submit" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors">
+                    Guardar configuración
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex gap-4 items-start">
         <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

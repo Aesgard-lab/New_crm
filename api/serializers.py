@@ -257,6 +257,6 @@ class BookingSerializer(serializers.ModelSerializer):
         if obj.session and obj.session.staff and obj.session.staff.user:
             user = obj.session.staff.user
             full_name = f"{user.first_name} {user.last_name}".strip()
-            return full_name or user.username
+            return full_name or user.email
         return "Sin instructor"
 

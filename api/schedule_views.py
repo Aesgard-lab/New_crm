@@ -6,7 +6,7 @@ from django.db.models import Q
 from datetime import datetime, timedelta
 
 from activities.models import Activity, ActivitySession, ActivitySessionBooking
-from clients.models import Client
+from clients.models import Client, ClientMembership
 from organizations.models import Gym
 from .serializers import (
     ActivitySerializer,
@@ -167,7 +167,7 @@ class BookSessionView(views.APIView):
             )
         
         # Verify session is not cancelled
-        if session.is_cancelled:
+        if session.status == 'CANCELLED':
             return Response(
                 {'error': 'Esta clase ha sido cancelada'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -196,6 +196,26 @@ class BookSessionView(views.APIView):
             return Response(
                 {'error': 'Esta clase está llena'},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check membership status - allow ACTIVE or PENDING_PAYMENT (if gym config allows)
+        valid_statuses = ['ACTIVE']
+        if client_gym.allow_booking_with_pending_payment:
+            valid_statuses.append('PENDING_PAYMENT')
+        
+        has_valid_membership = client.memberships.filter(status__in=valid_statuses).exists()
+        
+        if not has_valid_membership:
+            # Check if they have a pending payment membership but the gym doesn't allow booking
+            has_pending_payment = client.memberships.filter(status='PENDING_PAYMENT').exists()
+            if has_pending_payment:
+                return Response(
+                    {'error': 'Tu membresía tiene un pago pendiente. Contacta con el gimnasio para regularizar tu situación.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            return Response(
+                {'error': 'Necesitas una membresía activa para reservar clases'},
+                status=status.HTTP_403_FORBIDDEN
             )
         
         # Create booking

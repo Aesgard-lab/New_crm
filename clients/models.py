@@ -366,6 +366,48 @@ class ClientMembership(models.Model):
         return min(100, int((self.sessions_used / self.sessions_total) * 100))
 
 
+class ClientMembershipAccessRule(models.Model):
+    """Reglas de acceso personalizadas para una membresía de cliente"""
+    PERIODS = [
+        ('TOTAL', "Total (Bono)"),
+        ('PER_CYCLE', "Por Ciclo (Recurrente)"),
+    ]
+    
+    membership = models.ForeignKey(ClientMembership, on_delete=models.CASCADE, related_name='access_rules')
+    
+    # Targets: Can be broadly (Category) or Specific (Activity/Service)
+    activity_category = models.ForeignKey('activities.ActivityCategory', on_delete=models.CASCADE, null=True, blank=True)
+    activity = models.ForeignKey('activities.Activity', on_delete=models.CASCADE, null=True, blank=True)
+    
+    service_category = models.ForeignKey('services.ServiceCategory', on_delete=models.CASCADE, null=True, blank=True)
+    service = models.ForeignKey('services.Service', on_delete=models.CASCADE, null=True, blank=True)
+    
+    quantity = models.IntegerField("Cantidad", default=0, help_text="0 = Ilimitado")
+    quantity_used = models.IntegerField("Cantidad usada", default=0)
+    period = models.CharField(max_length=20, choices=PERIODS, default='PER_CYCLE')
+    
+    class Meta:
+        verbose_name = "Regla de acceso de membresía"
+        verbose_name_plural = "Reglas de acceso de membresías"
+    
+    def __str__(self):
+        if self.activity: target = f"Actividad: {self.activity.name}"
+        elif self.activity_category: target = f"Cat. Act.: {self.activity_category.name}"
+        elif self.service: target = f"Servicio: {self.service.name}"
+        elif self.service_category: target = f"Cat. Serv.: {self.service_category.name}"
+        else: target = "Todo"
+        
+        qty = "Ilimitado" if self.quantity == 0 else str(self.quantity)
+        return f"{qty} x {target}"
+    
+    @property
+    def quantity_remaining(self):
+        """Cantidad restante, None si es ilimitado"""
+        if self.quantity == 0:
+            return None
+        return max(0, self.quantity - self.quantity_used)
+
+
 # Alias para compatibilidad con las vistas del portal público
 Membership = ClientMembership
 

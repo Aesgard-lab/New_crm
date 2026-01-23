@@ -6,7 +6,7 @@ from clients.views import (
     clients_list, client_create, client_detail, client_edit, 
     client_add_note, client_delete_note, client_add_document, client_edit_note,
     client_get_stripe_setup, client_import, client_export_excel, client_export_pdf,
-    client_settings, api_edit_membership, client_toggle_email_notifications,
+    client_settings, api_edit_membership, api_get_membership_details, client_toggle_email_notifications,
     # Document Templates
     document_template_list, document_template_create, document_template_edit, document_template_delete,
     # Document Actions
@@ -51,6 +51,7 @@ urlpatterns = [
     
     # API
     path("api/membership-edit/", api_edit_membership, name="api_membership_edit"),
+    path("api/membership/<int:membership_id>/details/", api_get_membership_details, name="api_membership_details"),
     
     # Stripe
     path("clients/<int:client_id>/stripe-setup/", client_get_stripe_setup, name="client_get_stripe_setup"),

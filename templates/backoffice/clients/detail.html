@@ -694,9 +694,14 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             {% for mem in memberships %}
-                            <tr class="hover:bg-slate-50 cursor-pointer transition-colors"
-                                onclick="window.location.href='{% url 'calendar_view' %}?highlight=membership_{{ mem.id }}'">
-                                <td class="py-3 font-medium text-slate-800">{{ mem.name }}</td>
+                            <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
+                                @click="openEditModal({{ mem.id }}, '{{ mem.name|escapejs }}', '{{ mem.start_date|date:"Y-m-d" }}', '{% if mem.end_date %}{{ mem.end_date|date:"Y-m-d" }}{% endif %}', {{ mem.price }}, '{{ mem.status }}', {{ mem.is_recurring|yesno:"true,false" }}, {{ mem.sessions_total|default:"null" }}, {{ mem.sessions_used|default:"0" }}, '{% if mem.next_billing_date %}{{ mem.next_billing_date|date:"Y-m-d" }}{% endif %}')">
+                                <td class="py-3 font-medium text-slate-800 hover:text-[var(--brand-color)]">
+                                    {{ mem.name }}
+                                    {% if mem.sessions_total %}
+                                    <br><span class="text-xs text-slate-500">{{ mem.sessions_used }}/{{ mem.sessions_total }} sesiones</span>
+                                    {% endif %}
+                                </td>
                                 <td class="py-3">
                                     {% if mem.current_period_start and mem.current_period_end %}
                                     {{ mem.current_period_start|date:"d/M/y" }} - {{ mem.current_period_end|date:"d/M/y" }}
@@ -737,7 +742,7 @@
                                     {% endif %}
                                     {% endwith %}
                                 </td>
-                                <td class="py-3 text-right" onclick="event.stopPropagation()">
+                                <td class="py-3 text-right" @click.stop>
                                     <div class="flex items-center justify-end gap-2">
                                         {% if mem.is_recurring and mem.status == 'ACTIVE' %}
                                         <button type="button" @click="openPauseModal({{ mem.id }}, '{{ mem.name }}')"
@@ -752,11 +757,8 @@
                                         </button>
                                         {% endif %}
                                         <button type="button"
-                                            @click="openEditModal({{ mem.id }}, '{{ mem.name|escapejs }}', '{{ mem.start_date|date:"
-                                            Y-m-d"
-                                            }}', '{% if mem.end_date %}{{ mem.end_date|date:"Y-m-d" }}{% endif %}' , {{
-                                            mem.price }}, '{{ mem.status }}' )"
-                                            class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors"
+                                            @click="openEditModal({{ mem.id }}, '{{ mem.name|escapejs }}', '{{ mem.start_date|date:"Y-m-d" }}', '{% if mem.end_date %}{{ mem.end_date|date:"Y-m-d" }}{% endif %}', {{ mem.price }}, '{{ mem.status }}', {{ mem.is_recurring|yesno:"true,false" }}, {{ mem.sessions_total|default:"null" }}, {{ mem.sessions_used|default:"0" }}, '{% if mem.next_billing_date %}{{ mem.next_billing_date|date:"Y-m-d" }}{% endif %}')"
+                                            class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
                                             title="Editar esta membresía">
                                             Editar
                                         </button>
@@ -854,9 +856,9 @@
             <div x-show="showEditModal" x-transition.opacity
                 class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
                 @click.self="showEditModal = false" x-cloak>
-                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
                     <!-- Header -->
-                    <div class="p-6 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+                    <div class="p-6 bg-blue-50 border-b border-blue-100 flex items-center justify-between sticky top-0">
                         <div class="flex items-center gap-3">
                             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -877,6 +879,7 @@
                     <form @submit.prevent="submitEdit" class="p-6 space-y-4">
                         <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
                             <p class="text-sm text-slate-900 font-bold" x-text="editForm.membershipName"></p>
+                            <p class="text-xs text-slate-500 mt-1">Los cambios solo afectan a este cliente, no al plan general</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -893,21 +896,171 @@
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Precio (€)</label>
-                            <input type="number" step="0.01" x-model="editForm.price" required
-                                class="w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Precio (€)</label>
+                                <input type="number" step="0.01" x-model="editForm.price" required
+                                    class="w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Próximo cobro</label>
+                                <input type="date" x-model="editForm.next_billing_date"
+                                    class="w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500"
+                                    :disabled="!editForm.is_recurring">
+                                <p class="text-xs text-slate-500 mt-1" x-show="!editForm.is_recurring">Solo para planes recurrentes</p>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-                            <select x-model="editForm.status" required
-                                class="w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500">
-                                <option value="ACTIVE">Activa</option>
-                                <option value="EXPIRED">Caducada</option>
-                                <option value="CANCELLED">Cancelada</option>
-                                <option value="PENDING">Pendiente</option>
-                            </select>
+                        <!-- Sesiones (solo si tiene límite) -->
+                        <div class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-slate-700">Control de Sesiones</label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" x-model="editForm.hasSessionLimit"
+                                        class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-slate-600">Limitar sesiones</span>
+                                </label>
+                            </div>
+                            <div x-show="editForm.hasSessionLimit" class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Total de sesiones</label>
+                                    <input type="number" min="0" x-model="editForm.sessions_total"
+                                        class="w-full rounded-lg border-slate-200 focus:ring-2 focus:ring-blue-500 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Sesiones usadas</label>
+                                    <input type="number" min="0" x-model="editForm.sessions_used"
+                                        class="w-full rounded-lg border-slate-200 focus:ring-2 focus:ring-blue-500 text-sm">
+                                </div>
+                            </div>
+                            <p x-show="editForm.hasSessionLimit" class="text-xs text-slate-500">
+                                Restantes: <span class="font-medium" x-text="Math.max(0, (editForm.sessions_total || 0) - (editForm.sessions_used || 0))"></span> sesiones
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                                <select x-model="editForm.status" required
+                                    class="w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500">
+                                    <option value="ACTIVE">Activa</option>
+                                    <option value="PENDING_PAYMENT">Pendiente de Pago</option>
+                                    <option value="EXPIRED">Caducada</option>
+                                    <option value="CANCELLED">Cancelada</option>
+                                    <option value="PENDING">Pendiente</option>
+                                    <option value="PAUSED">Pausada</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
+                                <label class="flex items-center gap-2 mt-3">
+                                    <input type="checkbox" x-model="editForm.is_recurring"
+                                        class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-slate-600">Recurrente (cobro automático)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Reglas de Acceso -->
+                        <div class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                    </svg>
+                                    Reglas de Acceso
+                                </label>
+                                <span x-show="editForm.loadingData" class="text-xs text-slate-400">Cargando...</span>
+                            </div>
+                            
+                            <!-- Tabla de Reglas -->
+                            <div class="overflow-x-auto" x-show="!editForm.loadingData">
+                                <table class="w-full text-xs">
+                                    <thead class="text-slate-500 uppercase bg-slate-50">
+                                        <tr>
+                                            <th class="px-2 py-2 text-left">Actividad</th>
+                                            <th class="px-2 py-2 text-left">Servicio</th>
+                                            <th class="px-2 py-2 w-16">Cant.</th>
+                                            <th class="px-2 py-2">Periodo</th>
+                                            <th class="px-2 py-2 w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <template x-for="(rule, index) in editForm.accessRules" :key="index">
+                                            <tr class="hover:bg-slate-50">
+                                                <td class="px-2 py-2">
+                                                    <select x-model="rule.activity_category_id" 
+                                                        class="w-full text-xs rounded border-slate-200 mb-1"
+                                                        @change="rule.activity_id = null">
+                                                        <option value="">-- Categoría --</option>
+                                                        <template x-for="cat in editForm.activityCategories" :key="cat.id">
+                                                            <option :value="cat.id" x-text="cat.name"></option>
+                                                        </template>
+                                                    </select>
+                                                    <select x-model="rule.activity_id" 
+                                                        class="w-full text-xs rounded border-slate-200"
+                                                        @change="rule.activity_category_id = null">
+                                                        <option value="">-- Específica --</option>
+                                                        <template x-for="act in editForm.activities" :key="act.id">
+                                                            <option :value="act.id" x-text="act.name"></option>
+                                                        </template>
+                                                    </select>
+                                                </td>
+                                                <td class="px-2 py-2">
+                                                    <select x-model="rule.service_category_id" 
+                                                        class="w-full text-xs rounded border-slate-200 mb-1"
+                                                        @change="rule.service_id = null">
+                                                        <option value="">-- Categoría --</option>
+                                                        <template x-for="cat in editForm.serviceCategories" :key="cat.id">
+                                                            <option :value="cat.id" x-text="cat.name"></option>
+                                                        </template>
+                                                    </select>
+                                                    <select x-model="rule.service_id" 
+                                                        class="w-full text-xs rounded border-slate-200"
+                                                        @change="rule.service_category_id = null">
+                                                        <option value="">-- Específico --</option>
+                                                        <template x-for="srv in editForm.services" :key="srv.id">
+                                                            <option :value="srv.id" x-text="srv.name"></option>
+                                                        </template>
+                                                    </select>
+                                                </td>
+                                                <td class="px-2 py-2">
+                                                    <input type="number" min="0" x-model="rule.quantity" 
+                                                        class="w-full text-xs rounded border-slate-200 text-center"
+                                                        placeholder="0=∞">
+                                                </td>
+                                                <td class="px-2 py-2">
+                                                    <select x-model="rule.period" class="w-full text-xs rounded border-slate-200">
+                                                        <option value="PER_CYCLE">Por Ciclo</option>
+                                                        <option value="TOTAL">Total</option>
+                                                    </select>
+                                                </td>
+                                                <td class="px-2 py-2 text-center">
+                                                    <button type="button" @click="removeAccessRule(index)" 
+                                                        class="text-red-400 hover:text-red-600">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Botón Añadir Regla -->
+                            <button type="button" @click="addAccessRule()" 
+                                class="text-xs font-medium text-[var(--brand-color)] flex items-center gap-1 hover:underline">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Añadir regla de acceso
+                            </button>
+                            
+                            <p class="text-[10px] text-slate-500">
+                                Define qué actividades o servicios puede usar este cliente. Cantidad 0 = ilimitado.
+                            </p>
                         </div>
 
                         <!-- Actions -->
@@ -948,7 +1101,34 @@
                         start_date: '',
                         end_date: '',
                         price: 0,
-                        status: 'ACTIVE'
+                        status: 'ACTIVE',
+                        is_recurring: true,
+                        sessions_total: null,
+                        sessions_used: 0,
+                        next_billing_date: '',
+                        hasSessionLimit: false,
+                        loadingData: false,
+                        // Datos para reglas de acceso
+                        activityCategories: [],
+                        activities: [],
+                        serviceCategories: [],
+                        services: [],
+                        accessRules: []
+                    },
+                    addAccessRule() {
+                        this.editForm.accessRules.push({
+                            id: null,
+                            activity_category_id: null,
+                            activity_id: null,
+                            service_category_id: null,
+                            service_id: null,
+                            quantity: 0,
+                            quantity_used: 0,
+                            period: 'PER_CYCLE'
+                        });
+                    },
+                    removeAccessRule(index) {
+                        this.editForm.accessRules.splice(index, 1);
                     },
                     getCsrfToken() {
                         const match = document.cookie.match(/csrftoken=([^;]+)/);
@@ -1006,33 +1186,80 @@
                             this.submittingPause = false;
                         }
                     },
-                    openEditModal(membershipId, membershipName, startDate, endDate, price, status) {
+                    openEditModal(membershipId, membershipName, startDate, endDate, price, status, isRecurring, sessionsTotal, sessionsUsed, nextBillingDate) {
                         this.editForm.membershipId = membershipId;
                         this.editForm.membershipName = membershipName;
                         this.editForm.start_date = startDate;
                         this.editForm.end_date = endDate || '';
-                        this.editForm.price = price;
+                        this.editForm.price = parseFloat(price) || 0;
                         this.editForm.status = status;
+                        this.editForm.is_recurring = isRecurring === true || isRecurring === 'true';
+                        this.editForm.sessions_total = sessionsTotal;
+                        this.editForm.sessions_used = sessionsUsed || 0;
+                        this.editForm.next_billing_date = nextBillingDate || '';
+                        this.editForm.hasSessionLimit = sessionsTotal !== null && sessionsTotal !== 'null';
+                        this.editForm.loadingData = true;
+                        this.editForm.activityCategories = [];
+                        this.editForm.activities = [];
+                        this.editForm.serviceCategories = [];
+                        this.editForm.services = [];
+                        this.editForm.accessRules = [];
                         this.showEditModal = true;
+                        
+                        // Cargar datos de reglas de acceso
+                        this.loadMembershipDetails(membershipId);
+                    },
+                    async loadMembershipDetails(membershipId) {
+                        try {
+                            const response = await fetch(`/api/membership/${membershipId}/details/`);
+                            if (response.ok) {
+                                const data = await response.json();
+                                this.editForm.activityCategories = data.activity_categories || [];
+                                this.editForm.activities = data.activities || [];
+                                this.editForm.serviceCategories = data.service_categories || [];
+                                this.editForm.services = data.services || [];
+                                this.editForm.accessRules = data.access_rules || [];
+                            }
+                        } catch (e) {
+                            console.error('Error loading membership details:', e);
+                        } finally {
+                            this.editForm.loadingData = false;
+                        }
                     },
                     async submitEdit() {
                         if (this.submittingEdit) return;
                         this.submittingEdit = true;
 
                         try {
+                            const payload = {
+                                membership_id: this.editForm.membershipId,
+                                start_date: this.editForm.start_date,
+                                end_date: this.editForm.end_date || null,
+                                price: this.editForm.price,
+                                status: this.editForm.status,
+                                is_recurring: this.editForm.is_recurring,
+                                sessions_total: this.editForm.hasSessionLimit ? parseInt(this.editForm.sessions_total) : null,
+                                sessions_used: parseInt(this.editForm.sessions_used) || 0,
+                                next_billing_date: this.editForm.next_billing_date || null,
+                                access_rules: this.editForm.accessRules.map(rule => ({
+                                    id: rule.id,
+                                    activity_category_id: rule.activity_category_id || null,
+                                    activity_id: rule.activity_id || null,
+                                    service_category_id: rule.service_category_id || null,
+                                    service_id: rule.service_id || null,
+                                    quantity: parseInt(rule.quantity) || 0,
+                                    quantity_used: parseInt(rule.quantity_used) || 0,
+                                    period: rule.period || 'PER_CYCLE'
+                                }))
+                            };
+
                             const response = await fetch('/api/membership-edit/', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'X-CSRFToken': this.getCsrfToken()
                                 },
-                                body: JSON.stringify({
-                                    membership_id: this.editForm.membershipId,
-                                    start_date: this.editForm.start_date,
-                                    end_date: this.editForm.end_date || null,
-                                    price: this.editForm.price,
-                                    status: this.editForm.status
-                                })
+                                body: JSON.stringify(payload)
                             });
 
                             const data = await response.json();

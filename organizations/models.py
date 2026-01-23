@@ -94,6 +94,13 @@ class Gym(models.Model):
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Client booking settings
+    allow_booking_with_pending_payment = models.BooleanField(
+        default=False,
+        verbose_name="Permitir reservas con pago pendiente",
+        help_text="Permite que los clientes con suscripción activa pero pago pendiente puedan hacer reservas"
+    )
 
     class Meta:
         unique_together = ("franchise", "name")  # nombre único dentro de una franquicia

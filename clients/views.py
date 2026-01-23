@@ -481,6 +481,13 @@ def client_settings(request):
     tag_form = ClientTagForm(initial={"color": "#94a3b8"})
 
     if request.method == "POST":
+        # Handle booking settings toggle
+        if request.POST.get("form_type") == "booking_settings":
+            gym.allow_booking_with_pending_payment = request.POST.get("allow_booking_with_pending_payment") == "on"
+            gym.save(update_fields=["allow_booking_with_pending_payment"])
+            messages.success(request, "Configuración de reservas actualizada.")
+            return redirect("client_settings")
+
         delete_id = request.POST.get("delete_field")
         if delete_id:
             field = get_object_or_404(ClientField, id=delete_id, gym=gym)
@@ -561,6 +568,7 @@ def client_settings(request):
         "tag_form": tag_form,
         "groups": ClientGroup.objects.filter(gym=gym).order_by("name"),
         "tags": ClientTag.objects.filter(gym=gym).order_by("name"),
+        "gym": gym,
     }
     return render(request, "backoffice/clients/settings.html", context)
 
@@ -647,18 +655,24 @@ def api_edit_membership(request):
         end_date = data.get('end_date')
         price = data.get('price')
         status = data.get('status')
+        is_recurring = data.get('is_recurring', True)
+        sessions_total = data.get('sessions_total')
+        sessions_used = data.get('sessions_used', 0)
+        next_billing_date = data.get('next_billing_date')
+        access_rules = data.get('access_rules', [])
         
         if not all([membership_id, start_date, price, status]):
             return JsonResponse({'error': 'Faltan datos requeridos'}, status=400)
         
         # Obtener la membresía
-        from clients.models import ClientMembership
+        from clients.models import ClientMembership, ClientMembershipAccessRule
         membership = get_object_or_404(ClientMembership, id=membership_id, client__gym=request.gym)
         
         # Convertir fechas
         try:
             start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+            next_billing_date_obj = datetime.strptime(next_billing_date, '%Y-%m-%d').date() if next_billing_date else None
         except ValueError:
             return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
         
@@ -666,12 +680,62 @@ def api_edit_membership(request):
         if end_date_obj and end_date_obj < start_date_obj:
             return JsonResponse({'error': 'La fecha de fin debe ser posterior a la de inicio'}, status=400)
         
-        # Actualizar
+        # Actualizar campos básicos
         membership.start_date = start_date_obj
         membership.end_date = end_date_obj
         membership.price = float(price)
         membership.status = status
+        
+        # Actualizar campos adicionales
+        membership.is_recurring = is_recurring
+        membership.sessions_total = int(sessions_total) if sessions_total is not None else None
+        membership.sessions_used = int(sessions_used) if sessions_used is not None else 0
+        membership.next_billing_date = next_billing_date_obj
+        
         membership.save()
+        
+        # Actualizar reglas de acceso
+        # Obtener IDs de reglas existentes para saber cuáles eliminar
+        existing_rule_ids = set(membership.access_rules.values_list('id', flat=True))
+        updated_rule_ids = set()
+        
+        for rule_data in access_rules:
+            rule_id = rule_data.get('id')
+            
+            # Verificar que al menos una categoría o entidad esté seleccionada
+            has_target = any([
+                rule_data.get('activity_category_id'),
+                rule_data.get('activity_id'),
+                rule_data.get('service_category_id'),
+                rule_data.get('service_id'),
+            ])
+            
+            if not has_target:
+                continue  # Ignorar reglas sin objetivo
+            
+            if rule_id and rule_id in existing_rule_ids:
+                # Actualizar regla existente
+                rule = ClientMembershipAccessRule.objects.get(id=rule_id, membership=membership)
+                updated_rule_ids.add(rule_id)
+            else:
+                # Crear nueva regla
+                rule = ClientMembershipAccessRule(membership=membership)
+            
+            rule.activity_category_id = rule_data.get('activity_category_id') or None
+            rule.activity_id = rule_data.get('activity_id') or None
+            rule.service_category_id = rule_data.get('service_category_id') or None
+            rule.service_id = rule_data.get('service_id') or None
+            rule.quantity = int(rule_data.get('quantity', 0))
+            rule.quantity_used = int(rule_data.get('quantity_used', 0))
+            rule.period = rule_data.get('period', 'PER_CYCLE')
+            rule.save()
+            
+            if rule.id:
+                updated_rule_ids.add(rule.id)
+        
+        # Eliminar reglas que ya no están
+        rules_to_delete = existing_rule_ids - updated_rule_ids
+        ClientMembershipAccessRule.objects.filter(id__in=rules_to_delete).delete()
         
         return JsonResponse({
             'success': True,
@@ -680,6 +744,56 @@ def api_edit_membership(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def api_get_membership_details(request, membership_id):
+    """API para obtener detalles de una membresía incluyendo reglas de acceso"""
+    from clients.models import ClientMembership, ClientMembershipAccessRule
+    from activities.models import Activity, ActivityCategory
+    from services.models import Service, ServiceCategory
+    
+    membership = get_object_or_404(ClientMembership, id=membership_id, client__gym=request.gym)
+    
+    # Obtener todas las categorías y entidades del gimnasio
+    activity_categories = list(ActivityCategory.objects.filter(gym=request.gym).values('id', 'name'))
+    activities = list(Activity.objects.filter(gym=request.gym).values('id', 'name', 'category_id'))
+    service_categories = list(ServiceCategory.objects.filter(gym=request.gym).values('id', 'name'))
+    services = list(Service.objects.filter(gym=request.gym).values('id', 'name', 'category_id'))
+    
+    # Obtener las reglas de acceso de esta membresía
+    access_rules = []
+    for rule in membership.access_rules.all():
+        access_rules.append({
+            'id': rule.id,
+            'activity_category_id': rule.activity_category_id,
+            'activity_id': rule.activity_id,
+            'service_category_id': rule.service_category_id,
+            'service_id': rule.service_id,
+            'quantity': rule.quantity,
+            'quantity_used': rule.quantity_used,
+            'period': rule.period,
+        })
+    
+    return JsonResponse({
+        'membership': {
+            'id': membership.id,
+            'name': membership.name,
+            'start_date': membership.start_date.isoformat() if membership.start_date else None,
+            'end_date': membership.end_date.isoformat() if membership.end_date else None,
+            'price': float(membership.price),
+            'status': membership.status,
+            'is_recurring': membership.is_recurring,
+            'sessions_total': membership.sessions_total,
+            'sessions_used': membership.sessions_used,
+            'next_billing_date': membership.next_billing_date.isoformat() if membership.next_billing_date else None,
+        },
+        'access_rules': access_rules,
+        'activity_categories': activity_categories,
+        'activities': activities,
+        'service_categories': service_categories,
+        'services': services,
+    })
 
 
 @login_required
