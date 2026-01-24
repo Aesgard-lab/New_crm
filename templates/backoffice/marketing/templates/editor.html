@@ -1,313 +1,707 @@
 {% extends "backoffice/base.html" %}
+{% load static %}
 
 {% block page_title %}
-<div class="flex items-center gap-4">
-    <a href="{% url 'marketing_template_list' %}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
-            </path>
-        </svg>
-    </a>
-    <div>
-        <div>Editor de Plantilla</div>
-        <div class="text-sm font-normal text-slate-500 mt-1">{{ template.name }}</div>
-    </div>
-    <div class="ml-auto">
-        <button id="save-btn"
-            class="px-6 py-2 bg-[var(--brand-color)] text-white font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-slate-900/20 flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
-                </path>
+<div class="flex items-center justify-between w-full">
+    <div class="flex items-center gap-4">
+        <a href="{% url 'marketing_template_list' %}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Volver">
+            <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
-            <span id="save-text">Guardar Cambios</span>
+        </a>
+        <input type="text" id="template-name" value="{{ template.name }}" 
+               class="text-lg font-semibold bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-[var(--brand-color)] outline-none transition-colors px-1 py-0.5"
+               placeholder="Nombre de la plantilla">
+    </div>
+    
+    <div class="flex items-center gap-3">
+        <button id="btn-undo" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Deshacer (Ctrl+Z)">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+            </svg>
+        </button>
+        <button id="btn-redo" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Rehacer (Ctrl+Y)">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path>
+            </svg>
+        </button>
+        
+        <div class="w-px h-6 bg-slate-200"></div>
+        
+        <button id="btn-preview" class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+            Vista previa
+        </button>
+        
+        <button id="save-btn" class="flex items-center gap-2 px-6 py-2 bg-[var(--brand-color)] text-white font-semibold rounded-lg hover:opacity-90 transition-all shadow-lg">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span id="save-text">Guardar</span>
         </button>
     </div>
 </div>
 {% endblock %}
 
 {% block content %}
-<!-- GrapesJS Styles -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/grapesjs/0.21.2/css/grapes.min.css">
+
 <style>
-    /* Custom Editor Overrides */
-    .gjs-cv-canvas {
-        top: 0;
-        width: 100%;
-        height: 100%;
+    .email-editor {
+        display: flex;
+        height: calc(100vh - 140px);
+        background: #f1f5f9;
+        border-radius: 12px;
+        overflow: hidden;
     }
 
-    .gjs-one-bg {
-        background-color: #1e293b;
-    }
-
-    /* Slate 800 */
-    .gjs-two-color {
-        color: #f1f5f9;
-    }
-
-    .gjs-three-bg {
-        background-color: #0f172a;
-        text-color: white;
-    }
-
-    /* Slate 900 */
-    .gjs-four-color,
-    .gjs-four-color-h:hover {
-        color: #38bdf8;
-    }
-
-    /* Brand Blue */
-
-    #gjs {
-        border: none;
-    }
-
-    /* Custom Block Styles */
-    .gjs-block {
-        width: 100%;
-        min-height: auto;
-        padding: 12px;
-        border: 1px solid #e2e8f0;
-        background-color: white;
-        border-radius: 0.75rem;
-        transition: all 0.2s;
-        cursor: grab;
+    .elements-sidebar {
+        width: 240px;
+        background: white;
+        border-right: 1px solid #e2e8f0;
+        padding: 16px;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        text-align: center;
-        margin-bottom: 8px !important;
+        gap: 6px;
+        overflow-y: auto;
     }
 
-    .gjs-block:hover {
-        border-color: var(--brand-color);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transform: translateY(-1px);
+    .sidebar-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e2e8f0;
     }
 
-    .gjs-block-label {
-        font-weight: 600;
-        font-size: 0.8rem;
-        color: #475569;
-        margin-top: 8px;
+    .quick-vars {
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+    }
+    .quick-vars-title {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #94a3b8;
+        margin-bottom: 6px;
+    }
+    .var-chip {
+        display: inline-block;
+        padding: 3px 6px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        font-size: 10px;
+        font-family: monospace;
+        color: #64748b;
+        cursor: pointer;
+        margin: 2px;
+        transition: all 0.2s;
+    }
+    .var-chip:hover {
+        background: #e0e7ff;
+        border-color: #818cf8;
+        color: #4f46e5;
     }
 
-    /* Hide MJML warnings if any */
-    .gjs-warnings {
+    /* Panel de edición de enlace */
+    .link-editor-panel {
         display: none;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .link-editor-panel.active {
+        display: block;
+    }
+    .link-editor-panel label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+    .link-editor-panel input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+    .link-editor-panel input:focus {
+        outline: none;
+        border-color: var(--brand-color, #3b82f6);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .link-editor-panel .apply-link-btn {
+        width: 100%;
+        padding: 8px;
+        background: var(--brand-color, #3b82f6);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .link-editor-panel .apply-link-btn:hover {
+        filter: brightness(1.1);
+    }
+    .link-panel-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .canvas-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #e2e8f0;
+        overflow: hidden;
+    }
+
+    .canvas-tip {
+        background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+        padding: 8px 16px;
+        text-align: center;
+        font-size: 12px;
+        color: #4f46e5;
+        border-bottom: 1px solid #c7d2fe;
+    }
+
+    #gjs {
+        flex: 1;
+        border: none;
+        background: #e2e8f0;
+    }
+
+    .gjs-cv-canvas {
+        background: #e2e8f0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .gjs-frame-wrapper {
+        padding: 20px 30px !important;
+        display: flex !important;
+        justify-content: center !important;
+        overflow: auto !important;
+    }
+
+    .gjs-frame {
+        background: white !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+        border: none !important;
+        max-width: 650px !important;
+        width: 100% !important;
+        min-height: 500px !important;
+    }
+
+    .gjs-pn-panels, .gjs-pn-views-container, .gjs-pn-views,
+    .gjs-pn-commands, .gjs-pn-options, .gjs-pn-devices-c {
+        display: none !important;
+    }
+
+    .gjs-toolbar {
+        background: #1e293b !important;
+        border-radius: 6px !important;
+        padding: 4px !important;
+    }
+    .gjs-toolbar-item {
+        color: white !important;
+        padding: 6px !important;
+    }
+
+    .gjs-selected {
+        outline: 2px solid var(--brand-color, #3b82f6) !important;
+        outline-offset: 2px !important;
+    }
+    .gjs-hovered {
+        outline: 2px dashed #94a3b8 !important;
+        outline-offset: 2px !important;
+    }
+
+    .gjs-rte-toolbar {
+        background: #1e293b !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        border: none !important;
+        z-index: 10000 !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3) !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 2px !important;
+        max-width: 420px !important;
+    }
+    .gjs-rte-actionbar {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 2px !important;
+    }
+    .gjs-rte-action {
+        color: white !important;
+        padding: 8px 10px !important;
+        border-radius: 4px !important;
+        font-size: 14px !important;
+        min-width: 32px !important;
+        text-align: center !important;
+        transition: background 0.2s !important;
+    }
+    .gjs-rte-action:hover {
+        background: #475569 !important;
+    }
+    .gjs-rte-active {
+        background: var(--brand-color, #3b82f6) !important;
+    }
+
+    .preview-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(15, 23, 42, 0.9);
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+    }
+    .preview-modal.active { display: flex; }
+    .preview-header {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+    .preview-close {
+        background: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .preview-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 650px;
+        width: 100%;
+        max-height: 80vh;
+        overflow: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 10001;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .toast {
+        padding: 12px 20px;
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+        animation: toastIn 0.3s ease;
+    }
+    .toast.success { background: #059669; }
+    .toast.error { background: #dc2626; }
+    @keyframes toastIn {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
     }
 </style>
 
-<div class="flex h-[calc(100vh-140px)] gap-4">
-    <!-- Main Canvas -->
-    <div class="flex-1 bg-slate-900 rounded-2xl overflow-hidden shadow-2xl relative border border-slate-700">
-        <div id="gjs" class="h-full"></div>
+<div class="email-editor">
+    <div class="elements-sidebar">
+        <div class="sidebar-title">📦 Arrastra elementos</div>
+        <div id="blocks-container"></div>
+        
+        <!-- Panel de edición de enlaces (aparece al seleccionar botón) -->
+        <div id="link-editor-panel" class="link-editor-panel">
+            <div class="link-panel-title">🔗 Editar enlace</div>
+            <label for="link-url">URL de destino</label>
+            <input type="url" id="link-url" placeholder="https://ejemplo.com" />
+            <label for="link-text">Texto del botón</label>
+            <input type="text" id="link-text" placeholder="Llamada a la acción" />
+            <button type="button" class="apply-link-btn" id="apply-link-btn">✓ Aplicar cambios</button>
+        </div>
+        
+        <div class="quick-vars">
+            <div class="quick-vars-title">Variables (clic = copiar)</div>
+            <span class="var-chip" data-var="{% verbatim %}{{ client.first_name }}{% endverbatim %}">Nombre</span>
+            <span class="var-chip" data-var="{% verbatim %}{{ client.email }}{% endverbatim %}">Email</span>
+            <span class="var-chip" data-var="{% verbatim %}{{ gym.name }}{% endverbatim %}">Gimnasio</span>
+            <span class="var-chip" data-var="{% verbatim %}{{ gym.phone }}{% endverbatim %}">Teléfono</span>
+        </div>
     </div>
 
-    <!-- Right Sidebar (Blocks & Settings) -->
-    <div class="w-80 bg-white rounded-2xl border border-slate-200 flex flex-col shadow-sm">
-        <div class="p-4 border-b border-slate-100 font-bold text-slate-700 bg-slate-50 rounded-t-2xl">
-            Elementos Disponibles
-        </div>
-        <div id="blocks" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+    <div class="canvas-area">
+        <div class="canvas-tip">💡 <strong>Doble clic</strong> en el texto para editar · Aparecerá la barra de formato con negrita, colores y más</div>
+        <div id="gjs"></div>
     </div>
 </div>
 
-<!-- GrapesJS Scripts -->
+<div class="preview-modal" id="preview-modal">
+    <div class="preview-header">
+        <button class="preview-close" id="preview-close">✕ Cerrar</button>
+    </div>
+    <div class="preview-content" id="preview-content"></div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/grapesjs/0.21.2/grapes.min.js"></script>
-<script src="https://unpkg.com/grapesjs-mjml@1.0.5/dist/grapesjs-mjml.min.js"></script>
 
 {{ template.content_json|json_script:"template-json" }}
 
 <script>
-    const TEMPLATE_ID = "{{ template.id }}";
-    const SAVE_API_URL = "{% url 'marketing_template_save_api' template.id %}";
+const SAVE_API_URL = "{% url 'marketing_template_save_api' template.id %}";
 
-    // 1. Initialize Editor
-    const editor = grapesjs.init({
-        container: '#gjs',
-        fromElement: false,
-        height: '100%',
-        width: 'auto',
-        storageManager: false,
-        plugins: ['grapesjs-mjml'],
-        pluginsOpts: {
-            'grapesjs-mjml': {
-                resetDevices: false
-            }
-        },
-        blockManager: {
-            appendTo: '#blocks'
-        },
-        deviceManager: {
-            devices: [
-                { name: 'Desktop', width: '' },
-                { name: 'Mobile', width: '320px', widthMedia: '480px' }
-            ]
-        },
-        panels: { defaults: [] }, // Clean panels to avoid default top bar
-    });
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
 
-    // 2. Define Custom Blocks (AFTER init)
-    const bm = editor.BlockManager;
-
-    // Remove default basic blocks if they clutter (optional, keeping for now)
-
-    // Custom Premium Blocks
-    bm.add('hero-section', {
-        label: '✨ Hero Principal',
-        category: 'Estructura',
-        content: `
-            <mj-section background-color="#ffffff" padding-bottom="0px" padding-top="0">
-                <mj-column width="100%">
-                    <mj-image src="https://placehold.co/600x300/3b82f6/ffffff?text=Tu+Imagen+Aqui" alt="" align="center" border="none" width="600px" padding="0"></mj-image>
-                </mj-column>
-            </mj-section>
-            <mj-section background-color="#ffffff" padding-bottom="20px" padding-top="20px">
-                <mj-column width="100%">
-                    <mj-text align="center" color="#1e293b" font-size="28px" font-family="Helvetica" font-weight="bold">Tu Título Impactante</mj-text>
-                    <mj-text align="center" color="#64748b" font-size="16px" font-family="Helvetica" line-height="1.5">Subtítulo que enganche a tus clientes.</mj-text>
-                    <mj-button background-color="#3b82f6" color="white" font-size="16px" font-weight="bold" border-radius="8px" href="#">Call to Action</mj-button>
-                </mj-column>
-            </mj-section>
-        `,
-        attributes: { class: "gjs-fonts gjs-f-hero" }
-    });
-
-    bm.add('features-2-col', {
-        label: '🍱 2 Columnas',
-        category: 'Contenido',
-        content: `
-            <mj-section background-color="#ffffff" padding="20px">
-                <mj-column>
-                    <mj-image width="200px" src="https://placehold.co/200x150/e2e8f0/64748b?text=Img+1" />
-                    <mj-text align="center" font-weight="bold" font-size="18px" color="#1e293b"> Beneficio 1 </mj-text>
-                    <mj-text align="center" color="#64748b" font-size="14px"> Descripción corta. </mj-text>
-                </mj-column>
-                <mj-column>
-                    <mj-image width="200px" src="https://placehold.co/200x150/e2e8f0/64748b?text=Img+2" />
-                    <mj-text align="center" font-weight="bold" font-size="18px" color="#1e293b"> Beneficio 2 </mj-text>
-                    <mj-text align="center" color="#64748b" font-size="14px"> Descripción corta. </mj-text>
-                </mj-column>
-            </mj-section>
-        `
-    });
-
-    bm.add('text-basic', {
-        label: '📝 Texto Simple',
-        category: 'Básicos',
-        content: '<mj-text font-size="16px" color="#333333" font-family="Helvetica">Escribe tu texto aquí...</mj-text>',
-    });
-
-    bm.add('image-basic', {
-        label: '🖼️ Imagen',
-        category: 'Básicos',
-        content: '<mj-image src="https://placehold.co/600x200" />',
-    });
-
-    bm.add('spacer-block', {
-        label: '➖ Espaciador',
-        category: 'Básicos',
-        content: '<mj-spacer height="20px" />',
-    });
-
-    bm.add('divider-block', {
-        label: '➗ Divisor',
-        category: 'Básicos',
-        content: '<mj-divider border-color="#e2e8f0" />',
-    });
-
-    bm.add('gym-footer', {
-        label: '🦶 Footer Gimnasio',
-        category: 'Estructura',
-        content: `
-             <mj-section background-color="#0f172a" padding="20px">
-                <mj-column>
-                    <mj-text align="center" color="#94a3b8" font-size="12px" line-height="1.5">
-                        © {{ gym.name }}<br>
-                        Recibes este correo porque eres socio de nuestro club.<br>
-                        <a href="#" style="color:white; text-decoration:underline;">Darse de baja</a>
-                    </mj-text>
-                </mj-column>
-            </mj-section>
-        `
-    });
-
-    // 3. Load Content
-    // Parse existing JSON content safely
-    try {
-        const jsonContent = JSON.parse(document.getElementById('template-json').textContent || "null");
-        if (jsonContent && Object.keys(jsonContent).length > 0) {
-            editor.loadProjectData(jsonContent);
-        } else {
-            // Load Default Template explicitly
-            editor.setComponents(`
-                <mjml>
-                    <mj-body background-color="#f8fafc">
-                        <mj-section background-color="#ffffff" padding="20px" border-radius="10px">
-                            <mj-column>
-                                <mj-image width="150px" src="https://placehold.co/150x50?text=LOGO" alt="Logo"></mj-image>
-                                <mj-divider border-color="#e2e8f0"></mj-divider>
-                                <mj-text font-size="20px" color="#0f172a" font-family="helvetica" align="center">Hola, {{ client.first_name }}!</mj-text>
-                                <mj-text color="#64748b" line-height="1.5" align="center">
-                                    Esta es tu nueva plantilla. Arrastra bloques desde la derecha para empezar a diseñar.
-                                </mj-text>
-                                <mj-button background-color="#0f172a" color="white" href="#">Ver Novedades</mj-button>
-                            </mj-column>
-                        </mj-section>
-                    </mj-body>
-                </mjml>
-            `);
-        }
-    } catch (e) {
-        console.error("Error loading JSON:", e);
+const editor = grapesjs.init({
+    container: '#gjs',
+    fromElement: false,
+    height: '100%',
+    width: 'auto',
+    storageManager: false,
+    deviceManager: { devices: [{ name: 'Desktop', width: '' }] },
+    panels: { defaults: [] },
+    blockManager: { appendTo: '#blocks-container', blocks: [] },
+    canvas: {
+        styles: ['https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap']
+    },
+    richTextEditor: {
+        actions: [
+            'bold', 'italic', 'underline', 'strikethrough',
+            {
+                name: 'link',
+                icon: '🔗',
+                attributes: { title: 'Insertar enlace' },
+                result: rte => {
+                    const url = prompt('URL del enlace:', 'https://');
+                    if (url) rte.exec('createLink', url);
+                }
+            },
+            {
+                name: 'fontSize',
+                icon: '<select class="gjs-font-size"><option value="1">Pequeño</option><option value="3" selected>Normal</option><option value="5">Grande</option><option value="7">XL</option></select>',
+                event: 'change',
+                result: (rte, action) => rte.exec('fontSize', action.btn.querySelector('select').value)
+            },
+            {
+                name: 'foreColor',
+                icon: '🎨',
+                attributes: { title: 'Color de texto' },
+                result: rte => {
+                    const color = prompt('Color hexadecimal:', '#3b82f6');
+                    if (color) rte.exec('foreColor', color);
+                }
+            },
+            {
+                name: 'hiliteColor',
+                icon: '🖍️',
+                attributes: { title: 'Resaltar texto' },
+                result: rte => {
+                    const color = prompt('Color de resaltado:', '#fef08a');
+                    if (color) rte.exec('hiliteColor', color);
+                }
+            },
+            { name: 'justifyLeft', icon: '⬅', attributes: { title: 'Izquierda' }, result: rte => rte.exec('justifyLeft') },
+            { name: 'justifyCenter', icon: '☰', attributes: { title: 'Centrar' }, result: rte => rte.exec('justifyCenter') },
+            { name: 'justifyRight', icon: '➡', attributes: { title: 'Derecha' }, result: rte => rte.exec('justifyRight') },
+            { name: 'insertOrderedList', icon: '1.', attributes: { title: 'Lista numerada' }, result: rte => rte.exec('insertOrderedList') },
+            { name: 'insertUnorderedList', icon: '•', attributes: { title: 'Lista viñetas' }, result: rte => rte.exec('insertUnorderedList') }
+        ]
     }
+});
 
-    // 4. Save Logic
-    document.getElementById('save-btn').addEventListener('click', function () {
+const bm = editor.BlockManager;
+
+bm.add('text', {
+    label: '<span class="icon">📝</span> Texto',
+    content: '<div style="padding: 15px 20px; font-family: Inter, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #374151;" data-gjs-type="text">Escribe tu texto aquí. Haz doble clic para editar.</div>',
+    category: 'Básicos'
+});
+
+bm.add('title', {
+    label: '<span class="icon">🔤</span> Título',
+    content: '<h1 style="padding: 15px 20px; font-family: Inter, Arial, sans-serif; font-size: 32px; font-weight: 700; color: #111827; margin: 0; text-align: center;" data-gjs-type="text">Tu título aquí</h1>',
+    category: 'Básicos'
+});
+
+bm.add('subtitle', {
+    label: '<span class="icon">📑</span> Subtítulo',
+    content: '<h2 style="padding: 10px 20px; font-family: Inter, Arial, sans-serif; font-size: 22px; font-weight: 600; color: #374151; margin: 0;" data-gjs-type="text">Subtítulo de sección</h2>',
+    category: 'Básicos'
+});
+
+bm.add('image', {
+    label: '<span class="icon">🖼️</span> Imagen',
+    content: '<div style="padding: 15px 20px; text-align: center;"><img src="https://placehold.co/550x250/e2e8f0/64748b?text=Tu+Imagen" alt="Imagen" style="max-width: 100%; height: auto; border-radius: 8px;" /></div>',
+    category: 'Básicos'
+});
+
+bm.add('button', {
+    label: '<span class="icon">🔘</span> Botón',
+    content: '<div style="padding: 20px; text-align: center;"><a href="#" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-family: Inter, Arial, sans-serif; font-size: 16px; font-weight: 600;">Llamada a la acción</a></div>',
+    category: 'Básicos'
+});
+
+bm.add('divider', {
+    label: '<span class="icon">➖</span> Divisor',
+    content: '<div style="padding: 15px 20px;"><hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" /></div>',
+    category: 'Básicos'
+});
+
+bm.add('spacer', {
+    label: '<span class="icon">↕️</span> Espacio',
+    content: '<div style="height: 30px;"></div>',
+    category: 'Básicos'
+});
+
+bm.add('two-columns', {
+    label: '<span class="icon">◫</span> 2 Columnas',
+    content: '<table style="width: 100%; border-collapse: collapse;"><tr><td style="width: 50%; padding: 15px; vertical-align: top;"><div data-gjs-type="text">Columna izquierda</div></td><td style="width: 50%; padding: 15px; vertical-align: top;"><div data-gjs-type="text">Columna derecha</div></td></tr></table>',
+    category: 'Layout'
+});
+
+bm.add('card', {
+    label: '<span class="icon">🃏</span> Tarjeta',
+    content: '<div style="margin: 15px 20px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;"><h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 600; color: #111827;" data-gjs-type="text">Título</h3><p style="margin: 0; font-size: 14px; color: #64748b;" data-gjs-type="text">Descripción de la tarjeta.</p></div>',
+    category: 'Layout'
+});
+
+bm.add('footer', {
+    label: '<span class="icon">📋</span> Pie email',
+    content: '<div style="padding: 25px 20px; background: #f9fafb; text-align: center; border-top: 1px solid #e5e7eb;"><p style="margin: 0 0 10px 0; font-size: 14px; color: #6b7280;" data-gjs-type="text">{{ gym.name }}</p><p style="margin: 0; font-size: 12px; color: #9ca3af;"><a href="#" style="color: #9ca3af;">Darse de baja</a></p></div>',
+    category: 'Layout'
+});
+
+// Estilos sidebar bloques
+const style = document.createElement('style');
+style.textContent = `
+    .gjs-block {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 12px !important;
+        background: #f8fafc !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        cursor: grab !important;
+        transition: all 0.2s !important;
+        margin-bottom: 6px !important;
+        min-height: auto !important;
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+    .gjs-block:hover { border-color: var(--brand-color, #3b82f6) !important; background: #eff6ff !important; }
+    .gjs-block__media { display: none !important; }
+    .gjs-block-label { font-size: 13px !important; font-weight: 500 !important; color: #334155 !important; display: flex !important; align-items: center !important; gap: 8px !important; }
+    .gjs-block-label .icon { font-size: 16px !important; }
+    .gjs-block-category .gjs-title { font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; color: #94a3b8 !important; padding: 10px 0 6px 0 !important; border: none !important; background: transparent !important; }
+    .gjs-blocks-c { padding: 0 !important; }
+    .gjs-font-size { background: #334155; color: white; border: none; padding: 4px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+`;
+document.head.appendChild(style);
+
+// Variables
+document.querySelectorAll('.var-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        navigator.clipboard.writeText(chip.dataset.var);
+        showToast('Copiado: ' + chip.dataset.var);
+    });
+});
+
+// Link Editor para botones
+let selectedLinkComponent = null;
+
+editor.on('component:selected', (component) => {
+    const el = component.getEl();
+    const linkPanel = document.getElementById('link-editor-panel');
+    const linkUrl = document.getElementById('link-url');
+    const linkText = document.getElementById('link-text');
+    
+    // Buscar si hay un enlace <a> en el componente seleccionado
+    let linkElement = null;
+    if (el) {
+        if (el.tagName === 'A') {
+            linkElement = el;
+        } else {
+            linkElement = el.querySelector('a');
+        }
+    }
+    
+    if (linkElement && linkPanel) {
+        // Mostrar panel con datos del enlace
+        selectedLinkComponent = component;
+        linkUrl.value = linkElement.getAttribute('href') || '';
+        linkText.value = linkElement.textContent || '';
+        linkPanel.classList.add('active');
+    } else if (linkPanel) {
+        selectedLinkComponent = null;
+        linkPanel.classList.remove('active');
+    }
+});
+
+editor.on('component:deselected', () => {
+    const linkPanel = document.getElementById('link-editor-panel');
+    if (linkPanel) linkPanel.classList.remove('active');
+    selectedLinkComponent = null;
+});
+
+// Aplicar cambios de enlace
+const applyLinkBtn = document.getElementById('apply-link-btn');
+if (applyLinkBtn) {
+    applyLinkBtn.addEventListener('click', () => {
+        if (!selectedLinkComponent) return;
+        
+        const el = selectedLinkComponent.getEl();
+        const linkUrl = document.getElementById('link-url').value;
+        const linkText = document.getElementById('link-text').value;
+        
+        let linkElement = null;
+        if (el.tagName === 'A') {
+            linkElement = el;
+        } else {
+            linkElement = el.querySelector('a');
+        }
+        
+        if (linkElement) {
+            linkElement.setAttribute('href', linkUrl || '#');
+            if (linkText) linkElement.textContent = linkText;
+            
+            // Actualizar el modelo de GrapesJS
+            selectedLinkComponent.view.render();
+            
+            showToast('✓ Enlace actualizado');
+        }
+    });
+}
+
+// Undo/Redo
+const btnUndo = document.getElementById('btn-undo');
+const btnRedo = document.getElementById('btn-redo');
+if (btnUndo) btnUndo.addEventListener('click', () => editor.UndoManager.undo());
+if (btnRedo) btnRedo.addEventListener('click', () => editor.UndoManager.redo());
+
+// Preview
+const btnPreview = document.getElementById('btn-preview');
+if (btnPreview) {
+    btnPreview.addEventListener('click', () => {
+        const html = editor.getHtml();
+        const css = editor.getCss();
+        document.getElementById('preview-content').innerHTML = '<style>' + css + '</style>' + html;
+        document.getElementById('preview-modal').classList.add('active');
+    });
+}
+
+const previewClose = document.getElementById('preview-close');
+if (previewClose) {
+    previewClose.addEventListener('click', () => {
+        document.getElementById('preview-modal').classList.remove('active');
+    });
+}
+
+// Save
+const saveBtn = document.getElementById('save-btn');
+if (saveBtn) {
+    saveBtn.addEventListener('click', async function() {
         const btn = this;
         const textSpan = document.getElementById('save-text');
-
-        // UI Loading State
         const originalText = textSpan.innerText;
         textSpan.innerText = 'Guardando...';
         btn.disabled = true;
-        btn.classList.add('opacity-75');
 
-        // Get Data
-        const componentsInfo = editor.getProjectData();
-        const htmlContent = editor.runCommand('mjml-get-code').html;
+        try {
+            const projectData = editor.getProjectData();
+            const html = editor.getHtml();
+            const css = editor.getCss();
+            const fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>' + css + '</style></head><body style="margin: 0; padding: 0; background: #ffffff;">' + html + '</body></html>';
+            const templateName = document.getElementById('template-name').value;
 
-        fetch(SAVE_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                components: componentsInfo,
-                html: htmlContent
-            })
-        })
-            .then(response => {
-                if (!response.ok) throw new Error('Network response was not ok');
-                return response.json();
-            })
-            .then(data => {
-                textSpan.innerText = '¡Guardado!';
-                setTimeout(() => {
-                    textSpan.innerText = originalText;
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-75');
-                }, 2000);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                textSpan.innerText = 'Error';
-                alert('Error al guardar.');
-                btn.disabled = false;
+            const response = await fetch(SAVE_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ components: projectData, html: fullHtml, name: templateName })
             });
+
+            if (!response.ok) throw new Error('Error');
+            textSpan.innerText = '¡Guardado!';
+            showToast('Plantilla guardada');
+            setTimeout(() => { textSpan.innerText = originalText; btn.disabled = false; }, 2000);
+        } catch (error) {
+            textSpan.innerText = 'Error';
+            showToast('Error al guardar', 'error');
+            setTimeout(() => { textSpan.innerText = originalText; btn.disabled = false; }, 2000);
+        }
     });
+}
+
+// Shortcuts
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (saveBtn) saveBtn.click(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); editor.UndoManager.undo(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); editor.UndoManager.redo(); }
+});
+
+// Load content
+try {
+    const jsonContent = JSON.parse(document.getElementById('template-json').textContent || "null");
+    if (jsonContent && Object.keys(jsonContent).length > 0) {
+        editor.loadProjectData(jsonContent);
+    } else {
+        editor.setComponents(`
+            <div style="max-width: 600px; margin: 0 auto; background: white; font-family: Inter, Arial, sans-serif;">
+                <div style="padding: 30px 20px; text-align: center;">
+                    <img src="https://placehold.co/140x50/1e293b/ffffff?text=LOGO" alt="Logo" style="max-width: 140px;" />
+                </div>
+                <h1 style="padding: 20px; margin: 0; text-align: center; font-size: 28px; font-weight: 700; color: #111827;" data-gjs-type="text">¡Hola!</h1>
+                <div style="padding: 15px 25px; font-size: 16px; line-height: 1.7; color: #4b5563;" data-gjs-type="text">
+                    Este es tu editor. <strong>Haz doble clic</strong> para editar el texto y aparecerá la barra de formato.
+                </div>
+                <div style="padding: 25px; text-align: center;">
+                    <a href="#" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">Botón de ejemplo</a>
+                </div>
+                <div style="padding: 25px 20px; background: #f9fafb; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-size: 12px; color: #9ca3af;"><a href="#" style="color: #9ca3af;">Darse de baja</a></p>
+                </div>
+            </div>
+        `);
+    }
+} catch (e) { console.error("Error loading template:", e); }
 </script>
 {% endblock %}

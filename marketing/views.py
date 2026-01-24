@@ -78,13 +78,36 @@ def template_save_api(request, pk):
         template.content_json = data.get('components', {}) # GrapesJS JSON
         template.content_html = data.get('html', '') # Compiled HTML
         
-        # Optional: Generate thumbnail here using an external service or JS canvas upload
+        # Update template name if provided
+        if data.get('name'):
+            template.name = data.get('name')
         
         template.save()
         return JsonResponse({'status': 'ok'})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def template_update_name(request, pk):
+    """API endpoint to update template name"""
+    if request.method != 'POST':
+        from django.http import JsonResponse
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    import json
+    from django.shortcuts import get_object_or_404
+    from django.http import JsonResponse
+    
+    try:
+        data = json.loads(request.body)
+        template = get_object_or_404(EmailTemplate, pk=pk, gym=request.gym)
+        template.name = data.get('name', template.name)
+        template.save()
+        return JsonResponse({'status': 'ok'})
+    except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
 
 @login_required
 def campaign_list_view(request):

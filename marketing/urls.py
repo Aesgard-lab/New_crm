@@ -20,6 +20,7 @@ urlpatterns = [
     path('templates/<int:pk>/editor/', views.template_editor_view, name='marketing_template_editor'),
     path('templates/<int:pk>/delete/', views.template_delete_view, name='marketing_template_delete'),
     path('templates/<int:pk>/save/', views.template_save_api, name='marketing_template_save_api'),
+    path('templates/<int:pk>/update-name/', views.template_update_name, name='marketing_template_update_name'),
     # Campaigns
     path('campaigns/', views.campaign_list_view, name='marketing_campaign_list'),
     path('campaigns/new/', views.campaign_create_view, name='marketing_campaign_create'),
