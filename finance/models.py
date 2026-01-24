@@ -102,6 +102,15 @@ class FinanceSettings(models.Model):
     """
     Singleton-like Settings for Finance per Gym (Stripe, Currency, etc.)
     """
+    # Gateway Strategy Choices
+    GATEWAY_STRATEGY_CHOICES = [
+        ('STRIPE_ONLY', _('Solo Stripe')),
+        ('REDSYS_ONLY', _('Solo Redsys')),
+        ('STRIPE_PRIMARY', _('Stripe principal, Redsys backup')),
+        ('REDSYS_PRIMARY', _('Redsys principal, Stripe backup')),
+        ('CLIENT_CHOICE', _('Cliente elige')),
+    ]
+    
     gym = models.OneToOneField(Gym, on_delete=models.CASCADE, related_name='finance_settings')
     
     # Stripe Configuration
@@ -113,6 +122,24 @@ class FinanceSettings(models.Model):
     redsys_merchant_terminal = models.CharField(_("Terminal"), max_length=10, default="001", blank=True)
     redsys_secret_key = models.CharField(_("Clave Secreta (clave256)"), max_length=255, blank=True)
     redsys_environment = models.CharField(_("Entorno"), max_length=10, choices=[('TEST', 'Pruebas / Sandbox'), ('REAL', 'Producción / Real')], default='TEST') # TEST (sis-t) or REAL (sis)
+    
+    # Gateway Strategy - For App/Online payments
+    app_gateway_strategy = models.CharField(
+        _("Pasarela App/Online"), 
+        max_length=20, 
+        choices=GATEWAY_STRATEGY_CHOICES, 
+        default='STRIPE_ONLY',
+        help_text=_("Estrategia de pasarela para pagos desde la app móvil y portal online")
+    )
+    
+    # Gateway Strategy - For POS/Backoffice
+    pos_gateway_strategy = models.CharField(
+        _("Pasarela POS/Backoffice"), 
+        max_length=20, 
+        choices=GATEWAY_STRATEGY_CHOICES, 
+        default='STRIPE_ONLY',
+        help_text=_("Estrategia de pasarela para cobros desde el backoffice/POS")
+    )
     
     # Currency
     currency = models.CharField(_("Moneda Principal"), max_length=3, default='EUR', help_text=_("Ej: EUR, USD"))
@@ -140,6 +167,45 @@ class FinanceSettings(models.Model):
 
     def __str__(self):
         return f"Configuración Financiera de {self.gym.name}"
+    
+    @property
+    def has_stripe(self):
+        """Verifica si Stripe está configurado"""
+        return bool(self.stripe_public_key and self.stripe_secret_key)
+    
+    @property
+    def has_redsys(self):
+        """Verifica si Redsys está configurado"""
+        return bool(self.redsys_merchant_code and self.redsys_secret_key)
+    
+    def get_available_gateways(self):
+        """Retorna lista de gateways disponibles según configuración"""
+        gateways = []
+        if self.has_stripe:
+            gateways.append('STRIPE')
+        if self.has_redsys:
+            gateways.append('REDSYS')
+        return gateways
+    
+    def get_primary_gateway(self, context='app'):
+        """
+        Retorna la pasarela principal según el contexto y la estrategia configurada.
+        context: 'app' para app/online, 'pos' para backoffice/POS
+        """
+        strategy = self.app_gateway_strategy if context == 'app' else self.pos_gateway_strategy
+        
+        if strategy == 'STRIPE_ONLY':
+            return 'STRIPE' if self.has_stripe else None
+        elif strategy == 'REDSYS_ONLY':
+            return 'REDSYS' if self.has_redsys else None
+        elif strategy == 'STRIPE_PRIMARY':
+            return 'STRIPE' if self.has_stripe else ('REDSYS' if self.has_redsys else None)
+        elif strategy == 'REDSYS_PRIMARY':
+            return 'REDSYS' if self.has_redsys else ('STRIPE' if self.has_stripe else None)
+        elif strategy == 'CLIENT_CHOICE':
+            # Por defecto retorna el primero disponible, pero la UI mostrará selector
+            return 'STRIPE' if self.has_stripe else ('REDSYS' if self.has_redsys else None)
+        return None
 
 class ClientRedsysToken(models.Model):
     """

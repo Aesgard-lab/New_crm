@@ -67,10 +67,17 @@ class OrderItem(models.Model):
         return f"{self.quantity}x {self.description}"
 
 class OrderPayment(models.Model):
+    GATEWAY_CHOICES = [
+        ('NONE', _('Sin pasarela (Manual/Efectivo)')),
+        ('STRIPE', _('Stripe')),
+        ('REDSYS', _('Redsys')),
+    ]
+    
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments')
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
     amount = models.DecimalField(_("Cantidad"), max_digits=10, decimal_places=2)
-    transaction_id = models.CharField(_("ID Transacción (Stripe)"), max_length=255, blank=True, null=True)
+    transaction_id = models.CharField(_("ID Transacción"), max_length=255, blank=True, null=True)
+    gateway_used = models.CharField(_("Pasarela Usada"), max_length=20, choices=GATEWAY_CHOICES, default='NONE')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

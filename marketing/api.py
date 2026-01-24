@@ -5,9 +5,14 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db.models import Q
+from django_ratelimit.decorators import ratelimit
 from .models import Advertisement, AdvertisementImpression
 from clients.models import Client
 import json
+import logging
+
+# Security logger
+security_logger = logging.getLogger('django.security')
 
 
 @login_required
@@ -133,15 +138,21 @@ def api_get_active_advertisements(request):
         })
     
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        security_logger.exception("Error in api_get_active_advertisements")
+        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
 
 
 @login_required
-@csrf_exempt
+@ratelimit(key='user', rate='60/m', method=['POST'], block=True)
 @require_POST
 def api_track_advertisement_impression(request, ad_id):
     """
     Registra que el usuario ha visto el anuncio.
+    
+    SECURITY: 
+    - Requires authentication
+    - Rate limited to 60/min per user
+    - Validates ad belongs to client's gym
     
     POST /api/advertisements/{ad_id}/impression/
     
@@ -158,8 +169,12 @@ def api_track_advertisement_impression(request, ad_id):
         except Client.DoesNotExist:
             return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
         
-        # Obtener el anuncio
-        advertisement = get_object_or_404(Advertisement, id=ad_id)
+        # SECURITY: Validate ad is visible to this client's gym
+        advertisement = get_object_or_404(
+            Advertisement,
+            Q(id=ad_id) & (Q(target_gyms__isnull=True) | Q(target_gyms=client.gym)),
+            is_active=True
+        )
         
         # Crear la impresión
         AdvertisementImpression.objects.create(
@@ -178,11 +193,12 @@ def api_track_advertisement_impression(request, ad_id):
         })
     
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        security_logger.exception(f"Error tracking impression for ad {ad_id}")
+        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
 
 
 @login_required
-@csrf_exempt
+@ratelimit(key='user', rate='30/m', method=['POST'], block=True)
 @require_POST
 def api_track_advertisement_click(request, ad_id):
     """
@@ -205,8 +221,12 @@ def api_track_advertisement_click(request, ad_id):
         except Client.DoesNotExist:
             return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
         
-        # Obtener el anuncio
-        advertisement = get_object_or_404(Advertisement, id=ad_id)
+        # SECURITY: Validate ad is visible to this client's gym
+        advertisement = get_object_or_404(
+            Advertisement,
+            Q(id=ad_id) & (Q(target_gyms__isnull=True) | Q(target_gyms=client.gym)),
+            is_active=True
+        )
         
         # Parsear el body
         try:
@@ -248,7 +268,8 @@ def api_track_advertisement_click(request, ad_id):
         })
     
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        security_logger.exception(f"Error tracking click for ad {ad_id}")
+        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
 
 
 @login_required

@@ -657,19 +657,21 @@ def send_ticket_email(order, email):
     print(f"Sending Ticket #{order.id} to {email}")
     pass
 
-@csrf_exempt
+@require_gym_permission('sales.charge')
 @require_POST
 def subscription_charge(request, pk):
     """
     Attempts to charge a subscription (ClientMembership) using stored payment methods.
+    SECURITY: Validates membership belongs to the authenticated user's gym.
     """
     try:
         from clients.models import ClientMembership
         from memberships.models import MembershipPlan
         
-        membership = get_object_or_404(ClientMembership, pk=pk)
+        # SECURITY FIX: Validate membership belongs to the current gym
+        gym = request.gym
+        membership = get_object_or_404(ClientMembership, pk=pk, client__gym=gym)
         client = membership.client
-        gym = client.gym
         amount = membership.price
         
         if amount <= 0:
@@ -971,19 +973,23 @@ def order_update_status(request, order_id):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-@csrf_exempt
+@require_gym_permission('sales.charge')
 @require_POST
 def bulk_subscription_charge(request):
     """
     Attempts to charge multiple subscriptions (ClientMemberships) at once.
     Returns a summary of successful and failed charges.
+    SECURITY: Requires gym permission and validates all memberships belong to gym.
     """
     try:
         from clients.models import ClientMembership
         from memberships.models import MembershipPlan
         from django.utils import timezone
         
+        # SECURITY: gym is set from authenticated user's session
         gym = request.gym
+        if not gym:
+            return JsonResponse({'error': 'Acceso no autorizado'}, status=403)
         
         data = {}
         if request.body:

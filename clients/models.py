@@ -85,6 +85,19 @@ class Client(models.Model):
     # Stripe Integration
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, help_text="ID de cliente en Stripe (cus_...)")
     
+    # Payment Gateway Preference
+    GATEWAY_PREFERENCE_CHOICES = [
+        ('AUTO', 'Automático (según configuración del gym)'),
+        ('STRIPE', 'Stripe'),
+        ('REDSYS', 'Redsys'),
+    ]
+    preferred_gateway = models.CharField(
+        max_length=20, 
+        choices=GATEWAY_PREFERENCE_CHOICES, 
+        default='AUTO',
+        help_text="Pasarela de pago preferida para este cliente"
+    )
+    
     # Preferencias de comunicación
     email_notifications_enabled = models.BooleanField(default=True, help_text="Si el cliente quiere recibir emails del gimnasio")
 

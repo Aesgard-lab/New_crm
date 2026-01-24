@@ -478,6 +478,27 @@
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h3 class="font-semibold text-slate-900">Métodos de Pago</h3>
                 <div class="flex gap-2">
+                    <!-- Pasarela Preferida -->
+                    <div class="flex items-center gap-2 mr-4 border-r border-slate-200 pr-4">
+                        <span class="text-xs text-slate-500">Pasarela:</span>
+                        <select 
+                            onchange="updatePreferredGateway(this.value)"
+                            class="text-xs rounded-lg border-slate-200 py-1 px-2 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                            <option value="AUTO" {% if client.preferred_gateway == 'AUTO' %}selected{% endif %}>Auto (según gimnasio)</option>
+                            <option value="STRIPE" {% if client.preferred_gateway == 'STRIPE' %}selected{% endif %}>Stripe</option>
+                            <option value="REDSYS" {% if client.preferred_gateway == 'REDSYS' %}selected{% endif %}>Redsys</option>
+                        </select>
+                        {% if client.preferred_gateway == 'STRIPE' %}
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-bold">
+                            <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/></svg>
+                        </span>
+                        {% elif client.preferred_gateway == 'REDSYS' %}
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">
+                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                        </span>
+                        {% endif %}
+                    </div>
                     <!-- Stripe Button -->
                     {% if stripe_public_key %}
                     <button @click="openModal()"
@@ -668,6 +689,34 @@
                                 window.location.reload();
                             }
                         }
+                    }
+                }
+                
+                // Function to update preferred payment gateway
+                async function updatePreferredGateway(gateway) {
+                    try {
+                        const response = await fetch("{% url 'client_update_preferred_gateway' client.id %}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ gateway: gateway })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            // Show subtle confirmation
+                            const toast = document.createElement('div');
+                            toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium z-50';
+                            toast.textContent = 'Pasarela actualizada a ' + gateway;
+                            document.body.appendChild(toast);
+                            setTimeout(() => toast.remove(), 3000);
+                        } else {
+                            alert('Error: ' + (data.error || 'No se pudo actualizar'));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Error de conexión');
                     }
                 }
             </script>

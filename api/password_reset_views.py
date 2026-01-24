@@ -67,10 +67,15 @@ class PasswordResetRequestView(views.APIView):
 class PasswordResetConfirmView(views.APIView):
     """
     Confirm password reset with code and set new password.
+    
+    SECURITY: Uses Django's built-in password validators
     """
     permission_classes = [AllowAny]
     
     def post(self, request):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        
         email = request.data.get('email', '').strip().lower()
         code = request.data.get('code', '').strip()
         new_password = request.data.get('new_password', '')
@@ -81,9 +86,12 @@ class PasswordResetConfirmView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if len(new_password) < 6:
+        # SECURITY: Use Django's password validators instead of just length check
+        try:
+            validate_password(new_password)
+        except ValidationError as e:
             return Response(
-                {'error': 'La contraseña debe tener al menos 6 caracteres'}, 
+                {'error': e.messages[0] if e.messages else 'Contraseña no válida'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         

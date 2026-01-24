@@ -1,13 +1,28 @@
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.utils.text import slugify
+
 from accounts.decorators import require_gym_permission
+from organizations.models import Gym
+from .forms import ClientDocumentForm, ClientFieldForm, ClientForm, ClientGroupForm, ClientNoteForm, ClientTagForm
+from .models import Client, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientNote, ClientTag
+from routines.models import WorkoutRoutine
+from clients.utils.duplicate_detection import find_potential_duplicates
+
 
 @login_required
 @require_gym_permission("clients.change")
 def merge_clients_wizard(request, c1_id, c2_id):
-    c1 = get_object_or_404(Client, id=c1_id)
-    c2 = get_object_or_404(Client, id=c2_id)
+    # SECURITY FIX: Validate both clients belong to the current gym
+    gym = request.gym
+    c1 = get_object_or_404(Client, id=c1_id, gym=gym)
+    c2 = get_object_or_404(Client, id=c2_id, gym=gym)
     conflict_warning = None
     # Comprobar conflictos de membresía activa
     c1_active_memberships = list(c1.memberships.filter(status="ACTIVE"))
@@ -71,7 +86,6 @@ def merge_clients_wizard(request, c1_id, c2_id):
         return redirect("clients_duplicates")
     return render(request, "clients/merge_wizard.html", {"c1": c1, "c2": c2, "conflict_warning": conflict_warning})
 
-from clients.utils.duplicate_detection import find_potential_duplicates
 
 @login_required
 @require_gym_permission("clients.view")
@@ -79,19 +93,7 @@ def clients_duplicates(request):
     # Opcional: filtrar solo por el gimnasio actual si aplica multi-gym
     duplicates = find_potential_duplicates()
     return render(request, "clients/duplicates.html", {"duplicates": duplicates})
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
-from django.utils import timezone
-from django.utils.text import slugify
 
-from accounts.decorators import require_gym_permission
-from organizations.models import Gym
-from .forms import ClientDocumentForm, ClientFieldForm, ClientForm, ClientGroupForm, ClientNoteForm, ClientTagForm
-from .models import Client, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientNote, ClientTag
-from routines.models import WorkoutRoutine
 
 @login_required
 @require_gym_permission("clients.view")
@@ -128,6 +130,15 @@ def clients_list(request):
     elif company == "individual":
         clients = clients.filter(is_company_client=False)
 
+    # Filtro por pasarela de pago
+    gateway = request.GET.get("gateway", "all")
+    if gateway == "stripe":
+        clients = clients.filter(Q(preferred_gateway='STRIPE') | Q(stripe_customer_id__isnull=False))
+    elif gateway == "redsys":
+        clients = clients.filter(Q(preferred_gateway='REDSYS') | Q(redsys_tokens__isnull=False)).distinct()
+    elif gateway == "auto":
+        clients = clients.filter(preferred_gateway='AUTO', stripe_customer_id__isnull=True).exclude(redsys_tokens__isnull=False)
+
     custom_fields = list(
         ClientField.objects.filter(gym=gym, is_active=True)
         .prefetch_related("options")
@@ -152,9 +163,14 @@ def clients_list(request):
         for field in custom_fields
     }
 
-    clients = list(clients)
+    # Paginación - 50 clientes por página
+    paginator = Paginator(clients, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    clients_page = list(page_obj.object_list)
     custom_field_values = {}
-    for client in clients:
+    for client in clients_page:
         values = {}
         if isinstance(client.extra_data, dict):
             for field in custom_fields:
@@ -176,7 +192,9 @@ def clients_list(request):
     products = Product.objects.filter(gym=gym, is_active=True).order_by('name')
 
     context = {
-        "clients": clients,
+        "clients": clients_page,
+        "page_obj": page_obj,
+        "paginator": paginator,
         "tags": gym.client_tags.all(),
         "custom_fields": custom_fields,
         "custom_field_options": custom_field_options,
@@ -189,6 +207,7 @@ def clients_list(request):
             "status": status or "all",
             "selected_tags": [int(t) for t in selected_tags] if selected_tags else [],
             "company": company or "all",
+            "gateway": gateway or "all",
             "custom_field_filters": custom_field_filters,
             "membership_plan": request.GET.get('membership_plan', 'all'),
             "service": request.GET.get('service', 'all'),
@@ -329,7 +348,6 @@ def client_detail(request, client_id):
     }
     return render(request, "backoffice/clients/detail.html", context)
 
-from django.http import JsonResponse
 
 @login_required
 @require_gym_permission("clients.change")
@@ -346,6 +364,31 @@ def client_get_stripe_setup(request, client_id):
         return JsonResponse({'client_secret': client_secret})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_gym_permission("clients.change")
+@require_POST
+def client_update_preferred_gateway(request, client_id):
+    """
+    Updates the client's preferred payment gateway.
+    """
+    gym = getattr(request, "gym", None)
+    client = get_object_or_404(Client, id=client_id, gym=gym)
+    
+    import json
+    try:
+        data = json.loads(request.body)
+        gateway = data.get('gateway', 'AUTO')
+    except:
+        gateway = request.POST.get('gateway', 'AUTO')
+    
+    if gateway in ['AUTO', 'STRIPE', 'REDSYS']:
+        client.preferred_gateway = gateway
+        client.save(update_fields=['preferred_gateway'])
+        return JsonResponse({'success': True, 'gateway': gateway})
+    else:
+        return JsonResponse({'error': 'Invalid gateway'}, status=400)
 
 
 @login_required
@@ -639,8 +682,6 @@ def client_export_excel(request):
     return response
 
 
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 import json
 from datetime import datetime
 
@@ -822,8 +863,6 @@ def client_export_pdf(request):
 @require_POST
 def client_toggle_email_notifications(request, client_id):
     """Toggle email notifications preference for a client (AJAX endpoint)"""
-    from django.http import JsonResponse
-    
     gym = request.gym
     client = get_object_or_404(Client, id=client_id, gym=gym)
     

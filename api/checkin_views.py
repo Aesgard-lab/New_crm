@@ -1,14 +1,42 @@
 """
 API Views for Client Check-in QR (Mobile App).
 Generates dynamic QR tokens for gym access.
+
+SECURITY:
+- Uses HMAC with SECRET_KEY for token generation (not just SHA256)
+- Tokens expire every 30 seconds
+- Longer token length (16 chars = 64 bits) for better security
 """
 from rest_framework import views, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
 import hashlib
+import hmac
 import time
 
 from clients.models import Client, ClientVisit
+
+
+def _generate_secure_qr_token(client_id: int, access_code: str, timestamp: int) -> str:
+    """
+    Generate a secure HMAC-based QR token.
+    
+    SECURITY:
+    - Uses HMAC-SHA256 with SECRET_KEY
+    - 16 character output (64 bits of entropy)
+    - Includes client ID, access code, and timestamp
+    """
+    secret_key = getattr(settings, 'SECRET_KEY', 'fallback-key')
+    message = f"{client_id}-{access_code}-{timestamp}"
+    
+    token = hmac.new(
+        secret_key.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()[:16].upper()
+    
+    return token
 
 
 class GenerateQRTokenView(views.APIView):
@@ -36,9 +64,7 @@ class GenerateQRTokenView(views.APIView):
         
         # Generate QR token (refreshes every 30 seconds)
         timestamp = int(time.time() / 30)
-        qr_token = hashlib.sha256(
-            f"{client.id}-{client.access_code}-{timestamp}".encode()
-        ).hexdigest()[:8].upper()
+        qr_token = _generate_secure_qr_token(client.id, client.access_code, timestamp)
         
         # Calculate time until token expires
         current_time = time.time()
@@ -91,11 +117,9 @@ class RefreshQRTokenView(views.APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Generate new token
+        # Generate new secure token
         timestamp = int(time.time() / 30)
-        qr_token = hashlib.sha256(
-            f"{client.id}-{client.access_code}-{timestamp}".encode()
-        ).hexdigest()[:8].upper()
+        qr_token = _generate_secure_qr_token(client.id, client.access_code, timestamp)
         
         # Calculate time until token expires
         current_time = time.time()

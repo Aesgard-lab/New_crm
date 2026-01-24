@@ -267,6 +267,19 @@ class PaymentMethodsView(views.APIView):
         ])
     
     def post(self, request):
+        """
+        Add a new payment method.
+        
+        SECURITY NOTE (PCI-DSS Compliance):
+        This endpoint should NOT receive full card numbers in production.
+        Instead, use tokenization with Stripe.js or Redsys iframe.
+        
+        For now, this endpoint only accepts tokenized data:
+        - stripe_token: Token from Stripe.js
+        - last_4: Last 4 digits for display
+        - card_type: visa, mastercard, etc.
+        - expiry_month, expiry_year: Expiration date
+        """
         try:
             client = Client.objects.get(user=request.user)
         except Client.DoesNotExist:
@@ -275,16 +288,26 @@ class PaymentMethodsView(views.APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        card_number = request.data.get('card_number', '')
+        # SECURITY: Only accept tokenized data, NEVER raw card numbers
+        stripe_token = request.data.get('stripe_token')
+        last_4 = request.data.get('last_4', '')
+        card_type = request.data.get('card_type', 'other')
         expiry_month = request.data.get('expiry_month')
         expiry_year = request.data.get('expiry_year')
-        cvv = request.data.get('cvv')
         cardholder_name = request.data.get('cardholder_name', '')
         
-        # Basic validation
-        if len(card_number) < 13 or len(card_number) > 19:
+        # SECURITY: Reject requests with full card numbers
+        card_number = request.data.get('card_number')
+        if card_number and len(card_number) > 4:
             return Response(
-                {'error': 'Número de tarjeta inválido'},
+                {'error': 'Por seguridad (PCI-DSS), no envíes el número completo de tarjeta. Usa la tokenización de Stripe o Redsys.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate required fields
+        if not last_4 or len(last_4) != 4:
+            return Response(
+                {'error': 'Se requieren los últimos 4 dígitos de la tarjeta'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -294,12 +317,6 @@ class PaymentMethodsView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Detect card type
-        card_type = self._detect_card_type(card_number)
-        
-        # Store only last 4 digits (never store full card number in production!)
-        last_4 = card_number[-4:]
-        
         from clients.models import ClientPaymentMethod
         
         # Check if this is the first card (make it default)
@@ -307,11 +324,11 @@ class PaymentMethodsView(views.APIView):
         
         method = ClientPaymentMethod.objects.create(
             client=client,
-            card_type=card_type,
+            card_type=card_type.lower(),
             last_4=last_4,
             expiry_month=int(expiry_month),
             expiry_year=int(expiry_year),
-            cardholder_name=cardholder_name.upper(),
+            cardholder_name=cardholder_name.upper() if cardholder_name else '',
             is_default=is_first,
         )
         
@@ -324,19 +341,6 @@ class PaymentMethodsView(views.APIView):
             'cardholder_name': method.cardholder_name,
             'is_default': method.is_default,
         }, status=status.HTTP_201_CREATED)
-    
-    def _detect_card_type(self, card_number):
-        """Detect card type based on card number prefix."""
-        if card_number.startswith('4'):
-            return 'visa'
-        elif card_number.startswith(('51', '52', '53', '54', '55')):
-            return 'mastercard'
-        elif card_number.startswith(('34', '37')):
-            return 'amex'
-        elif card_number.startswith('6011'):
-            return 'discover'
-        else:
-            return 'other'
 
 
 class PaymentMethodDetailView(views.APIView):

@@ -19,7 +19,6 @@ django-celery-results>=2.5.0
 djangorestframework>=3.14.0
 django-cors-headers>=4.0.0
 
-
 # Payment Processing
 stripe>=7.0.0
 
@@ -36,4 +35,14 @@ python-docx>=0.8.11
 cryptography>=41.0.0
 django-ratelimit>=4.1.0
 python-dotenv>=1.0.0
+
+# Performance & Production
+whitenoise>=6.0.0
+gunicorn>=22.0.0
+uvicorn[standard]>=0.27.0
+django-redis>=5.4.0
+
+# Utils
+pyyaml>=6.0.0
+
 

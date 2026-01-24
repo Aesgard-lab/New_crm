@@ -4,7 +4,7 @@ Vistas del módulo de Control de Acceso
 Incluye:
 - Dashboard de accesos en tiempo real
 - Listado de entradas/salidas
-- API para dispositivos de hardware
+- API para dispositivos de hardware (con autenticación por API Key)
 """
 
 from django.shortcuts import render, get_object_or_404
@@ -16,10 +16,84 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta, datetime
+from functools import wraps
 import json
+import hmac
+import hashlib
+import logging
 
 from .models import AccessDevice, AccessZone, AccessLog, AccessAlert, ClientAccessCredential
 from .services import AccessControlService
+
+# Security logger
+security_logger = logging.getLogger('django.security')
+
+
+# ===========================================
+# SECURITY: API Key Authentication Decorator
+# ===========================================
+
+def require_device_api_key(view_func):
+    """
+    Decorator that validates API Key for hardware device endpoints.
+    
+    The API Key can be provided in:
+    1. Header: X-API-Key
+    2. Header: Authorization: Bearer <api_key>
+    
+    SECURITY: This prevents unauthorized access to hardware control APIs.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Extract API Key from headers
+        api_key = None
+        
+        # Method 1: X-API-Key header
+        api_key = request.headers.get('X-API-Key')
+        
+        # Method 2: Authorization Bearer
+        if not api_key:
+            auth_header = request.headers.get('Authorization', '')
+            if auth_header.startswith('Bearer '):
+                api_key = auth_header[7:]
+        
+        if not api_key:
+            security_logger.warning(
+                f"Access API request without API key from IP: {get_client_ip(request)}"
+            )
+            return JsonResponse({
+                'error': 'API Key required',
+                'code': 'MISSING_API_KEY'
+            }, status=401)
+        
+        # Validate API Key against active devices
+        try:
+            device = AccessDevice.objects.select_related('gym').get(
+                api_key=api_key,
+                is_active=True
+            )
+            # Attach device to request for use in view
+            request.access_device = device
+        except AccessDevice.DoesNotExist:
+            security_logger.warning(
+                f"Invalid API key attempt from IP: {get_client_ip(request)}, key: {api_key[:8]}..."
+            )
+            return JsonResponse({
+                'error': 'Invalid API Key',
+                'code': 'INVALID_API_KEY'
+            }, status=401)
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
+
+
+def get_client_ip(request):
+    """Extract client IP from request, handling proxies."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', 'unknown')
 
 
 # ===========================================
@@ -312,17 +386,21 @@ def client_access_history(request, client_id):
 
 # ===========================================
 # API PARA HARDWARE (Dispositivos)
+# SECURITY: All endpoints require API Key authentication
 # ===========================================
 
 @csrf_exempt
+@require_device_api_key
 @require_http_methods(['POST'])
 def api_validate_access(request):
     """
     API endpoint para que los dispositivos de hardware validen accesos.
     
+    SECURITY: Requires valid API Key in X-API-Key header.
+    
     POST /api/access/validate/
+    Headers: X-API-Key: <device_api_key>
     {
-        "device_id": "TORNO-001",
         "credential_type": "RFID",
         "credential_value": "1234567890",
         "direction": "ENTRY"
@@ -342,27 +420,17 @@ def api_validate_access(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     
-    device_id = data.get('device_id')
+    # SECURITY: Device is already validated by decorator
+    device = request.access_device
+    
     credential_type = data.get('credential_type')
     credential_value = data.get('credential_value')
     direction = data.get('direction', 'ENTRY')
     
-    if not all([device_id, credential_type, credential_value]):
+    if not all([credential_type, credential_value]):
         return JsonResponse({
-            'error': 'Missing required fields: device_id, credential_type, credential_value'
+            'error': 'Missing required fields: credential_type, credential_value'
         }, status=400)
-    
-    # Buscar dispositivo
-    try:
-        device = AccessDevice.objects.select_related('gym', 'zone').get(
-            device_id=device_id,
-            is_active=True
-        )
-    except AccessDevice.DoesNotExist:
-        return JsonResponse({
-            'error': 'Device not found or inactive',
-            'granted': False
-        }, status=404)
     
     # Actualizar heartbeat del dispositivo
     device.update_heartbeat()
@@ -390,14 +458,17 @@ def api_validate_access(request):
 
 
 @csrf_exempt
+@require_device_api_key
 @require_http_methods(['POST'])
 def api_validate_qr(request):
     """
     API endpoint para validar QR dinámicos de la app móvil.
     
+    SECURITY: Requires valid API Key in X-API-Key header.
+    
     POST /api/access/validate-qr/
+    Headers: X-API-Key: <device_api_key>
     {
-        "device_id": "SCANNER-001",
         "qr_token": "abc123...",
         "direction": "ENTRY"
     }
@@ -407,26 +478,16 @@ def api_validate_qr(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     
-    device_id = data.get('device_id')
+    # SECURITY: Device is already validated by decorator
+    device = request.access_device
+    
     qr_token = data.get('qr_token')
     direction = data.get('direction', 'ENTRY')
     
-    if not all([device_id, qr_token]):
+    if not qr_token:
         return JsonResponse({
-            'error': 'Missing required fields: device_id, qr_token'
+            'error': 'Missing required field: qr_token'
         }, status=400)
-    
-    # Buscar dispositivo
-    try:
-        device = AccessDevice.objects.select_related('gym', 'zone').get(
-            device_id=device_id,
-            is_active=True
-        )
-    except AccessDevice.DoesNotExist:
-        return JsonResponse({
-            'error': 'Device not found or inactive',
-            'granted': False
-        }, status=404)
     
     device.update_heartbeat()
     
@@ -440,22 +501,25 @@ def api_validate_qr(request):
         device=device,
         direction=direction,
         credential_type='QR_DYNAMIC',
-        credential_value=qr_token,
-        raw_data=data
+        credential_value=qr_token[:20] + '...',  # Don't log full token
+        raw_data={'direction': direction}  # Don't log full QR
     )
     
     return JsonResponse(result.to_dict())
 
 
 @csrf_exempt
+@require_device_api_key
 @require_http_methods(['POST'])
 def api_device_heartbeat(request):
     """
     API endpoint para que los dispositivos reporten su estado.
     
+    SECURITY: Requires valid API Key in X-API-Key header.
+    
     POST /api/access/heartbeat/
+    Headers: X-API-Key: <device_api_key>
     {
-        "device_id": "TORNO-001",
         "status": "ONLINE",
         "extra_data": {...}
     }
@@ -465,14 +529,11 @@ def api_device_heartbeat(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     
-    device_id = data.get('device_id')
+    # SECURITY: Device is already validated by decorator
+    device = request.access_device
+    
     status = data.get('status', 'ONLINE')
     error_message = data.get('error_message', '')
-    
-    try:
-        device = AccessDevice.objects.get(device_id=device_id)
-    except AccessDevice.DoesNotExist:
-        return JsonResponse({'error': 'Device not found'}, status=404)
     
     if status == 'ERROR':
         device.set_error(error_message)
@@ -486,35 +547,32 @@ def api_device_heartbeat(request):
 
 
 @csrf_exempt
+@require_device_api_key
 @require_http_methods(['GET'])
 def api_get_occupancy(request):
     """
     API endpoint para consultar el aforo actual.
     
-    GET /api/access/occupancy/?device_id=TORNO-001
-    GET /api/access/occupancy/?gym_id=1&zone_id=2
-    """
-    device_id = request.GET.get('device_id')
-    gym_id = request.GET.get('gym_id')
-    zone_id = request.GET.get('zone_id')
+    SECURITY: Requires valid API Key in X-API-Key header.
     
-    # Determinar el gimnasio
-    if device_id:
+    GET /api/access/occupancy/
+    Headers: X-API-Key: <device_api_key>
+    Optional params: ?zone_id=2
+    """
+    # SECURITY: Device is already validated by decorator
+    device = request.access_device
+    gym = device.gym
+    
+    zone_id = request.GET.get('zone_id')
+    zone = None
+    
+    if zone_id:
         try:
-            device = AccessDevice.objects.select_related('gym', 'zone').get(device_id=device_id)
-            gym = device.gym
-            zone = device.zone
-        except AccessDevice.DoesNotExist:
-            return JsonResponse({'error': 'Device not found'}, status=404)
-    elif gym_id:
-        from organizations.models import Gym
-        try:
-            gym = Gym.objects.get(id=gym_id)
-            zone = AccessZone.objects.get(id=zone_id) if zone_id else None
-        except (Gym.DoesNotExist, AccessZone.DoesNotExist):
-            return JsonResponse({'error': 'Gym or Zone not found'}, status=404)
+            zone = AccessZone.objects.get(id=zone_id, gym=gym)
+        except AccessZone.DoesNotExist:
+            return JsonResponse({'error': 'Zone not found'}, status=404)
     else:
-        return JsonResponse({'error': 'Provide device_id or gym_id'}, status=400)
+        zone = device.zone  # Use device's assigned zone
     
     service = AccessControlService(gym)
     occupancy = service.get_current_occupancy(zone)

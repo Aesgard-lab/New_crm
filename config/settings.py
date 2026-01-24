@@ -83,6 +83,8 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Sirve estáticos eficientemente
+    "django.middleware.gzip.GZipMiddleware",  # Compresión de respuestas
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",  # Internacionalización
     "django.middleware.common.CommonMiddleware",
@@ -104,25 +106,56 @@ WSGI_APPLICATION = "config.wsgi.application"
 # --------------------------------------------------
 # TEMPLATES
 # --------------------------------------------------
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-                "accounts.context_processors.gym_permissions",
-                "saas_billing.context_processors.subscription_warnings",
-                "saas_billing.context_processors.system_branding",
-                "core.context_processors.translations",
-            ],
+# En producción usamos el loader cacheado para mejor rendimiento
+if DEBUG:
+    TEMPLATES = [
+        {
+            "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "DIRS": [BASE_DIR / "templates"],
+            "APP_DIRS": True,
+            "OPTIONS": {
+                "context_processors": [
+                    "django.template.context_processors.debug",
+                    "django.template.context_processors.request",
+                    "django.contrib.auth.context_processors.auth",
+                    "django.contrib.messages.context_processors.messages",
+                    "accounts.context_processors.gym_permissions",
+                    "saas_billing.context_processors.subscription_warnings",
+                    "saas_billing.context_processors.system_branding",
+                    "core.context_processors.translations",
+                ],
+            },
         },
-    },
-]
+    ]
+else:
+    # Producción: Template caching para mejor rendimiento
+    TEMPLATES = [
+        {
+            "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "DIRS": [BASE_DIR / "templates"],
+            "OPTIONS": {
+                "context_processors": [
+                    "django.template.context_processors.debug",
+                    "django.template.context_processors.request",
+                    "django.contrib.auth.context_processors.auth",
+                    "django.contrib.messages.context_processors.messages",
+                    "accounts.context_processors.gym_permissions",
+                    "saas_billing.context_processors.subscription_warnings",
+                    "saas_billing.context_processors.system_branding",
+                    "core.context_processors.translations",
+                ],
+                "loaders": [
+                    (
+                        "django.template.loaders.cached.Loader",
+                        [
+                            "django.template.loaders.filesystem.Loader",
+                            "django.template.loaders.app_directories.Loader",
+                        ],
+                    ),
+                ],
+            },
+        },
+    ]
 
 # --------------------------------------------------
 # DATABASE (PostgreSQL)
@@ -135,6 +168,12 @@ DATABASES = {
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", "123"),
         "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        # Optimizaciones de conexión
+        "CONN_MAX_AGE": 60,  # Mantener conexiones abiertas 60 segundos
+        "CONN_HEALTH_CHECKS": True,  # Verificar salud de conexiones
+        "OPTIONS": {
+            "connect_timeout": 10,
+        },
     }
 }
 
@@ -182,6 +221,9 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# WhiteNoise - Compresión y caché de estáticos
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # --------------------------------------------------
 # MEDIA FILES
 # --------------------------------------------------
@@ -196,16 +238,33 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # --------------------------------------------------
 # CACHING (Optimización de rendimiento)
 # --------------------------------------------------
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-        'TIMEOUT': 300,  # 5 minutos por defecto
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000
+# En producción, usa Redis para mejor rendimiento
+if os.getenv("REDIS_URL"):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.getenv("REDIS_URL", "redis://localhost:6379/1"),
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'crm',
         }
     }
-}
+    # Sesiones en Redis (más rápido)
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000
+            }
+        }
+    }
 
 # --------------------------------------------------
 # CELERY CONFIGURATION
@@ -257,9 +316,18 @@ else:
 RATELIMIT_ENABLE = True
 RATELIMIT_VIEW_DEFAULT = '100/h'  # 100 requests por hora por defecto
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+# CORS - SECURITY: Restrict origins in production
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip() for origin in 
+        os.getenv('CORS_ALLOWED_ORIGINS', 'https://localhost').split(',')
+        if origin.strip()
+    ]
 
 # --------------------------------------------------
 # EMAIL CONFIGURATION

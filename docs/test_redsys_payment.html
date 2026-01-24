@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prueba Pago Redsys - Sandbox</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .card-info { background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        button { background: #1976d2; color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #1565c0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Prueba de Pago Redsys</h1>
+    
+    <div class="info">
+        <h3>📋 Datos de la operación:</h3>
+        <p><strong>Cliente:</strong> Cliente Test Descuento</p>
+        <p><strong>Membresía:</strong> Cuota mensual 4 sesiones</p>
+        <p><strong>Importe:</strong> 100.00€</p>
+        <p><strong>Order ID:</strong> 1769259720</p>
+        <p><strong>Entorno:</strong> SANDBOX (Pruebas)</p>
+    </div>
+    
+    <div class="card-info">
+        <h3>💳 Datos de tarjeta de prueba:</h3>
+        <p><strong>Número:</strong> 4548 8120 4940 0004</p>
+        <p><strong>Caducidad:</strong> 12/30</p>
+        <p><strong>CVV:</strong> 123</p>
+    </div>
+    
+    <form action="https://sis-t.redsys.es:25443/sis/realizarPago" method="POST">
+        <input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1">
+        <input type="hidden" name="Ds_MerchantParameters" value="eyJEU19NRVJDSEFOVF9BTU9VTlQiOiAiMTAwMDAiLCAiRFNfTUVSQ0hBTlRfT1JERVIiOiAiMTc2OTI1OTcyMCIsICJEU19NRVJDSEFOVF9NRVJDSEFOVENPREUiOiAiOTk5MDA4ODgxIiwgIkRTX01FUkNIQU5UX0NVUlJFTkNZIjogIjk3OCIsICJEU19NRVJDSEFOVF9UUkFOU0FDVElPTlRZUEUiOiAiMCIsICJEU19NRVJDSEFOVF9URVJNSU5BTCI6ICIwMDEiLCAiRFNfTUVSQ0hBTlRfTUVSQ0hBTlRVUkwiOiAiaHR0cDovL2xvY2FsaG9zdDo4MDAwL2ZpbmFuY2UvcmVkc3lzL25vdGlmeS8iLCAiRFNfTUVSQ0hBTlRfVVJMT0siOiAiaHR0cDovL2xvY2FsaG9zdDo4MDAwL2ZpbmFuY2UvcmVkc3lzL29rLyIsICJEU19NRVJDSEFOVF9VUkxLTyI6ICJodHRwOi8vbG9jYWxob3N0OjgwMDAvZmluYW5jZS9yZWRzeXMva28vIiwgIkRTX01FUkNIQU5UX1BST0RVQ1RERVNDUklQVElPTiI6ICJNZW1icmVzaWE6IEN1b3RhIG1lbnN1YWwgNCBzZXNpb25lcyJ9">
+        <input type="hidden" name="Ds_Signature" value="fAPumb3ZB985IZEzqO+b4AY/B5R4mEh1d/TfeHNYKOk=">
+        
+        <button type="submit">💳 Ir al TPV de Redsys (Sandbox)</button>
+    </form>
+    
+    <p style="margin-top: 20px; color: #666;">
+        Al hacer clic, serás redirigido al TPV virtual de Redsys en modo pruebas.
+    </p>
+</body>
+</html>

@@ -7,6 +7,7 @@ from clients.views import (
     client_add_note, client_delete_note, client_add_document, client_edit_note,
     client_get_stripe_setup, client_import, client_export_excel, client_export_pdf,
     client_settings, api_edit_membership, api_get_membership_details, client_toggle_email_notifications,
+    client_update_preferred_gateway,
     # Document Templates
     document_template_list, document_template_create, document_template_edit, document_template_delete,
     # Document Actions
@@ -55,6 +56,7 @@ urlpatterns = [
     
     # Stripe
     path("clients/<int:client_id>/stripe-setup/", client_get_stripe_setup, name="client_get_stripe_setup"),
+    path("clients/<int:client_id>/update-gateway/", client_update_preferred_gateway, name="client_update_preferred_gateway"),
     
     # Chat
     path("chat/", views.chat_list, name="chat_list"),

@@ -1,10 +1,17 @@
 """
 Vistas para el sistema de Check-in por QR de clases.
+
+SECURITY FEATURES:
+- HMAC-based tokens with SECRET_KEY
+- Time-limited tokens (configurable expiry)
+- Rate limiting on check-in endpoint
+- Timing-safe token comparison
 """
 import hashlib
 import hmac
 import time
 import json
+import logging
 from datetime import timedelta
 
 from django.shortcuts import render, get_object_or_404
@@ -14,10 +21,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django_ratelimit.decorators import ratelimit
 
 from organizations.models import Gym
 from clients.models import Client
 from .models import ActivitySession, AttendanceSettings, SessionCheckin
+
+# Security logger
+security_logger = logging.getLogger('django.security')
 
 
 def get_secret_key():
@@ -150,15 +161,25 @@ def qr_display_api(request, session_id):
 
 
 @csrf_exempt
+@ratelimit(key='ip', rate='20/m', method=['POST', 'GET'], block=True)
 @require_http_methods(["POST", "GET"])
 def qr_checkin(request, token):
     """
     Endpoint para procesar el check-in por QR.
     El cliente escanea el QR y llega aquí.
+    
+    SECURITY:
+    - Rate limited to prevent brute force (20/min per IP)
+    - HMAC token verification with timing-safe comparison
+    - Token expiration validation
     """
+    # Get client IP for logging
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', 'unknown')
+    
     try:
         parts = token.split(':')
         if len(parts) != 3:
+            security_logger.warning(f"Invalid QR token format from IP: {client_ip}")
             return JsonResponse({
                 'success': False,
                 'error': 'QR inválido'

@@ -109,15 +109,12 @@ def staff_list(request):
     )
     
     # Filter by ID to avoid any object mismatches
+    # Optimizado: prefetch_related para roles y grupos del usuario
     staff_members = StaffProfile.objects.filter(gym_id=gym.id).annotate(
         is_clocked_in=Exists(open_shift_exists)
-    ).select_related('user').order_by('role', 'user__first_name')
-
-    print(f"DEBUG: Staff List for Gym {gym.name} (ID: {gym.id}) - Count: {staff_members.count()}") # DEBUG
-    if staff_members.count() == 0:
-        print(f"DEBUG: No staff found. Checking database for Gym ID {gym.id}...")
-        count_db = StaffProfile.objects.filter(gym_id=gym.id).count()
-        print(f"DEBUG: Actual count in DB: {count_db}")
+    ).select_related('user').prefetch_related(
+        'user__groups'
+    ).order_by('role', 'user__first_name')
 
     context = {
         "staff_members": staff_members,

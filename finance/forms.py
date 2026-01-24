@@ -123,10 +123,11 @@ class FinanceSettingsForm(forms.ModelForm):
 class AppSettingsForm(forms.ModelForm):
     class Meta:
         model = FinanceSettings
-        fields = ['allow_client_delete_card', 'allow_client_pay_next_fee']
+        fields = ['allow_client_delete_card', 'allow_client_pay_next_fee', 'app_gateway_strategy']
         widgets = {
             'allow_client_delete_card': forms.CheckboxInput(attrs={'class': 'rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5'}),
             'allow_client_pay_next_fee': forms.CheckboxInput(attrs={'class': 'rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5'}),
+            'app_gateway_strategy': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 text-sm'}),
         }
 
 

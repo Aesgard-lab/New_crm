@@ -126,6 +126,15 @@
         </select>
       </div>
       <div>
+        <label class="block text-xs font-bold text-slate-600 mb-2">Pasarela Pago</label>
+        <select name="gateway" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          <option value="all" {% if filters.gateway == 'all' %}selected{% endif %}>Todas</option>
+          <option value="stripe" {% if filters.gateway == 'stripe' %}selected{% endif %}>Stripe</option>
+          <option value="redsys" {% if filters.gateway == 'redsys' %}selected{% endif %}>Redsys</option>
+          <option value="auto" {% if filters.gateway == 'auto' %}selected{% endif %}>Auto (sin preferencia)</option>
+        </select>
+      </div>
+      <div>
         <label class="block text-xs font-bold text-slate-600 mb-2">Género</label>
         <select name="gender" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
           <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>Todos</option>
@@ -206,6 +215,7 @@
         <tr>
           <th scope="col" class="px-6 py-3 rounded-l-xl">Cliente</th>
           <th scope="col" class="px-6 py-3">Estado</th>
+          <th scope="col" class="px-6 py-3">Pasarela</th>
           <th scope="col" class="px-6 py-3">Etiquetas</th>
           <th scope="col" class="px-6 py-3">Campos</th>
           <th scope="col" class="px-6 py-3 rounded-r-xl">Email / Tlf</th>
@@ -284,6 +294,23 @@
             {% endif %}
           </td>
 
+          <!-- Pasarela Preferida -->
+          <td class="px-6 py-4">
+            {% if client.preferred_gateway == 'STRIPE' or client.stripe_customer_id %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-purple-100 text-purple-700 text-[10px] font-bold">
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/></svg>
+              Stripe
+            </span>
+            {% elif client.preferred_gateway == 'REDSYS' or client.redsys_tokens.exists %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 text-[10px] font-bold">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+              Redsys
+            </span>
+            {% else %}
+            <span class="text-[10px] text-slate-400 px-2 py-1">Auto</span>
+            {% endif %}
+          </td>
+
           <!-- Tags -->
           <td class="px-6 py-4">
             <div class="flex flex-wrap gap-1">
@@ -334,6 +361,40 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Paginación -->
+  {% if page_obj.has_other_pages %}
+  <div class="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200 rounded-b-2xl">
+    <div class="text-sm text-slate-600">
+      Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ paginator.count }} clientes
+    </div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+      <a href="?{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+         class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+        &laquo; Anterior
+      </a>
+      {% endif %}
+      
+      {% for num in page_obj.paginator.page_range %}
+        {% if num == page_obj.number %}
+        <span class="px-3 py-1.5 text-sm rounded-lg bg-[var(--brand-color)] text-white font-medium">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}&page={{ num }}"
+           class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      
+      {% if page_obj.has_next %}
+      <a href="?{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+         class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+        Siguiente &raquo;
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  
   {% else %}
   <div class="p-12 text-center text-slate-500 border-2 border-dashed border-slate-100 rounded-2xl">
     <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

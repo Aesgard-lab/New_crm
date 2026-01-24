@@ -79,6 +79,7 @@ def client_app_settings(request):
     context = {
         'title': 'App del Cliente',
         'form': form,
+        'finance_settings': finance_settings,
     }
     return render(request, 'backoffice/app/settings.html', context)
 
