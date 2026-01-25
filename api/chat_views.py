@@ -53,7 +53,7 @@ class ChatMessagesView(views.APIView):
     
     def get(self, request):
         try:
-            client = Client.objects.get(user=request.user)
+            client = Client.objects.select_related('gym').get(user=request.user)
             room = ChatRoom.objects.get(client=client)
         except (Client.DoesNotExist, ChatRoom.DoesNotExist):
             return Response({'messages': []})
@@ -62,7 +62,8 @@ class ChatMessagesView(views.APIView):
         offset = int(request.query_params.get('offset', 0))
         
         # Get messages ordered by date desc (newest first for pagination)
-        messages = ChatMessage.objects.filter(room=room).order_by('-created_at')[offset:offset+limit]
+        # Usar select_related para evitar N+1 en sender
+        messages = ChatMessage.objects.filter(room=room).select_related('sender').order_by('-created_at')[offset:offset+limit]
         
         # Determine strict sender type for UI
         # We need to know if message is from 'ME' (client) or 'THEM' (gym/staff)

@@ -3,11 +3,59 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
+from django.db.models import Count, Q, Prefetch
 from .models import ActivitySession, ScheduleSettings
 from services.models import ServiceAppointment
 from clients.models import ClientVisit
 
+
+def _get_active_attendee_counts(sessions):
+    """
+    Calcula el conteo de asistentes activos para múltiples sesiones en una sola consulta.
+    Retorna un dict {session_id: active_count}
+    """
+    if not sessions:
+        return {}
+    
+    session_list = list(sessions)
+    session_ids = [s.id for s in session_list]
+    
+    # Obtener todos los asistentes por sesión
+    from .models import ActivitySessionBooking
+    bookings = ActivitySessionBooking.objects.filter(
+        session_id__in=session_ids,
+        status='CONFIRMED'
+    ).values('session_id').annotate(
+        total_attendees=Count('id')
+    )
+    attendee_counts = {b['session_id']: b['total_attendees'] for b in bookings}
+    
+    # Obtener todas las cancelaciones tardías en un solo query
+    session_dates = {s.id: s.start_datetime.date() for s in session_list}
+    
+    # Construir Q para buscar cancelaciones tardías
+    late_cancellations = {}
+    for sess in session_list:
+        late_count = ClientVisit.objects.filter(
+            date=sess.start_datetime.date(),
+            status='CANCELLED',
+            cancellation_type='LATE',
+            client__in=sess.attendees.all()
+        ).count()
+        late_cancellations[sess.id] = late_count
+    
+    # Calcular conteos finales
+    result = {}
+    for sess in session_list:
+        total = attendee_counts.get(sess.id, sess.attendees.count())
+        late = late_cancellations.get(sess.id, 0)
+        result[sess.id] = max(total - late, 0)
+    
+    return result
+
+
 def _active_attendee_count(sess):
+    """Mantener para compatibilidad con código existente"""
     late_ids = set(
         ClientVisit.objects.filter(
             client__in=sess.attendees.all(),
@@ -35,17 +83,21 @@ def get_calendar_events(request):
         if not start_str or not end_str:
             return JsonResponse([], safe=False)
             
-        # 1. Activity Sessions
+        # 1. Activity Sessions - prefetch attendees para evitar N+1
         sessions = ActivitySession.objects.filter(
             gym=gym, 
             start_datetime__gte=start_str,
             start_datetime__lte=end_str
-        ).select_related('activity', 'room', 'staff')
+        ).select_related('activity', 'room', 'staff').prefetch_related('attendees')
         
-        for sess in sessions:
+        # Precalcular conteos de asistentes activos en batch
+        sessions_list = list(sessions)
+        attendee_counts = _get_active_attendee_counts(sessions_list)
+        
+        for sess in sessions_list:
             # Use Activity Color
             color = sess.activity.color
-            active_attendees = _active_attendee_count(sess)
+            active_attendees = attendee_counts.get(sess.id, 0)
                 
             events.append({
                 'id': f'sess_{sess.id}',

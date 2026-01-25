@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from organizations.models import Gym, PublicPortalSettings
 from activities.models import Activity, ActivitySession
 from memberships.models import MembershipPlan
+from clients.models import Client, ClientMembership
 from services.models import Service
 from products.models import Product
 from clients.models import Client, Membership
@@ -38,6 +39,47 @@ def get_gym_by_slug(slug):
         return settings.gym, settings
     except PublicPortalSettings.DoesNotExist:
         return None, None
+
+
+# ===========================
+# BÚSQUEDA DE GIMNASIOS
+# ===========================
+
+def gym_search_landing(request):
+    """Página de búsqueda de gimnasios - Landing principal del portal público"""
+    query = request.GET.get('q', '').strip()
+    gyms = []
+    
+    if query and len(query) >= 2:
+        # Buscar gimnasios por nombre o ciudad
+        gym_settings = PublicPortalSettings.objects.filter(
+            public_portal_enabled=True
+        ).filter(
+            Q(gym__name__icontains=query) |
+            Q(gym__commercial_name__icontains=query) |
+            Q(gym__city__icontains=query)
+        ).select_related('gym')[:20]
+        
+        gyms = [
+            {
+                'name': ps.gym.commercial_name or ps.gym.name,
+                'city': ps.gym.city or '',
+                'slug': ps.public_slug,
+                'logo': ps.gym.logo.url if ps.gym.logo else None,
+                'brand_color': ps.gym.brand_color or '#1e293b',
+            }
+            for ps in gym_settings
+        ]
+    
+    # Para AJAX requests, devolver JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'gyms': gyms})
+    
+    context = {
+        'query': query,
+        'gyms': gyms,
+    }
+    return render(request, 'public_portal/gym_search.html', context)
 
 
 # ===========================
@@ -72,7 +114,7 @@ def public_gym_home(request, slug):
 # ===========================
 
 def public_schedule(request, slug):
-    """Calendario público de clases"""
+    """Calendario público de clases - vista lista estilo Mindbody"""
     gym, settings = get_gym_by_slug(slug)
     
     if not gym or not settings.show_schedule:
@@ -86,19 +128,26 @@ def public_schedule(request, slug):
         is_visible_online=True
     ).select_related('category')
     
+    # Vista: 'list' (por defecto, estilo Mindbody) o 'calendar' (grid)
+    view_type = request.GET.get('view', 'list')
+    
     context = {
         'gym': gym,
         'settings': settings,
         'activities': activities,
         'can_book': settings.allow_online_booking,
         'requires_login': settings.booking_requires_login,
+        'view_type': view_type,
     }
     
-    return render(request, 'public_portal/schedule.html', context)
+    # Usar template según vista
+    if view_type == 'calendar':
+        return render(request, 'public_portal/schedule.html', context)
+    return render(request, 'public_portal/schedule_list.html', context)
 
 
 def api_public_schedule_events(request, slug):
-    """API para FullCalendar - solo sesiones de actividades visibles"""
+    """API para FullCalendar y vista lista - solo sesiones de actividades visibles"""
     gym, settings = get_gym_by_slug(slug)
     
     if not gym or not settings.show_schedule:
@@ -112,7 +161,44 @@ def api_public_schedule_events(request, slug):
         activity__is_visible_online=True,
         start_datetime__gte=start,
         start_datetime__lte=end
-    ).select_related('activity', 'staff', 'room')
+    ).select_related('activity', 'activity__category', 'staff', 'staff__user', 'room')
+    
+    # Obtener info de membresía del cliente si está autenticado
+    client = None
+    active_membership = None
+    membership_activities = set()  # IDs de actividades permitidas por la membresía
+    membership_categories = set()  # IDs de categorías permitidas
+    has_unlimited_access = False
+    
+    if request.user.is_authenticated:
+        try:
+            client = Client.objects.get(user=request.user, gym=gym)
+            # Obtener membresía activa
+            active_membership = ClientMembership.objects.filter(
+                client=client,
+                status='ACTIVE'
+            ).select_related('plan').first()
+            
+            if active_membership:
+                # Obtener reglas de acceso de la membresía
+                access_rules = active_membership.access_rules.all()
+                
+                if not access_rules.exists():
+                    # Si no hay reglas específicas, tiene acceso ilimitado a todo
+                    has_unlimited_access = True
+                else:
+                    for rule in access_rules:
+                        if rule.activity_id:
+                            membership_activities.add(rule.activity_id)
+                        if rule.activity_category_id:
+                            membership_categories.add(rule.activity_category_id)
+                        if rule.service_id is None and rule.service_category_id is None and \
+                           rule.activity_id is None and rule.activity_category_id is None:
+                            # Regla general = acceso a todo
+                            has_unlimited_access = True
+                            
+        except Client.DoesNotExist:
+            pass
     
     events = []
     for session in sessions:
@@ -120,21 +206,68 @@ def api_public_schedule_events(request, slug):
         attendee_count = session.attendees.count()
         spots_available = session.max_capacity - attendee_count
         
+        # Obtener imagen de la actividad
+        activity_image = None
+        if session.activity.image:
+            activity_image = session.activity.image.url
+        
+        # Staff info
+        staff_name = None
+        staff_photo = None
+        if session.staff:
+            staff_name = session.staff.user.get_full_name()
+            if hasattr(session.staff, 'photo') and session.staff.photo:
+                staff_photo = session.staff.photo.url
+        
+        # Intensidad
+        intensity_map = {'LOW': 'Baja', 'MEDIUM': 'Media', 'HIGH': 'Alta'}
+        intensity = intensity_map.get(session.activity.intensity_level, 'Media')
+        
+        # Determinar si el cliente puede reservar esta actividad
+        can_book = False
+        booking_message = None
+        
+        if not request.user.is_authenticated:
+            can_book = False
+            booking_message = 'login_required'
+        elif not active_membership:
+            can_book = False
+            booking_message = 'no_membership'
+        elif has_unlimited_access:
+            can_book = True
+        elif session.activity.id in membership_activities:
+            can_book = True
+        elif session.activity.category_id and session.activity.category_id in membership_categories:
+            can_book = True
+        else:
+            can_book = False
+            booking_message = 'activity_not_included'
+        
         events.append({
             'id': f'sess_{session.id}',
             'title': session.activity.name,
             'start': session.start_datetime.isoformat(),
             'end': session.end_datetime.isoformat(),
-            'color': session.activity.color,
+            'backgroundColor': session.activity.color,
+            'borderColor': session.activity.color,
             'extendedProps': {
                 'type': 'session',
                 'activity_id': session.activity.id,
-                'staff': session.staff.user.get_full_name() if session.staff else None,
+                'staff': staff_name,
+                'staff_photo': staff_photo,
                 'room': session.room.name if session.room else None,
                 'attendees': attendee_count,
                 'max_capacity': session.max_capacity,
                 'spots_available': spots_available,
                 'is_full': spots_available <= 0,
+                'image': activity_image,
+                'description': session.activity.description or '',
+                'intensity': intensity,
+                'duration': session.activity.duration,
+                'category': session.activity.category.name if session.activity.category else None,
+                'can_book': can_book,
+                'booking_message': booking_message,
+                'membership_name': active_membership.name if active_membership else None,
             }
         })
     
@@ -372,6 +505,17 @@ def public_client_dashboard(request, slug):
     except Exception:
         pass
     
+    # Historial de compras/ventas del cliente (últimas 10)
+    from sales.models import Order
+    orders = Order.objects.filter(
+        client=client,
+        gym=gym
+    ).prefetch_related('items', 'refunds').order_by('-created_at')[:10]
+    
+    # Advance payment feature
+    finance_settings = getattr(gym, 'finance_settings', None)
+    allow_pay_next_fee = bool(finance_settings and getattr(finance_settings, 'allow_client_pay_next_fee', False))
+    
     context = {
         'gym': gym,
         'settings': settings,
@@ -379,9 +523,152 @@ def public_client_dashboard(request, slug):
         'memberships': memberships,
         'bookings': bookings,
         'gamification': gamification_data,
+        'orders': orders,  # Historial de compras incluyendo devoluciones
+        'allow_pay_next_fee': allow_pay_next_fee,
     }
     
     return render(request, 'public_portal/dashboard.html', context)
+
+
+# ===========================
+# PERFIL DEL CLIENTE
+# ===========================
+
+@login_required
+def public_client_profile(request, slug):
+    """Página de perfil completo del cliente estilo app"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    # Verificar que el usuario es cliente de este gym
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        messages.error(request, 'No tienes acceso a este gimnasio')
+        return redirect('public_login', slug=slug)
+    
+    # Procesar formulario de edición
+    if request.method == 'POST':
+        client.first_name = request.POST.get('first_name', client.first_name)
+        client.last_name = request.POST.get('last_name', client.last_name)
+        client.email = request.POST.get('email', client.email)
+        client.phone_number = request.POST.get('phone', client.phone_number)
+        birth_date = request.POST.get('birth_date')
+        if birth_date:
+            from datetime import datetime as dt
+            try:
+                client.birth_date = dt.strptime(birth_date, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        
+        if 'photo' in request.FILES:
+            client.photo = request.FILES['photo']
+        
+        client.save()
+        
+        # Actualizar email del usuario si cambió
+        if client.user and request.POST.get('email'):
+            client.user.email = request.POST.get('email')
+            client.user.save(update_fields=['email'])
+        
+        messages.success(request, '¡Perfil actualizado correctamente!')
+        return redirect('public_client_profile', slug=slug)
+    
+    # Membresía activa
+    active_membership = Membership.objects.filter(
+        client=client,
+        gym=gym,
+        status='ACTIVE'
+    ).select_related('plan').first()
+    
+    # Calcular porcentaje de sesiones usadas si aplica
+    if active_membership and active_membership.sessions_total:
+        active_membership.sessions_percentage = int(
+            (active_membership.sessions_used or 0) / active_membership.sessions_total * 100
+        )
+        active_membership.sessions_remaining = active_membership.sessions_total - (active_membership.sessions_used or 0)
+    
+    # Estadísticas del cliente
+    from activities.models import ActivitySessionBooking
+    from clients.models import ClientVisit
+    from django.db.models import Count
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    this_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    stats = {
+        'total_visits': ClientVisit.objects.filter(client=client).count(),
+        'current_streak': getattr(client, 'current_streak', 0),
+        'bookings_this_month': ActivitySessionBooking.objects.filter(
+            client=client,
+            booked_at__gte=this_month_start,
+            status='CONFIRMED'
+        ).count(),
+    }
+    
+    # Próximas reservas (conteo)
+    upcoming_bookings_count = ActivitySessionBooking.objects.filter(
+        client=client,
+        session__start_datetime__gte=timezone.now(),
+        status='CONFIRMED'
+    ).count()
+    
+    # Gamificación
+    gamification_enabled = False
+    achievements_unlocked = 0
+    achievements_total = 0
+    rank_position = 0
+    
+    try:
+        from gamification.models import GamificationSettings, ClientProgress, Achievement, ClientAchievement
+        gamification_settings = gym.gamification_settings
+        if gamification_settings.enabled and gamification_settings.show_on_portal:
+            gamification_enabled = True
+            progress, _ = ClientProgress.objects.get_or_create(client=client)
+            
+            rank_position = ClientProgress.objects.filter(
+                client__gym=gym,
+                total_xp__gt=progress.total_xp
+            ).count() + 1
+            
+            achievements_unlocked = ClientAchievement.objects.filter(client=client).count()
+            achievements_total = Achievement.objects.filter(gym=gym, is_active=True).count()
+            
+            stats['current_streak'] = progress.current_streak
+    except Exception:
+        pass
+    
+    # Tarjeta guardada
+    has_saved_card = False
+    last_card_digits = ''
+    try:
+        from finance.models import ClientRedsysToken
+        saved_card = ClientRedsysToken.objects.filter(client=client, is_active=True).first()
+        if saved_card:
+            has_saved_card = True
+            last_card_digits = saved_card.card_last_four or ''
+    except Exception:
+        pass
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'active_membership': active_membership,
+        'stats': stats,
+        'upcoming_bookings_count': upcoming_bookings_count,
+        'gamification_enabled': gamification_enabled,
+        'achievements_unlocked': achievements_unlocked,
+        'achievements_total': achievements_total,
+        'rank_position': rank_position,
+        'has_saved_card': has_saved_card,
+        'last_card_digits': last_card_digits,
+    }
+    
+    return render(request, 'public_portal/profile.html', context)
 
 
 # ===========================
@@ -993,3 +1280,534 @@ def embed_schedule_calendar(request, slug):
     }
     
     return render(request, 'public_portal/embed/schedule.html', context)
+
+
+# ===========================
+# PÁGINAS DEL PERFIL DEL CLIENTE
+# ===========================
+
+@login_required
+def public_attendance_history(request, slug):
+    """Historial de asistencia del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Historial de visitas
+    from clients.models import ClientVisit
+    visits = ClientVisit.objects.filter(client=client).order_by('-check_in_date')[:50]
+    
+    # Historial de asistencia a clases
+    from activities.models import ActivitySessionBooking
+    class_attendance = ActivitySessionBooking.objects.filter(
+        client=client,
+        attended=True
+    ).select_related('session__activity').order_by('-session__start_datetime')[:50]
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'visits': visits,
+        'class_attendance': class_attendance,
+    }
+    
+    return render(request, 'public_portal/profile/attendance_history.html', context)
+
+
+@login_required
+def public_payment_history(request, slug):
+    """Historial de pagos del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Historial de pagos
+    from sales.models import Order
+    orders = Order.objects.filter(
+        client=client,
+        gym=gym,
+        status__in=['COMPLETED', 'PAID', 'PARTIALLY_REFUNDED']
+    ).prefetch_related('items', 'payments').order_by('-created_at')[:50]
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'orders': orders,
+    }
+    
+    return render(request, 'public_portal/profile/payment_history.html', context)
+
+
+@login_required
+def public_payment_methods(request, slug):
+    """Métodos de pago guardados del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Obtener configuración de pasarelas
+    finance_settings = getattr(gym, 'finance_settings', None)
+    stripe_enabled = bool(finance_settings and finance_settings.has_stripe)
+    redsys_enabled = bool(finance_settings and finance_settings.has_redsys)
+    
+    # Determinar qué pasarela mostrar según la estrategia
+    gateway_strategy = finance_settings.app_gateway_strategy if finance_settings else 'STRIPE_ONLY'
+    
+    show_stripe = False
+    show_redsys = False
+    show_choice = False
+    
+    if gateway_strategy == 'STRIPE_ONLY':
+        show_stripe = stripe_enabled
+    elif gateway_strategy == 'REDSYS_ONLY':
+        show_redsys = redsys_enabled
+    elif gateway_strategy == 'STRIPE_PRIMARY':
+        show_stripe = stripe_enabled
+        show_redsys = redsys_enabled and not stripe_enabled
+    elif gateway_strategy == 'REDSYS_PRIMARY':
+        show_redsys = redsys_enabled
+        show_stripe = stripe_enabled and not redsys_enabled
+    elif gateway_strategy == 'CLIENT_CHOICE':
+        show_stripe = stripe_enabled
+        show_redsys = redsys_enabled
+        show_choice = True
+    
+    # Tarjetas guardadas
+    stripe_cards = []
+    redsys_tokens = []
+    
+    if stripe_enabled:
+        from finance.stripe_utils import list_payment_methods
+        try:
+            stripe_cards = list_payment_methods(client)
+        except Exception as e:
+            print(f"Error obteniendo tarjetas Stripe: {e}")
+    
+    if redsys_enabled:
+        from finance.models import ClientRedsysToken
+        redsys_tokens = list(ClientRedsysToken.objects.filter(client=client))
+    
+    # Client secret para añadir tarjeta con Stripe
+    stripe_client_secret = None
+    if show_stripe and stripe_enabled:
+        try:
+            from finance.stripe_utils import create_setup_intent
+            stripe_client_secret = create_setup_intent(client)
+        except Exception as e:
+            print(f"Error creando SetupIntent: {e}")
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'stripe_cards': stripe_cards,
+        'redsys_tokens': redsys_tokens,
+        'stripe_public_key': finance_settings.stripe_public_key if finance_settings else '',
+        'stripe_client_secret': stripe_client_secret,
+        'show_stripe': show_stripe,
+        'show_redsys': show_redsys,
+        'show_choice': show_choice,
+        'gateway_strategy': gateway_strategy,
+    }
+    
+    return render(request, 'public_portal/profile/payment_methods.html', context)
+
+
+@login_required
+def public_orders_history(request, slug):
+    """Historial de compras/pedidos del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Pedidos del cliente
+    from sales.models import Order
+    orders = Order.objects.filter(
+        client=client,
+        gym=gym
+    ).prefetch_related('items').order_by('-created_at')[:50]
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'orders': orders,
+    }
+    
+    return render(request, 'public_portal/profile/orders_history.html', context)
+
+
+@login_required
+def public_my_memberships(request, slug):
+    """Membresías del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Membresías activas e históricas
+    memberships = ClientMembership.objects.filter(
+        client=client,
+        gym=gym
+    ).select_related('plan').order_by('-start_date')
+    
+    # Obtener configuración financiera
+    finance_settings = getattr(gym, 'finance_settings', None)
+    allow_pay_next_fee = bool(finance_settings and getattr(finance_settings, 'allow_client_pay_next_fee', False))
+    
+    # Verificar si el cliente tiene método de pago
+    from clients.models import ClientPaymentMethod
+    has_payment_method = ClientPaymentMethod.objects.filter(client=client).exists()
+    
+    # Obtener membresía activa para el botón de adelantar cobro
+    active_membership = memberships.filter(status='ACTIVE', is_recurring=True).first()
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'memberships': memberships,
+        'allow_pay_next_fee': allow_pay_next_fee,
+        'has_payment_method': has_payment_method,
+        'active_membership': active_membership,
+    }
+    
+    return render(request, 'public_portal/profile/my_memberships.html', context)
+
+
+@login_required
+def public_chat(request, slug):
+    """Chat del cliente con el gimnasio"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Obtener o crear la sala de chat
+    from clients.models import ChatRoom, ChatMessage
+    room, created = ChatRoom.objects.get_or_create(
+        client=client,
+        defaults={'gym': gym}
+    )
+    
+    # Obtener mensajes del chat
+    messages_list = ChatMessage.objects.filter(
+        room=room
+    ).select_related('sender').order_by('created_at')
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'room': room,
+        'messages': messages_list,
+    }
+    
+    return render(request, 'public_portal/chat.html', context)
+
+
+@login_required
+def public_chat_send_message(request, slug):
+    """Enviar mensaje en el chat (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'error': 'Gimnasio no encontrado'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=403)
+    
+    from clients.models import ChatRoom, ChatMessage
+    import json
+    
+    # Obtener o crear sala
+    room, _ = ChatRoom.objects.get_or_create(
+        client=client,
+        defaults={'gym': gym}
+    )
+    
+    # Crear mensaje
+    data = json.loads(request.body)
+    message_text = data.get('message', '').strip()
+    
+    if not message_text:
+        return JsonResponse({'error': 'Mensaje vacío'}, status=400)
+    
+    message = ChatMessage.objects.create(
+        room=room,
+        sender=request.user,
+        message=message_text
+    )
+    
+    # Actualizar timestamp de la sala
+    room.last_message_at = timezone.now()
+    room.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': {
+            'id': message.id,
+            'message': message.message,
+            'created_at': message.created_at.isoformat(),
+            'sender_name': request.user.get_full_name() or 'Yo'
+        }
+    })
+
+
+# ============================================================
+# Adelantar Cobro y Pago de Membresía Pendiente
+# ============================================================
+
+@login_required
+def public_advance_payment(request, slug):
+    """Vista para adelantar el cobro de la siguiente cuota"""
+    from datetime import timedelta
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Verificar que la funcionalidad esté habilitada
+    finance_settings = getattr(gym, 'finance_settings', None)
+    if not finance_settings or not finance_settings.allow_client_pay_next_fee:
+        messages.error(request, 'Esta funcionalidad no está disponible.')
+        return redirect('public_my_memberships', slug=slug)
+    
+    # Obtener membresía activa recurrente
+    active_membership = ClientMembership.objects.filter(
+        client=client,
+        gym=gym,
+        status='ACTIVE',
+        is_recurring=True
+    ).first()
+    
+    if not active_membership:
+        messages.error(request, 'No tienes una membresía activa recurrente.')
+        return redirect('public_my_memberships', slug=slug)
+    
+    # Verificar método de pago
+    from clients.models import ClientPaymentMethod
+    payment_method = ClientPaymentMethod.objects.filter(client=client).first()
+    has_payment_method = payment_method is not None
+    
+    # Calcular datos del próximo cobro
+    next_billing_date = active_membership.next_billing_date or (active_membership.end_date + timedelta(days=1))
+    amount = active_membership.price
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'membership': active_membership,
+        'next_billing_date': next_billing_date,
+        'amount': amount,
+        'has_payment_method': has_payment_method,
+    }
+    
+    return render(request, 'public_portal/profile/advance_payment.html', context)
+
+
+@login_required
+def public_process_advance_payment(request, slug):
+    """Procesar el adelanto de cobro"""
+    from datetime import timedelta
+    from django.db import transaction
+    from finance.stripe_utils import charge_client
+    from finance.models import ClientPayment
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'error': 'Gimnasio no encontrado'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+    
+    # Verificar configuración
+    finance_settings = getattr(gym, 'finance_settings', None)
+    if not finance_settings or not finance_settings.allow_client_pay_next_fee:
+        return JsonResponse({'error': 'Funcionalidad no habilitada'}, status=403)
+    
+    # Obtener membresía
+    active_membership = ClientMembership.objects.filter(
+        client=client,
+        gym=gym,
+        status='ACTIVE',
+        is_recurring=True
+    ).first()
+    
+    if not active_membership:
+        return JsonResponse({'error': 'No tienes una membresía activa recurrente'}, status=400)
+    
+    # Verificar método de pago
+    from clients.models import ClientPaymentMethod
+    payment_method = ClientPaymentMethod.objects.filter(client=client).first()
+    if not payment_method:
+        return JsonResponse({'error': 'No tienes un método de pago vinculado'}, status=400)
+    
+    amount = active_membership.price
+    concept = f"Adelanto cuota: {active_membership.name}"
+    
+    try:
+        with transaction.atomic():
+            # Realizar el cobro
+            payment_method_id = payment_method.stripe_payment_method_id
+            result = charge_client(client, float(amount), payment_method_id, concept)
+            
+            if not result or not result.get('success'):
+                error_msg = result.get('error', 'Error al procesar el pago') if result else 'Error al procesar el pago'
+                return JsonResponse({'error': error_msg}, status=400)
+            
+            # Registrar el pago
+            ClientPayment.objects.create(
+                client=client,
+                gym=gym,
+                membership=active_membership,
+                amount=amount,
+                payment_method='STRIPE',
+                status='COMPLETED',
+                description=concept,
+                stripe_payment_intent_id=result.get('payment_intent_id', '')
+            )
+            
+            # Extender la membresía
+            active_membership.end_date = active_membership.end_date + timedelta(days=30)
+            if active_membership.next_billing_date:
+                active_membership.next_billing_date = active_membership.next_billing_date + timedelta(days=30)
+            active_membership.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '¡Pago realizado correctamente!',
+                'new_end_date': active_membership.end_date.strftime('%d/%m/%Y'),
+                'new_billing_date': active_membership.next_billing_date.strftime('%d/%m/%Y') if active_membership.next_billing_date else None
+            })
+            
+    except Exception as e:
+        return JsonResponse({'error': f'Error al procesar el pago: {str(e)}'}, status=500)
+
+
+@login_required
+def public_checkout_membership(request, slug, membership_id):
+    """Checkout para pagar una membresía pendiente"""
+    from finance.stripe_utils import charge_client
+    from finance.models import ClientPayment
+    from django.db import transaction
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Obtener la membresía
+    membership = get_object_or_404(ClientMembership, id=membership_id, client=client, gym=gym)
+    
+    # Verificar que esté pendiente de pago
+    if membership.status not in ['PENDING', 'PENDING_PAYMENT']:
+        messages.error(request, 'Esta membresía no está pendiente de pago.')
+        return redirect('public_my_memberships', slug=slug)
+    
+    # Verificar método de pago
+    from clients.models import ClientPaymentMethod
+    payment_method = ClientPaymentMethod.objects.filter(client=client).first()
+    has_payment_method = payment_method is not None
+    
+    if request.method == 'POST' and has_payment_method:
+        amount = membership.price
+        concept = f"Pago membresía: {membership.name}"
+        
+        try:
+            with transaction.atomic():
+                payment_method_id = payment_method.stripe_payment_method_id
+                result = charge_client(client, float(amount), payment_method_id, concept)
+                
+                if not result or not result.get('success'):
+                    error_msg = result.get('error', 'Error al procesar el pago') if result else 'Error al procesar el pago'
+                    messages.error(request, error_msg)
+                    return redirect('public_checkout_membership', slug=slug, membership_id=membership_id)
+                
+                # Registrar el pago
+                ClientPayment.objects.create(
+                    client=client,
+                    gym=gym,
+                    membership=membership,
+                    amount=amount,
+                    payment_method='STRIPE',
+                    status='COMPLETED',
+                    description=concept,
+                    stripe_payment_intent_id=result.get('payment_intent_id', '')
+                )
+                
+                # Activar la membresía
+                membership.status = 'ACTIVE'
+                membership.save()
+                
+                messages.success(request, '¡Pago realizado! Tu membresía ya está activa.')
+                return redirect('public_my_memberships', slug=slug)
+                
+        except Exception as e:
+            messages.error(request, f'Error al procesar el pago: {str(e)}')
+            return redirect('public_checkout_membership', slug=slug, membership_id=membership_id)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'membership': membership,
+        'has_payment_method': has_payment_method,
+    }
+    
+    return render(request, 'public_portal/profile/checkout_membership.html', context)

@@ -26,6 +26,76 @@ def _get_cancelled_late_ids(session):
     )
 
 
+def _get_payment_status(client, session, active_membership, booking):
+    """
+    Determina el estado de pago del cliente para esta sesión.
+    Retorna:
+        - 'PAID': Cliente tiene acceso pagado (membresía, bono, pago individual)
+        - 'UNPAID': Cliente no tiene forma de pago válida
+        - 'COURTESY': Apuntado por staff sin pago (cortesía/invitado)
+    """
+    from clients.models import ClientMembership
+    from memberships.models import PlanAccessRule
+    from sales.models import OrderItem
+    
+    # Si tiene membresía activa que incluya esta actividad, está pagado
+    if active_membership:
+        # Verificar si la membresía incluye esta actividad
+        plan_rules = PlanAccessRule.objects.filter(
+            plan=active_membership.plan
+        )
+        
+        # Si hay reglas de acceso, verificar si incluye la actividad
+        if plan_rules.exists():
+            # Verificar si alguna regla incluye la actividad específica o su categoría
+            for rule in plan_rules:
+                if rule.activities.filter(id=session.activity.id).exists():
+                    return 'PAID'
+                if rule.activity_categories.filter(id=session.activity.category_id).exists():
+                    return 'PAID'
+        else:
+            # Sin reglas específicas = acceso total
+            return 'PAID'
+    
+    # Verificar si tiene un bono/pack activo que incluya esta actividad
+    active_packs = ClientMembership.objects.filter(
+        client=client,
+        status='ACTIVE',
+        plan__is_recurring=False,  # Bonos/packs no recurrentes
+        sessions_remaining__gt=0
+    )
+    
+    for pack in active_packs:
+        pack_rules = PlanAccessRule.objects.filter(plan=pack.plan)
+        
+        if pack_rules.exists():
+            for rule in pack_rules:
+                if rule.activities.filter(id=session.activity.id).exists():
+                    return 'PAID'
+                if rule.activity_categories.filter(id=session.activity.category_id).exists():
+                    return 'PAID'
+        else:
+            return 'PAID'
+    
+    # Verificar si existe un pago individual para esta sesión específica
+    # (Buscar en OrderItem de tipo actividad que corresponda a esta sesión)
+    individual_payment = OrderItem.objects.filter(
+        order__client=client,
+        order__status__in=['PAID', 'PARTIALLY_PAID'],
+        activity_session=session
+    ).exists()
+    
+    if individual_payment:
+        return 'PAID'
+    
+    # Si no tiene booking o el booking es PENDING, probablemente sea cortesía
+    if not booking or booking.status == 'PENDING':
+        return 'COURTESY'
+    
+    # Por defecto, si no hay pago y tiene booking confirmado, es cortesía
+    return 'UNPAID' if booking.status == 'CONFIRMED' else 'COURTESY'
+
+
 def get_session_detail(request, session_id):
     """
     Returns full session details including attendees and waitlist.
@@ -80,6 +150,9 @@ def get_session_detail(request, session_id):
                 'sessions_total': active_membership.sessions_total,
             }
         
+        # Determine payment status
+        payment_status = _get_payment_status(client, session, active_membership, booking)
+        
         # Check if this is a recurring booking
         is_recurring = False
         future_sessions_count = 0
@@ -131,6 +204,7 @@ def get_session_detail(request, session_id):
             'attendance_rate': attendance_rate,
             'total_visits': total_visits,
             'membership': membership_info,
+            'payment_status': payment_status,
             'is_recurring': is_recurring,
             'future_sessions_count': future_sessions_count,
             'cancellation': cancellation_info,

@@ -1,7 +1,15 @@
 """
-ASGI config for config project.
+ASGI config for CRM project.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
+Expone el callable ASGI como variable 'application'.
+
+El entorno se selecciona según DJANGO_ENV:
+    - local: Desarrollo
+    - staging: Pre-producción
+    - production: Producción
+
+Para producción con uvicorn:
+    uvicorn config.asgi:application
 
 For more information on this file, see
 https://docs.djangoproject.com/en/5.1/howto/deployment/asgi/

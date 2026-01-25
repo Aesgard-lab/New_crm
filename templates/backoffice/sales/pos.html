@@ -238,6 +238,134 @@
                 <span>Cobrar</span>
                 <span x-text="formatPrice(finalTotal)"></span>
             </button>
+            
+            <!-- Deferred Payment Button -->
+            <button @click="openDeferredModal()" :disabled="cart.length === 0 || !selectedClient"
+                class="w-full mt-2 py-3 bg-slate-600 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <span>📅 Diferir Cobro</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Deferred Payment Modal -->
+    <div x-show="isDeferredModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+        style="display: none;">
+        <div @click.away="isDeferredModalOpen = false"
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    Diferir Cobro
+                </h3>
+                <button @click="isDeferredModalOpen = false" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <!-- Order Summary -->
+                <div class="flex justify-between items-center mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                        <div class="text-sm text-slate-500 font-medium">Total a Diferir</div>
+                        <div class="text-xs text-slate-400" x-text="cart.length + ' artículo(s)'"></div>
+                    </div>
+                    <div class="text-2xl font-bold text-[var(--brand-color)]" x-text="formatPrice(finalTotal)"></div>
+                </div>
+
+                <!-- Scheduled Date -->
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Fecha de Cobro Programada</label>
+                    <input type="date" x-model="deferredDate" 
+                        :min="minDeferredDate"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]">
+                    <p class="text-xs text-slate-400 mt-1">El cobro se realizará en esta fecha</p>
+                </div>
+
+                <!-- Auto Charge Option -->
+                <div class="mb-4">
+                    <label class="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input type="checkbox" x-model="deferredAutoCharge"
+                            class="w-5 h-5 mt-0.5 text-[var(--brand-color)] border-slate-300 rounded focus:ring-[var(--brand-color)]">
+                        <div>
+                            <span class="font-medium text-slate-700">Cobro Automático</span>
+                            <p class="text-xs text-slate-500 mt-1">Si el cliente tiene tarjeta guardada, se cobrará automáticamente en la fecha indicada</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Notas (opcional)</label>
+                    <textarea x-model="deferredNotes" rows="2"
+                        placeholder="Ej: Cliente paga en su próxima visita, pidió esperar a final de mes..."
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)] resize-none"></textarea>
+                </div>
+
+                <!-- Confirm Button -->
+                <button @click="processDeferredSale()" :disabled="processingDeferred || !deferredDate"
+                    style="background-color: var(--brand-color);"
+                    class="w-full py-4 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 text-lg">
+                    <span x-show="processingDeferred"
+                        class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+                    <span x-show="!processingDeferred">Confirmar Venta Diferida</span>
+                </button>
+
+                <p class="text-xs text-center text-slate-400 mt-4">
+                    La venta quedará guardada y aparecerá en "Cobros Futuros"
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal for Deferred Sales -->
+    <div x-show="deferredSuccessModal.show"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+        style="display: none;" x-transition>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 text-center">
+            <div class="p-8">
+                <!-- Success Icon -->
+                <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                
+                <h3 class="text-xl font-bold text-slate-800 mb-2">¡Venta Diferida Guardada!</h3>
+                
+                <div class="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Fecha de cobro:</span>
+                        <span class="font-bold text-slate-800" x-text="deferredSuccessModal.date"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Importe:</span>
+                        <span class="font-bold text-[var(--brand-color)]" x-text="deferredSuccessModal.amount"></span>
+                    </div>
+                    <div class="flex justify-between text-sm" x-show="deferredSuccessModal.autoCharge">
+                        <span class="text-slate-500">Cobro automático:</span>
+                        <span class="font-bold text-emerald-600">Activado</span>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-slate-500 mb-6">
+                    Puedes ver y gestionar esta venta en<br>
+                    <strong class="text-slate-700">Facturación → Cobros Futuros</strong>
+                </p>
+                
+                <button @click="closeDeferredSuccessModal()"
+                    style="background-color: var(--brand-color);"
+                    class="w-full py-3 text-white rounded-xl font-bold hover:opacity-90 transition-all">
+                    Aceptar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -389,6 +517,19 @@
             showClientSearch: false,
             isPaymentModalOpen: false,
             processing: false,
+
+            // Deferred Payment State
+            isDeferredModalOpen: false,
+            deferredDate: '',
+            deferredAutoCharge: true,
+            deferredNotes: '',
+            processingDeferred: false,
+            deferredSuccessModal: {
+                show: false,
+                date: '',
+                amount: '',
+                autoCharge: false
+            },
 
             // Configuration
             endpoints: {},
@@ -733,6 +874,96 @@
                 this.isPaymentModalOpen = false;
                 this.paymentLines = [];
                 this.searchProducts();
+            },
+
+            // --- Deferred Payment Methods ---
+            get minDeferredDate() {
+                // Minimum date is tomorrow
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                return tomorrow.toISOString().split('T')[0];
+            },
+
+            openDeferredModal() {
+                if (!this.selectedClient) {
+                    alert("Selecciona un cliente para diferir el cobro");
+                    return;
+                }
+                // Set default date to 7 days from now
+                const defaultDate = new Date();
+                defaultDate.setDate(defaultDate.getDate() + 7);
+                this.deferredDate = defaultDate.toISOString().split('T')[0];
+                this.deferredAutoCharge = true;
+                this.deferredNotes = '';
+                this.isDeferredModalOpen = true;
+            },
+
+            async processDeferredSale() {
+                if (this.cart.length === 0) return alert("El carrito está vacío");
+                if (!this.selectedClient) return alert("Selecciona un cliente");
+                if (!this.deferredDate) return alert("Selecciona una fecha de cobro");
+
+                this.processingDeferred = true;
+
+                let payload = {
+                    client_id: this.selectedClient.id,
+                    items: this.cart.map(i => ({
+                        id: i.id,
+                        type: i.type,
+                        qty: i.qty,
+                        price: i.price,
+                        discount: i.discount,
+                        name: i.name
+                    })),
+                    // Mark as deferred sale
+                    is_deferred: true,
+                    scheduled_payment_date: this.deferredDate,
+                    auto_charge: this.deferredAutoCharge,
+                    deferred_notes: this.deferredNotes,
+                    action: 'NONE'
+                };
+
+                try {
+                    let res = await fetch(this.endpoints.process_sale, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.csrfToken
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    let data = await res.json();
+
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                    } else {
+                        // Success - show custom modal
+                        this.isDeferredModalOpen = false;
+                        
+                        // Format date for display
+                        const dateObj = new Date(this.deferredDate + 'T00:00:00');
+                        const formattedDate = dateObj.toLocaleDateString('es-ES', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                        });
+                        
+                        this.deferredSuccessModal = {
+                            show: true,
+                            date: formattedDate,
+                            amount: this.formatPrice(this.finalTotal),
+                            autoCharge: this.deferredAutoCharge
+                        };
+                    }
+                } catch (e) {
+                    alert("Error de conexión");
+                }
+                this.processingDeferred = false;
+            },
+
+            closeDeferredSuccessModal() {
+                this.deferredSuccessModal.show = false;
+                window.location.reload();
             }
         }));
     });

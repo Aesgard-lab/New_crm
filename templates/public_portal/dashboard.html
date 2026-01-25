@@ -99,6 +99,32 @@
             {% endif %}
         </div>
         
+        <!-- Adelantar Pago (si está habilitado) -->
+        {% if allow_pay_next_fee %}
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl shadow-lg border border-green-200 p-8">
+            <div class="flex items-start gap-4">
+                <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">¿Quieres adelantar tu pago?</h3>
+                    <p class="text-slate-700 mb-4">
+                        Paga tu siguiente cuota antes de la fecha programada y mantén tu membresía siempre activa.
+                    </p>
+                    <a href="{% url 'portal_advance_payment' %}" 
+                       class="inline-flex items-center gap-2 bg-green-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-green-700 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        Adelantar Cobro
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
         <!-- Próximas Reservas -->
         <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
             <h2 class="text-2xl font-bold text-slate-900 mb-6">Mis Próximas Clases</h2>

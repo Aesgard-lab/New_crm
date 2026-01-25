@@ -1,7 +1,15 @@
 """
-WSGI config for config project.
+WSGI config for CRM project.
 
-It exposes the WSGI callable as a module-level variable named ``application``.
+Expone el callable WSGI como variable 'application'.
+
+El entorno se selecciona según DJANGO_ENV:
+    - local: Desarrollo
+    - staging: Pre-producción
+    - production: Producción
+
+Para producción con Gunicorn:
+    gunicorn config.wsgi:application
 
 For more information on this file, see
 https://docs.djangoproject.com/en/5.1/howto/deployment/wsgi/

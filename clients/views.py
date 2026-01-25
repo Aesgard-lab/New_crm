@@ -41,42 +41,45 @@ def merge_clients_wizard(request, c1_id, c2_id):
         c1.last_name = last_name
         c1.email = email
         c1.phone = phone
-        # Unificar historiales y relaciones
+        
+        # Unificar historiales y relaciones usando bulk_update para evitar N+1
         # Notas
-        for note in c2.notes.all():
+        notes = list(c2.notes.all())
+        for note in notes:
             note.client = c1
-            note.save()
+        if notes:
+            ClientNote.objects.bulk_update(notes, ['client'])
+        
         # Documentos
-        for doc in c2.documents.all():
+        docs = list(c2.documents.all())
+        for doc in docs:
             doc.client = c1
-            doc.save()
-        # Membresías
-        for memb in c2.memberships.all():
-            memb.client = c1
-            memb.save()
-        # Visitas
-        for visit in c2.visits.all():
-            visit.client = c1
-            visit.save()
-        # Ventas
-        for sale in c2.sales.all():
-            sale.client = c1
-            sale.save()
-        # Grupos y etiquetas (ManyToMany)
-        for group in c2.groups.all():
-            c1.groups.add(group)
-        for tag in c2.tags.all():
-            c1.tags.add(tag)
+        if docs:
+            ClientDocument.objects.bulk_update(docs, ['client'])
+        
+        # Membresías - usar update directo en queryset
+        c2.memberships.update(client=c1)
+        
+        # Visitas - usar update directo en queryset
+        c2.visits.update(client=c1)
+        
+        # Ventas - usar update directo en queryset
+        if hasattr(c2, 'sales'):
+            c2.sales.update(client=c1)
+        
+        # Grupos y etiquetas (ManyToMany) - usar set() para eficiencia
+        c1.groups.add(*c2.groups.all())
+        c1.tags.add(*c2.tags.all())
+        
         # ChatRoom (si existe en c2 y no en c1)
         if hasattr(c2, "chat_room") and not hasattr(c1, "chat_room"):
             c2.chat_room.client = c1
             c2.chat_room.save()
-        # Pedidos/Ventas (Order)
+        
+        # Pedidos/Ventas (Order) - usar update directo
         try:
             from sales.models import Order
-            for order in Order.objects.filter(client=c2):
-                order.client = c1
-                order.save()
+            Order.objects.filter(client=c2).update(client=c1)
         except Exception:
             pass
         # TODO: Unificar otros historiales si aplica (pagos, reservas, etc.)
@@ -255,7 +258,7 @@ def client_detail(request, client_id):
     # Pay methods
     try:
         payment_methods = list_payment_methods(client)
-    except:
+    except Exception:
         payment_methods = []
         
     # Helper lists (could be filtered/sorted if needed)
@@ -308,7 +311,7 @@ def client_detail(request, client_id):
         access_credentials = ClientAccessCredential.objects.filter(
             client=client, is_active=True
         ).order_by('-created_at')
-    except:
+    except (ImportError, Exception):
         access_logs = []
         access_credentials = []
 
@@ -319,7 +322,7 @@ def client_detail(request, client_id):
             client=client,
             status='ACTIVE'
         ).select_related('locker', 'locker__zone').order_by('-start_date')
-    except:
+    except (ImportError, Exception):
         locker_assignments = []
 
     context = {
@@ -380,7 +383,7 @@ def client_update_preferred_gateway(request, client_id):
     try:
         data = json.loads(request.body)
         gateway = data.get('gateway', 'AUTO')
-    except:
+    except (json.JSONDecodeError, ValueError):
         gateway = request.POST.get('gateway', 'AUTO')
     
     if gateway in ['AUTO', 'STRIPE', 'REDSYS']:

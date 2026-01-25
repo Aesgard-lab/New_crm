@@ -16,16 +16,16 @@
         <!-- Tabs -->
         <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
             <button @click="tab = 'taxes'"
-                :class="{'bg-white text-blue-600 shadow-sm': tab === 'taxes', 'text-slate-500 hover:text-slate-700': tab !== 'taxes'}"
+                :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'taxes', 'text-slate-500 hover:text-slate-700': tab !== 'taxes'}"
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
                 Impuestos
             </button>
             <button @click="tab = 'methods'"
-                :class="{'bg-white text-blue-600 shadow-sm': tab === 'methods', 'text-slate-500 hover:text-slate-700': tab !== 'methods'}"
+                :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'methods', 'text-slate-500 hover:text-slate-700': tab !== 'methods'}"
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
             </button>
             <button @click="tab = 'config'"
-                :class="{'bg-white text-blue-600 shadow-sm': tab === 'config', 'text-slate-500 hover:text-slate-700': tab !== 'config'}"
+                :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'config', 'text-slate-500 hover:text-slate-700': tab !== 'config'}"
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
                 Pasarelas de Pago
             </button>
@@ -37,7 +37,7 @@
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 class="font-bold text-slate-700">Tipos Impositivos (IVA)</h3>
                 <a href="{% url 'finance_tax_create' %}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                    class="btn-brand px-4 py-2 text-sm">
                     + Nuevo Impuesto
                 </a>
             </div>
@@ -71,7 +71,7 @@
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
                                 <a href="{% url 'finance_tax_edit' tax.pk %}"
-                                    class="text-blue-600 hover:text-blue-800 font-medium">Editar</a>
+                                    class="text-[var(--brand-color)] hover-brand font-medium">Editar</a>
                                 <form action="{% url 'finance_tax_delete' tax.pk %}" method="post" class="inline"
                                     onsubmit="return confirm('¿Seguro que deseas eliminar este impuesto?');">
                                     {% csrf_token %}
@@ -97,7 +97,7 @@
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 class="font-bold text-slate-700">Métodos de Pago</h3>
                 <a href="{% url 'finance_method_create' %}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                    class="btn-brand px-4 py-2 text-sm">
                     + Nuevo Método
                 </a>
             </div>
@@ -117,7 +117,7 @@
                             <td class="px-6 py-4 font-medium text-slate-900">{{ pm.name }}</td>
                             <td class="px-6 py-4">
                                 {% if pm.is_cash %}
-                                <span class="text-blue-600 font-medium">Sí (Efectivo)</span>
+                                <span class="text-[var(--brand-color)] font-medium">Sí (Efectivo)</span>
                                 {% else %}
                                 <span class="text-slate-400">No</span>
                                 {% endif %}
@@ -137,7 +137,7 @@
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
                                 <a href="{% url 'finance_method_edit' pm.pk %}"
-                                    class="text-blue-600 hover:text-blue-800 font-medium">Editar</a>
+                                    class="text-[var(--brand-color)] hover-brand font-medium">Editar</a>
                                 <form action="{% url 'finance_method_delete' pm.pk %}" method="post" class="inline"
                                     onsubmit="return confirm('¿Seguro que deseas eliminar este método?');">
                                     {% csrf_token %}

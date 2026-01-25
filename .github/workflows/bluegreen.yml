@@ -1,0 +1,132 @@
+name: Blue/Green Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target environment (blue or green)'
+        required: true
+        type: choice
+        options:
+          - blue
+          - green
+      rollback:
+        description: 'Rollback to target environment'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.rollback }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=${{ inputs.target }}-
+            type=raw,value=${{ inputs.target }}-latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always() && (needs.build.result == 'success' || inputs.rollback)
+    environment: production
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy (New Version)
+        if: ${{ !inputs.rollback }}
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            cd /app/crm
+            
+            # Pull latest code
+            git pull origin main
+            
+            # Run deployment script
+            ./scripts/deploy-bluegreen.sh \
+              -t ${{ inputs.target }} \
+              -i ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.target }}-latest
+          EOF
+
+      - name: Rollback
+        if: ${{ inputs.rollback }}
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            cd /app/crm
+            
+            # Run rollback
+            ./scripts/deploy-bluegreen.sh \
+              -t ${{ inputs.target }} \
+              --rollback
+          EOF
+
+      - name: Verify deployment
+        run: |
+          sleep 30
+          
+          response=$(curl -sf "https://${{ secrets.DEPLOY_HOST }}/health/ready/" || echo "failed")
+          
+          if [ "$response" == "failed" ]; then
+            echo "Health check failed!"
+            exit 1
+          fi
+          
+          echo "Deployment verified successfully"
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "Deployment to ${{ inputs.target }} completed successfully"
+          # Add Slack/Discord notification here
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Deployment to ${{ inputs.target }} failed"
+          # Add Slack/Discord notification here

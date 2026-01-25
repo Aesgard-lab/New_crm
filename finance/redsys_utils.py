@@ -285,3 +285,68 @@ def get_redsys_client(gym):
         secret_key=settings.redsys_secret_key,
         environment=settings.redsys_environment
     )
+
+
+def generate_redsys_form_for_tokenization(client, amount, description):
+    """
+    Genera los parámetros para tokenizar una tarjeta con Redsys (cargo simbólico).
+    El cargo será reembolsado automáticamente después.
+    """
+    from django.urls import reverse
+    from django.contrib.sites.models import Site
+    
+    gym = client.gym
+    settings = FinanceSettings.objects.get(gym=gym)
+    
+    if not settings.redsys_merchant_code or not settings.redsys_secret_key:
+        raise Exception("Redsys no configurado")
+    
+    redsys_client = RedsysClient(
+        merchant_code=settings.redsys_merchant_code,
+        terminal=settings.redsys_merchant_terminal,
+        secret_key=settings.redsys_secret_key,
+        environment=settings.redsys_environment
+    )
+    
+    # Generar orden única
+    import time
+    order_id = f"TK{client.id}{int(time.time())}"[:12]  # Max 12 chars
+    
+    # URLs de retorno
+    current_site = Site.objects.get_current()
+    domain = current_site.domain
+    protocol = 'https' if settings.redsys_environment == 'REAL' else 'http'
+    
+    merchant_url = f"{protocol}://{domain}{reverse('portal_redsys_tokenization_callback')}"
+    url_ok = f"{protocol}://{domain}{reverse('portal_payment_methods')}?tokenization=success"
+    url_ko = f"{protocol}://{domain}{reverse('portal_payment_methods')}?tokenization=error"
+    
+    params = {
+        "DS_MERCHANT_AMOUNT": str(amount),  # en céntimos
+        "DS_MERCHANT_ORDER": order_id,
+        "DS_MERCHANT_MERCHANTCODE": redsys_client.merchant_code,
+        "DS_MERCHANT_CURRENCY": "978",  # EUR
+        "DS_MERCHANT_TRANSACTIONTYPE": "0",  # Autorización
+        "DS_MERCHANT_TERMINAL": redsys_client.terminal,
+        "DS_MERCHANT_MERCHANTURL": merchant_url,
+        "DS_MERCHANT_URLOK": url_ok,
+        "DS_MERCHANT_URLKO": url_ko,
+        "DS_MERCHANT_MERCHANTDATA": json.dumps({"client_id": client.id, "tokenize": True}),
+        "DS_MERCHANT_PRODUCTDESCRIPTION": description,
+        "DS_MERCHANT_IDENTIFIER": "REQUIRED",  # Solicitar tokenización
+    }
+    
+    # Codificar parámetros
+    params_json = json.dumps(params)
+    params_b64 = base64.b64encode(params_json.encode('utf-8')).decode('utf-8')
+    
+    # Firmar
+    signature = redsys_client.sign_parameters(params_b64, order_id)
+    
+    # Retornar datos para el frontend
+    return {
+        'redirect_url': redsys_client.web_url,
+        'Ds_SignatureVersion': 'HMAC_SHA256_V1',
+        'Ds_MerchantParameters': params_b64,
+        'Ds_Signature': signature,
+    }

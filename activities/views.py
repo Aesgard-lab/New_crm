@@ -222,6 +222,7 @@ def calendar_view(request):
         'title': 'Calendario de Actividades'
     })
 
+
 # --- Policies ---
 
 @login_required

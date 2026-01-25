@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encuentra tu Gimnasio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .search-input:focus {
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+        
+        .gym-card {
+            transition: all 0.2s ease;
+        }
+        
+        .gym-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white">
+        <div class="max-w-5xl mx-auto px-4 py-16 md:py-24 text-center">
+            <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-4 py-2 rounded-full text-sm font-medium mb-6">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Portal de Clientes
+            </div>
+            
+            <h1 class="text-3xl md:text-5xl font-extrabold mb-4">
+                Encuentra tu Gimnasio
+            </h1>
+            <p class="text-lg md:text-xl text-white/80 mb-10 max-w-2xl mx-auto">
+                Accede a tu cuenta, consulta horarios, reserva clases y mucho más
+            </p>
+            
+            <!-- Buscador -->
+            <div class="max-w-xl mx-auto">
+                <form method="get" class="relative" id="searchForm">
+                    <div class="relative">
+                        <input type="text" 
+                               name="q" 
+                               id="searchInput"
+                               value="{{ query }}"
+                               placeholder="Buscar por nombre o ciudad..."
+                               autocomplete="off"
+                               class="search-input w-full pl-14 pr-6 py-5 rounded-2xl text-slate-900 text-lg font-medium placeholder-slate-400 border-0 focus:outline-none shadow-xl">
+                        <div class="absolute left-5 top-1/2 -translate-y-1/2">
+                            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                        <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                            Buscar
+                        </button>
+                    </div>
+                </form>
+                
+                <p class="text-white/60 text-sm mt-4">
+                    Escribe al menos 2 caracteres para buscar
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Resultados -->
+    <main class="max-w-5xl mx-auto px-4 py-12">
+        <div id="resultsContainer">
+            {% if query %}
+                {% if gyms %}
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-900">
+                        {{ gyms|length }} gimnasio{{ gyms|length|pluralize:"s" }} encontrado{{ gyms|length|pluralize:"s" }}
+                    </h2>
+                    <p class="text-slate-500">para "{{ query }}"</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for gym in gyms %}
+                    <a href="{% url 'public_gym_home' slug=gym.slug %}" class="gym-card bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-100">
+                        <div class="h-3" style="background-color: {{ gym.brand_color }};"></div>
+                        <div class="p-6">
+                            <div class="flex items-center gap-4 mb-4">
+                                {% if gym.logo %}
+                                <img src="{{ gym.logo }}" alt="{{ gym.name }}" class="w-16 h-16 rounded-xl object-cover">
+                                {% else %}
+                                <div class="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold" style="background-color: {{ gym.brand_color }};">
+                                    {{ gym.name|slice:":1"|upper }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <h3 class="font-bold text-slate-900 text-lg">{{ gym.name }}</h3>
+                                    {% if gym.city %}
+                                    <p class="text-slate-500 flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                        {{ gym.city }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                                <span class="text-sm text-slate-500">Ver portal</span>
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background-color: {{ gym.brand_color }}20; color: {{ gym.brand_color }};">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-16">
+                    <div class="w-20 h-20 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron resultados</h3>
+                    <p class="text-slate-500 max-w-md mx-auto">
+                        No encontramos gimnasios que coincidan con "{{ query }}". 
+                        Intenta con otro nombre o ciudad.
+                    </p>
+                </div>
+                {% endif %}
+            {% else %}
+            <!-- Estado inicial - sin búsqueda -->
+            <div class="text-center py-16">
+                <div class="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6">
+                    <svg class="w-12 h-12 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-900 mb-3">Busca tu gimnasio</h3>
+                <p class="text-slate-500 max-w-md mx-auto mb-8">
+                    Introduce el nombre de tu gimnasio o la ciudad donde se encuentra para acceder a tu portal de cliente.
+                </p>
+                
+                <div class="flex flex-wrap justify-center gap-3">
+                    <span class="px-4 py-2 bg-slate-100 text-slate-600 rounded-full text-sm">Horarios de clases</span>
+                    <span class="px-4 py-2 bg-slate-100 text-slate-600 rounded-full text-sm">Reserva de sesiones</span>
+                    <span class="px-4 py-2 bg-slate-100 text-slate-600 rounded-full text-sm">Tu membresía</span>
+                    <span class="px-4 py-2 bg-slate-100 text-slate-600 rounded-full text-sm">Compra de productos</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-5xl mx-auto px-4 py-8 text-center text-slate-500 text-sm">
+            <p>Portal de Clientes · Powered by <strong>New CRM</strong></p>
+        </div>
+    </footer>
+
+    <script>
+        // Live search con debounce
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length >= 2) {
+                searchTimeout = setTimeout(() => {
+                    document.getElementById('searchForm').submit();
+                }, 500);
+            }
+        });
+        
+        // Focus automático en el input
+        searchInput.focus();
+    </script>
+</body>
+</html>

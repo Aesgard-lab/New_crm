@@ -8,6 +8,166 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Sección: Auto-Registro de Clientes -->
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="save_registration_settings" value="1">
+        
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm mb-6">
+            <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: color-mix(in srgb, var(--brand-color) 15%, white);">
+                    <svg class="w-5 h-5" style="color: var(--brand-color);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900">Auto-Registro de Clientes</h3>
+                    <p class="text-sm text-slate-500">Permite que los clientes se registren desde la app y el portal público.</p>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-6">
+                <!-- Toggle principal -->
+                <div class="flex items-center justify-between p-4 rounded-xl" style="background-color: color-mix(in srgb, var(--brand-color) 5%, white);">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center {% if portal_settings.allow_self_registration %}bg-emerald-100 text-emerald-600{% else %}bg-slate-100 text-slate-400{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-slate-900">Permitir Auto-Registro</label>
+                            <p class="text-xs text-slate-500">Muestra el botón "Registrarse" en la app y portal público</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="allow_self_registration" class="sr-only peer" {% if portal_settings.allow_self_registration %}checked{% endif %}>
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+                    </label>
+                </div>
+
+                <!-- Opciones adicionales -->
+                <div class="space-y-4 pl-4 border-l-2 border-slate-200">
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" name="require_email_verification" 
+                            class="mt-1 rounded h-5 w-5" style="accent-color: var(--brand-color);"
+                            {% if portal_settings.require_email_verification %}checked{% endif %}>
+                        <div>
+                            <label class="text-sm font-medium text-slate-800">Verificación de Email</label>
+                            <p class="text-xs text-slate-500 mt-1">Requiere verificar el email antes de poder usar la cuenta.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" name="require_staff_approval" 
+                            class="mt-1 rounded h-5 w-5" style="accent-color: var(--brand-color);"
+                            {% if portal_settings.require_staff_approval %}checked{% endif %}>
+                        <div>
+                            <label class="text-sm font-medium text-slate-800">Aprobación Manual</label>
+                            <p class="text-xs text-slate-500 mt-1">El staff debe aprobar manualmente cada nuevo registro antes de activar la cuenta.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campos de registro -->
+                <div class="border-t border-slate-100 pt-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-900">Campos del Formulario de Registro</h4>
+                            <p class="text-xs text-slate-500">Selecciona qué campos personalizados mostrar en el formulario de registro.</p>
+                        </div>
+                        <span class="text-xs font-medium px-2 py-1 rounded-full" style="background-color: color-mix(in srgb, var(--brand-color) 15%, white); color: var(--brand-color);">
+                            {{ client_fields|length }} campos disponibles
+                        </span>
+                    </div>
+
+                    <!-- Campos fijos (siempre requeridos) -->
+                    <div class="bg-slate-50 rounded-xl p-4 mb-4">
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">Campos obligatorios (siempre visibles)</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm text-slate-700">
+                                <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                Nombre
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm text-slate-700">
+                                <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                Apellidos
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm text-slate-700">
+                                <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                Email
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm text-slate-700">
+                                <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                Contraseña
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm text-slate-700">
+                                <svg class="w-4 h-4 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                Teléfono <span class="text-xs text-slate-400">(opcional)</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Campos personalizados seleccionables -->
+                    {% if client_fields %}
+                    <div class="space-y-2">
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">Campos personalizados (selecciona los que quieres mostrar)</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {% for field in client_fields %}
+                            <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:border-slate-300 {% if field.show_in_registration %}border-2{% else %}border-slate-200{% endif %}"
+                                style="{% if field.show_in_registration %}border-color: var(--brand-color); background-color: color-mix(in srgb, var(--brand-color) 5%, white);{% endif %}">
+                                <input type="checkbox" name="registration_fields" value="{{ field.id }}" 
+                                    class="rounded h-5 w-5" style="accent-color: var(--brand-color);"
+                                    {% if field.show_in_registration %}checked{% endif %}>
+                                <div class="flex-1">
+                                    <span class="text-sm font-medium text-slate-800">{{ field.name }}</span>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{{ field.get_field_type_display }}</span>
+                                        {% if field.is_required %}
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Requerido</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8 bg-slate-50 rounded-xl">
+                        <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <p class="text-sm text-slate-500">No hay campos personalizados configurados.</p>
+                        <a href="{% url 'client_settings' %}" class="text-sm font-medium mt-2 inline-block" style="color: var(--brand-color);">
+                            + Crear campos personalizados
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-100">
+                    <button type="submit"
+                        class="text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-lg hover:opacity-90"
+                        style="background-color: var(--brand-color);">
+                        Guardar Configuración de Registro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Formulario de Pasarela y Permisos -->
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="save_app_settings" value="1">

@@ -193,7 +193,7 @@
                         Limpiar Filtros
                     </a>
                     <button type="submit"
-                        class="px-6 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-sm hover:bg-indigo-700 transition-all flex items-center gap-2">
+                        class="btn-brand px-6 py-2 text-sm flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -220,7 +220,7 @@
                     <tr>
                         <th class="px-6 py-4 rounded-l-xl w-10">
                             <input type="checkbox" @change="toggleAll($event)"
-                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
                         </th>
                         <th class="px-6 py-4">Cliente</th>
                         <th class="px-6 py-4">Email / Teléfono</th>
@@ -236,12 +236,12 @@
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-4">
                             <input type="checkbox" value="{{ client.id }}" x-model="selectedClients"
-                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div
-                                    class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                                    class="w-10 h-10 rounded-full bg-[var(--brand-color)]/10 flex items-center justify-center text-[var(--brand-color)] font-bold">
                                     {{ client.first_name|slice:":1" }}{{ client.last_name|slice:":1" }}
                                 </div>
                                 <div>

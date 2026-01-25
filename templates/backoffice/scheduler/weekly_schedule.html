@@ -1,0 +1,277 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Horario Semanal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .day-selector {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        padding: 0.5rem 0;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .day-selector::-webkit-scrollbar { display: none; }
+    
+    .day-btn {
+        flex-shrink: 0;
+        min-width: 60px;
+        padding: 0.75rem;
+        border-radius: 1rem;
+        text-align: center;
+        border: 2px solid #e2e8f0;
+        transition: all 0.2s;
+        cursor: pointer;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .day-btn:hover { border-color: #3b82f6; }
+    .day-btn.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+    .day-num { font-size: 1.25rem; font-weight: 700; line-height: 1; }
+    .day-name { font-size: 0.65rem; text-transform: uppercase; opacity: 0.7; line-height: 1; }
+    
+    .session-card {
+        transition: all 0.2s;
+        border-left: 4px solid;
+    }
+    .session-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    .tab-btn:hover { color: #3b82f6; }
+    .tab-btn.active {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header con tabs -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-slate-900 mb-4">Horario Semanal</h1>
+        <div class="flex items-center gap-4 border-b border-slate-200">
+            <button class="tab-btn active" data-tab="clases" onclick="filterByType('session')">Clases</button>
+            <button class="tab-btn" data-tab="citas" onclick="filterByType('appointment')">Citas</button>
+        </div>
+    </div>
+
+    <!-- Selector de días -->
+    <div class="mb-6">
+        <div class="day-selector" id="daySelector">
+            <!-- Se genera dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Título del día seleccionado -->
+    <h2 class="text-xl font-bold text-slate-900 mb-4" id="selectedDayTitle">
+        Cargando...
+    </h2>
+
+    <!-- Lista de sesiones -->
+    <div id="sessionsContainer" class="space-y-4">
+        <!-- Skeleton loading -->
+        <div class="animate-pulse space-y-4">
+            <div class="bg-white rounded-xl p-4 flex gap-4 border border-slate-200">
+                <div class="w-14 h-14 bg-slate-200 rounded-xl"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="h-5 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedDate = new Date();
+let currentFilter = 'session';
+let allEvents = [];
+
+// Generar selector de días (14 días)
+function renderDaySelector() {
+    const container = document.getElementById('daySelector');
+    const days = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+    container.innerHTML = '';
+    
+    for (let i = 0; i < 14; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        
+        const isSelected = date.toDateString() === selectedDate.toDateString();
+        
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `day-btn ${isSelected ? 'active' : ''}`;
+        
+        const dayNum = document.createElement('div');
+        dayNum.className = 'day-num';
+        dayNum.textContent = date.getDate();
+        
+        const dayName = document.createElement('div');
+        dayName.className = 'day-name';
+        dayName.textContent = days[date.getDay()];
+        
+        btn.appendChild(dayNum);
+        btn.appendChild(dayName);
+        btn.onclick = () => selectDay(date);
+        
+        container.appendChild(btn);
+    }
+}
+
+function selectDay(date) {
+    selectedDate = date;
+    renderDaySelector();
+    loadSessions();
+}
+
+function updateDayTitle() {
+    const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    const title = selectedDate.toLocaleDateString('es-ES', options);
+    document.getElementById('selectedDayTitle').textContent = title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+function filterByType(type) {
+    currentFilter = type;
+    
+    // Actualizar tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${type === 'session' ? 'clases' : 'citas'}"]`).classList.add('active');
+    
+    renderSessions();
+}
+
+async function loadSessions() {
+    updateDayTitle();
+    const container = document.getElementById('sessionsContainer');
+    
+    // Skeleton
+    container.innerHTML = `
+        <div class="animate-pulse space-y-4">
+            ${[1,2,3].map(() => `
+                <div class="bg-white rounded-xl p-4 flex gap-4 border border-slate-200">
+                    <div class="w-14 h-14 bg-slate-200 rounded-xl"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-5 bg-slate-200 rounded w-3/4"></div>
+                        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                        <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    try {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const response = await fetch(`/activities/api/events/?start=${dateStr}&end=${dateStr}`);
+        const data = await response.json();
+        allEvents = data;
+        renderSessions();
+    } catch (error) {
+        console.error('Error loading events:', error);
+        container.innerHTML = '<p class="text-center text-slate-500 py-8">Error al cargar las sesiones</p>';
+    }
+}
+
+function renderSessions() {
+    const container = document.getElementById('sessionsContainer');
+    
+    // Filtrar por tipo
+    const filteredEvents = allEvents.filter(e => e.extendedProps.type === currentFilter);
+    
+    // Ordenar por hora
+    filteredEvents.sort((a, b) => new Date(a.start) - new Date(b.start));
+    
+    if (filteredEvents.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <div class="text-5xl mb-4">📅</div>
+                <p class="text-slate-500">No hay ${currentFilter === 'session' ? 'clases' : 'citas'} programadas para este día</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = filteredEvents.map(event => {
+        const startTime = new Date(event.start).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const isSession = event.extendedProps.type === 'session';
+        const color = isSession ? '#3b82f6' : '#f97316';
+        const attendees = event.extendedProps.current_bookings || 0;
+        const capacity = event.extendedProps.capacity || 0;
+        const staff = event.extendedProps.staff_name || 'Sin asignar';
+        const room = event.extendedProps.room_name || 'Sin sala';
+        
+        return `
+            <div class="session-card bg-white rounded-xl p-4 border border-slate-200 cursor-pointer"
+                 style="border-left-color: ${color};"
+                 onclick="openEvent('${event.id}', '${event.extendedProps.type}')">
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold"
+                             style="background-color: ${color};">
+                            ${isSession ? '🏃' : '📅'}
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-slate-900 text-lg mb-1">${event.title}</h3>
+                        <div class="flex items-center gap-4 text-sm text-slate-600 mb-2">
+                            <span>🕐 ${startTime} • ${event.extendedProps.duration || 60} min</span>
+                        </div>
+                        <div class="flex items-center gap-4 text-sm text-slate-500">
+                            ${isSession ? `
+                                <span>👥 ${attendees}/${capacity} ${capacity > 0 ? 'plazas' : ''}</span>
+                                <span>👤 ${staff}</span>
+                                <span>📍 ${room}</span>
+                            ` : `
+                                <span>👤 ${event.extendedProps.client_name || 'Sin cliente'}</span>
+                                <span>📍 ${room}</span>
+                            `}
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openEvent(id, type) {
+    if (type === 'session') {
+        window.location.href = `/activities/calendar/?session=${id}`;
+    } else {
+        // Para citas, redirigir a la página de servicios o detalle
+        window.location.href = `/activities/calendar/`;
+    }
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    renderDaySelector();
+    loadSessions();
+});
+</script>
+{% endblock %}

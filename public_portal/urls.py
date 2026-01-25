@@ -6,6 +6,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Página de búsqueda de gimnasios (landing principal)
+    path('', views.gym_search_landing, name='gym_search_landing'),
+    
     # Landing page del gym
     path('gym/<slug:slug>/', views.public_gym_home, name='public_gym_home'),
     
@@ -21,6 +24,23 @@ urlpatterns = [
     
     # Dashboard del cliente
     path('gym/<slug:slug>/dashboard/', views.public_client_dashboard, name='public_client_dashboard'),
+    
+    # Perfil del cliente (estilo app)
+    path('gym/<slug:slug>/profile/', views.public_client_profile, name='public_client_profile'),
+    path('gym/<slug:slug>/profile/attendance/', views.public_attendance_history, name='public_attendance_history'),
+    path('gym/<slug:slug>/profile/payments/', views.public_payment_history, name='public_payment_history'),
+    path('gym/<slug:slug>/profile/payment-methods/', views.public_payment_methods, name='public_payment_methods'),
+    path('gym/<slug:slug>/profile/orders/', views.public_orders_history, name='public_orders_history'),
+    path('gym/<slug:slug>/profile/memberships/', views.public_my_memberships, name='public_my_memberships'),
+    
+    # Adelantar cobro y pago de membresía pendiente
+    path('gym/<slug:slug>/advance-payment/', views.public_advance_payment, name='public_advance_payment'),
+    path('gym/<slug:slug>/advance-payment/process/', views.public_process_advance_payment, name='public_process_advance_payment'),
+    path('gym/<slug:slug>/membership/<int:membership_id>/checkout/', views.public_checkout_membership, name='public_checkout_membership'),
+    
+    # Chat con el gimnasio
+    path('gym/<slug:slug>/chat/', views.public_chat, name='public_chat'),
+    path('gym/<slug:slug>/chat/send/', views.public_chat_send_message, name='public_chat_send'),
     
     # Gamificación
     path('gym/<slug:slug>/leaderboard/', views.public_leaderboard, name='public_leaderboard'),

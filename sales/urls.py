@@ -17,6 +17,18 @@ urlpatterns = [
     path('api/order/<int:order_id>/update-status/', api.order_update_status, name='api_order_update_status'),
     path('api/order/<int:order_id>/send-ticket/', api.order_send_ticket, name='api_order_send_ticket'),
     path('api/order/<int:order_id>/invoice/', api.order_generate_invoice, name='api_order_generate_invoice'),
+    
+    # Refund API (Devoluciones)
+    path('api/order/<int:order_id>/refund/', api.order_refund_info, name='api_order_refund_info'),
+    path('api/order/<int:order_id>/refund/process/', api.order_process_refund, name='api_order_process_refund'),
+    path('api/order/<int:order_id>/refund/<int:refund_id>/retry/', api.order_refund_retry, name='api_order_refund_retry'),
+    
+    # Subscriptions
     path('api/subscription/<int:pk>/charge/', api.subscription_charge, name='api_subscription_charge'),
+    path('api/subscription/<int:pk>/cancel/', api.subscription_cancel, name='api_subscription_cancel'),
     path('api/subscription/bulk-charge/', api.bulk_subscription_charge, name='api_bulk_subscription_charge'),
+    
+    # Deferred Orders (Ventas Diferidas)
+    path('api/deferred/<int:order_id>/charge/', api.deferred_order_charge, name='api_deferred_order_charge'),
+    path('api/deferred/<int:order_id>/cancel/', api.deferred_order_cancel, name='api_deferred_order_cancel'),
 ]

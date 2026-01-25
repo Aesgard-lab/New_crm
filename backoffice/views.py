@@ -7,6 +7,7 @@ from django_ratelimit.decorators import ratelimit
 
 from organizations.models import Gym
 from accounts.services import user_gym_ids
+from accounts.decorators import require_staff
 
 
 @ratelimit(key='ip', rate='5/m', method='POST', block=True)
@@ -14,7 +15,13 @@ def login_view(request):
     """
     Vista de login con rate limiting (5 intentos por minuto por IP)
     """
+    print(f"[DEBUG BACKOFFICE LOGIN] Request method: {request.method}")
+    print(f"[DEBUG BACKOFFICE LOGIN] Request path: {request.path}")
+    
     if request.user.is_authenticated:
+        # Redirigir según el tipo de usuario
+        if hasattr(request.user, 'client_profile'):
+            return redirect('portal_home')
         return redirect("home")
 
     error = None
@@ -28,7 +35,14 @@ def login_view(request):
         email = request.POST.get("email", "").strip().lower()
         password = request.POST.get("password", "")
 
+        # DEBUG: Log de intento de login
+        print(f"[DEBUG BACKOFFICE LOGIN] Email recibido: '{email}'")
+        print(f"[DEBUG BACKOFFICE LOGIN] Password length: {len(password)}")
+        print(f"[DEBUG BACKOFFICE LOGIN] Llamando authenticate()...")
+        
         user = authenticate(request, username=email, password=password)
+        print(f"[DEBUG BACKOFFICE LOGIN] Resultado authenticate(): {user}")
+        
         if user is not None:
             login(request, user)
             # Log exitoso en auditoría
@@ -47,8 +61,21 @@ def login_view(request):
                 )
             except Exception:
                 pass
-            return redirect("home")
-        error = "Credenciales incorrectas"
+            
+            # Redirigir según el tipo de usuario
+            if hasattr(user, 'client_profile'):
+                # Es un cliente, redirigir al portal
+                return redirect('portal_home')
+            elif user.is_staff or user.is_superuser:
+                # Es staff o admin, redirigir al backoffice
+                return redirect("home")
+            else:
+                # Usuario sin permisos específicos
+                logout(request)
+                error = "No tienes permisos para acceder al sistema"
+                
+        else:
+            error = "Credenciales incorrectas"
 
     return render(request, "auth/login.html", {"error": error})
 
@@ -58,7 +85,7 @@ def logout_view(request):
     return redirect("login")
 
 
-@login_required
+@require_staff
 def home(request):
     # Redirect Franchise Owners to their dashboard if no gym is selected or explicitly preferred
     if not request.session.get("current_gym_id") and request.user.franchises_owned.exists():

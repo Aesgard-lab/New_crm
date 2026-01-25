@@ -1,52 +1,52 @@
 {
-    "name": "Mi Gym",
+    "name": "Mi Gym - Portal Cliente",
     "short_name": "Mi Gym",
     "description": "Accede a tu gimnasio desde tu móvil",
-    "start_url": "/app/",
+    "start_url": "/portal/",
     "display": "standalone",
     "background_color": "#f8fafc",
     "theme_color": "#4F46E5",
     "orientation": "portrait-primary",
-    "scope": "/app/",
+    "scope": "/portal/",
     "icons": [
         {
-            "src": "/static/icons/portal/icon-72.png",
+            "src": "/static/icons/icon-72x72.png",
             "sizes": "72x72",
             "type": "image/png"
         },
         {
-            "src": "/static/icons/portal/icon-96.png",
+            "src": "/static/icons/icon-96x96.png",
             "sizes": "96x96",
             "type": "image/png"
         },
         {
-            "src": "/static/icons/portal/icon-128.png",
+            "src": "/static/icons/icon-128x128.png",
             "sizes": "128x128",
             "type": "image/png"
         },
         {
-            "src": "/static/icons/portal/icon-144.png",
+            "src": "/static/icons/icon-144x144.png",
             "sizes": "144x144",
             "type": "image/png"
         },
         {
-            "src": "/static/icons/portal/icon-152.png",
+            "src": "/static/icons/icon-152x152.png",
             "sizes": "152x152",
             "type": "image/png"
         },
         {
-            "src": "/static/icons/portal/icon-192.png",
+            "src": "/static/icons/icon-192x192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "/static/icons/portal/icon-384.png",
+            "src": "/static/icons/icon-384x384.png",
             "sizes": "384x384",
             "type": "image/png"
         },
         {
-            "src": "/static/icons/portal/icon-512.png",
+            "src": "/static/icons/icon-512x512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
@@ -62,10 +62,10 @@
             "name": "Reservar clase",
             "short_name": "Reservar",
             "description": "Reserva tu próxima clase",
-            "url": "/app/bookings/",
+            "url": "/portal/bookings/",
             "icons": [
                 {
-                    "src": "/static/icons/portal/icon-96.png",
+                    "src": "/static/icons/icon-96x96.png",
                     "sizes": "96x96"
                 }
             ]
@@ -74,10 +74,10 @@
             "name": "Mi perfil",
             "short_name": "Perfil",
             "description": "Ver mi perfil",
-            "url": "/app/profile/",
+            "url": "/portal/profile/",
             "icons": [
                 {
-                    "src": "/static/icons/portal/icon-96.png",
+                    "src": "/static/icons/icon-96x96.png",
                     "sizes": "96x96"
                 }
             ]

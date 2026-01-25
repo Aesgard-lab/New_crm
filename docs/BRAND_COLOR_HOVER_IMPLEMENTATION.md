@@ -193,19 +193,53 @@ Elementos que **ahora usan brand-color en hover:**
 
 ## 📦 Archivos Modificados
 
-1. **`templates/base/base.html`**
-   - Agregado: Bloque `<style>` con 11 clases CSS
+### Base y Layout
+1. **`templates/base/base.html`** - Sistema CSS global con 11 clases
+2. **`templates/base/header.html`** - Botón POS usa `.btn-brand`
+3. **`templates/base/sidebar.html`** - Panel Superadmin y enlaces con branding
 
-2. **`templates/backoffice/settings/gym.html`**
-   - Botón guardar: Usa `.btn-brand`
-   - Enlace cancelar: Usa `.hover-brand`
+### Backoffice - Settings
+4. **`templates/backoffice/settings/gym.html`** - Botón guardar `.btn-brand`
+5. **`templates/backoffice/settings/dashboard.html`** - Tarjetas `.card-hover`, enlaces `.hover-brand`
+6. **`templates/backoffice/settings/schedule_settings.html`** - Botón guardar `.btn-brand`
 
-3. **`templates/backoffice/settings/dashboard.html`**
-   - 6 tarjetas: Usan `.card-hover`
-   - ~18 enlaces: Usan `.hover-brand` + `.icon-brand-hover`
+### Backoffice - Finance
+7. **`templates/backoffice/finance/settings.html`** - Tabs, botones y enlaces con branding
+8. **`templates/backoffice/finance/billing_dashboard.html`** - Filtros, tabs, gráficos con branding
+9. **`templates/backoffice/finance/form.html`** - Botón guardar `.btn-brand`
 
-4. **`templates/base/header.html`**
-   - Botón POS: Usa `.btn-brand`
+### Backoffice - Dashboard & Clients
+10. **`templates/backoffice/dashboard.html`** - Accesos rápidos y objetivos con branding
+11. **`templates/backoffice/clients/detail.html`** - Taquillas, rutinas con branding
+
+### Backoffice - Staff
+12. **`templates/backoffice/staff/detail.html`** - Botón asignar tarea `.btn-brand`
+
+### Backoffice - Routines
+13. **`templates/backoffice/routines/routine_list.html`** - Botones y enlaces `.btn-brand`
+14. **`templates/backoffice/routines/routine_form.html`** - Botón crear `.btn-brand`
+15. **`templates/backoffice/routines/exercise_list.html`** - Botones y hovers con branding
+16. **`templates/backoffice/routines/builder.html`** - Botón añadir `.btn-brand`
+
+### Backoffice - Lockers
+17. **`templates/backoffice/lockers/dashboard.html`** - Zonas con branding
+18. **`templates/backoffice/lockers/zone_list.html`** - Iconos editar con branding
+
+### Backoffice - Marketing
+19. **`templates/backoffice/marketing/dashboard.html`** - Botón automatizaciones `.btn-brand`
+20. **`templates/backoffice/marketing/automation/workflow_create.html`** - Botón crear `.btn-brand`
+
+### Backoffice - Scheduler
+21. **`templates/backoffice/scheduler/calendar.html`** - Toggle panel y nueva clase `.btn-brand`
+
+### Organizations
+22. **`templates/organizations/goals/list.html`** - Botón nuevo objetivo `.btn-brand`
+
+### Gamification
+23. **`templates/gamification/achievements.html`** - Tabs y botón crear con branding
+
+### Reporting
+24. **`templates/reporting/explorer.html`** - Filtros, checkboxes y avatares con branding
 
 ---
 
@@ -288,4 +322,5 @@ python manage.py check
 ---
 
 **Implementado:** 14 de Enero de 2026
-**Estado:** ✅ Completado y Validado
+**Actualizado:** 24 de Enero de 2026
+**Estado:** ✅ Completado y Validado (24 templates actualizados)

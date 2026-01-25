@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .password_reset_views import PasswordResetRequestView, PasswordResetConfirmView
+from .registration_views import RegistrationConfigView, RegisterClientView
 from .schedule_views import (
     ScheduleView,
     ActivitiesView,
@@ -55,12 +56,15 @@ from .gamification_views import (
     JoinChallengeView,
     XPHistoryView
 )
+from .advance_payment_api import advance_payment_info, process_advance_payment
 
 urlpatterns = [
-    # Authentication
+    # Authentication & Registration
     path('gyms/search/', views.GymSearchView.as_view(), name='api_gym_search'),
     path('auth/login/', views.LoginView.as_view(), name='api_login'),
     path('auth/check/', views.CheckAuthView.as_view(), name='api_check_auth'),
+    path('registration/config/', RegistrationConfigView.as_view(), name='api_registration_config'),
+    path('registration/register/', RegisterClientView.as_view(), name='api_register_client'),
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='api_password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='api_password_reset_confirm'),
     
@@ -110,6 +114,10 @@ urlpatterns = [
     
     # Billing (Mobile App)
     path('billing/history/', BillingHistoryView.as_view(), name='api_billing_history'),
+    
+    # Advance Payment (Mobile App)
+    path('advance-payment/info/', advance_payment_info, name='api_advance_payment_info'),
+    path('advance-payment/process/', process_advance_payment, name='api_advance_payment_process'),
     
     # History & Reviews (Mobile App)
     path('history/classes/', ClassHistoryView.as_view(), name='api_class_history'),

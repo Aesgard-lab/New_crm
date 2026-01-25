@@ -468,19 +468,58 @@ def portal_profile(request):
 
 @login_required
 def portal_payment_methods(request):
-    """Listado de tarjetas guardadas y alta de nueva tarjeta (Stripe)."""
+    """Listado de tarjetas guardadas y alta de nueva tarjeta (Stripe o Redsys)."""
     if not hasattr(request.user, 'client_profile'):
         return redirect('portal_login')
 
     client = request.user.client_profile
     finance_settings = getattr(client.gym, 'finance_settings', None)
     allow_delete = bool(finance_settings and finance_settings.allow_client_delete_card)
-    cards = list_payment_methods(client)
+    
+    # Obtener tarjetas de Stripe
+    stripe_cards = list_payment_methods(client)
+    
+    # Obtener tokens de Redsys
+    from finance.models import ClientRedsysToken
+    redsys_tokens = list(ClientRedsysToken.objects.filter(client=client))
+    
+    # Determinar qué pasarelas están disponibles según configuración
+    stripe_enabled = bool(finance_settings and finance_settings.stripe_public_key and finance_settings.stripe_secret_key)
+    redsys_enabled = bool(finance_settings and finance_settings.redsys_merchant_code and finance_settings.redsys_secret_key)
+    
+    # Determinar la estrategia de pasarela
+    gateway_strategy = finance_settings.app_gateway_strategy if finance_settings else 'STRIPE_ONLY'
+    
+    # Determinar qué opciones mostrar al usuario
+    show_stripe = False
+    show_redsys = False
+    show_choice = False
+    
+    if gateway_strategy == 'STRIPE_ONLY':
+        show_stripe = stripe_enabled
+    elif gateway_strategy == 'REDSYS_ONLY':
+        show_redsys = redsys_enabled
+    elif gateway_strategy == 'STRIPE_PRIMARY':
+        show_stripe = stripe_enabled
+        show_redsys = redsys_enabled and not stripe_enabled  # Redsys como backup
+    elif gateway_strategy == 'REDSYS_PRIMARY':
+        show_redsys = redsys_enabled
+        show_stripe = stripe_enabled and not redsys_enabled  # Stripe como backup
+    elif gateway_strategy == 'CLIENT_CHOICE':
+        show_stripe = stripe_enabled
+        show_redsys = redsys_enabled
+        show_choice = True
 
     context = {
         'client': client,
-        'cards': cards,
+        'stripe_cards': stripe_cards,
+        'redsys_tokens': redsys_tokens,
         'stripe_public_key': finance_settings.stripe_public_key if finance_settings else '',
+        'redsys_enabled': redsys_enabled,
+        'show_stripe': show_stripe,
+        'show_redsys': show_redsys,
+        'show_choice': show_choice,
+        'gateway_strategy': gateway_strategy,
         'allow_delete': allow_delete,
     }
     return render(request, 'portal/profile/payment_methods.html', context)
@@ -590,6 +629,106 @@ def portal_get_stripe_setup(request):
 
 
 @login_required
+def portal_get_redsys_setup(request):
+    """Iniciar tokenización con Redsys desde el portal."""
+    if not hasattr(request.user, 'client_profile'):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    client = request.user.client_profile
+    finance_settings = getattr(client.gym, 'finance_settings', None)
+    
+    if not finance_settings:
+        return JsonResponse({'error': 'Configuración de pagos no disponible'}, status=400)
+    
+    # Verificar credenciales de Redsys
+    if not all([
+        finance_settings.redsys_merchant_code,
+        finance_settings.redsys_secret_key,
+        finance_settings.redsys_terminal,
+    ]):
+        return JsonResponse({'error': 'Redsys no configurado en tu gimnasio'}, status=400)
+    
+    try:
+        from finance.redsys_utils import generate_redsys_form_for_tokenization
+        # Generar formulario de Redsys para tokenización (cargo simbólico de 0.10€)
+        form_data = generate_redsys_form_for_tokenization(
+            client=client,
+            amount=10,  # 0.10€ en céntimos
+            description=f"Tokenización tarjeta - {client.full_name}"
+        )
+        return JsonResponse(form_data)
+    except ImportError:
+        return JsonResponse({'error': 'Funcionalidad de Redsys no disponible'}, status=501)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def portal_redsys_tokenization_callback(request):
+    """Callback de Redsys tras tokenización - guarda el token."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        from finance.redsys_utils import get_redsys_client
+        from finance.models import ClientRedsysToken
+        import json
+        import base64
+        
+        # Obtener parámetros de Redsys
+        ds_params_b64 = request.POST.get('Ds_MerchantParameters')
+        ds_signature = request.POST.get('Ds_Signature')
+        
+        if not ds_params_b64 or not ds_signature:
+            return JsonResponse({'error': 'Parámetros inválidos'}, status=400)
+        
+        # Decodificar parámetros
+        params_json = base64.b64decode(ds_params_b64).decode('utf-8')
+        params = json.loads(params_json)
+        
+        # Extraer datos del MerchantData
+        merchant_data = json.loads(params.get('Ds_MerchantData', '{}'))
+        client_id = merchant_data.get('client_id')
+        
+        if not client_id:
+            return JsonResponse({'error': 'Cliente no identificado'}, status=400)
+        
+        # Obtener cliente
+        client = Client.objects.get(id=client_id)
+        
+        # Verificar firma (opcional pero recomendado)
+        # TODO: Implementar verificación de firma
+        
+        # Verificar respuesta exitosa
+        response_code = int(params.get('Ds_Response', 9999))
+        if response_code < 0 or response_code > 99:
+            return JsonResponse({'error': f'Tokenización rechazada: {response_code}'}, status=400)
+        
+        # Guardar token
+        token_value = params.get('Ds_Merchant_Identifier')
+        card_number = params.get('Ds_Card_Number', '**** **** **** ****')
+        card_brand = params.get('Ds_Card_Brand', 'UNKNOWN')
+        expiration = params.get('Ds_ExpiryDate', '0000')  # YYMM
+        
+        # Formatear expiración a MM/YY
+        if len(expiration) == 4:
+            exp_formatted = f"{expiration[2:4]}/{expiration[0:2]}"
+        else:
+            exp_formatted = expiration
+        
+        ClientRedsysToken.objects.create(
+            client=client,
+            token=token_value,
+            card_brand=card_brand,
+            card_number=card_number[-4:] if len(card_number) >= 4 else card_number,
+            expiration=exp_formatted
+        )
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
 def portal_delete_payment_method(request, pm_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -600,7 +739,15 @@ def portal_delete_payment_method(request, pm_id):
     if not finance_settings or not finance_settings.allow_client_delete_card:
         return JsonResponse({'error': 'El gimnasio no permite eliminar tarjetas desde la app.'}, status=403)
     try:
-        detach_payment_method(client, pm_id)
+        # Determinar si es Stripe o Redsys según el formato del ID
+        if pm_id.startswith('pm_'):
+            # Es un PaymentMethod de Stripe
+            detach_payment_method(client, pm_id)
+        else:
+            # Es un token de Redsys (ID numérico)
+            from finance.models import ClientRedsysToken
+            token = ClientRedsysToken.objects.get(id=pm_id, client=client)
+            token.delete()
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -1245,6 +1392,65 @@ def portal_chat_poll(request):
         return JsonResponse({'success': True, 'messages': []})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def portal_notifications(request):
+    """Centro de notificaciones: Chat, Popups, Anuncios consolidados"""
+    if not hasattr(request.user, 'client_profile'):
+        return redirect('portal_login')
+    
+    client = request.user.client_profile
+    from .models import ChatRoom, ChatMessage
+    from marketing.models import Popup, Advertisement
+    from django.utils import timezone
+    
+    # 1. Mensajes de chat no leídos
+    try:
+        chat_room = ChatRoom.objects.get(client=client)
+        unread_chat_count = chat_room.messages.filter(is_read=False).exclude(sender=request.user).count()
+        recent_chat_messages = chat_room.messages.select_related('sender').order_by('-created_at')[:5]
+    except ChatRoom.DoesNotExist:
+        chat_room = None
+        unread_chat_count = 0
+        recent_chat_messages = []
+    
+    # 2. Popups activos no leídos
+    now = timezone.now()
+    from marketing.models import PopupRead
+    active_popups = Popup.objects.filter(
+        gym=client.gym,
+        is_active=True,
+        start_date__lte=now
+    ).exclude(
+        end_date__lt=now
+    ).exclude(
+        reads__client=client
+    ).order_by('-created_at')[:10]
+    
+    # 3. Anuncios activos
+    active_ads = Advertisement.objects.filter(
+        gym=client.gym,
+        is_active=True,
+        start_date__lte=now
+    ).exclude(
+        end_date__lt=now
+    ).order_by('-created_at')[:10]
+    
+    # 4. Total de notificaciones no leídas
+    total_unread = unread_chat_count + active_popups.count()
+    
+    context = {
+        'client': client,
+        'chat_room': chat_room,
+        'unread_chat_count': unread_chat_count,
+        'recent_chat_messages': recent_chat_messages,
+        'active_popups': active_popups,
+        'active_ads': active_ads,
+        'total_unread': total_unread,
+    }
+    
+    return render(request, 'portal/notifications/notifications.html', context)
 
 
 # ============================================

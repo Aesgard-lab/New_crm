@@ -4,14 +4,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CRM Gym">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <style>
     :root {
       --brand-color: {{ request.gym.brand_color|default:"#0f172a" }};
+    }
 
-      ;
+    /* ============================================
+       BRAND TITLES - Color corporativo en títulos
+       ============================================ */
+    
+    /* Título principal con color de marca */
+    .title-brand {
+      color: var(--brand-color) !important;
+    }
+
+    /* Títulos de página y secciones */
+    h1.page-title, .page-title {
+      color: var(--brand-color) !important;
+    }
+
+    /* KPI values con color de marca */
+    .kpi-brand {
+      color: var(--brand-color) !important;
+    }
+
+    /* Títulos de cards/secciones */
+    .section-title {
+      color: var(--brand-color) !important;
     }
 
     /* ============================================
@@ -193,11 +225,35 @@
       border-color: var(--brand-color);
       color: var(--brand-color);
     }
+
+    /* ============================================
+       SOFTER TEXT COLORS - Global Overrides
+       ============================================ */
+    
+    /* Soften all slate-900 text to a more comfortable gray */
+    .text-slate-900 {
+      color: #334155 !important; /* slate-700 instead of slate-900 */
+    }
+
+    .text-gray-900 {
+      color: #374151 !important; /* gray-700 instead of gray-900 */
+    }
+
+    /* Headers and titles - softer black */
+    h1, h2, h3, h4, h5, h6 {
+      color: #334155; /* slate-700 */
+    }
+
+    /* Font weight adjustments for better readability */
+    .font-black {
+      font-weight: 800 !important;
+      color: #334155;
+    }
   </style>
   <title>{% block title %}Backoffice{% endblock %}</title>
 </head>
 
-<body class="bg-slate-50 text-slate-900 overflow-hidden">
+<body class="bg-slate-50 text-slate-700 overflow-hidden">
   <div class="h-screen flex">
 
     <!-- Sidebar -->
@@ -303,6 +359,21 @@
     </main>
 
   </div>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => {
+            console.log('SW Backoffice registered:', registration.scope);
+          })
+          .catch(err => {
+            console.log('SW registration failed:', err);
+          });
+      });
+    }
+  </script>
 </body>
 
 </html>

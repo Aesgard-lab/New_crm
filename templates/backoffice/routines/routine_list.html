@@ -18,7 +18,7 @@
                 Ver Ejercicios
             </a>
             <a href="{% url 'routine_create' %}"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-colors shadow-lg shadow-indigo-200 flex items-center gap-2">
+                class="btn-brand px-4 py-2 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
@@ -34,7 +34,7 @@
             class="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all group relative overflow-hidden">
             <div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'routine_detail' routine.id %}"
-                    class="bg-indigo-50 text-indigo-600 p-2 rounded-lg hover:bg-indigo-100"
+                    class="bg-[var(--brand-color)]/10 text-[var(--brand-color)] p-2 rounded-lg hover:bg-[var(--brand-color)]/20"
                     title="Editar en Constructor">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -61,7 +61,7 @@
                     {{ routine.days.count }} Días • {{ routine.get_goal_display }}
                 </div>
                 <a href="{% url 'routine_detail' routine.id %}"
-                    class="text-indigo-600 font-bold text-sm hover:underline">
+                    class="text-[var(--brand-color)] font-bold text-sm hover:underline hover-brand">
                     Abrir Constructor →
                 </a>
             </div>
@@ -76,7 +76,7 @@
             <h3 class="text-lg font-medium text-slate-900">No hay rutinas creadas</h3>
             <p class="text-slate-500 mb-6">Empieza creando tu primera plantilla de entrenamiento.</p>
             <a href="{% url 'routine_create' %}"
-                class="inline-flex items-center px-4 py-2 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                class="btn-brand inline-flex items-center px-4 py-2">
                 + Crear Rutina
             </a>
         </div>

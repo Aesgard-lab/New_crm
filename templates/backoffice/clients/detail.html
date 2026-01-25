@@ -1549,7 +1549,7 @@
                 {% if locker_assignments %}
                 <div class="space-y-3">
                     {% for assignment in locker_assignments %}
-                    <div class="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-colors">
+                    <div class="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 card-hover transition-colors">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
                                 <span class="text-lg font-bold text-indigo-700">{{ assignment.locker.number }}</span>
@@ -1637,11 +1637,11 @@
                 <h3 class="font-semibold text-slate-900">Rutinas de Entrenamiento</h3>
                 <div class="flex gap-2">
                     <button @click="createPersonal()"
-                        class="text-xs font-medium text-slate-500 hover:text-indigo-600 hover:underline">
+                        class="text-xs font-medium text-slate-500 hover-brand hover:underline">
                         + Nueva en Blanco
                     </button>
                     <button @click="showAssignModal = true"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-indigo-200">
+                        class="btn-brand px-3 py-1 text-xs">
                         Asignar Plantilla
                     </button>
                 </div>
@@ -1652,10 +1652,10 @@
                 <div class="space-y-3">
                     {% for cr in client_routines %}
                     <div
-                        class="flex items-center justify-between p-3 border border-indigo-100 rounded-xl bg-indigo-50/30 hover:bg-indigo-50 transition-colors group">
+                        class="flex items-center justify-between p-3 border border-[var(--brand-color)]/20 rounded-xl bg-[var(--brand-color)]/5 hover:bg-[var(--brand-color)]/10 transition-colors group">
                         <!-- Routine Info -->
                         <div class="flex items-center gap-3">
-                            <div class="bg-white p-2 rounded-lg border border-indigo-200 text-indigo-600">
+                            <div class="bg-white p-2 rounded-lg border border-[var(--brand-color)]/30 text-[var(--brand-color)]">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
@@ -1671,7 +1671,7 @@
                         </div>
 
                         <a href="{% url 'routine_detail' cr.routine.id %}"
-                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg shadow-sm">
+                            class="text-xs font-bold text-[var(--brand-color)] hover-brand bg-white border border-[var(--brand-color)]/30 px-3 py-1.5 rounded-lg shadow-sm">
                             Abrir Editor
                         </a>
                     </div>
@@ -1774,17 +1774,26 @@
                         <div class="flex items-center gap-4">
                             <!-- Status Icon -->
                             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg
-                                    {% if order.status == 'PAID' %}bg-emerald-100 text-emerald-600
+                                    {% if order.total_amount < 0 %}bg-red-100 text-red-600
+                                    {% elif order.status == 'PAID' %}bg-emerald-100 text-emerald-600
                                     {% elif order.status == 'CANCELLED' %}bg-red-100 text-red-500
                                     {% else %}bg-amber-100 text-amber-600{% endif %}">
-                                {% if order.status == 'PAID' %}💰{% elif order.status == 'CANCELLED' %}✕{% else %}⏳
-                                {% endif %}
+                                {% if order.total_amount < 0 %}↩{% elif order.status == 'PAID' %}💰{% elif order.status == 'CANCELLED' %}✕{% else %}⏳{% endif %}
                             </div>
                             <div>
                                 <div class="font-semibold text-slate-800 flex items-center gap-2">
+                                    {% if order.total_amount < 0 %}
+                                    <span class="text-red-600">Devolución</span>
+                                    {% else %}
                                     Ticket #{{ order.id }}
+                                    {% endif %}
                                     {% if order.invoice_number %}
                                     <span class="text-xs text-slate-400 font-normal">({{ order.invoice_number }})</span>
+                                    {% endif %}
+                                    {% if order.total_refunded > 0 %}
+                                    <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                                        Dev: {{ order.total_refunded }}€
+                                    </span>
                                     {% endif %}
                                 </div>
                                 <div class="text-xs text-slate-400">{{ order.created_at|date:"d M Y · H:i" }}</div>
@@ -1793,14 +1802,17 @@
                         <div class="flex items-center gap-4">
                             <!-- Status Pill -->
                             <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full
-                                    {% if order.status == 'PAID' %}bg-emerald-100 text-emerald-700
+                                    {% if order.total_amount < 0 %}bg-red-100 text-red-600
+                                    {% elif order.status == 'PAID' %}bg-emerald-100 text-emerald-700
                                     {% elif order.status == 'CANCELLED' %}bg-red-100 text-red-600
                                     {% else %}bg-amber-100 text-amber-700{% endif %}">
-                                {{ order.get_status_display }}
+                                {% if order.total_amount < 0 %}Devolución{% else %}{{ order.get_status_display }}{% endif %}
                             </span>
                             <!-- Amount -->
                             <div class="text-right min-w-[80px]">
-                                <div class="font-bold text-slate-900">{{ order.total_amount }}€</div>
+                                <div class="font-bold {% if order.total_amount < 0 %}text-red-600{% else %}text-slate-900{% endif %}">
+                                    {{ order.total_amount }}€
+                                </div>
                                 <div class="text-[10px] text-slate-400 mt-1" title="Cobrado por">
                                     👤 {{ order.created_by.first_name|default:order.created_by.email }}
                                 </div>

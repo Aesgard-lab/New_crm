@@ -1,0 +1,107 @@
+# ==============================================
+# PYTEST CONFIGURATION
+# ==============================================
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "*_test.py", "tests_*.py", "*_tests.py", "tests.py"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-ra",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+# ==============================================
+# COVERAGE CONFIGURATION
+# ==============================================
+
+[tool.coverage.run]
+source = ["."]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "manage.py",
+    "config/settings/*",
+    "config/wsgi.py",
+    "config/asgi.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if settings.DEBUG:",
+]
+show_missing = true
+skip_covered = true
+
+# ==============================================
+# BLACK CONFIGURATION
+# ==============================================
+
+[tool.black]
+line-length = 120
+target-version = ['py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | migrations
+  | __pycache__
+  | staticfiles
+)/
+'''
+
+# ==============================================
+# ISORT CONFIGURATION
+# ==============================================
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = [".venv", "venv", "migrations", "__pycache__"]
+known_django = ["django"]
+known_first_party = [
+    "accounts",
+    "activities",
+    "api",
+    "backoffice",
+    "clients",
+    "config",
+    "core",
+    "finance",
+    "gamification",
+    "lockers",
+    "marketing",
+    "memberships",
+    "organizations",
+    "products",
+    "providers",
+    "public_portal",
+    "reporting",
+    "routines",
+    "saas_billing",
+    "sales",
+    "services",
+    "staff",
+    "superadmin",
+]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]

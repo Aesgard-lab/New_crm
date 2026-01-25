@@ -8,7 +8,7 @@ from decimal import Decimal
 from datetime import timedelta, date
 from django.template.loader import render_to_string
 from django.conf import settings
-from .models import Order, OrderItem, OrderPayment
+from .models import Order, OrderItem, OrderPayment, OrderRefund
 from products.models import Product
 from services.models import Service
 from clients.models import Client
@@ -155,7 +155,341 @@ def order_cancel(request, order_id):
     
     return JsonResponse({'success': True, 'message': 'Venta cancelada. ' + ', '.join(refund_notes)})
 
+
+# ============================================
+# REFUND ENDPOINTS (Devoluciones)
+# ============================================
+
+@require_http_methods(["GET"])
+@require_gym_permission('sales.view_sale')
+def order_refund_info(request, order_id):
+    """
+    Obtiene información para el modal de devolución.
+    Incluye pagos con cantidades devolvibles y métodos de pago del gimnasio.
+    """
+    from finance.models import PaymentMethod
+    
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    
+    # Métodos de pago del gimnasio (para devoluciones manuales)
+    gym_payment_methods = [{
+        'id': m.id,
+        'name': m.name,
+        'gateway': m.gateway
+    } for m in PaymentMethod.objects.filter(gym=gym, is_active=True).order_by('display_order', 'name')]
+    
+    # Pagos con montos devolvibles
+    payments_info = []
+    for payment in order.payments.all():
+        refundable = float(payment.refundable_amount)
+        gateway = 'NONE'
+        
+        # Detectar gateway
+        if payment.transaction_id:
+            if payment.transaction_id.startswith('pi_') or payment.transaction_id.startswith('ch_'):
+                gateway = 'STRIPE'
+            elif payment.transaction_id.isdigit():
+                gateway = 'REDSYS'
+        
+        payments_info.append({
+            'id': payment.id,
+            'method_name': payment.payment_method.name,
+            'amount': float(payment.amount),
+            'refundable_amount': refundable,
+            'transaction_id': payment.transaction_id or '',
+            'gateway': gateway,
+            'can_auto_refund': gateway in ['STRIPE', 'REDSYS'] and refundable > 0
+        })
+    
+    # Historial de devoluciones
+    refunds_history = [{
+        'id': r.id,
+        'amount': float(r.amount),
+        'reason': r.reason,
+        'notes': r.notes,
+        'status': r.status,
+        'status_display': r.get_status_display(),
+        'gateway': r.gateway,
+        'gateway_display': r.get_gateway_display(),
+        'refund_method_name': r.refund_method_name or (r.get_gateway_display() if r.gateway != 'NONE' else ''),
+        'created_at': r.created_at.isoformat(),
+        'created_by': r.created_by.get_full_name() or r.created_by.username
+    } for r in order.refunds.all().select_related('created_by')]
+    
+    return JsonResponse({
+        'order_id': order.id,
+        'total_amount': float(order.total_amount),
+        'total_refunded': float(order.total_refunded),
+        'refundable_amount': float(order.refundable_amount),
+        'is_fully_refunded': order.is_fully_refunded,
+        'status': order.status,
+        'payments': payments_info,
+        'refunds_history': refunds_history,
+        'gym_payment_methods': gym_payment_methods
+    })
+
+
 @require_http_methods(["POST"])
+@require_gym_permission('sales.change_sale')
+def order_process_refund(request, order_id):
+    """
+    Procesa una devolución parcial o total.
+    
+    Body JSON:
+    {
+        "amount": 25.50,  // Cantidad a devolver
+        "reason": "Producto defectuoso",
+        "payment_id": 123,  // Opcional: pago específico a devolver
+        "auto_refund": true  // Si intentar devolución automática por pasarela
+    }
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    
+    amount = Decimal(str(data.get('amount', 0)))
+    reason = data.get('reason', '')
+    notes = data.get('notes', '')  # Notas adicionales
+    payment_id = data.get('payment_id')
+    refund_method_id = data.get('refund_method_id')  # Método de devolución seleccionado
+    auto_refund = data.get('auto_refund', False)
+    accounting_mode = data.get('accounting_mode', 'negative')  # 'negative' or 'record_only'
+    
+    # Validaciones
+    if amount <= 0:
+        return JsonResponse({'error': 'La cantidad debe ser mayor a 0'}, status=400)
+    
+    if amount > order.refundable_amount:
+        return JsonResponse({
+            'error': f'La cantidad máxima devolvible es {order.refundable_amount}€'
+        }, status=400)
+    
+    # Si se especifica un pago
+    payment = None
+    if payment_id:
+        payment = order.payments.filter(id=payment_id).first()
+        if not payment:
+            return JsonResponse({'error': 'Pago no encontrado'}, status=400)
+        if amount > payment.refundable_amount:
+            return JsonResponse({
+                'error': f'La cantidad máxima devolvible de este pago es {payment.refundable_amount}€'
+            }, status=400)
+    
+    # Crear registro de devolución
+    refund = OrderRefund.objects.create(
+        order=order,
+        payment=payment,
+        amount=amount,
+        reason=reason,
+        notes=notes,
+        status='PENDING',
+        created_by=request.user
+    )
+    
+    gateway_result = None
+    
+    # Intentar devolución automática si se solicita
+    if auto_refund and payment and payment.transaction_id:
+        gateway_result = _process_gateway_refund(payment, amount, gym, refund)
+    elif auto_refund and not payment:
+        # Buscar el primer pago con transacción que pueda cubrir el monto
+        for p in order.payments.all():
+            if p.transaction_id and p.refundable_amount >= amount:
+                gateway_result = _process_gateway_refund(p, amount, gym, refund)
+                refund.payment = p
+                refund.save(update_fields=['payment'])
+                break
+    
+    # Si no hubo intento de gateway o fue manual, marcar como completado
+    if not auto_refund or refund.gateway == 'NONE':
+        refund.status = 'COMPLETED'
+        refund.gateway = 'NONE'
+        refund.save()
+    
+    # Actualizar total devuelto de la orden
+    order.update_refund_total()
+    
+    # Registrar en notas
+    note = f"\n[Devolución de {amount}€ por {request.user.get_full_name() or request.user.username} - {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}]"
+    if reason:
+        note += f"\nMotivo: {reason}"
+    if notes:
+        note += f"\nNotas: {notes}"
+    
+    # Registrar método de devolución
+    if refund.gateway != 'NONE':
+        note += f"\nMétodo: {refund.get_gateway_display()}"
+    elif refund_method_id:
+        from finance.models import PaymentMethod
+        refund_method = PaymentMethod.objects.filter(id=refund_method_id).first()
+        if refund_method:
+            note += f"\nMétodo: {refund_method.name}"
+            refund.refund_method_name = refund_method.name  # Guardar referencia
+            refund.save(update_fields=['refund_method_name'])
+    
+    if gateway_result:
+        note += f"\n{gateway_result}"
+    order.internal_notes += note
+    order.save(update_fields=['internal_notes'])
+    
+    # Si accounting_mode es 'negative', crear una orden de venta con importe negativo
+    negative_order = None
+    if accounting_mode == 'negative':
+        # Obtener el método de pago para el cobro negativo
+        refund_payment_method = None
+        if refund_method_id:
+            from finance.models import PaymentMethod
+            refund_payment_method = PaymentMethod.objects.filter(id=refund_method_id, gym=gym).first()
+        elif payment:
+            refund_payment_method = payment.payment_method
+        else:
+            # Usar el método del primer pago de la orden original
+            first_payment = order.payments.first()
+            if first_payment:
+                refund_payment_method = first_payment.payment_method
+        
+        # Crear orden negativa (devolución contable)
+        negative_order = Order.objects.create(
+            gym=gym,
+            client=order.client,
+            status='PAID',
+            total_amount=-amount,  # Importe NEGATIVO
+            discount_amount=Decimal('0'),
+            internal_notes=f"Devolución del Ticket #{order.id} - {reason or 'Sin motivo'}\nRef. Devolución #{refund.id}",
+            created_by=request.user
+        )
+        
+        # Crear el item negativo
+        OrderItem.objects.create(
+            order=negative_order,
+            description=f"Devolución - Ticket #{order.id}",
+            quantity=1,
+            unit_price=-amount,
+            tax_rate=Decimal('0')  # La devolución no genera impuesto adicional
+        )
+        
+        # Crear el pago negativo si hay método
+        if refund_payment_method:
+            OrderPayment.objects.create(
+                order=negative_order,
+                payment_method=refund_payment_method,
+                amount=-amount
+            )
+        
+        # Vincular la orden negativa a la devolución
+        refund.negative_order = negative_order
+        refund.save(update_fields=['negative_order'])
+    
+    return JsonResponse({
+        'success': True,
+        'refund_id': refund.id,
+        'status': refund.status,
+        'gateway_result': gateway_result,
+        'new_total_refunded': float(order.total_refunded),
+        'new_refundable_amount': float(order.refundable_amount),
+        'negative_order_id': negative_order.id if negative_order else None,
+        'accounting_mode': accounting_mode
+    })
+
+
+def _process_gateway_refund(payment, amount, gym, refund):
+    """
+    Procesa la devolución a través de la pasarela de pago.
+    Retorna mensaje de resultado.
+    """
+    transaction_id = payment.transaction_id
+    amount_float = float(amount)
+    
+    # Stripe
+    if transaction_id.startswith('pi_') or transaction_id.startswith('ch_'):
+        from finance.stripe_utils import refund_payment
+        success, result = refund_payment(transaction_id, amount_eur=amount_float, gym=gym)
+        
+        refund.gateway = 'STRIPE'
+        if success:
+            refund.status = 'COMPLETED'
+            refund.gateway_refund_id = result
+            refund.save()
+            return f"Reembolso Stripe exitoso (ID: {result})"
+        else:
+            refund.status = 'FAILED'
+            refund.error_message = result
+            refund.save()
+            return f"Error Stripe: {result}"
+    
+    # Redsys
+    elif transaction_id.isdigit():
+        from finance.redsys_utils import get_redsys_client
+        from finance.views_redsys import generate_order_id
+        
+        redsys = get_redsys_client(gym)
+        if redsys:
+            refund_order_id = generate_order_id()
+            success, result = redsys.refund_request(
+                refund_order_id, 
+                amount_float, 
+                original_order_id=transaction_id
+            )
+            
+            refund.gateway = 'REDSYS'
+            if success:
+                refund.status = 'COMPLETED'
+                refund.gateway_refund_id = refund_order_id
+                refund.save()
+                return f"Reembolso Redsys exitoso (ID: {refund_order_id})"
+            else:
+                refund.status = 'FAILED'
+                refund.error_message = str(result)
+                refund.save()
+                return f"Error Redsys: {result}"
+        else:
+            refund.status = 'FAILED'
+            refund.error_message = "Redsys no configurado"
+            refund.save()
+            return "Error: Redsys no configurado para este gimnasio"
+    
+    return None
+
+
+@require_http_methods(["POST"])
+@require_gym_permission('sales.change_sale')
+def order_refund_retry(request, order_id, refund_id):
+    """
+    Reintenta una devolución fallida.
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    refund = get_object_or_404(OrderRefund, id=refund_id, order=order)
+    
+    if refund.status != 'FAILED':
+        return JsonResponse({'error': 'Solo se pueden reintentar devoluciones fallidas'}, status=400)
+    
+    if not refund.payment or not refund.payment.transaction_id:
+        return JsonResponse({'error': 'Esta devolución no tiene pago asociado para reintentar'}, status=400)
+    
+    # Reintentar
+    refund.status = 'PENDING'
+    refund.error_message = ''
+    refund.save()
+    
+    result = _process_gateway_refund(refund.payment, refund.amount, gym, refund)
+    
+    if refund.status == 'COMPLETED':
+        order.update_refund_total()
+    
+    return JsonResponse({
+        'success': refund.status == 'COMPLETED',
+        'status': refund.status,
+        'message': result
+    })
+
+
+
 @require_gym_permission('sales.change_sale')
 def order_update(request, order_id):
     """
@@ -393,6 +727,12 @@ def process_sale(request):
 
         action = data.get('action') 
         
+        # Deferred Payment Fields
+        is_deferred = data.get('is_deferred', False)
+        scheduled_payment_date = data.get('scheduled_payment_date')
+        auto_charge = data.get('auto_charge', False)
+        deferred_notes = data.get('deferred_notes', '')
+        
         if not items:
             return JsonResponse({'error': 'El carrito está vacío'}, status=400)
 
@@ -421,13 +761,26 @@ def process_sale(request):
             except User.DoesNotExist:
                 pass
 
+        # Determine initial status
+        initial_status = 'DEFERRED' if is_deferred else 'PAID'
+        
         order = Order.objects.create(
             gym=gym,
             client=client,
             created_by=sale_user,
-            status='PAID', 
-            total_amount=0 
+            status=initial_status, 
+            total_amount=0
         )
+        
+        # Handle deferred payment fields
+        if is_deferred and scheduled_payment_date:
+            try:
+                order.scheduled_payment_date = datetime.datetime.strptime(scheduled_payment_date, '%Y-%m-%d').date()
+            except:
+                order.scheduled_payment_date = None
+            order.auto_charge = auto_charge
+            order.deferred_notes = deferred_notes
+            order.save()
         
         if created_at_val:
             order.created_at = created_at_val
@@ -505,10 +858,24 @@ def process_sale(request):
             order.total_base += item_base
             order.total_tax += item_tax
 
-        # 4. Create Payments (handle mixed)
+        # 4. Create Payments (handle mixed) - Skip for deferred orders
         total_paid = Decimal(0)
         
-        # Process Payments
+        # For deferred orders, skip payment processing
+        if is_deferred:
+            # No payments needed, just save the totals
+            order.total_amount = total_amount
+            order.total_discount = total_discount
+            order.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'order_id': order.id,
+                'deferred': True,
+                'message': f'Venta diferida guardada. Fecha de cobro: {scheduled_payment_date}'
+            })
+        
+        # Process Payments (only for non-deferred orders)
         payments_valid = True
         
         for p in payments:
@@ -672,10 +1039,6 @@ def subscription_charge(request, pk):
         gym = request.gym
         membership = get_object_or_404(ClientMembership, pk=pk, client__gym=gym)
         client = membership.client
-        amount = membership.price
-        
-        if amount <= 0:
-             return JsonResponse({'error': 'El importe es 0, no se puede cobrar'}, status=400)
 
         import json
         
@@ -686,6 +1049,16 @@ def subscription_charge(request, pk):
                  data = json.loads(request.body)
              except:
                  pass
+        
+        # Allow custom amount from request, otherwise use membership price
+        custom_amount = data.get('amount') or request.POST.get('amount')
+        if custom_amount:
+            amount = Decimal(str(custom_amount))
+        else:
+            amount = membership.price
+        
+        if amount <= 0:
+             return JsonResponse({'error': 'El importe es 0, no se puede cobrar'}, status=400)
         
         explicit_method_id = request.POST.get('method_id') or data.get('method_id')
 
@@ -955,6 +1328,23 @@ def order_update_status(request, order_id):
             new_notes = data['internal_notes']
             if new_notes:
                 order.internal_notes = (order.internal_notes or '') + f" | {new_notes}"
+        
+        # Update date if provided
+        if 'date' in data:
+            from datetime import datetime as dt
+            try:
+                new_date = dt.strptime(data['date'], "%Y-%m-%d")
+                # Keep the original time but change the date
+                old_datetime = order.created_at
+                new_datetime = new_date.replace(
+                    hour=old_datetime.hour,
+                    minute=old_datetime.minute,
+                    second=old_datetime.second
+                )
+                changes.append(f"Fecha: {old_datetime.strftime('%d/%m/%Y')} → {new_date.strftime('%d/%m/%Y')}")
+                order.created_at = new_datetime
+            except ValueError:
+                return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
                 changes.append("Notas actualizadas")
         
         # Save all changes
@@ -1200,6 +1590,228 @@ def bulk_subscription_charge(request):
         
         return JsonResponse(results)
         
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ============================================
+# Deferred Orders API
+# ============================================
+
+@require_http_methods(["POST"])
+@require_gym_permission('sales.charge')
+def deferred_order_charge(request, order_id):
+    """
+    Charge a deferred order. Attempts auto-charge if client has saved card,
+    otherwise marks it as ready for manual payment in TPV.
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym, status='DEFERRED')
+    client = order.client
+    
+    if not client:
+        return JsonResponse({'error': 'Esta venta no tiene cliente asociado'}, status=400)
+    
+    try:
+        amount = order.total_amount
+        
+        # Try auto-charge if order has auto_charge enabled
+        if order.auto_charge:
+            # Attempt Stripe first
+            if client.stripe_customer_id:
+                from finance.stripe_utils import charge_client, list_payment_methods
+                payment_methods = list_payment_methods(client)
+                if payment_methods:
+                    success, result = charge_client(client, amount, payment_methods[0].id)
+                    if success:
+                        # Create payment record
+                        method = PaymentMethod.objects.filter(gym=gym, name__icontains='stripe').first()
+                        if not method:
+                            method = PaymentMethod.objects.filter(gym=gym, name__icontains='tarjeta').first()
+                        if not method:
+                            method = PaymentMethod.objects.filter(gym=gym, is_active=True).first()
+                        
+                        OrderPayment.objects.create(
+                            order=order,
+                            payment_method=method,
+                            amount=amount,
+                            transaction_id=result,
+                            gateway_used='STRIPE'
+                        )
+                        order.status = 'PAID'
+                        order.save()
+                        return JsonResponse({'success': True, 'message': 'Cobro automático realizado correctamente (Stripe)'})
+                    else:
+                        return JsonResponse({'error': f'Error en cobro Stripe: {result}'}, status=400)
+            
+            # Try Redsys if Stripe failed/unavailable
+            if client.redsys_tokens.exists():
+                from finance.redsys_utils import get_redsys_client
+                from finance.models import ClientRedsysToken
+                from finance.views_redsys import generate_order_id
+                
+                redsys_token = client.redsys_tokens.first()
+                redsys_client = get_redsys_client(gym)
+                
+                if redsys_client and redsys_token:
+                    redsys_order_id = generate_order_id()
+                    success, result = redsys_client.charge_request(
+                        redsys_order_id, amount, redsys_token.token, f"Deferred Order {order.id}"
+                    )
+                    if success:
+                        method = PaymentMethod.objects.filter(gym=gym, name__icontains='redsys').first()
+                        if not method:
+                            method = PaymentMethod.objects.filter(gym=gym, name__icontains='tarjeta').first()
+                        if not method:
+                            method = PaymentMethod.objects.filter(gym=gym, is_active=True).first()
+                        
+                        OrderPayment.objects.create(
+                            order=order,
+                            payment_method=method,
+                            amount=amount,
+                            transaction_id=redsys_order_id,
+                            gateway_used='REDSYS'
+                        )
+                        order.status = 'PAID'
+                        order.save()
+                        return JsonResponse({'success': True, 'message': 'Cobro automático realizado correctamente (Redsys)'})
+                    else:
+                        return JsonResponse({'error': f'Error en cobro Redsys: {result}'}, status=400)
+        
+        # If no auto-charge or auto-charge failed, mark as PENDING for manual
+        order.status = 'PENDING'
+        order.save()
+        return JsonResponse({
+            'success': True, 
+            'message': 'Venta marcada como pendiente. Complete el cobro manualmente.',
+            'requires_manual': True,
+            'redirect_url': f'/sales/pos/?order_id={order.id}'
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@require_gym_permission('sales.change_sale')
+def deferred_order_cancel(request, order_id):
+    """
+    Cancel a deferred order.
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym, status='DEFERRED')
+    
+    try:
+        order.status = 'CANCELLED'
+        order.internal_notes += f" | Venta diferida cancelada el {date.today().strftime('%d/%m/%Y')}"
+        order.save()
+        
+        return JsonResponse({'success': True, 'message': 'Venta diferida cancelada correctamente'})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ============================================
+# Subscription Cancellation API
+# ============================================
+
+@require_http_methods(["POST"])
+@require_gym_permission('sales.change_sale')
+def subscription_cancel(request, pk):
+    """
+    Cancel a subscription (ClientMembership).
+    
+    Two modes:
+    - skip_period: Only skip the next billing period (keeps membership active but extends date)
+    - full_cancel: Cancel membership completely and deactivate client
+    
+    SECURITY: Validates membership belongs to the authenticated user's gym.
+    """
+    import json
+    from clients.models import ClientMembership
+    
+    gym = request.gym
+    membership = get_object_or_404(ClientMembership, pk=pk, client__gym=gym)
+    client = membership.client
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        cancel_type = data.get('cancel_type', '')
+        
+        if cancel_type not in ['skip_period', 'full_cancel']:
+            return JsonResponse({'error': 'Tipo de cancelación inválido'}, status=400)
+        
+        if cancel_type == 'skip_period':
+            # Skip only the next billing period
+            # Extend the end_date by one billing cycle without charging
+            from memberships.models import MembershipPlan
+            from dateutil.relativedelta import relativedelta
+            
+            plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
+            
+            if plan:
+                if plan.frequency_unit == 'MONTH':
+                    delta = relativedelta(months=plan.frequency_amount)
+                elif plan.frequency_unit == 'YEAR':
+                    delta = relativedelta(years=plan.frequency_amount)
+                elif plan.frequency_unit == 'WEEK':
+                    delta = relativedelta(weeks=plan.frequency_amount)
+                elif plan.frequency_unit == 'DAY':
+                    delta = timedelta(days=plan.frequency_amount)
+                else:
+                    delta = relativedelta(months=1)
+            else:
+                # Default to 1 month if plan not found
+                delta = relativedelta(months=1)
+            
+            # Extend end_date (skip period)
+            if membership.end_date:
+                membership.end_date += delta
+            else:
+                membership.end_date = date.today() + delta
+            
+            # Add note about skipped period
+            if not membership.notes:
+                membership.notes = ''
+            membership.notes += f"\n[{date.today().strftime('%d/%m/%Y')}] Periodo saltado - próximo cobro: {membership.end_date.strftime('%d/%m/%Y')}"
+            membership.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Próximo periodo cancelado. Nueva fecha de cobro: {membership.end_date.strftime("%d/%m/%Y")}',
+                'new_end_date': str(membership.end_date)
+            })
+            
+        elif cancel_type == 'full_cancel':
+            # Full cancellation - deactivate membership and optionally deactivate client
+            
+            # Mark membership as inactive
+            membership.is_active = False
+            membership.end_date = date.today()
+            if not membership.notes:
+                membership.notes = ''
+            membership.notes += f"\n[{date.today().strftime('%d/%m/%Y')}] Membresía CANCELADA y cliente dado de baja"
+            membership.save()
+            
+            # Deactivate the client
+            client.is_active = False
+            if not client.notes:
+                client.notes = ''
+            client.notes += f"\n[{date.today().strftime('%d/%m/%Y')}] Dado de baja - Membresía cancelada: {membership.name}"
+            client.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Membresía "{membership.name}" cancelada y cliente dado de baja',
+                'membership_deactivated': True,
+                'client_deactivated': True
+            })
+            
     except Exception as e:
         import traceback
         traceback.print_exc()

@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.text import slugify
 from datetime import time
 
 
@@ -21,6 +22,7 @@ class Franchise(models.Model):
 
 class Gym(models.Model):
     name = models.CharField(max_length=200, help_text="Nombre interno/sistema")
+    slug = models.SlugField(max_length=200, unique=True, blank=True, help_text="URL amigable (se genera automáticamente)")
     
     # Branding
     commercial_name = models.CharField(max_length=200, blank=True, help_text="Nombre Comercial (Público)")
@@ -104,6 +106,17 @@ class Gym(models.Model):
 
     class Meta:
         unique_together = ("franchise", "name")  # nombre único dentro de una franquicia
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.commercial_name or self.name)
+            slug = base_slug
+            counter = 1
+            while Gym.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.commercial_name or self.name

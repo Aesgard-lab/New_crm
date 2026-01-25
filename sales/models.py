@@ -12,6 +12,7 @@ class Order(models.Model):
         ('PENDING', _('Pendiente')),
         ('PAID', _('Pagado')),
         ('CANCELLED', _('Cancelado')),
+        ('DEFERRED', _('Diferido')),
     )
     
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='orders')
@@ -31,6 +32,15 @@ class Order(models.Model):
     total_tax = models.DecimalField(_("Total Impuestos"), max_digits=10, decimal_places=2, default=0.00)
     total_discount = models.DecimalField(_("Total Descuento"), max_digits=10, decimal_places=2, default=0.00)
     total_amount = models.DecimalField(_("Total Venta"), max_digits=10, decimal_places=2, default=0.00)
+    total_refunded = models.DecimalField(_("Total Devuelto"), max_digits=10, decimal_places=2, default=0.00)
+    
+    # Deferred Payment Fields (Cobro Diferido)
+    scheduled_payment_date = models.DateField(_("Fecha Pago Programado"), null=True, blank=True,
+        help_text=_("Fecha en que se debe cobrar esta venta diferida"))
+    auto_charge = models.BooleanField(_("Cobro Automático"), default=False,
+        help_text=_("Si está activo, se intentará cobrar automáticamente en la fecha programada"))
+    deferred_notes = models.TextField(_("Notas del Diferido"), blank=True,
+        help_text=_("Razón o comentarios sobre por qué se difirió el pago"))
     
     internal_notes = models.TextField(_("Nota Interna"), blank=True)
     invoice_number = models.CharField(_("Número de Factura"), max_length=50, blank=True, null=True, unique=True)
@@ -44,6 +54,30 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Ticket #{self.pk} - {self.total_amount}€"
+    
+    @property
+    def refundable_amount(self):
+        """Cantidad máxima que se puede devolver (total - ya devuelto)."""
+        return max(self.total_amount - self.total_refunded, 0)
+    
+    @property
+    def is_fully_refunded(self):
+        """Si la orden está completamente devuelta."""
+        return self.total_refunded >= self.total_amount
+    
+    @property
+    def has_partial_refund(self):
+        """Si la orden tiene alguna devolución parcial."""
+        return self.total_refunded > 0 and self.total_refunded < self.total_amount
+    
+    def update_refund_total(self):
+        """Recalcula el total devuelto desde las devoluciones completadas."""
+        from django.db.models import Sum
+        total = self.refunds.filter(status='COMPLETED').aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        self.total_refunded = total
+        self.save(update_fields=['total_refunded'])
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
@@ -82,3 +116,65 @@ class OrderPayment(models.Model):
 
     def __str__(self):
         return f"{self.payment_method.name}: {self.amount}€"
+    
+    @property
+    def refundable_amount(self):
+        """Cantidad que aún se puede devolver de este pago."""
+        refunded = self.refunds.filter(status='COMPLETED').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        return max(self.amount - refunded, 0)
+
+
+class OrderRefund(models.Model):
+    """Modelo para trackear devoluciones parciales o totales."""
+    
+    STATUS_CHOICES = [
+        ('PENDING', _('Pendiente')),
+        ('COMPLETED', _('Completado')),
+        ('FAILED', _('Fallido')),
+    ]
+    
+    GATEWAY_CHOICES = [
+        ('NONE', _('Manual')),
+        ('STRIPE', _('Stripe')),
+        ('REDSYS', _('Redsys')),
+    ]
+    
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='refunds')
+    payment = models.ForeignKey(
+        OrderPayment, on_delete=models.SET_NULL, 
+        null=True, blank=True, related_name='refunds',
+        help_text=_("Pago específico que se devuelve (si aplica)")
+    )
+    
+    amount = models.DecimalField(_("Cantidad Devuelta"), max_digits=10, decimal_places=2)
+    reason = models.CharField(_("Motivo"), max_length=255, blank=True)
+    notes = models.TextField(_("Notas internas"), blank=True)
+    refund_method_name = models.CharField(_("Método de Devolución"), max_length=100, blank=True,
+        help_text=_("Nombre del método usado para la devolución (manual)"))
+    
+    status = models.CharField(_("Estado"), max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    gateway = models.CharField(_("Pasarela"), max_length=20, choices=GATEWAY_CHOICES, default='NONE')
+    gateway_refund_id = models.CharField(_("ID Reembolso Pasarela"), max_length=255, blank=True, null=True)
+    error_message = models.TextField(_("Mensaje de Error"), blank=True)
+    
+    # Orden negativa creada para contabilidad (si accounting_mode='negative')
+    negative_order = models.ForeignKey(
+        'Order', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='refund_source', help_text=_("Orden con importe negativo creada para esta devolución")
+    )
+    
+    created_at = models.DateTimeField(_("Fecha"), auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, 
+        related_name='created_refunds'
+    )
+    
+    class Meta:
+        verbose_name = _("Devolución")
+        verbose_name_plural = _("Devoluciones")
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Devolución #{self.pk} - {self.amount}€ ({self.get_status_display()})"

@@ -18,6 +18,7 @@ django-celery-results>=2.5.0
 # API & Forms
 djangorestframework>=3.14.0
 django-cors-headers>=4.0.0
+drf-spectacular>=0.27.0
 
 # Payment Processing
 stripe>=7.0.0
@@ -41,6 +42,9 @@ whitenoise>=6.0.0
 gunicorn>=22.0.0
 uvicorn[standard]>=0.27.0
 django-redis>=5.4.0
+
+# Monitoring & Error Tracking
+sentry-sdk[django,celery]>=2.0.0
 
 # Utils
 pyyaml>=6.0.0

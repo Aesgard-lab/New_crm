@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import portal_views
 from . import review_views
+from . import advance_payment_views
 
 urlpatterns = [
     # Duplicate clients and merging
@@ -29,6 +30,8 @@ urlpatterns = [
     path('profile/toggle-email-notifications/', portal_views.portal_toggle_email_notifications, name='portal_toggle_email_notifications'),
     path('profile/cards/', portal_views.portal_payment_methods, name='portal_payment_methods'),
     path('profile/cards/setup-intent/', portal_views.portal_get_stripe_setup, name='portal_get_stripe_setup'),
+    path('profile/cards/redsys-setup/', portal_views.portal_get_redsys_setup, name='portal_get_redsys_setup'),
+    path('profile/cards/redsys-callback/', portal_views.portal_redsys_tokenization_callback, name='portal_redsys_tokenization_callback'),
     path('profile/cards/<str:pm_id>/delete/', portal_views.portal_delete_payment_method, name='portal_delete_payment_method'),
     
     # Routines
@@ -49,6 +52,9 @@ urlpatterns = [
     # Shop / Tienda
     path('shop/', portal_views.portal_shop, name='portal_shop'),
     
+    # Notifications
+    path('notifications/', portal_views.portal_notifications, name='portal_notifications'),
+    
     # Chat
     path('chat/', portal_views.portal_chat, name='portal_chat'),
     path('chat/send/', portal_views.portal_chat_send, name='portal_chat_send'),
@@ -62,6 +68,10 @@ urlpatterns = [
     path('billing/', portal_views.portal_billing, name='portal_billing'),
     path('billing/pay/', portal_views.portal_process_payment, name='portal_pay_next'),
     path('billing/pay/<int:payment_id>/', portal_views.portal_process_payment, name='portal_retry_payment'),
+    
+    # Advance Payment
+    path('advance-payment/', advance_payment_views.advance_payment_view, name='portal_advance_payment'),
+    path('advance-payment/process/', advance_payment_views.process_advance_payment, name='portal_process_advance_payment'),
 
     # API
     path('api/popup/<int:popup_id>/read/', portal_views.portal_mark_popup_read, name='portal_mark_popup_read'),

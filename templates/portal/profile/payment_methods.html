@@ -1,7 +1,8 @@
-{% extends "portal/base.html" %}
+﻿{% extends "portal/base.html" %}
 {% block title %}Mis Tarjetas{% endblock %}
 {% block content %}
 <div class="space-y-6" x-data="cardManager()">
+    <!-- Header -->
     <div class="card-modern">
         <div class="flex items-center justify-between mb-4">
             <div>
@@ -11,93 +12,247 @@
             <a href="{% url 'portal_profile' %}" class="text-sm text-slate-500 hover:text-slate-700">Volver</a>
         </div>
 
-        {% if cards %}
+        <!-- Tarjetas guardadas -->
+        {% if stripe_cards or redsys_tokens %}
         <div class="space-y-3">
-            {% for card in cards %}
+            <!-- Tarjetas Stripe -->
+            {% for card in stripe_cards %}
             <div class="p-4 border border-slate-200 rounded-2xl flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                        {{ card.card.brand|upper|default:"CARD" }}
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                        {{ card.card.brand|upper|slice:":4"|default:"CARD" }}
                     </div>
                     <div>
-                        <p class="font-semibold text-slate-800">**** **** **** {{ card.card.last4 }}</p>
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-slate-800">**** **** **** {{ card.card.last4 }}</p>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Stripe</span>
+                        </div>
                         <p class="text-xs text-slate-500">Caduca {{ card.card.exp_month }}/{{ card.card.exp_year }}</p>
                     </div>
                 </div>
                 {% if allow_delete %}
-                <button @click="deleteCard('{{ card.id }}')" class="text-sm font-semibold text-red-600 hover:text-red-700">Eliminar</button>
+                <button @click="deleteCard('{{ card.id }}')" class="text-sm font-semibold text-red-600 hover:text-red-700">
+                    Eliminar
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <!-- Tokens Redsys -->
+            {% for token in redsys_tokens %}
+            <div class="p-4 border border-slate-200 rounded-2xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                        {{ token.card_brand|upper|slice:":4"|default:"CARD" }}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-slate-800">{{ token.card_number }}</p>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Redsys</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Caduca {{ token.expiration }}</p>
+                    </div>
+                </div>
+                {% if allow_delete %}
+                <button @click="deleteCard('{{ token.id }}')" class="text-sm font-semibold text-red-600 hover:text-red-700">
+                    Eliminar
+                </button>
                 {% endif %}
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-sm text-slate-500">No tienes tarjetas guardadas.</p>
+        <div class="text-center py-8">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
+                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+            </div>
+            <p class="text-sm font-medium text-slate-900 mb-1">Sin tarjetas guardadas</p>
+            <p class="text-xs text-slate-500">Añade una tarjeta para facilitar tus pagos</p>
+        </div>
         {% endif %}
     </div>
 
-    <div class="card-modern" x-show="!isAdding">
-        <button @click="startAdd()"
-            class="w-full text-left">
-            <div class="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-gradient-to-r from-slate-50 to-white">
-                <div class="absolute -right-8 -top-6 w-32 h-32 bg-[var(--brand-color)]/10 rounded-full blur-2xl"></div>
-                <div class="p-4 flex items-center gap-3 relative">
-                    <div class="w-12 h-12 rounded-xl bg-[var(--brand-color)] text-white flex items-center justify-center shadow-md">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m3 0h6m-6 0a3 3 0 11-6 0 3 3 0 016 0zm-6 0v3a2 2 0 002 2h10a2 2 0 002-2v-3"></path>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm text-slate-500">Método de pago</p>
-                        <p class="text-base font-semibold text-slate-900">Añadir tarjeta</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-xl bg-[var(--brand-color)]/10 flex items-center justify-center text-[var(--brand-color)]">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
+    <!-- Botón añadir tarjeta (selector de pasarela si CLIENT_CHOICE) -->
+    <div x-show="!isAdding">
+        {% if show_choice %}
+        <!-- Mostrar selector de pasarela -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% if show_stripe %}
+            <button @click="startAdd('stripe')" class="card-modern hover:shadow-lg transition-shadow">
+                <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-blue-50 to-white">
+                    <div class="absolute -right-8 -top-6 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
+                    <div class="p-4 flex items-center gap-3 relative">
+                        <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1 text-left">
+                            <p class="text-sm text-slate-500">Añadir con</p>
+                            <p class="text-base font-semibold text-slate-900">Stripe</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </button>
+            </button>
+            {% endif %}
+
+            {% if show_redsys %}
+            <button @click="startAdd('redsys')" class="card-modern hover:shadow-lg transition-shadow">
+                <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-red-50 to-white">
+                    <div class="absolute -right-8 -top-6 w-32 h-32 bg-red-500/10 rounded-full blur-2xl"></div>
+                    <div class="p-4 flex items-center gap-3 relative">
+                        <div class="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1 text-left">
+                            <p class="text-sm text-slate-500">Añadir con</p>
+                            <p class="text-base font-semibold text-slate-900">Redsys</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-red-600/10 flex items-center justify-center text-red-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </button>
+            {% endif %}
+        </div>
+        {% else %}
+        <!-- Botón único según configuración -->
+        <div class="card-modern">
+            <button @click="startAdd('{{ show_stripe|yesno:'stripe,redsys' }}')" class="w-full text-left">
+                <div class="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-gradient-to-r from-slate-50 to-white hover:shadow-lg transition-shadow">
+                    <div class="absolute -right-8 -top-6 w-32 h-32 bg-[var(--brand-color)]/10 rounded-full blur-2xl"></div>
+                    <div class="p-4 flex items-center gap-3 relative">
+                        <div class="w-12 h-12 rounded-xl bg-[var(--brand-color)] text-white flex items-center justify-center shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm text-slate-500">Método de pago</p>
+                            <p class="text-base font-semibold text-slate-900">Añadir tarjeta</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-[var(--brand-color)]/10 flex items-center justify-center text-[var(--brand-color)]">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </button>
+        </div>
+        {% endif %}
     </div>
 
-    <div class="card-modern space-y-3" x-show="isAdding">
-        <h3 class="font-semibold text-slate-800">Añadir tarjeta</h3>
-        <div id="payment-element" class="min-h-[60px]"></div>
-        <p class="text-xs text-slate-500">Guardaremos esta tarjeta para próximos cobros.</p>
+    <!-- Formulario Stripe -->
+    <div class="card-modern space-y-4" x-show="isAdding && selectedGateway === 'stripe'">
+        <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-slate-800">Añadir tarjeta - Stripe</h3>
+            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Secure</span>
+        </div>
+        <div id="stripe-payment-element" class="min-h-[60px] border border-slate-200 rounded-xl"></div>
+        <p class="text-xs text-slate-500">
+            <svg class="w-4 h-4 inline text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+            Tus datos están protegidos con encriptación de nivel bancario
+        </p>
         <div class="flex gap-2">
-            <button @click="confirmCard()" class="flex-1 bg-[var(--brand-color)] text-white font-bold py-3 rounded-xl" x-text="isSubmitting ? 'Guardando...' : 'Guardar tarjeta'"></button>
-            <button @click="cancelAdd()" class="px-4 py-3 rounded-xl border border-slate-200 text-slate-600">Cancelar</button>
+            <button @click="confirmStripe()" :disabled="isSubmitting" 
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-bold py-3 rounded-xl transition-colors" 
+                    x-text="isSubmitting ? 'Guardando...' : 'Guardar tarjeta'">
+            </button>
+            <button @click="cancelAdd()" :disabled="isSubmitting" 
+                    class="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                Cancelar
+            </button>
+        </div>
+        <p class="text-sm text-red-600" x-show="error" x-text="error"></p>
+    </div>
+
+    <!-- Formulario Redsys -->
+    <div class="card-modern space-y-4" x-show="isAdding && selectedGateway === 'redsys'">
+        <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-slate-800">Añadir tarjeta - Redsys</h3>
+            <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">Secure</span>
+        </div>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+            <div class="flex gap-2">
+                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+                <div>
+                    <p class="font-semibold mb-1">Tokenización Redsys</p>
+                    <p class="text-xs">Serás redirigido a la pasarela de pago segura de tu banco. Autorizaremos un cargo simbólico de 0.10€ que será reembolsado automáticamente.</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button @click="initiateRedsysSetup()" :disabled="isSubmitting" 
+                    class="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-slate-400 text-white font-bold py-3 rounded-xl transition-colors" 
+                    x-text="isSubmitting ? 'Procesando...' : 'Continuar a Redsys'">
+            </button>
+            <button @click="cancelAdd()" :disabled="isSubmitting" 
+                    class="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                Cancelar
+            </button>
         </div>
         <p class="text-sm text-red-600" x-show="error" x-text="error"></p>
     </div>
 </div>
 
+{% if show_stripe %}
 <script src="https://js.stripe.com/v3/"></script>
+{% endif %}
+
 <script>
 function cardManager() {
     return {
         isAdding: false,
         isSubmitting: false,
+        selectedGateway: '',
         error: '',
         stripe: null,
-        elements: null,
-        startAdd() {
+        stripeElements: null,
+
+        startAdd(gateway) {
             this.isAdding = true;
+            this.selectedGateway = gateway;
             this.error = '';
-            if (!this.stripe) {
-                this.stripe = Stripe('{{ stripe_public_key }}');
+            
+            if (gateway === 'stripe') {
+                this.(() => {
+                    if (!this.stripe) {
+                        this.stripe = Stripe('{{ stripe_public_key }}');
+                    }
+                    this.loadStripeSetupIntent();
+                });
             }
-            this.loadSetupIntent();
         },
+
         cancelAdd() {
             this.isAdding = false;
+            this.selectedGateway = '';
             this.error = '';
-            if (this.elements) {
-                this.elements = null;
-                document.getElementById('payment-element').innerHTML = '';
+            if (this.stripeElements) {
+                this.stripeElements = null;
+                const el = document.getElementById('stripe-payment-element');
+                if (el) el.innerHTML = '';
             }
         },
-        async loadSetupIntent() {
+
+        async loadStripeSetupIntent() {
             try {
                 const res = await fetch('{% url "portal_get_stripe_setup" %}');
                 const data = await res.json();
@@ -105,52 +260,89 @@ function cardManager() {
                     this.error = data.error || 'No se pudo iniciar el guardado.';
                     return;
                 }
-                const appearance = { theme: 'stripe' };
-                this.elements = this.stripe.elements({ clientSecret: data.client_secret, appearance });
-                const paymentElement = this.elements.create('payment');
-                paymentElement.mount('#payment-element');
+                const appearance = { 
+                    theme: 'stripe',
+                    variables: { colorPrimary: '#3b82f6' }
+                };
+                this.stripeElements = this.stripe.elements({ 
+                    clientSecret: data.client_secret, 
+                    appearance 
+                });
+                const paymentElement = this.stripeElements.create('payment');
+                paymentElement.mount('#stripe-payment-element');
             } catch (e) {
+                console.error(e);
                 this.error = 'Error de red al iniciar la tarjeta.';
             }
         },
-        async confirmCard() {
+
+        async confirmStripe() {
             if (this.isSubmitting) return;
             this.isSubmitting = true;
             this.error = '';
             try {
                 const { error } = await this.stripe.confirmSetup({
-                    elements: this.elements,
+                    elements: this.stripeElements,
                     confirmParams: { return_url: window.location.href },
                     redirect: 'if_required'
                 });
                 if (error) {
                     this.error = error.message || 'No se pudo guardar la tarjeta.';
+                    this.isSubmitting = false;
                 } else {
                     window.location.reload();
                 }
             } catch (e) {
+                console.error(e);
                 this.error = 'Error al guardar la tarjeta.';
-            } finally {
                 this.isSubmitting = false;
             }
         },
-        async deleteCard(id) {
-            if (!confirm('¿Eliminar esta tarjeta?')) return;
+
+        async initiateRedsysSetup() {
+            if (this.isSubmitting) return;
+            this.isSubmitting = true;
+            this.error = '';
+            
             try {
-                const res = await fetch(`{% url 'portal_delete_payment_method' 'pm_placeholder' %}`.replace('pm_placeholder', id), {
+                const res = await fetch('{% url "portal_get_redsys_setup" %}');
+                const data = await res.json();
+                if (!res.ok) {
+                    this.error = data.error || 'No se pudo iniciar la tokenización.';
+                    this.isSubmitting = false;
+                    return;
+                }
+                // Redirigir a la pasarela de Redsys
+                window.location.href = data.redirect_url;
+            } catch (e) {
+                console.error(e);
+                this.error = 'Error de red al iniciar Redsys.';
+                this.isSubmitting = false;
+            }
+        },
+
+        async deleteCard(id) {
+            if (!confirm('¿Seguro que quieres eliminar esta tarjeta?')) return;
+            try {
+                const res = await fetch({% url 'portal_delete_payment_method' 'PLACEHOLDER' %}.replace('PLACEHOLDER', id), {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': this.getCsrfToken() }
+                    headers: { 
+                        'X-CSRFToken': this.getCsrfToken(),
+                        'Content-Type': 'application/json'
+                    }
                 });
                 const data = await res.json();
                 if (res.ok) {
                     window.location.reload();
                 } else {
-                    alert(data.error || 'No se pudo eliminar.');
+                    alert(data.error || 'No se pudo eliminar la tarjeta.');
                 }
             } catch (e) {
+                console.error(e);
                 alert('Error de red al eliminar.');
             }
         },
+
         getCsrfToken() {
             const match = document.cookie.match(/csrftoken=([^;]+)/);
             return match ? match[1] : '';

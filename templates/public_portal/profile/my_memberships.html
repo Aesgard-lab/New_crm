@@ -1,0 +1,248 @@
+{% extends 'public_portal/base.html' %}
+{% load static %}
+
+{% block title %}Mis Membresías - {{ gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --brand-color: {{ settings.primary_color|default:'#6366f1' }};
+    }
+    .brand-bg { background-color: var(--brand-color); }
+    .brand-text { color: var(--brand-color); }
+    
+    .membership-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-left: 4px solid transparent;
+    }
+    
+    .membership-card.active {
+        border-left-color: #22c55e;
+    }
+    
+    .membership-card.expired {
+        border-left-color: #ef4444;
+        opacity: 0.7;
+    }
+    
+    .membership-card.paused {
+        border-left-color: #f59e0b;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-expired { background: #fee2e2; color: #991b1b; }
+    .status-paused { background: #fef3c7; color: #92400e; }
+    .status-pending { background: #e0e7ff; color: #4338ca; }
+    .status-cancelled { background: #f3f4f6; color: #6b7280; }
+    
+    .progress-bar {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: var(--brand-color);
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'public_client_profile' slug=settings.public_slug %}" class="p-2 bg-white rounded-xl shadow">
+            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-slate-900">Mis Membresías</h1>
+    </div>
+    
+    <!-- Lista de membresías -->
+    {% if memberships %}
+        {% for membership in memberships %}
+        <div class="membership-card {% if membership.status == 'ACTIVE' %}active{% elif membership.status == 'EXPIRED' or membership.status == 'CANCELLED' %}expired{% elif membership.status == 'PAUSED' %}paused{% endif %}">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-900">{{ membership.name }}</h3>
+                    {% if membership.plan %}
+                    <p class="text-sm text-slate-500">{{ membership.plan.get_frequency_display_custom }}</p>
+                    {% endif %}
+                </div>
+                <span class="status-badge 
+                    {% if membership.status == 'ACTIVE' %}status-active
+                    {% elif membership.status == 'EXPIRED' %}status-expired
+                    {% elif membership.status == 'PAUSED' %}status-paused
+                    {% elif membership.status == 'PENDING' or membership.status == 'PENDING_PAYMENT' %}status-pending
+                    {% else %}status-cancelled{% endif %}">
+                    {{ membership.get_status_display }}
+                </span>
+            </div>
+            
+            <!-- Fechas -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Fecha inicio</div>
+                    <div class="font-medium text-slate-900">{{ membership.start_date|date:"d M, Y" }}</div>
+                </div>
+                {% if membership.end_date %}
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Fecha fin</div>
+                    <div class="font-medium text-slate-900">{{ membership.end_date|date:"d M, Y" }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Sesiones (si aplica) -->
+            {% if membership.sessions_total %}
+            <div class="bg-slate-50 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-slate-600">Sesiones utilizadas</span>
+                    <span class="font-bold text-slate-900">{{ membership.sessions_used }}/{{ membership.sessions_total }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ membership.usage_percentage|default:0 }}%"></div>
+                </div>
+                {% if membership.sessions_remaining != None %}
+                <div class="text-center mt-2 text-sm text-slate-500">
+                    {{ membership.sessions_remaining }} sesiones restantes
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- Próximo cobro (si es recurrente) -->
+            {% if membership.is_recurring and membership.next_billing_date and membership.status == 'ACTIVE' %}
+            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div class="text-sm text-slate-500">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Próximo cobro
+                </div>
+                <div class="font-semibold text-slate-900">{{ membership.next_billing_date|date:"d M, Y" }}</div>
+            </div>
+            {% endif %}
+            
+            <!-- Precio -->
+            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-slate-500">Precio</span>
+                <span class="font-bold text-xl brand-text">{{ membership.price|floatformat:2 }}€</span>
+            </div>
+            
+            <!-- Acciones según estado de la membresía -->
+            {% if membership.status == 'PENDING_PAYMENT' or membership.status == 'PENDING' %}
+            <!-- Membresía pendiente de pago -->
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-amber-800 text-sm">Pago pendiente</p>
+                            <p class="text-xs text-amber-700 mt-1">Para activar tu membresía necesitas completar el pago.</p>
+                            {% if has_payment_method %}
+                            <a href="{% url 'public_checkout_membership' slug=settings.public_slug membership_id=membership.id %}"
+                                class="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white shadow hover:bg-amber-700 active:scale-95 transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                </svg>
+                                Pagar Ahora
+                            </a>
+                            {% else %}
+                            <div class="mt-3 space-y-2">
+                                <p class="text-xs text-amber-600 font-medium">No tienes tarjeta vinculada. Puedes:</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <a href="{% url 'public_payment_methods' slug=settings.public_slug %}"
+                                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-white text-amber-700 border border-amber-300 hover:bg-amber-50 active:scale-95 transition-all">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Añadir Tarjeta
+                                    </a>
+                                    <span class="inline-flex items-center px-3 py-2 rounded-lg text-xs text-amber-600 bg-white border border-amber-200">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                        </svg>
+                                        O paga en recepción
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% elif membership.status == 'ACTIVE' and membership.is_recurring and allow_pay_next_fee %}
+            <!-- Membresía activa con opción de adelantar cobro -->
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white relative overflow-hidden">
+                    <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10 blur-xl"></div>
+                    <div class="flex items-start gap-3 relative z-10">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-sm">¿Quieres adelantar el cobro?</p>
+                            <p class="text-xs text-white/80 mt-1">Paga ahora tu próxima cuota y extiende tu membresía un mes más.</p>
+                            {% if has_payment_method %}
+                            <a href="{% url 'public_advance_payment' slug=settings.public_slug %}"
+                                class="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white text-green-600 shadow hover:scale-[1.02] active:scale-95 transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                </svg>
+                                Adelantar Pago
+                            </a>
+                            {% else %}
+                            <div class="mt-3">
+                                <p class="text-xs text-white/70 mb-2">Para adelantar el cobro necesitas una tarjeta vinculada:</p>
+                                <a href="{% url 'public_payment_methods' slug=settings.public_slug %}"
+                                    class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-white/20 text-white hover:bg-white/30 active:scale-95 transition-all">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Añadir Tarjeta
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">💳</div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Sin membresías</h3>
+            <p class="text-slate-500 mb-6">No tienes membresías activas</p>
+            <a href="{% url 'public_pricing' slug=settings.public_slug %}" class="inline-block px-6 py-3 brand-bg text-white font-bold rounded-xl">
+                Ver Planes
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -66,13 +66,42 @@ def settings_view(request):
 def client_app_settings(request):
     gym = request.gym
     finance_settings, _ = FinanceSettings.objects.get_or_create(gym=gym)
+    
+    # Obtener o crear PublicPortalSettings
+    from organizations.models import PublicPortalSettings
+    portal_settings, _ = PublicPortalSettings.objects.get_or_create(
+        gym=gym,
+        defaults={'public_slug': gym.name.lower().replace(' ', '-')[:50]}
+    )
+    
+    # Obtener campos personalizados del cliente
+    from clients.models import ClientField
+    client_fields = ClientField.objects.filter(gym=gym, is_active=True).order_by('display_order', 'name')
 
     if request.method == 'POST':
+        # Guardar configuración de pasarela y permisos
         form = AppSettingsForm(request.POST, instance=finance_settings)
         if form.is_valid():
             form.save()
+        
+        # Guardar configuración de registro
+        if 'save_registration_settings' in request.POST:
+            portal_settings.allow_self_registration = request.POST.get('allow_self_registration') == 'on'
+            portal_settings.require_email_verification = request.POST.get('require_email_verification') == 'on'
+            portal_settings.require_staff_approval = request.POST.get('require_staff_approval') == 'on'
+            portal_settings.save()
+            
+            # Guardar campos seleccionados para registro
+            selected_field_ids = request.POST.getlist('registration_fields')
+            for field in client_fields:
+                field.show_in_registration = str(field.id) in selected_field_ids
+                field.save()
+            
+            messages.success(request, 'Configuración de registro actualizada.')
+        else:
             messages.success(request, 'Ajustes de la app del cliente actualizados.')
-            return redirect('client_app_settings')
+        
+        return redirect('client_app_settings')
     else:
         form = AppSettingsForm(instance=finance_settings)
 
@@ -80,6 +109,8 @@ def client_app_settings(request):
         'title': 'App del Cliente',
         'form': form,
         'finance_settings': finance_settings,
+        'portal_settings': portal_settings,
+        'client_fields': client_fields,
     }
     return render(request, 'backoffice/app/settings.html', context)
 
@@ -307,10 +338,42 @@ def billing_dashboard(request):
             status='ACTIVE'
         ).select_related('client').order_by('-end_date')[:20]  # Show last 20 active memberships
 
+    # 6. Deferred Orders (Ventas Diferidas)
+    deferred_orders = Order.objects.filter(
+        gym=gym,
+        status='DEFERRED',
+        scheduled_payment_date__isnull=False
+    ).select_related('client', 'created_by').order_by('scheduled_payment_date')
+    
+    # Filter by scheduled payment date if range filter provided
+    if scheduled_range == 'today':
+        deferred_orders = deferred_orders.filter(scheduled_payment_date=today)
+    elif scheduled_range == 'week':
+        deferred_orders = deferred_orders.filter(
+            scheduled_payment_date__gte=today,
+            scheduled_payment_date__lte=today + timedelta(days=7)
+        )
+    elif scheduled_range == 'month':
+        deferred_orders = deferred_orders.filter(
+            scheduled_payment_date__gte=today,
+            scheduled_payment_date__lte=scheduled_end
+        )
+
+    # 7. Create a dict of client_id -> deferred orders count for quick lookup in template
+    all_deferred_for_gym = Order.objects.filter(
+        gym=gym,
+        status='DEFERRED',
+        client__isnull=False
+    ).values('client_id').annotate(count=Count('id'))
+    
+    client_deferred_counts = {item['client_id']: item['count'] for item in all_deferred_for_gym}
+
     context = {
         'title': 'Informe de Facturación',
         'orders': orders_qs.order_by('-created_at'), # Pass explicit queryset
         'scheduled_payments': scheduled_payments,
+        'deferred_orders': deferred_orders,
+        'client_deferred_counts': client_deferred_counts,
         'today': today,  # For template date comparisons
         'metrics': {
             'total': aggregates['total_income'] or 0,

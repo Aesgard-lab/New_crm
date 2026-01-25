@@ -21,7 +21,7 @@
       <!-- Superadmin Panel -->
       {% if request.user.is_superuser %}
       <a href="{% url 'superadmin:dashboard' %}"
-        class="flex items-center gap-3 px-4 py-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all group font-medium shadow-md shadow-indigo-200 mb-4">
+        class="flex items-center gap-3 px-4 py-3 btn-brand rounded-xl group font-medium shadow-md mb-4">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
@@ -486,7 +486,7 @@
 
           <!-- Kiosco de Fichaje -->
           <a href="{% url 'staff_kiosk' %}" target="_blank"
-            class="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:text-white hover:bg-blue-500 rounded-lg transition-all group">
+            class="flex items-center gap-2 px-4 py-2 text-sm text-[var(--brand-color)] hover-brand hover:bg-[var(--brand-color)]/10 rounded-lg transition-all group">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">

@@ -20,7 +20,7 @@ def award_xp_for_attendance(sender, instance, created, **kwargs):
         settings = gym.gamification_settings
         if not settings.enabled:
             return
-    except:
+    except AttributeError:
         return
     
     # Obtener o crear progreso del cliente
@@ -56,7 +56,7 @@ def award_xp_for_review(sender, instance, created, **kwargs):
         settings = gym.gamification_settings
         if not settings.enabled:
             return
-    except:
+    except AttributeError:
         return
     
     # Obtener o crear progreso del cliente

@@ -13,7 +13,9 @@
     <meta name="apple-mobile-web-app-title" content="{{ client.gym.name|default:'Mi Gym' }}">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/static/manifest_portal.json">
-    <link rel="apple-touch-icon" href="/static/icons/portal/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-192x192.png">
 
     <title>{% block title %}{{ client.gym.name|default:'Mi Gym' }}{% endblock %}</title>
 
@@ -306,14 +308,14 @@
                 <span class="text-[10px] font-bold" style="color: var(--brand-color);">Check-in</span>
             </a>
 
-            <a href="{% url 'portal_routines' %}"
-                class="flex flex-col items-center gap-0.5 relative {% if 'routine' in request.resolver_match.url_name %}nav-active{% else %}text-slate-400{% endif %}">
+            <a href="{% url 'portal_notifications' %}"
+                class="flex flex-col items-center gap-0.5 relative {% if 'notification' in request.resolver_match.url_name %}nav-active{% else %}text-slate-400{% endif %}">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
                     </path>
                 </svg>
-                <span class="text-[10px] font-bold">Rutinas</span>
+                <span class="text-[10px] font-bold">Avisos</span>
             </a>
 
             <a href="{% url 'portal_documents' %}"
@@ -359,9 +361,9 @@
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js')
-                .then(reg => console.log('SW registered'))
-                .catch(err => console.log('SW failed:', err));
+            navigator.serviceWorker.register('/static/sw-portal.js')
+                .then(reg => console.log('SW Portal registered:', reg.scope))
+                .catch(err => console.log('SW Portal failed:', err));
         }
     </script>
 </body>

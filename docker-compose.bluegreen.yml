@@ -1,0 +1,197 @@
+# Docker Compose for Blue/Green Deployment
+# 
+# Este archivo configura dos entornos (blue y green) para deployments
+# sin downtime.
+
+version: '3.8'
+
+services:
+  # ==================== NGINX LOAD BALANCER ====================
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./staticfiles:/app/staticfiles:ro
+      - ./media:/app/media:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - crm-blue
+      - crm-green
+    networks:
+      - crm-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== BLUE ENVIRONMENT ====================
+  crm-blue:
+    image: ${CRM_IMAGE:-crm:latest}
+    container_name: crm-blue
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - ENVIRONMENT_COLOR=blue
+    env_file:
+      - .env.production
+    volumes:
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./logs:/app/logs
+    expose:
+      - "8000"
+    ports:
+      - "8001:8000"  # Direct access for health checks
+    networks:
+      - crm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==================== GREEN ENVIRONMENT ====================
+  crm-green:
+    image: ${CRM_IMAGE:-crm:latest}
+    container_name: crm-green
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - ENVIRONMENT_COLOR=green
+    env_file:
+      - .env.production
+    volumes:
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./logs:/app/logs
+    expose:
+      - "8000"
+    ports:
+      - "8002:8000"  # Direct access for health checks
+    networks:
+      - crm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==================== CELERY WORKERS ====================
+  celery-blue:
+    image: ${CRM_IMAGE:-crm:latest}
+    container_name: celery-blue
+    command: celery -A config worker -l info
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - ENVIRONMENT_COLOR=blue
+    env_file:
+      - .env.production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - crm-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  celery-green:
+    image: ${CRM_IMAGE:-crm:latest}
+    container_name: celery-green
+    command: celery -A config worker -l info
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - ENVIRONMENT_COLOR=green
+    env_file:
+      - .env.production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - crm-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==================== CELERY BEAT (only one instance) ====================
+  celery-beat:
+    image: ${CRM_IMAGE:-crm:latest}
+    container_name: celery-beat
+    command: celery -A config beat -l info
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+    env_file:
+      - .env.production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - crm-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  # ==================== SHARED SERVICES ====================
+  postgres:
+    image: postgres:15-alpine
+    container_name: crm-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-crm_db}
+      - POSTGRES_USER=${POSTGRES_USER:-crm_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - crm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crm_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: crm-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - crm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  crm-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

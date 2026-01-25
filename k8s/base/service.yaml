@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crm-service
+  namespace: crm
+  labels:
+    app: crm
+spec:
+  type: ClusterIP
+  selector:
+    app: crm
+    component: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: crm
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: crm
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379

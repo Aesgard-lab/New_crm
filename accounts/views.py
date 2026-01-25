@@ -4,11 +4,18 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 
 def login_view(request):
+    print(f"[DEBUG ACCOUNTS LOGIN] Request method: {request.method}")
     if request.method == "POST":
+        print(f"[DEBUG ACCOUNTS LOGIN] POST data: {dict(request.POST)}")
         form = AuthenticationForm(request, data=request.POST)
+        print(f"[DEBUG ACCOUNTS LOGIN] Form is_valid: {form.is_valid()}")
         if form.is_valid():
-            login(request, form.get_user())
+            user = form.get_user()
+            print(f"[DEBUG ACCOUNTS LOGIN] User authenticated: {user.email}")
+            login(request, user)
             return redirect("home")
+        else:
+            print(f"[DEBUG ACCOUNTS LOGIN] Form errors: {form.errors}")
     else:
         form = AuthenticationForm()
     return render(request, "auth/login.html", {"form": form})

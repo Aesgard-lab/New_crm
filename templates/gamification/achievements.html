@@ -22,7 +22,7 @@
                         🏅 Leaderboard
                     </a>
                     <a href="{% url 'admin:gamification_achievement_changelist' %}" 
-                       class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm">
+                       class="btn-brand px-6 py-3">
                         ➕ Crear Logro
                     </a>
                 </div>
@@ -34,32 +34,32 @@
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8 overflow-x-auto">
                     <button @click="activeTab = 'all'" 
-                            :class="activeTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            :class="activeTab === 'all' ? 'border-[var(--brand-color)] text-[var(--brand-color)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         Todos ({{ achievements.count }})
                     </button>
                     <button @click="activeTab = 'ATTENDANCE'" 
-                            :class="activeTab === 'ATTENDANCE' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            :class="activeTab === 'ATTENDANCE' ? 'border-[var(--brand-color)] text-[var(--brand-color)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         💪 Asistencia
                     </button>
                     <button @click="activeTab = 'STREAK'" 
-                            :class="activeTab === 'STREAK' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            :class="activeTab === 'STREAK' ? 'border-[var(--brand-color)] text-[var(--brand-color)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         🔥 Rachas
                     </button>
                     <button @click="activeTab = 'SOCIAL'" 
-                            :class="activeTab === 'SOCIAL' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            :class="activeTab === 'SOCIAL' ? 'border-[var(--brand-color)] text-[var(--brand-color)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         🤝 Social
                     </button>
                     <button @click="activeTab = 'REVIEWS'" 
-                            :class="activeTab === 'REVIEWS' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            :class="activeTab === 'REVIEWS' ? 'border-[var(--brand-color)] text-[var(--brand-color)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         ⭐ Reviews
                     </button>
                     <button @click="activeTab = 'SPECIAL'" 
-                            :class="activeTab === 'SPECIAL' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            :class="activeTab === 'SPECIAL' ? 'border-[var(--brand-color)] text-[var(--brand-color)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         🌟 Especiales
                     </button>
@@ -82,7 +82,7 @@
                                 </div>
                             </div>
                             <a href="{% url 'admin:gamification_achievement_change' achievement.id %}" 
-                               class="text-gray-400 hover:text-blue-600 transition-colors">
+                               class="text-gray-400 hover-brand transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>

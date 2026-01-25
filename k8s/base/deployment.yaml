@@ -1,0 +1,174 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crm-web
+  namespace: crm
+  labels:
+    app: crm
+    component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: crm
+      component: web
+  template:
+    metadata:
+      labels:
+        app: crm
+        component: web
+    spec:
+      serviceAccountName: crm-service-account
+      containers:
+        - name: web
+          image: crm:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: crm-config
+            - secretRef:
+                name: crm-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health/live/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: static-files
+              mountPath: /app/staticfiles
+            - name: media-files
+              mountPath: /app/media
+      volumes:
+        - name: static-files
+          emptyDir: {}
+        - name: media-files
+          persistentVolumeClaim:
+            claimName: crm-media-pvc
+      initContainers:
+        - name: collectstatic
+          image: crm:latest
+          command: ["python", "manage.py", "collectstatic", "--noinput"]
+          envFrom:
+            - configMapRef:
+                name: crm-config
+            - secretRef:
+                name: crm-secrets
+          volumeMounts:
+            - name: static-files
+              mountPath: /app/staticfiles
+        - name: migrate
+          image: crm:latest
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          envFrom:
+            - configMapRef:
+                name: crm-config
+            - secretRef:
+                name: crm-secrets
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crm-celery-worker
+  namespace: crm
+  labels:
+    app: crm
+    component: celery-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: crm
+      component: celery-worker
+  template:
+    metadata:
+      labels:
+        app: crm
+        component: celery-worker
+    spec:
+      serviceAccountName: crm-service-account
+      containers:
+        - name: celery-worker
+          image: crm:latest
+          command: ["celery", "-A", "config", "worker", "-l", "info"]
+          envFrom:
+            - configMapRef:
+                name: crm-config
+            - secretRef:
+                name: crm-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - config
+                - inspect
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crm-celery-beat
+  namespace: crm
+  labels:
+    app: crm
+    component: celery-beat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crm
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: crm
+        component: celery-beat
+    spec:
+      serviceAccountName: crm-service-account
+      containers:
+        - name: celery-beat
+          image: crm:latest
+          command: ["celery", "-A", "config", "beat", "-l", "info"]
+          envFrom:
+            - configMapRef:
+                name: crm-config
+            - secretRef:
+                name: crm-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"

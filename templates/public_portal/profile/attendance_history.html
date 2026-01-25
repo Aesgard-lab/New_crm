@@ -1,0 +1,134 @@
+{% extends 'public_portal/base.html' %}
+{% load static %}
+
+{% block title %}Historial de Asistencia - {{ gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --brand-color: {{ settings.primary_color|default:'#6366f1' }};
+    }
+    .brand-bg { background-color: var(--brand-color); }
+    .brand-text { color: var(--brand-color); }
+    
+    .history-card {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .date-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #64748b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'public_client_profile' slug=settings.public_slug %}" class="p-2 bg-white rounded-xl shadow">
+            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-slate-900">Historial de Asistencia</h1>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="showTab('visits')" id="tab-visits" class="tab-btn active px-4 py-2 rounded-xl font-semibold text-sm transition">
+            Check-ins
+        </button>
+        <button onclick="showTab('classes')" id="tab-classes" class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm transition">
+            Clases
+        </button>
+    </div>
+    
+    <!-- Tab: Check-ins -->
+    <div id="content-visits">
+        {% if visits %}
+            {% for visit in visits %}
+            <div class="history-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold text-slate-900">Check-in en {{ gym.name }}</div>
+                        <div class="date-badge mt-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            {{ visit.check_in_date|date:"d M, Y" }} a las {{ visit.check_in_date|time:"H:i" }}
+                        </div>
+                    </div>
+                    <div class="text-3xl">✅</div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">📭</div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Sin registros</h3>
+                <p class="text-slate-500">No hay check-ins registrados todavía</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Tab: Clases -->
+    <div id="content-classes" style="display: none;">
+        {% if class_attendance %}
+            {% for booking in class_attendance %}
+            <div class="history-card">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background-color: {{ booking.session.activity.color }}20">
+                        🏋️
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-semibold text-slate-900">{{ booking.session.activity.name }}</div>
+                        <div class="date-badge mt-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            {{ booking.session.start_datetime|date:"d M, Y" }} a las {{ booking.session.start_datetime|time:"H:i" }}
+                        </div>
+                    </div>
+                    <div class="text-2xl">✅</div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">🧘</div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Sin clases</h3>
+                <p class="text-slate-500">No has asistido a ninguna clase todavía</p>
+                <a href="{% url 'public_schedule' slug=settings.public_slug %}" class="inline-block mt-4 px-6 py-3 brand-bg text-white font-bold rounded-xl">
+                    Ver Horario
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function showTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    
+    document.getElementById('content-visits').style.display = tab === 'visits' ? 'block' : 'none';
+    document.getElementById('content-classes').style.display = tab === 'classes' ? 'block' : 'none';
+}
+</script>
+
+<style>
+    .tab-btn { background: #f1f5f9; color: #64748b; }
+    .tab-btn.active { background: var(--brand-color); color: white; }
+</style>
+{% endblock %}

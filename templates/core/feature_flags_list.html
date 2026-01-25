@@ -1,0 +1,12 @@
+{% if show_debug %}
+<div class="feature-flags-debug" style="position: fixed; bottom: 10px; right: 10px; background: #333; color: #fff; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999; max-width: 300px;">
+    <strong>Feature Flags (Debug)</strong>
+    <ul style="margin: 5px 0; padding-left: 20px;">
+        {% for flag in enabled_flags %}
+        <li>{{ flag }}</li>
+        {% empty %}
+        <li>No flags enabled</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
