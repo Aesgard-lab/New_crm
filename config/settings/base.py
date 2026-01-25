@@ -79,6 +79,7 @@ LOCAL_APPS = [
     "api",
     "access_control",
     "lockers",
+    "facial_checkin.apps.FacialCheckinConfig",  # Reconocimiento facial para check-in
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

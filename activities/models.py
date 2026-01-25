@@ -413,7 +413,9 @@ class AttendanceSettings(models.Model):
     CHECKIN_MODE_CHOICES = [
         ('STAFF_ONLY', _("Solo el staff marca asistencia")),
         ('QR_ENABLED', _("Clientes pueden marcar con QR")),
+        ('FACE_ENABLED', _("Reconocimiento facial habilitado")),
         ('BOTH', _("Ambos métodos disponibles")),
+        ('ALL', _("Todos los métodos (QR, Facial, Staff)")),
     ]
     
     gym = models.OneToOneField(Gym, on_delete=models.CASCADE, related_name='attendance_settings')
@@ -473,6 +475,7 @@ class SessionCheckin(models.Model):
     CHECKIN_METHOD_CHOICES = [
         ('STAFF', _("Marcado por Staff")),
         ('QR', _("Escaneado QR por cliente")),
+        ('FACE', _("Reconocimiento facial")),
         ('APP', _("Desde App del cliente")),
         ('AUTO', _("Automático (reserva previa)")),
     ]

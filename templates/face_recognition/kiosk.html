@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Check-in - {{ gym.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fullscreen kiosk mode */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #111827;
+        }
+        
+        /* Prevent text selection and context menu */
+        * {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        /* Face detection overlay */
+        .face-overlay {
+            position: absolute;
+            border: 3px solid #10B981;
+            border-radius: 50%;
+            width: 280px;
+            height: 350px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        
+        .face-overlay.detecting {
+            border-color: #F59E0B;
+            animation: pulse 1s infinite;
+        }
+        
+        .face-overlay.success {
+            border-color: #10B981;
+            border-width: 5px;
+        }
+        
+        .face-overlay.error {
+            border-color: #EF4444;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Success animation */
+        @keyframes checkmark {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .success-icon {
+            animation: checkmark 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <div id="app" class="h-screen flex flex-col">
+        <!-- Header con logo del gym -->
+        <header class="bg-gray-800 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                {% if gym.logo %}
+                <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-12 w-auto">
+                {% endif %}
+                <h1 class="text-white text-2xl font-bold">{{ gym.name }}</h1>
+            </div>
+            <div class="text-gray-400 text-lg" id="clock"></div>
+        </header>
+
+        <!-- Área principal con cámara -->
+        <main class="flex-1 relative">
+            <!-- Video feed -->
+            <video id="video" autoplay playsinline muted
+                   class="absolute inset-0 w-full h-full object-cover"></video>
+            
+            <!-- Face detection overlay -->
+            <div id="face-overlay" class="face-overlay"></div>
+            
+            <!-- Status message -->
+            <div id="status-container" 
+                 class="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-gray-900 to-transparent">
+                <div class="max-w-lg mx-auto text-center">
+                    <p id="status-message" class="text-white text-3xl font-semibold mb-4">
+                        {{ welcome_message }}
+                    </p>
+                    <p id="status-subtitle" class="text-gray-300 text-xl">
+                        Posiciona tu rostro en el círculo
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Success overlay (hidden by default) -->
+            <div id="success-overlay" class="hidden absolute inset-0 bg-green-600 bg-opacity-90 flex items-center justify-center">
+                <div class="text-center text-white">
+                    <div class="success-icon mb-6">
+                        <svg class="w-32 h-32 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h2 id="welcome-name" class="text-5xl font-bold mb-4">¡Hola!</h2>
+                    <p class="text-2xl opacity-80">Acceso concedido</p>
+                </div>
+            </div>
+            
+            <!-- Error overlay (hidden by default) -->
+            <div id="error-overlay" class="hidden absolute inset-0 bg-red-600 bg-opacity-90 flex items-center justify-center">
+                <div class="text-center text-white">
+                    <svg class="w-24 h-24 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <h2 class="text-4xl font-bold mb-4">No reconocido</h2>
+                    <p class="text-xl opacity-80">Usa tu QR o contacta recepción</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer con opciones alternativas -->
+        <footer class="bg-gray-800 px-6 py-4">
+            <div class="flex justify-center space-x-8">
+                <button onclick="showQRMode()" 
+                        class="flex items-center space-x-2 text-gray-300 hover:text-white text-lg">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                    </svg>
+                    <span>Usar QR</span>
+                </button>
+                <button onclick="callReception()" 
+                        class="flex items-center space-x-2 text-gray-300 hover:text-white text-lg">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>Ayuda</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        const GYM_ID = {{ gym.id }};
+        const API_URL = '/face-recognition/api/kiosk/' + GYM_ID + '/verify/';
+        
+        let video, canvas, ctx;
+        let isProcessing = false;
+        let lastCaptureTime = 0;
+        const CAPTURE_INTERVAL = 1500; // Capturar cada 1.5 segundos
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            video = document.getElementById('video');
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            startCamera();
+            startClock();
+            startDetectionLoop();
+        });
+
+        // Iniciar cámara
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Error de cámara:', err);
+                showStatus('Error de cámara', 'Contacta recepción', 'error');
+            }
+        }
+
+        // Loop de detección
+        function startDetectionLoop() {
+            setInterval(() => {
+                if (!isProcessing && video.readyState === 4) {
+                    const now = Date.now();
+                    if (now - lastCaptureTime >= CAPTURE_INTERVAL) {
+                        captureAndVerify();
+                        lastCaptureTime = now;
+                    }
+                }
+            }, 500);
+        }
+
+        // Capturar y verificar
+        async function captureAndVerify() {
+            isProcessing = true;
+            setOverlayState('detecting');
+            
+            // Capturar frame
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            // Convertir a blob
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('image', blob, 'capture.jpg');
+                
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccess(data.client_name, data.welcome_message);
+                    } else {
+                        // No mostrar error por cada intento fallido, solo resetear
+                        setOverlayState('normal');
+                    }
+                } catch (err) {
+                    console.error('Error de verificación:', err);
+                    setOverlayState('normal');
+                }
+                
+                isProcessing = false;
+            }, 'image/jpeg', 0.8);
+        }
+
+        // Mostrar éxito
+        function showSuccess(name, message) {
+            document.getElementById('welcome-name').textContent = message || `¡Hola ${name}!`;
+            document.getElementById('success-overlay').classList.remove('hidden');
+            setOverlayState('success');
+            
+            // Ocultar después de 3 segundos
+            setTimeout(() => {
+                document.getElementById('success-overlay').classList.add('hidden');
+                setOverlayState('normal');
+                showStatus('{{ welcome_message }}', 'Posiciona tu rostro en el círculo', 'normal');
+            }, 3000);
+        }
+
+        // Mostrar error
+        function showError() {
+            document.getElementById('error-overlay').classList.remove('hidden');
+            setOverlayState('error');
+            
+            setTimeout(() => {
+                document.getElementById('error-overlay').classList.add('hidden');
+                setOverlayState('normal');
+            }, 3000);
+        }
+
+        // Estado del overlay
+        function setOverlayState(state) {
+            const overlay = document.getElementById('face-overlay');
+            overlay.className = 'face-overlay ' + state;
+        }
+
+        // Mostrar estado
+        function showStatus(message, subtitle, type) {
+            document.getElementById('status-message').textContent = message;
+            document.getElementById('status-subtitle').textContent = subtitle;
+        }
+
+        // Reloj
+        function startClock() {
+            function updateClock() {
+                const now = new Date();
+                document.getElementById('clock').textContent = 
+                    now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        // Modo QR (placeholder)
+        function showQRMode() {
+            alert('Modo QR: Escanea tu código QR');
+        }
+
+        // Llamar recepción (placeholder)
+        function callReception() {
+            alert('Contactando recepción...');
+        }
+    </script>
+</body>
+</html>

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "api",
     "access_control",  # Control de acceso con tornos/puertas
     "lockers",  # Gestión de taquillas
+    "facial_checkin.apps.FacialCheckinConfig",  # Reconocimiento facial para check-in
 ]
 
 # --------------------------------------------------

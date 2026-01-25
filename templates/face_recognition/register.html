@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Registro Facial - {{ gym.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 py-8">
+    <div class="max-w-2xl mx-auto px-4">
+        <!-- Cabecera -->
+        <div class="text-center mb-8">
+            <div class="mx-auto w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900">Registro Facial</h1>
+            <p class="text-gray-600 mt-2">Configura el acceso con tu rostro</p>
+        </div>
+
+        <!-- Card principal -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <!-- Estado actual -->
+            {% if has_face_registered %}
+            <div class="bg-green-50 border-b border-green-100 px-6 py-4">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-green-800">Rostro registrado</p>
+                        <p class="text-sm text-green-600">Puedes usar el reconocimiento facial para acceder</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Área de cámara -->
+            <div class="p-6">
+                <div id="camera-container" class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video mb-6">
+                    <video id="video" autoplay playsinline muted
+                           class="w-full h-full object-cover"></video>
+                    
+                    <!-- Guía de posición -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div id="face-guide" class="border-2 border-dashed border-white/50 rounded-full w-48 h-60"></div>
+                    </div>
+                    
+                    <!-- Foto capturada -->
+                    <img id="captured-image" src="" alt="Foto capturada" 
+                         class="hidden absolute inset-0 w-full h-full object-cover">
+                    
+                    <!-- Estado -->
+                    <div id="camera-status" class="absolute bottom-4 left-4 right-4 text-center">
+                        <span class="bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+                            Centra tu rostro en el círculo
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Botones de captura -->
+                <div id="capture-buttons" class="flex justify-center space-x-4 mb-6">
+                    <button id="btn-capture" onclick="capturePhoto()"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center space-x-2 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span>Capturar foto</span>
+                    </button>
+                </div>
+
+                <!-- Botones de confirmación (ocultos inicialmente) -->
+                <div id="confirm-buttons" class="hidden flex justify-center space-x-4 mb-6">
+                    <button onclick="retakePhoto()"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-xl font-semibold flex items-center space-x-2 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Repetir</span>
+                    </button>
+                    <button id="btn-submit" onclick="submitPhoto()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center space-x-2 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Confirmar y guardar</span>
+                    </button>
+                </div>
+
+                <!-- Consentimiento -->
+                <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="checkbox" id="consent-checkbox" 
+                               class="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                        <div class="text-sm">
+                            <p class="font-medium text-gray-900">Consentimiento de uso</p>
+                            <p class="text-gray-600 mt-1">
+                                Acepto que mi imagen facial sea procesada y almacenada de forma segura 
+                                únicamente para el reconocimiento de acceso en {{ gym.name }}. 
+                                Puedo eliminar mis datos en cualquier momento.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Información de privacidad -->
+                <div class="border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
+                    <h4 class="font-semibold text-gray-900 mb-2 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        Tu privacidad es importante
+                    </h4>
+                    <ul class="space-y-1 list-disc list-inside">
+                        <li>Tu foto no se almacena, solo un código matemático</li>
+                        <li>Los datos están encriptados y seguros</li>
+                        <li>Cumplimos con el RGPD</li>
+                        <li>Puedes eliminar tus datos cuando quieras</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Opciones adicionales -->
+            {% if has_face_registered %}
+            <div class="bg-gray-50 px-6 py-4 border-t">
+                <button onclick="deleteFaceData()"
+                        class="text-red-600 hover:text-red-700 text-sm font-medium flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Eliminar mis datos faciales
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Mensaje de resultado -->
+        <div id="result-message" class="hidden mt-6 p-4 rounded-xl text-center"></div>
+
+        <!-- Enlace a volver -->
+        <div class="mt-6 text-center">
+            <a href="{% url 'clients:portal_profile' %}" class="text-indigo-600 hover:text-indigo-700 font-medium">
+                ← Volver a mi perfil
+            </a>
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas" class="hidden"></canvas>
+
+<script>
+let video, canvas, ctx;
+let capturedBlob = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    video = document.getElementById('video');
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+    startCamera();
+});
+
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        });
+        video.srcObject = stream;
+        document.getElementById('camera-status').innerHTML = 
+            '<span class="bg-black/70 text-white px-4 py-2 rounded-full text-sm">Centra tu rostro en el círculo</span>';
+    } catch (err) {
+        console.error('Error de cámara:', err);
+        document.getElementById('camera-status').innerHTML = 
+            '<span class="bg-red-600/90 text-white px-4 py-2 rounded-full text-sm">No se pudo acceder a la cámara</span>';
+    }
+}
+
+function capturePhoto() {
+    // Capturar frame
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    
+    // Mostrar imagen capturada
+    const imgUrl = canvas.toDataURL('image/jpeg', 0.9);
+    const capturedImg = document.getElementById('captured-image');
+    capturedImg.src = imgUrl;
+    capturedImg.classList.remove('hidden');
+    video.classList.add('hidden');
+    
+    // Guardar blob
+    canvas.toBlob((blob) => {
+        capturedBlob = blob;
+    }, 'image/jpeg', 0.9);
+    
+    // Cambiar botones
+    document.getElementById('capture-buttons').classList.add('hidden');
+    document.getElementById('confirm-buttons').classList.remove('hidden');
+    document.getElementById('face-guide').classList.add('hidden');
+    document.getElementById('camera-status').innerHTML = 
+        '<span class="bg-green-600/90 text-white px-4 py-2 rounded-full text-sm">Foto capturada ✓</span>';
+}
+
+function retakePhoto() {
+    capturedBlob = null;
+    
+    // Mostrar video de nuevo
+    document.getElementById('captured-image').classList.add('hidden');
+    video.classList.remove('hidden');
+    
+    // Cambiar botones
+    document.getElementById('capture-buttons').classList.remove('hidden');
+    document.getElementById('confirm-buttons').classList.add('hidden');
+    document.getElementById('face-guide').classList.remove('hidden');
+    document.getElementById('camera-status').innerHTML = 
+        '<span class="bg-black/70 text-white px-4 py-2 rounded-full text-sm">Centra tu rostro en el círculo</span>';
+}
+
+async function submitPhoto() {
+    if (!capturedBlob) {
+        showResult('error', 'No hay foto capturada');
+        return;
+    }
+    
+    if (!document.getElementById('consent-checkbox').checked) {
+        showResult('error', 'Debes aceptar el consentimiento de uso');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Procesando...';
+    
+    const formData = new FormData();
+    formData.append('image', capturedBlob, 'face.jpg');
+    formData.append('consent', 'true');
+    
+    try {
+        const response = await fetch('/face-recognition/api/register/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showResult('success', '¡Tu rostro ha sido registrado correctamente! Ya puedes usar el reconocimiento facial para acceder.');
+            // Recargar después de 2 segundos
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showResult('error', data.error || 'Error al registrar el rostro');
+            retakePhoto();
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        showResult('error', 'Error de conexión. Intenta de nuevo.');
+        retakePhoto();
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Confirmar y guardar';
+}
+
+async function deleteFaceData() {
+    if (!confirm('¿Seguro que quieres eliminar tus datos faciales? No podrás usar el reconocimiento facial hasta que vuelvas a registrarte.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/face-recognition/api/delete/', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showResult('success', 'Tus datos faciales han sido eliminados.');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showResult('error', data.error || 'Error al eliminar los datos');
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        showResult('error', 'Error de conexión');
+    }
+}
+
+function showResult(type, message) {
+    const el = document.getElementById('result-message');
+    el.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+    
+    if (type === 'success') {
+        el.classList.add('bg-green-100', 'text-green-800');
+    } else {
+        el.classList.add('bg-red-100', 'text-red-800');
+    }
+    
+    el.textContent = message;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

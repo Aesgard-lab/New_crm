@@ -1,0 +1,353 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Reconocimiento Facial - Configuración{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Reconocimiento Facial</h1>
+                <p class="text-gray-600 mt-1">Configura el check-in por reconocimiento facial</p>
+            </div>
+            {% if settings.kiosk_mode_enabled %}
+            <a href="{% url 'face_recognition:kiosk' %}?gym_id={{ gym.id }}" 
+               target="_blank"
+               class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                Abrir Kiosko
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not library_available %}
+    <!-- Warning: Library not installed -->
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-yellow-700">
+                    <strong>Librería no instalada:</strong> Para usar el reconocimiento facial, instala la librería con:
+                    <code class="bg-yellow-100 px-2 py-1 rounded">pip install face_recognition</code>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Configuración -->
+        <div class="lg:col-span-2">
+            <form method="post" class="bg-white rounded-xl shadow-sm border border-gray-200">
+                {% csrf_token %}
+                
+                <!-- Activar/Desactivar -->
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Estado del módulo</h3>
+                            <p class="text-sm text-gray-500">Activa o desactiva el reconocimiento facial</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="enabled" class="sr-only peer" 
+                                   {% if settings.enabled %}checked{% endif %}>
+                            <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 
+                                        peer-focus:ring-indigo-300 rounded-full peer 
+                                        peer-checked:after:translate-x-full peer-checked:after:border-white 
+                                        after:content-[''] after:absolute after:top-0.5 after:left-[4px] 
+                                        after:bg-white after:border-gray-300 after:border after:rounded-full 
+                                        after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Métodos de Check-in -->
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Métodos de Check-in</h3>
+                    <p class="text-sm text-gray-500 mb-4">Selecciona qué métodos pueden usar los clientes</p>
+                    
+                    <div class="space-y-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="allow_qr_checkin" 
+                                   class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                   {% if settings.allow_qr_checkin %}checked{% endif %}>
+                            <span class="ml-3">
+                                <span class="text-gray-900 font-medium">Check-in con QR</span>
+                                <span class="text-gray-500 text-sm block">El cliente escanea un código QR</span>
+                            </span>
+                        </label>
+                        
+                        <label class="flex items-center">
+                            <input type="checkbox" name="allow_face_checkin" 
+                                   class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                   {% if settings.allow_face_checkin %}checked{% endif %}>
+                            <span class="ml-3">
+                                <span class="text-gray-900 font-medium">Check-in Facial</span>
+                                <span class="text-gray-500 text-sm block">Reconocimiento automático por cámara</span>
+                            </span>
+                        </label>
+                        
+                        <label class="flex items-center">
+                            <input type="checkbox" name="allow_manual_checkin" 
+                                   class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                   {% if settings.allow_manual_checkin %}checked{% endif %}>
+                            <span class="ml-3">
+                                <span class="text-gray-900 font-medium">Check-in Manual</span>
+                                <span class="text-gray-500 text-sm block">El staff marca la asistencia manualmente</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Precisión -->
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Precisión del reconocimiento</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Umbral de confianza: <span id="threshold-value">{{ settings.confidence_threshold }}</span>
+                        </label>
+                        <input type="range" name="confidence_threshold" 
+                               min="0.3" max="0.9" step="0.05"
+                               value="{{ settings.confidence_threshold }}"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                               oninput="document.getElementById('threshold-value').textContent = this.value">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Más permisivo</span>
+                            <span>Más estricto</span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-sm text-gray-500">
+                        Un umbral más alto reduce falsos positivos pero puede rechazar más intentos válidos.
+                        Recomendado: 0.6
+                    </p>
+                </div>
+
+                <!-- Modo Kiosko -->
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Modo Kiosko</h3>
+                    <p class="text-sm text-gray-500 mb-4">Para tablets en la entrada del gimnasio</p>
+                    
+                    <div class="space-y-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="kiosk_mode_enabled" 
+                                   class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                   {% if settings.kiosk_mode_enabled %}checked{% endif %}>
+                            <span class="ml-3">
+                                <span class="text-gray-900 font-medium">Habilitar modo kiosko</span>
+                            </span>
+                        </label>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Mensaje de bienvenida
+                            </label>
+                            <input type="text" name="kiosk_welcome_message" 
+                                   value="{{ settings.kiosk_welcome_message }}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="Bienvenido, mira a la cámara">
+                        </div>
+                        
+                        <label class="flex items-center">
+                            <input type="checkbox" name="auto_open_turnstile" 
+                                   class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                   {% if settings.auto_open_turnstile %}checked{% endif %}>
+                            <span class="ml-3">
+                                <span class="text-gray-900 font-medium">Abrir torno automáticamente</span>
+                                <span class="text-gray-500 text-sm block">Al reconocer al cliente, abrir el torno</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Botón guardar -->
+                <div class="p-6 bg-gray-50 rounded-b-xl">
+                    <button type="submit" 
+                            class="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                        Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="space-y-6">
+            <!-- Stats Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas</h3>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Clientes registrados</span>
+                        <span class="text-2xl font-bold text-indigo-600">
+                            {{ stats.registered_clients|default:0 }}
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Tasa de registro</span>
+                        <span class="text-lg font-semibold text-gray-900">
+                            {{ stats.registration_rate|floatformat:1|default:0 }}%
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Tiempo promedio</span>
+                        <span class="text-lg font-semibold text-gray-900">
+                            {{ stats.avg_processing_time_ms|floatformat:0|default:0 }}ms
+                        </span>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h4 class="font-medium text-gray-900">Últimos 30 días</h4>
+                    
+                    {% if stats.recent_attempts %}
+                    <div class="space-y-2">
+                        {% for result, count in stats.recent_attempts.items %}
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600">
+                                {% if result == 'success' %}✅ Exitosos
+                                {% elif result == 'no_match' %}❌ Sin coincidencia
+                                {% elif result == 'no_face' %}👤 Sin rostro detectado
+                                {% else %}{{ result }}
+                                {% endif %}
+                            </span>
+                            <span class="font-medium">{{ count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 text-sm">No hay datos aún</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="bg-blue-50 rounded-xl p-6">
+                <h4 class="font-semibold text-blue-900 mb-2">💡 Consejos</h4>
+                <ul class="text-sm text-blue-800 space-y-2">
+                    <li>• Pide a los clientes que se registren con buena iluminación</li>
+                    <li>• La tablet debe estar a la altura de la cara</li>
+                    <li>• Usa una conexión WiFi estable</li>
+                    <li>• El reconocimiento funciona mejor sin gafas de sol</li>
+                </ul>
+            </div>
+
+            <!-- Registrar desde aquí -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Registrar Cliente</h3>
+                <p class="text-sm text-gray-500 mb-4">
+                    Registra el rostro de un cliente desde aquí
+                </p>
+                <button type="button" onclick="openRegisterModal()"
+                        class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    📷 Abrir Cámara
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para registrar cliente -->
+<div id="register-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl max-w-lg w-full mx-4 overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Registrar Rostro</h3>
+                <button onclick="closeRegisterModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Búsqueda de cliente -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Buscar cliente</label>
+                <input type="text" id="client-search" 
+                       placeholder="Nombre, email o teléfono..."
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            
+            <!-- Vista de cámara -->
+            <div class="relative bg-gray-900 rounded-lg overflow-hidden aspect-video mb-4">
+                <video id="register-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="register-canvas" class="hidden"></canvas>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="button" onclick="capturePhoto()"
+                        class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    📸 Capturar Foto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let videoStream = null;
+
+function openRegisterModal() {
+    document.getElementById('register-modal').classList.remove('hidden');
+    document.getElementById('register-modal').classList.add('flex');
+    startCamera();
+}
+
+function closeRegisterModal() {
+    document.getElementById('register-modal').classList.add('hidden');
+    document.getElementById('register-modal').classList.remove('flex');
+    stopCamera();
+}
+
+async function startCamera() {
+    try {
+        const video = document.getElementById('register-video');
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user', width: 640, height: 480 } 
+        });
+        video.srcObject = videoStream;
+    } catch (err) {
+        console.error('Error accessing camera:', err);
+        alert('No se pudo acceder a la cámara');
+    }
+}
+
+function stopCamera() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+}
+
+function capturePhoto() {
+    const video = document.getElementById('register-video');
+    const canvas = document.getElementById('register-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    
+    canvas.toBlob(async (blob) => {
+        // TODO: Enviar blob al servidor con el cliente seleccionado
+        alert('Foto capturada. Implementar envío al servidor.');
+    }, 'image/jpeg', 0.9);
+}
+</script>
+{% endblock %}
