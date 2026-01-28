@@ -1,0 +1,445 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard Ejecutivo - Actividades{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > 
+<a href="{% url 'analytics_dashboard' %}" class="hover:underline">Analytics</a> > Dashboard Ejecutivo
+{% endblock %}
+{% block page_title %}📊 Dashboard Ejecutivo de Actividades{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header con período y acciones -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">Resumen Ejecutivo</h2>
+                <p class="text-sm text-slate-500">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }} ({{ comparison.current_period.stats.total_sessions|default:0 }} sesiones)</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'export_report_csv' %}?type=attendance&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+                   class="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 flex items-center gap-2 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Exportar
+                </a>
+                <button onclick="window.print()" class="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 flex items-center gap-2 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Imprimir
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Inicio</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Fin</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="btn-brand w-full py-2.5 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Actualizar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Navegación de Reportes -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="flex border-b border-slate-200 overflow-x-auto">
+            <a href="{% url 'executive_dashboard' %}" 
+               class="px-6 py-4 font-medium text-sm border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50 whitespace-nowrap flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                Ejecutivo
+            </a>
+            <a href="{% url 'attendance_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                📅 Asistencias
+            </a>
+            <a href="{% url 'category_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                🏷️ Categorías
+            </a>
+            <a href="{% url 'activity_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                ⚡ Actividades
+            </a>
+            <a href="{% url 'staff_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                👥 Instructores
+            </a>
+            <a href="{% url 'schedule_optimization' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                🕐 Horarios
+            </a>
+            <a href="{% url 'advanced_analytics' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                🔮 Avanzado
+            </a>
+        </div>
+    </div>
+
+    <!-- KPIs Principales con Comparativa -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Ocupación -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-xl">📊</div>
+                {% if comparison.changes.occupancy %}
+                <div class="flex items-center gap-1 text-xs font-bold {% if comparison.changes.occupancy >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    {% if comparison.changes.occupancy >= 0 %}↑{% else %}↓{% endif %}
+                    {{ comparison.changes.occupancy|floatformat:1 }}%
+                </div>
+                {% endif %}
+            </div>
+            <div class="text-2xl font-black text-slate-900">{{ kpis.occupancy_rate|floatformat:1 }}%</div>
+            <div class="text-xs text-slate-500 mt-1">Ocupación Promedio</div>
+            <div class="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full {% if kpis.occupancy_rate >= 80 %}bg-green-500{% elif kpis.occupancy_rate >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
+                     style="width: {% if kpis.occupancy_rate %}{{ kpis.occupancy_rate|floatformat:0 }}%{% else %}0%{% endif %}"></div>
+            </div>
+        </div>
+
+        <!-- Tamaño Promedio -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-xl">👥</div>
+                {% if comparison.changes.attendance %}
+                <div class="flex items-center gap-1 text-xs font-bold {% if comparison.changes.attendance >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    {% if comparison.changes.attendance >= 0 %}↑{% else %}↓{% endif %}
+                    {{ comparison.changes.attendance|floatformat:1 }}%
+                </div>
+                {% endif %}
+            </div>
+            <div class="text-2xl font-black text-slate-900">{{ kpis.avg_class_size|floatformat:1 }}</div>
+            <div class="text-xs text-slate-500 mt-1">Personas/Clase Promedio</div>
+        </div>
+
+        <!-- Tasa No-Show -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-xl">🚫</div>
+                {% if kpis.noshow_rates.no_show_rate <= 10 %}
+                <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-green-100 text-green-700">Bajo</span>
+                {% elif kpis.noshow_rates.no_show_rate <= 20 %}
+                <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-700">Medio</span>
+                {% else %}
+                <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-red-100 text-red-700">Alto</span>
+                {% endif %}
+            </div>
+            <div class="text-2xl font-black text-slate-900">{{ kpis.noshow_rates.no_show_rate|floatformat:1 }}%</div>
+            <div class="text-xs text-slate-500 mt-1">Tasa de No-Show</div>
+        </div>
+
+        <!-- Clientes Únicos -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-xl">🎯</div>
+                {% if comparison.changes.unique_clients %}
+                <div class="flex items-center gap-1 text-xs font-bold {% if comparison.changes.unique_clients >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    {% if comparison.changes.unique_clients >= 0 %}↑{% else %}↓{% endif %}
+                    {{ comparison.changes.unique_clients|floatformat:1 }}%
+                </div>
+                {% endif %}
+            </div>
+            <div class="text-2xl font-black text-slate-900">{{ comparison.current_period.stats.unique_clients|default:0 }}</div>
+            <div class="text-xs text-slate-500 mt-1">Clientes Únicos</div>
+        </div>
+    </div>
+
+    <!-- Row: Rankings -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Top Actividades -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">🏆 Top Actividades</h3>
+                <a href="{% url 'activity_report' %}" class="text-xs text-[var(--brand-color)] hover:underline">Ver todo</a>
+            </div>
+            <div class="space-y-3">
+                {% for activity in top_activities %}
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">
+                        {{ forloop.counter }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-slate-900 truncate">{{ activity.activity__name }}</div>
+                        <div class="text-xs text-slate-500">{{ activity.sessions_count }} sesiones</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-slate-900">{{ activity.total_attendance }}</div>
+                        <div class="text-xs text-slate-500">asistentes</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-slate-400 py-4">Sin datos</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Top Instructores -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">⭐ Top Instructores</h3>
+                <a href="{% url 'staff_report' %}" class="text-xs text-[var(--brand-color)] hover:underline">Ver todo</a>
+            </div>
+            <div class="space-y-3">
+                {% for instructor in top_instructors %}
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">
+                        {{ forloop.counter }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-slate-900 truncate">
+                            {{ instructor.staff__user__first_name }} {{ instructor.staff__user__last_name }}
+                        </div>
+                        <div class="text-xs text-slate-500">{{ instructor.classes_taught }} clases</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-slate-900">{{ instructor.total_attendance }}</div>
+                        <div class="text-xs text-slate-500">asistentes</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-slate-400 py-4">Sin datos</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Performance por Categoría -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">🏷️ Por Categoría</h3>
+                <a href="{% url 'category_report' %}" class="text-xs text-[var(--brand-color)] hover:underline">Ver todo</a>
+            </div>
+            <div class="space-y-3">
+                {% for cat in category_performance %}
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-slate-900 truncate">{{ cat.activity__category__name }}</div>
+                        <div class="text-xs text-slate-500">{{ cat.sessions_count }} sesiones</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold {% if cat.occupancy_rate >= 70 %}text-green-600{% elif cat.occupancy_rate >= 50 %}text-amber-600{% else %}text-red-600{% endif %}">
+                            {{ cat.occupancy_rate|floatformat:0 }}%
+                        </div>
+                        <div class="text-xs text-slate-500">ocupación</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-slate-400 py-4">Sin categorías</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Row: Optimización de Horarios -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Horarios Bajo Rendimiento -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">⚠️ Horarios a Revisar</h3>
+                <a href="{% url 'schedule_optimization' %}" class="text-xs text-[var(--brand-color)] hover:underline">Optimizar</a>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Clases con ocupación menor al 40% que podrían eliminarse o reubicarse</p>
+            
+            {% if underperforming_slots %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-slate-500 border-b border-slate-100">
+                            <th class="pb-2">Clase</th>
+                            <th class="pb-2">Horario</th>
+                            <th class="pb-2 text-right">Ocup.</th>
+                            <th class="pb-2 text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for slot in underperforming_slots %}
+                        <tr>
+                            <td class="py-2">
+                                <div class="font-medium text-slate-900">{{ slot.activity }}</div>
+                                <div class="text-xs text-slate-500">{{ slot.instructor }}</div>
+                            </td>
+                            <td class="py-2 text-slate-600">{{ slot.day }} {{ slot.hour }}</td>
+                            <td class="py-2 text-right">
+                                <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-red-100 text-red-700">
+                                    {{ slot.occupancy|floatformat:0 }}%
+                                </span>
+                            </td>
+                            <td class="py-2 text-right text-xs text-slate-500">{{ slot.recommendation }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-slate-400 py-8">
+                <div class="text-4xl mb-2">✅</div>
+                <div>Todos los horarios tienen buen rendimiento</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Horarios Alta Demanda -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">🔥 Alta Demanda</h3>
+                <a href="{% url 'schedule_optimization' %}" class="text-xs text-[var(--brand-color)] hover:underline">Ver más</a>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Horarios con ocupación >80% donde podrías añadir más clases</p>
+            
+            {% if high_demand_slots %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-slate-500 border-b border-slate-100">
+                            <th class="pb-2">Clase</th>
+                            <th class="pb-2">Horario</th>
+                            <th class="pb-2 text-right">Ocup.</th>
+                            <th class="pb-2 text-right">Sugerencia</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for slot in high_demand_slots %}
+                        <tr>
+                            <td class="py-2 font-medium text-slate-900">{{ slot.activity }}</td>
+                            <td class="py-2 text-slate-600">{{ slot.day }} {{ slot.hour }}</td>
+                            <td class="py-2 text-right">
+                                <span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-green-100 text-green-700">
+                                    {{ slot.avg_occupancy|floatformat:0 }}%
+                                </span>
+                            </td>
+                            <td class="py-2 text-right text-xs text-green-600">{{ slot.recommendation }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-slate-400 py-8">
+                <div class="text-4xl mb-2">📈</div>
+                <div>No hay horarios con demanda muy alta</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Heatmap de Horarios -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-slate-900">🗓️ Mapa de Calor - Asistencia por Día/Hora</h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr>
+                        <th class="p-2 text-left text-slate-500">Hora</th>
+                        {% for day_name in heatmap_data.day_names %}
+                        <th class="p-2 text-center text-slate-500">{{ day_name|slice:":3" }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hour in "6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22"|make_list %}
+                    {% with hour_int=hour|add:"0" %}
+                    <tr>
+                        <td class="p-2 text-slate-600 font-medium">{{ hour }}:00</td>
+                        {% for day in "1 2 3 4 5 6 7"|make_list %}
+                        {% with day_int=day|add:"0" %}
+                        <td class="p-1">
+                            {% with stats=heatmap_data.heatmap|default_if_none:"" %}
+                            <div class="w-full h-8 rounded flex items-center justify-center text-white font-bold
+                                {% if stats %}
+                                    {% if stats.attendance > 20 %}bg-green-600
+                                    {% elif stats.attendance > 10 %}bg-green-400
+                                    {% elif stats.attendance > 5 %}bg-amber-400
+                                    {% elif stats.attendance > 0 %}bg-amber-200 text-amber-800
+                                    {% else %}bg-slate-100 text-slate-400
+                                    {% endif %}
+                                {% else %}bg-slate-100 text-slate-400
+                                {% endif %}">
+                                {% if stats.attendance %}{{ stats.attendance }}{% else %}-{% endif %}
+                            </div>
+                            {% endwith %}
+                        </td>
+                        {% endwith %}
+                        {% endfor %}
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Leyenda -->
+        <div class="flex items-center gap-4 mt-4 text-xs text-slate-500">
+            <span>Leyenda:</span>
+            <div class="flex items-center gap-1"><div class="w-4 h-4 rounded bg-slate-100"></div> Sin datos</div>
+            <div class="flex items-center gap-1"><div class="w-4 h-4 rounded bg-amber-200"></div> 1-5</div>
+            <div class="flex items-center gap-1"><div class="w-4 h-4 rounded bg-amber-400"></div> 6-10</div>
+            <div class="flex items-center gap-1"><div class="w-4 h-4 rounded bg-green-400"></div> 11-20</div>
+            <div class="flex items-center gap-1"><div class="w-4 h-4 rounded bg-green-600"></div> >20</div>
+        </div>
+    </div>
+
+    <!-- Comparativa con Período Anterior -->
+    <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+        <h3 class="font-bold mb-4">📈 Comparativa vs Período Anterior</h3>
+        <p class="text-sm text-slate-300 mb-6">
+            {{ comparison.previous_period.start|date:"d M" }} - {{ comparison.previous_period.end|date:"d M Y" }}
+        </p>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="text-2xl font-bold">{{ comparison.current_period.stats.total_sessions|default:0 }}</div>
+                <div class="text-xs text-slate-300">Sesiones</div>
+                <div class="mt-2 text-sm {% if comparison.changes.sessions >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {% if comparison.changes.sessions >= 0 %}↑{% else %}↓{% endif %} {{ comparison.changes.sessions|floatformat:1 }}%
+                </div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="text-2xl font-bold">{{ comparison.current_period.stats.total_attendance|default:0 }}</div>
+                <div class="text-xs text-slate-300">Asistencias</div>
+                <div class="mt-2 text-sm {% if comparison.changes.attendance >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {% if comparison.changes.attendance >= 0 %}↑{% else %}↓{% endif %} {{ comparison.changes.attendance|floatformat:1 }}%
+                </div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="text-2xl font-bold">{{ comparison.current_period.stats.unique_clients|default:0 }}</div>
+                <div class="text-xs text-slate-300">Clientes Únicos</div>
+                <div class="mt-2 text-sm {% if comparison.changes.unique_clients >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {% if comparison.changes.unique_clients >= 0 %}↑{% else %}↓{% endif %} {{ comparison.changes.unique_clients|floatformat:1 }}%
+                </div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="text-2xl font-bold">{{ comparison.current_period.stats.occupancy|default:0 }}%</div>
+                <div class="text-xs text-slate-300">Ocupación</div>
+                <div class="mt-2 text-sm {% if comparison.changes.occupancy >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {% if comparison.changes.occupancy >= 0 %}↑{% else %}↓{% endif %} {{ comparison.changes.occupancy|floatformat:1 }}%
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

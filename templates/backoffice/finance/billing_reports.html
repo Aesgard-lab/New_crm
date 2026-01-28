@@ -1,0 +1,822 @@
+{% extends "backoffice/base.html" %}
+{% load dict_extras %}
+
+{% block page_title %}Informes de Facturación{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="billingReports">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900">📊 Informes de Facturación</h1>
+            <p class="text-sm text-slate-500 mt-1">Análisis detallado de ingresos, KPIs y métricas de negocio</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-brand-outline px-4 py-2 text-sm">
+                <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                </svg>
+                Imprimir
+            </button>
+            <a href="{% url 'finance_billing_dashboard' %}" class="btn-brand-outline px-4 py-2 text-sm">
+                Ver Dashboard Simple
+            </a>
+        </div>
+    </div>
+
+    <!-- Date Filters -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <!-- Quick Filters -->
+            <div class="flex gap-2">
+                <a href="?range=today" 
+                   class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if date_range == 'today' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Hoy
+                </a>
+                <a href="?range=yesterday" 
+                   class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if date_range == 'yesterday' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Ayer
+                </a>
+                <a href="?range=week" 
+                   class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if date_range == 'week' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Esta Semana
+                </a>
+                <a href="?range=month" 
+                   class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if date_range == 'month' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Este Mes
+                </a>
+                <a href="?range=quarter" 
+                   class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if date_range == 'quarter' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Trimestre
+                </a>
+                <a href="?range=year" 
+                   class="px-4 py-2 rounded-lg text-xs font-bold transition-all {% if date_range == 'year' %}bg-[var(--brand-color)] text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Este Año
+                </a>
+            </div>
+            
+            <!-- Custom Date Range -->
+            <form method="get" class="flex items-center gap-2 ml-auto">
+                <input type="hidden" name="range" value="custom">
+                <div class="flex items-center bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
+                    <input type="date" name="start" value="{{ start_date|date:'Y-m-d' }}"
+                        class="bg-transparent border-none text-xs font-medium focus:ring-0 p-0 text-slate-600 w-32">
+                    <span class="text-slate-400 mx-2">→</span>
+                    <input type="date" name="end" value="{{ end_date|date:'Y-m-d' }}"
+                        class="bg-transparent border-none text-xs font-medium focus:ring-0 p-0 text-slate-600 w-32">
+                </div>
+                <button type="submit" class="btn-brand px-4 py-2 text-xs">Aplicar</button>
+            </form>
+        </div>
+        
+        <!-- Comparativa -->
+        <div class="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+            <span class="text-xs font-medium text-slate-500">Comparar con:</span>
+            <a href="?range={{ date_range }}&compare=prev_period" 
+               class="text-xs {% if compare_mode == 'prev_period' %}text-[var(--brand-color)] font-bold{% else %}text-slate-500 hover:text-slate-700{% endif %}">
+                Período anterior
+            </a>
+            <a href="?range={{ date_range }}&compare=prev_year" 
+               class="text-xs {% if compare_mode == 'prev_year' %}text-[var(--brand-color)] font-bold{% else %}text-slate-500 hover:text-slate-700{% endif %}">
+                Mismo período año anterior
+            </a>
+            {% if compare_mode %}
+            <a href="?range={{ date_range }}" class="text-xs text-red-500 hover:text-red-600">
+                ✕ Quitar comparativa
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- KPIs Grid - Principales -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Ingresos -->
+        <div class="bg-white border border-indigo-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer"
+             x-data="{ showTooltip: false }" 
+             @click="showTooltip = !showTooltip"
+             @click.away="showTooltip = false">
+            <div class="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-indigo-50/50 to-transparent"></div>
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 Total Ingresos</div>
+                    <div class="text-slate-300">Suma de todas las ventas completadas (pagadas) en el período seleccionado, incluyendo membresías, productos y servicios.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= Σ (ventas pagadas)</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <!-- Info icon -->
+            <div class="absolute top-3 right-3 z-20 text-indigo-300 group-hover:text-indigo-500 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+            </div>
+            <div class="relative z-10">
+                <div class="text-indigo-600/80 text-xs font-bold uppercase tracking-wider mb-1">Total Ingresos</div>
+                <div class="text-3xl font-black text-slate-900 mb-1">{{ kpis.total_income|floatformat:2 }} €</div>
+                {% if comparison.enabled %}
+                <div class="inline-flex items-center gap-1 {% if comparison.income_change >= 0 %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %} px-2 py-1 rounded-lg text-xs font-bold">
+                    {% if comparison.income_change >= 0 %}↑{% else %}↓{% endif %}
+                    {{ comparison.income_change|floatformat:1 }}% vs {{ comparison.period }}
+                </div>
+                {% else %}
+                <div class="inline-flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg text-xs font-bold text-indigo-700">
+                    <span>{{ kpis.total_orders }} ventas</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Ticket Promedio -->
+        <div class="bg-white border border-emerald-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer"
+             x-data="{ showTooltip: false }" 
+             @click="showTooltip = !showTooltip"
+             @click.away="showTooltip = false">
+            <div class="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-emerald-50/50 to-transparent"></div>
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 Ticket Promedio</div>
+                    <div class="text-slate-300">Valor medio de cada transacción. Indica cuánto gasta de media un cliente cada vez que compra.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= Total Ingresos / Nº Transacciones</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <!-- Info icon -->
+            <div class="absolute top-3 right-3 z-20 text-emerald-300 group-hover:text-emerald-500 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+            </div>
+            <div class="relative z-10">
+                <div class="text-emerald-600/80 text-xs font-bold uppercase tracking-wider mb-1">Ticket Promedio</div>
+                <div class="text-3xl font-black text-slate-900 mb-1">{{ kpis.avg_ticket|floatformat:2 }} €</div>
+                <div class="text-xs text-slate-500">Por transacción</div>
+            </div>
+        </div>
+
+        <!-- ARPU -->
+        <div class="bg-white border border-violet-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer"
+             x-data="{ showTooltip: false }" 
+             @click="showTooltip = !showTooltip"
+             @click.away="showTooltip = false">
+            <div class="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-violet-50/50 to-transparent"></div>
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 ARPU (Average Revenue Per User)</div>
+                    <div class="text-slate-300">Ingreso promedio por socio activo. Mide cuánto aporta cada cliente activo en el período.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= Total Ingresos / Socios Activos</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <!-- Info icon -->
+            <div class="absolute top-3 right-3 z-20 text-violet-300 group-hover:text-violet-500 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+            </div>
+            <div class="relative z-10">
+                <div class="text-violet-600/80 text-xs font-bold uppercase tracking-wider mb-1">ARPU</div>
+                <div class="text-3xl font-black text-slate-900 mb-1">{{ kpis.arpu|floatformat:2 }} €</div>
+                <div class="inline-flex items-center gap-1 bg-violet-50 px-2 py-1 rounded-lg text-xs font-bold text-violet-700">
+                    {{ kpis.active_clients }} socios activos
+                </div>
+            </div>
+        </div>
+
+        <!-- LTV -->
+        <div class="bg-white border border-amber-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer"
+             x-data="{ showTooltip: false }" 
+             @click="showTooltip = !showTooltip"
+             @click.away="showTooltip = false">
+            <div class="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-amber-50/50 to-transparent"></div>
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 LTV (Lifetime Value)</div>
+                    <div class="text-slate-300">Valor total esperado de un cliente durante toda su relación con tu negocio. A mayor LTV, más rentables son tus clientes.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= ARPU × Meses promedio de permanencia</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <!-- Info icon -->
+            <div class="absolute top-3 right-3 z-20 text-amber-300 group-hover:text-amber-500 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+            </div>
+            <div class="relative z-10">
+                <div class="text-amber-600/80 text-xs font-bold uppercase tracking-wider mb-1">LTV Promedio</div>
+                <div class="text-3xl font-black text-slate-900 mb-1">{{ kpis.ltv|floatformat:0 }} €</div>
+                <div class="text-xs text-slate-500">Valor ciclo vida cliente</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Grid - Secundarios -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- CAC -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all relative cursor-pointer"
+             x-data="{ showTooltip: false }" @click="showTooltip = !showTooltip" @click.away="showTooltip = false">
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 CAC (Customer Acquisition Cost)</div>
+                    <div class="text-slate-300">Coste de adquirir un nuevo cliente. Incluye gastos en marketing y publicidad dividido entre los nuevos clientes captados.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= Gastos Marketing / Nuevos Clientes</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">CAC</div>
+                    <div class="text-2xl font-black text-slate-900">{{ kpis.cac|floatformat:2 }} €</div>
+                    <div class="text-xs text-slate-500 mt-1">Coste adquisición cliente</div>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">👤</div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                {{ kpis.new_clients }} nuevos clientes en período
+            </div>
+        </div>
+
+        <!-- SVA -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all relative cursor-pointer"
+             x-data="{ showTooltip: false }" @click="showTooltip = !showTooltip" @click.away="showTooltip = false">
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 SVA (Servicios de Valor Añadido)</div>
+                    <div class="text-slate-300">Ingresos adicionales fuera de las cuotas: productos, servicios extra, personal training, etc. Un buen SVA indica diversificación.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= Productos + Servicios + Otros</span><br>
+                        <span class="text-green-400">Objetivo: >20% del total</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Ingresos SVA</div>
+                    <div class="text-2xl font-black text-slate-900">{{ kpis.sva_income|floatformat:2 }} €</div>
+                    <div class="text-xs {% if kpis.sva_percentage >= 20 %}text-green-600{% else %}text-amber-600{% endif %} font-medium mt-1">
+                        {{ kpis.sva_percentage|floatformat:1 }}% del total
+                        {% if kpis.sva_percentage >= 20 %}✓{% else %}(objetivo: >20%){% endif %}
+                    </div>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">💎</div>
+            </div>
+        </div>
+
+        <!-- Ingresos Cuotas -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all relative cursor-pointer"
+             x-data="{ showTooltip: false }" @click="showTooltip = !showTooltip" @click.away="showTooltip = false">
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 Cuotas / Membresías</div>
+                    <div class="text-slate-300">Ingresos recurrentes por cuotas de socios. Es la base estable de tu negocio y el ingreso más predecible.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= Σ (pagos de membresías)</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Cuotas/Membresías</div>
+                    <div class="text-2xl font-black text-slate-900">{{ kpis.membership_income|floatformat:2 }} €</div>
+                    <div class="text-xs text-slate-500 mt-1">Ingresos recurrentes</div>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-2xl">🎫</div>
+            </div>
+        </div>
+
+        <!-- Ratio LTV:CAC -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all relative cursor-pointer"
+             x-data="{ showTooltip: false }" @click="showTooltip = !showTooltip" @click.away="showTooltip = false">
+            <!-- Tooltip -->
+            <div x-show="showTooltip" x-cloak
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 scale-95" 
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute z-50 left-0 right-0 -top-2 transform -translate-y-full">
+                <div class="bg-slate-800 text-white text-xs rounded-xl p-3 shadow-lg mx-2">
+                    <div class="font-bold mb-1">💡 Ratio LTV:CAC</div>
+                    <div class="text-slate-300">Relación entre el valor del cliente y lo que cuesta captarlo. Indica si tu inversión en captación es rentable.</div>
+                    <div class="mt-2 pt-2 border-t border-slate-600 text-slate-400">
+                        <span class="font-mono">= LTV / CAC</span><br>
+                        <span class="text-green-400">>3:1 = Excelente</span> · <span class="text-amber-400">1-3:1 = Mejorable</span> · <span class="text-red-400"><1:1 = Pérdidas</span>
+                    </div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-800"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Ratio LTV:CAC</div>
+                    <div class="text-2xl font-black {% if kpis.cac > 0 and kpis.ltv_cac_ratio >= 3 %}text-green-600{% elif kpis.cac > 0 %}text-amber-600{% else %}text-slate-900{% endif %}">
+                        {% if kpis.cac > 0 %}{{ kpis.ltv_cac_ratio|floatformat:1 }}:1{% else %}N/A{% endif %}
+                    </div>
+                    <div class="text-xs text-slate-500 mt-1">Ideal: >3:1</div>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">📈</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts & Breakdown Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Chart: Evolución Temporal -->
+        <div class="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6">
+            <h3 class="font-bold text-slate-900 mb-4">📈 Evolución de Ingresos</h3>
+            <div class="h-64">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Desglose por Tipo -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <h3 class="font-bold text-slate-900 mb-4">📊 Desglose por Tipo</h3>
+            <div class="space-y-3">
+                {% for type, amount in income_by_type.items %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full {% if type == 'memberships' %}bg-indigo-500{% elif type == 'products' %}bg-emerald-500{% elif type == 'services' %}bg-violet-500{% else %}bg-slate-400{% endif %}"></div>
+                        <span class="text-sm text-slate-600 capitalize">
+                            {% if type == 'memberships' %}Cuotas{% elif type == 'products' %}Productos{% elif type == 'services' %}Servicios{% else %}Otros{% endif %}
+                        </span>
+                    </div>
+                    <span class="font-bold text-slate-900">{{ amount|floatformat:2 }} €</span>
+                </div>
+                {% empty %}
+                <p class="text-sm text-slate-500">Sin datos en el período</p>
+                {% endfor %}
+            </div>
+            
+            <!-- Mini Doughnut -->
+            <div class="mt-4 h-32">
+                <canvas id="typeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods & Top Items -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Métodos de Pago -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <h3 class="font-bold text-slate-900 mb-4">💳 Métodos de Pago</h3>
+            <div class="space-y-3">
+                {% for pm in payments_by_method %}
+                <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    <div>
+                        <div class="font-medium text-slate-900">{{ pm.payment_method__name|default:"Sin especificar" }}</div>
+                        <div class="text-xs text-slate-500">{{ pm.count }} transacciones</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-slate-900">{{ pm.total|floatformat:2 }} €</div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-slate-500">Sin pagos en el período</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Top Productos/Servicios -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <h3 class="font-bold text-slate-900 mb-4">🏆 Top Ventas</h3>
+            <div class="space-y-2">
+                {% for item in top_items %}
+                <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg font-black text-slate-300">{{ forloop.counter }}</span>
+                        <div>
+                            <div class="font-medium text-slate-900 text-sm">{{ item.description|truncatechars:40 }}</div>
+                            <div class="text-xs text-slate-500">{{ item.quantity }} unidades</div>
+                        </div>
+                    </div>
+                    <div class="font-bold text-slate-900 text-sm">{{ item.total|floatformat:2 }} €</div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-slate-500">Sin ventas en el período</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Panel -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-slate-900">🔍 Filtros Avanzados</h3>
+            <button @click="showFilters = !showFilters" class="text-sm text-[var(--brand-color)] hover:underline">
+                <span x-text="showFilters ? 'Ocultar' : 'Mostrar'"></span> filtros
+            </button>
+        </div>
+        
+        <form method="get" x-show="showFilters" x-collapse class="space-y-4">
+            <input type="hidden" name="range" value="{{ date_range }}">
+            <input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}">
+            <input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">
+            
+            <!-- Primera fila: Estado, Método de Pago, Origen -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Estado -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">Estado</label>
+                    <div class="space-y-1">
+                        {% for value, label in filter_options.statuses %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="checkbox" name="status" value="{{ value }}" 
+                                   {% if value in active_filters.statuses %}checked{% endif %}
+                                   class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                            <span>{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Método de Pago -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">Método de Pago</label>
+                    <div class="space-y-1 max-h-32 overflow-y-auto">
+                        {% for method in filter_options.payment_methods %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="checkbox" name="payment_method" value="{{ method.id }}"
+                                   {% if method.id|stringformat:"s" in active_filters.payment_methods %}checked{% endif %}
+                                   class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                            <span>{{ method.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Origen -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">Origen</label>
+                    <div class="space-y-1">
+                        {% for value, label in filter_options.sources %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="checkbox" name="source" value="{{ value }}"
+                                   {% if value in active_filters.sources %}checked{% endif %}
+                                   class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                            <span>{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Segunda fila: Cuotas/Membresías, Servicios, Productos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+                <!-- Cuotas/Membresías -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">🎫 Cuotas / Membresías</label>
+                    <div class="space-y-1 max-h-48 overflow-y-auto bg-slate-50 rounded-lg p-2">
+                        {% for plan in filter_options.membership_plans %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded">
+                            <input type="checkbox" name="membership_plan" value="{{ plan.id }}"
+                                   {% if plan.id|stringformat:"s" in active_filters.membership_plans %}checked{% endif %}
+                                   class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                            <span class="truncate">{{ plan.name }}</span>
+                            <span class="text-xs text-slate-400 ml-auto">{{ plan.base_price }}€</span>
+                        </label>
+                        {% empty %}
+                        <p class="text-xs text-slate-400 italic px-2">Sin planes configurados</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Servicios -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">💆 Servicios</label>
+                    <div class="space-y-2 max-h-48 overflow-y-auto bg-slate-50 rounded-lg p-2">
+                        {% for category in filter_options.service_categories %}
+                        <div class="mb-2">
+                            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide px-2 mb-1">{{ category.name }}</div>
+                            {% for service in filter_options.services %}
+                            {% if service.category_id == category.id or service.category.parent_id == category.id %}
+                            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded ml-2">
+                                <input type="checkbox" name="service" value="{{ service.id }}"
+                                       {% if service.id|stringformat:"s" in active_filters.services %}checked{% endif %}
+                                       class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                                <span class="truncate">{{ service.name }}</span>
+                                <span class="text-xs text-slate-400 ml-auto">{{ service.base_price }}€</span>
+                            </label>
+                            {% endif %}
+                            {% endfor %}
+                            {% for sub in category.subcategories.all %}
+                            <div class="ml-2 mt-1">
+                                <div class="text-xs text-slate-400 px-2">↳ {{ sub.name }}</div>
+                                {% for service in filter_options.services %}
+                                {% if service.category_id == sub.id %}
+                                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded ml-4">
+                                    <input type="checkbox" name="service" value="{{ service.id }}"
+                                           {% if service.id|stringformat:"s" in active_filters.services %}checked{% endif %}
+                                           class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                                    <span class="truncate">{{ service.name }}</span>
+                                    <span class="text-xs text-slate-400 ml-auto">{{ service.base_price }}€</span>
+                                </label>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% empty %}
+                        <!-- Servicios sin categoría -->
+                        {% for service in filter_options.services %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded">
+                            <input type="checkbox" name="service" value="{{ service.id }}"
+                                   {% if service.id|stringformat:"s" in active_filters.services %}checked{% endif %}
+                                   class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                            <span class="truncate">{{ service.name }}</span>
+                            <span class="text-xs text-slate-400 ml-auto">{{ service.base_price }}€</span>
+                        </label>
+                        {% empty %}
+                        <p class="text-xs text-slate-400 italic px-2">Sin servicios configurados</p>
+                        {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Productos -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">📦 Productos</label>
+                    <div class="space-y-2 max-h-48 overflow-y-auto bg-slate-50 rounded-lg p-2">
+                        {% for category in filter_options.product_categories %}
+                        <div class="mb-2">
+                            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide px-2 mb-1">{{ category.name }}</div>
+                            {% for product in filter_options.products %}
+                            {% if product.category_id == category.id %}
+                            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded ml-2">
+                                <input type="checkbox" name="product" value="{{ product.id }}"
+                                       {% if product.id|stringformat:"s" in active_filters.products %}checked{% endif %}
+                                       class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                                <span class="truncate">{{ product.name }}</span>
+                                <span class="text-xs text-slate-400 ml-auto">{{ product.base_price }}€</span>
+                            </label>
+                            {% endif %}
+                            {% endfor %}
+                            {% for sub in category.subcategories.all %}
+                            <div class="ml-2 mt-1">
+                                <div class="text-xs text-slate-400 px-2">↳ {{ sub.name }}</div>
+                                {% for product in filter_options.products %}
+                                {% if product.category_id == sub.id %}
+                                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded ml-4">
+                                    <input type="checkbox" name="product" value="{{ product.id }}"
+                                           {% if product.id|stringformat:"s" in active_filters.products %}checked{% endif %}
+                                           class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                                    <span class="truncate">{{ product.name }}</span>
+                                    <span class="text-xs text-slate-400 ml-auto">{{ product.base_price }}€</span>
+                                </label>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% empty %}
+                        <!-- Productos sin categoría -->
+                        {% for product in filter_options.products %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded">
+                            <input type="checkbox" name="product" value="{{ product.id }}"
+                                   {% if product.id|stringformat:"s" in active_filters.products %}checked{% endif %}
+                                   class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                            <span class="truncate">{{ product.name }}</span>
+                            <span class="text-xs text-slate-400 ml-auto">{{ product.base_price }}€</span>
+                        </label>
+                        {% empty %}
+                        <p class="text-xs text-slate-400 italic px-2">Sin productos configurados</p>
+                        {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 pt-4">
+                <button type="submit" class="btn-brand px-4 py-2 text-sm">Aplicar Filtros</button>
+                <a href="?range={{ date_range }}" class="btn-brand-outline px-4 py-2 text-sm">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200">
+            <h3 class="font-bold text-slate-900">📋 Detalle de Transacciones</h3>
+            <p class="text-xs text-slate-500 mt-1">{{ start_date|date:"d/m/Y" }} - {{ end_date|date:"d/m/Y" }} · Mostrando últimas 100</p>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Fecha</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Cliente</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Concepto</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Pago</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Estado</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Importe</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for order in orders %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 text-sm text-slate-600">
+                            {{ order.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if order.client %}
+                            <a href="{% url 'client_detail' order.client.id %}" class="text-sm font-medium text-slate-900 hover:text-[var(--brand-color)]">
+                                {{ order.client.first_name }} {{ order.client.last_name }}
+                            </a>
+                            {% else %}
+                            <span class="text-sm text-slate-400">Sin cliente</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-sm text-slate-900">
+                                {% for item in order.items.all|slice:":2" %}
+                                    {{ item.description }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                                {% if order.items.count > 2 %}
+                                    <span class="text-slate-400">+{{ order.items.count|add:"-2" }} más</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-600">
+                            {% for payment in order.payments.all %}
+                                {{ payment.payment_method.name }}{% if not forloop.last %}, {% endif %}
+                            {% empty %}
+                                -
+                            {% endfor %}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex px-2 py-1 rounded-full text-xs font-bold
+                                {% if order.status == 'PAID' %}bg-green-100 text-green-700
+                                {% elif order.status == 'PENDING' %}bg-amber-100 text-amber-700
+                                {% elif order.status == 'DEFERRED' %}bg-blue-100 text-blue-700
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="text-sm font-bold text-slate-900">{{ order.total_amount|floatformat:2 }} €</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                            No hay transacciones en el período seleccionado
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('billingReports', () => ({
+        showFilters: false,
+        
+        init() {
+            this.initCharts();
+        },
+        
+        initCharts() {
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart');
+            if (revenueCtx) {
+                new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: {{ chart.labels|safe }},
+                        datasets: [{
+                            label: 'Ingresos',
+                            data: {{ chart.values|safe }},
+                            borderColor: 'rgb(99, 102, 241)',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: value => value.toLocaleString() + ' €'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Type Chart (Doughnut)
+            const typeCtx = document.getElementById('typeChart');
+            if (typeCtx) {
+                const typeData = [];
+                {% for type, amount in income_by_type.items %}
+                typeData.push({
+                    label: '{% if type == "memberships" %}Cuotas{% elif type == "products" %}Productos{% elif type == "services" %}Servicios{% else %}Otros{% endif %}',
+                    value: {% if amount %}{{ amount }}{% else %}0{% endif %}
+                });
+                {% endfor %}
+                
+                const labels = typeData.map(item => item.label);
+                const values = typeData.map(item => item.value);
+                
+                new Chart(typeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                'rgb(99, 102, 241)',  // indigo
+                                'rgb(16, 185, 129)',  // emerald
+                                'rgb(139, 92, 246)',  // violet
+                                'rgb(156, 163, 175)'  // gray
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+        }
+    }));
+});
+</script>
+{% endblock %}

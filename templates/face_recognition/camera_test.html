@@ -1,0 +1,117 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Test de Cámara{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 2rem auto; padding: 2rem; background: white; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+    <h1 style="margin-bottom: 1rem;">🎥 Test de Cámara</h1>
+    
+    <div style="background: #1e293b; border-radius: 1rem; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; overflow: hidden; position: relative;">
+        <video id="testVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
+        <div id="placeholder" style="color: #94a3b8; text-align: center;">
+            <p>📷 Cámara no iniciada</p>
+        </div>
+    </div>
+    
+    <div id="status" style="padding: 1rem; background: #f1f5f9; border-radius: 0.5rem; margin-bottom: 1rem;">
+        Estado: Esperando...
+    </div>
+    
+    <button onclick="startCamera()" style="width: 100%; padding: 1rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; font-size: 1rem; cursor: pointer; margin-bottom: 0.5rem;">
+        ▶️ Iniciar Cámara
+    </button>
+    
+    <button onclick="stopCamera()" style="width: 100%; padding: 1rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; font-size: 1rem; cursor: pointer;">
+        ⏹️ Detener Cámara
+    </button>
+    
+    <div style="margin-top: 1rem; padding: 1rem; background: #fef3c7; border-radius: 0.5rem; font-size: 0.875rem;">
+        <strong>Nota:</strong> Si ves un error, verifica:
+        <ul style="margin: 0.5rem 0 0 1rem;">
+            <li>Que el navegador tenga permiso para acceder a la cámara</li>
+            <li>Que ninguna otra aplicación esté usando la cámara</li>
+            <li>Que estés usando Chrome, Firefox o Edge actualizado</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+let stream = null;
+
+function updateStatus(msg, type = 'info') {
+    const status = document.getElementById('status');
+    const colors = {
+        info: '#f1f5f9',
+        success: '#d1fae5',
+        error: '#fee2e2'
+    };
+    status.style.background = colors[type] || colors.info;
+    status.innerHTML = 'Estado: ' + msg;
+}
+
+async function startCamera() {
+    updateStatus('🔄 Solicitando acceso a la cámara...');
+    
+    try {
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia no está soportado en este navegador');
+        }
+        
+        updateStatus('🔄 Esperando permisos...');
+        
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'user'
+            }
+        });
+        
+        updateStatus('✅ Permisos concedidos, iniciando video...');
+        
+        const video = document.getElementById('testVideo');
+        video.srcObject = stream;
+        
+        video.onloadedmetadata = function() {
+            video.play();
+            video.style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+            updateStatus('✅ ¡Cámara funcionando correctamente!', 'success');
+        };
+        
+        video.onerror = function(e) {
+            updateStatus('❌ Error en el video: ' + e.message, 'error');
+        };
+        
+    } catch (error) {
+        console.error('Error:', error);
+        let errorMsg = error.message || error.name || 'Error desconocido';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMsg = 'Permisos denegados. Haz clic en el ícono de cámara en la barra de direcciones para permitir.';
+        } else if (error.name === 'NotFoundError') {
+            errorMsg = 'No se encontró ninguna cámara conectada.';
+        } else if (error.name === 'NotReadableError') {
+            errorMsg = 'La cámara está siendo usada por otra aplicación.';
+        } else if (error.name === 'OverconstrainedError') {
+            errorMsg = 'La cámara no cumple los requisitos solicitados.';
+        }
+        
+        updateStatus('❌ ' + errorMsg, 'error');
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    
+    const video = document.getElementById('testVideo');
+    video.srcObject = null;
+    video.style.display = 'none';
+    document.getElementById('placeholder').style.display = 'block';
+    updateStatus('⏹️ Cámara detenida');
+}
+</script>
+{% endblock %}

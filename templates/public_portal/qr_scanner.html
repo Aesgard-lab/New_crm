@@ -1,0 +1,355 @@
+{% extends "public_portal/base.html" %}
+{% load static %}
+
+{% block title %}Check-in QR - {{ gym.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    #qr-reader {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    #qr-reader video {
+        border-radius: 1rem !important;
+    }
+    
+    #qr-reader__scan_region {
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    
+    #qr-reader__dashboard {
+        padding: 0.5rem !important;
+    }
+    
+    #qr-reader__dashboard span {
+        font-size: 0.875rem !important;
+    }
+    
+    .scanner-container {
+        position: relative;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    
+    .result-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 1rem;
+    }
+    
+    .result-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        max-width: 360px;
+        width: 100%;
+        text-align: center;
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .result-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 2.5rem;
+    }
+    
+    .result-icon.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+    
+    .result-icon.error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+    
+    .result-icon.warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <!-- Header -->
+    <div class="brand-bg text-white px-4 py-6 pb-12">
+        <div class="max-w-lg mx-auto">
+            <a href="{% url 'public_schedule' slug=gym.slug %}" class="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Volver
+            </a>
+            <h1 class="text-2xl font-bold">Check-in con QR</h1>
+            <p class="text-white/80 mt-1">Escanea el código QR de la sesión para registrar tu asistencia</p>
+        </div>
+    </div>
+    
+    <div class="max-w-lg mx-auto px-4 -mt-6">
+        <!-- Scanner Card -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div class="p-6">
+                <!-- Instructions -->
+                <div class="mb-6 text-center">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 mb-3">
+                        <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-slate-600 text-sm">Apunta la cámara al código QR que se muestra en la pantalla de la recepción o junto a la sala de clases</p>
+                </div>
+                
+                <!-- Scanner -->
+                <div class="scanner-container bg-slate-900 rounded-xl p-2" id="scanner-wrapper">
+                    <div id="qr-reader"></div>
+                </div>
+                
+                <!-- Manual Entry (fallback) -->
+                <div class="mt-6 pt-6 border-t border-slate-100">
+                    <p class="text-sm text-slate-500 text-center mb-3">¿Problemas con la cámara?</p>
+                    <form id="manual-code-form" class="flex gap-2">
+                        <input type="text" id="manual-code" 
+                               class="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:border-[var(--brand-color)] focus:ring-2 focus:ring-[var(--brand-color)]/20 text-sm"
+                               placeholder="Introduce el código manualmente">
+                        <button type="submit" 
+                                class="px-4 py-2 brand-bg text-white rounded-xl font-medium text-sm">
+                            OK
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Bookings -->
+        {% if upcoming_bookings %}
+        <div class="mt-6 bg-white rounded-2xl shadow-lg p-6">
+            <h3 class="font-bold text-slate-800 mb-4">Tus próximas reservas</h3>
+            <div class="space-y-3">
+                {% for booking in upcoming_bookings %}
+                <div class="flex items-center gap-4 p-3 rounded-xl bg-slate-50">
+                    <div class="flex-shrink-0 w-12 h-12 rounded-xl brand-bg flex items-center justify-center text-white font-bold">
+                        {{ booking.session.start_datetime|date:"d" }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-slate-800 truncate">{{ booking.session.activity.name }}</p>
+                        <p class="text-sm text-slate-500">{{ booking.session.start_datetime|date:"H:i" }} - {{ booking.session.room.name|default:"Por asignar" }}</p>
+                    </div>
+                    {% if booking.checked_in %}
+                    <span class="flex-shrink-0 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                        ✓ Check-in
+                    </span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Tips -->
+        <div class="mt-6 mb-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <div class="flex gap-3">
+                <span class="text-xl">💡</span>
+                <div class="text-sm text-blue-800">
+                    <p class="font-medium mb-1">Consejos</p>
+                    <ul class="text-blue-700 space-y-1">
+                        <li>• Asegúrate de tener buena iluminación</li>
+                        <li>• Mantén el teléfono estable</li>
+                        <li>• El código QR se actualiza cada 30 segundos</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Result Modal (hidden by default) -->
+<div id="result-modal" class="result-modal" style="display: none;">
+    <div class="result-card">
+        <div id="result-icon" class="result-icon success">
+            ✓
+        </div>
+        <h3 id="result-title" class="text-xl font-bold text-slate-800 mb-2">¡Check-in realizado!</h3>
+        <p id="result-message" class="text-slate-600 mb-4">Tu asistencia ha sido registrada correctamente.</p>
+        <p id="result-session" class="text-sm text-slate-500 mb-6"></p>
+        <button onclick="closeResultModal()" class="w-full py-3 brand-bg text-white rounded-xl font-bold">
+            Entendido
+        </button>
+    </div>
+</div>
+
+<!-- HTML5 QR Scanner Library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+    let html5QrcodeScanner = null;
+    let isProcessing = false;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        startScanner();
+        
+        // Manual code form
+        document.getElementById('manual-code-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const code = document.getElementById('manual-code').value.trim();
+            if (code) {
+                processQRCode(code);
+            }
+        });
+    });
+    
+    function startScanner() {
+        html5QrcodeScanner = new Html5Qrcode("qr-reader");
+        
+        html5QrcodeScanner.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            },
+            onScanSuccess,
+            onScanError
+        ).catch(err => {
+            console.error('Error starting scanner:', err);
+            document.getElementById('qr-reader').innerHTML = `
+                <div class="p-8 text-center text-white">
+                    <p class="mb-4">No se pudo acceder a la cámara</p>
+                    <p class="text-sm text-slate-400">Usa el campo de entrada manual de abajo</p>
+                </div>
+            `;
+        });
+    }
+    
+    function onScanSuccess(decodedText, decodedResult) {
+        if (isProcessing) return;
+        processQRCode(decodedText);
+    }
+    
+    function onScanError(errorMessage) {
+        // Ignore scan errors (happen on every failed frame)
+    }
+    
+    function processQRCode(qrContent) {
+        if (isProcessing) return;
+        isProcessing = true;
+        
+        // Pausar scanner
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.pause();
+        }
+        
+        // Vibrar si es posible
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
+        }
+        
+        // Enviar al servidor
+        fetch('{% url "public_qr_checkin_api" slug=gym.slug %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ qr_code: qrContent })
+        })
+        .then(response => response.json())
+        .then(data => {
+            showResult(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showResult({
+                success: false,
+                message: 'Error de conexión. Intenta de nuevo.',
+                type: 'error'
+            });
+        });
+    }
+    
+    function showResult(data) {
+        const modal = document.getElementById('result-modal');
+        const icon = document.getElementById('result-icon');
+        const title = document.getElementById('result-title');
+        const message = document.getElementById('result-message');
+        const session = document.getElementById('result-session');
+        
+        if (data.success) {
+            icon.className = 'result-icon success';
+            icon.innerHTML = '✓';
+            title.textContent = '¡Check-in realizado!';
+            message.textContent = data.message || 'Tu asistencia ha sido registrada correctamente.';
+            session.textContent = data.session_name ? `${data.session_name} - ${data.session_time}` : '';
+            
+            // Vibrar éxito
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        } else if (data.type === 'warning' || data.already_checked_in) {
+            icon.className = 'result-icon warning';
+            icon.innerHTML = '!';
+            title.textContent = data.title || 'Ya tienes check-in';
+            message.textContent = data.message;
+            session.textContent = data.session_name ? `${data.session_name} - ${data.session_time}` : '';
+        } else {
+            icon.className = 'result-icon error';
+            icon.innerHTML = '✕';
+            title.textContent = data.title || 'Error';
+            message.textContent = data.message || 'No se pudo procesar el check-in.';
+            session.textContent = '';
+        }
+        
+        modal.style.display = 'flex';
+    }
+    
+    function closeResultModal() {
+        document.getElementById('result-modal').style.display = 'none';
+        isProcessing = false;
+        
+        // Reanudar scanner
+        if (html5QrcodeScanner) {
+            try {
+                html5QrcodeScanner.resume();
+            } catch (e) {
+                // Scanner might not be pausable
+                console.log('Could not resume scanner');
+            }
+        }
+        
+        // Limpiar input manual
+        document.getElementById('manual-code').value = '';
+    }
+    
+    // Cleanup on page leave
+    window.addEventListener('beforeunload', function() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop();
+        }
+    });
+</script>
+{% endblock %}

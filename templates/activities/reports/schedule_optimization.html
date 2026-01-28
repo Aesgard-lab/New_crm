@@ -1,0 +1,305 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Optimización de Horarios{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > 
+<a href="{% url 'executive_dashboard' %}" class="hover:underline">Analytics</a> > Horarios
+{% endblock %}
+{% block page_title %}🕐 Optimización de Horarios{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header con Filtros -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">Análisis de Horarios</h2>
+                <p class="text-sm text-slate-500">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}</p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Inicio</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Fin</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Umbral Ocupación %</label>
+                <input type="number" name="occupancy_threshold" value="{{ occupancy_threshold }}" min="10" max="90"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="btn-brand w-full py-2.5 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                    Analizar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Navegación de Reportes -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="flex border-b border-slate-200 overflow-x-auto">
+            <a href="{% url 'executive_dashboard' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                📊 Ejecutivo
+            </a>
+            <a href="{% url 'attendance_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                📅 Asistencias
+            </a>
+            <a href="{% url 'category_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                🏷️ Categorías
+            </a>
+            <a href="{% url 'activity_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                ⚡ Actividades
+            </a>
+            <a href="{% url 'staff_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                👥 Instructores
+            </a>
+            <a href="{% url 'schedule_optimization' %}" 
+               class="px-6 py-4 font-medium text-sm border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50 whitespace-nowrap flex items-center gap-2">
+                🕐 Horarios
+            </a>
+        </div>
+    </div>
+
+    <!-- Resumen de Insights -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl">⚠️</div>
+                <div>
+                    <div class="text-2xl font-black text-red-700">{{ underperforming|length }}</div>
+                    <div class="text-sm text-red-600">Horarios a revisar</div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-2xl p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-2xl">🔥</div>
+                <div>
+                    <div class="text-2xl font-black text-green-700">{{ high_demand|length }}</div>
+                    <div class="text-sm text-green-600">Oportunidades de crecimiento</div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">📊</div>
+                <div>
+                    <div class="text-2xl font-black text-blue-700">{{ occupancy_threshold }}%</div>
+                    <div class="text-sm text-blue-600">Umbral de análisis</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap Interactivo -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <h3 class="font-bold text-slate-900 mb-2">🗓️ Mapa de Calor - Ocupación por Día/Hora</h3>
+        <p class="text-sm text-slate-500 mb-6">Los colores indican el nivel de ocupación promedio en cada franja horaria</p>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="p-3 text-left text-sm font-medium text-slate-600 w-20">Hora</th>
+                        {% for day_name in heatmap.day_names %}
+                        <th class="p-3 text-center text-sm font-medium text-slate-600">{{ day_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hour in "06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22"|make_list %}
+                    <tr>
+                        <td class="p-3 text-sm font-medium text-slate-600">{{ hour }}:00</td>
+                        {% for day in "1 2 3 4 5 6 7"|make_list %}
+                        <td class="p-1">
+                            <div class="relative group">
+                                {% with day_int=day|add:0 hour_int=hour|add:0 %}
+                                {% with cell_data=heatmap.heatmap|default:"" %}
+                                <div class="w-full h-12 rounded-lg flex flex-col items-center justify-center transition-all cursor-pointer
+                                    {% if cell_data.occupancy >= 80 %}bg-green-500 text-white
+                                    {% elif cell_data.occupancy >= 60 %}bg-green-300 text-green-900
+                                    {% elif cell_data.occupancy >= 40 %}bg-amber-300 text-amber-900
+                                    {% elif cell_data.occupancy >= 20 %}bg-amber-200 text-amber-800
+                                    {% elif cell_data.sessions > 0 %}bg-red-200 text-red-800
+                                    {% else %}bg-slate-100 text-slate-400
+                                    {% endif %}
+                                    hover:scale-105 hover:shadow-lg hover:z-10">
+                                    <span class="text-sm font-bold">{{ cell_data.attendance|default:"-" }}</span>
+                                    {% if cell_data.occupancy %}
+                                    <span class="text-xs opacity-75">{{ cell_data.occupancy|floatformat:0 }}%</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Tooltip -->
+                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                                    <div class="bg-slate-800 text-white text-xs rounded-lg p-2 whitespace-nowrap shadow-lg">
+                                        <div class="font-bold">{{ heatmap.day_names|default:""|slice:":3" }} {{ hour }}:00</div>
+                                        {% if cell_data.sessions %}
+                                        <div>{{ cell_data.sessions }} sesiones</div>
+                                        <div>{{ cell_data.attendance }} asistentes</div>
+                                        <div>{{ cell_data.occupancy|floatformat:0 }}% ocupación</div>
+                                        {% else %}
+                                        <div>Sin sesiones</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endwith %}
+                                {% endwith %}
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Leyenda -->
+        <div class="flex flex-wrap items-center gap-4 mt-6 text-sm text-slate-500">
+            <span class="font-medium">Leyenda (ocupación):</span>
+            <div class="flex items-center gap-1"><div class="w-6 h-6 rounded bg-slate-100"></div> Sin datos</div>
+            <div class="flex items-center gap-1"><div class="w-6 h-6 rounded bg-red-200"></div> &lt;20%</div>
+            <div class="flex items-center gap-1"><div class="w-6 h-6 rounded bg-amber-200"></div> 20-40%</div>
+            <div class="flex items-center gap-1"><div class="w-6 h-6 rounded bg-amber-300"></div> 40-60%</div>
+            <div class="flex items-center gap-1"><div class="w-6 h-6 rounded bg-green-300"></div> 60-80%</div>
+            <div class="flex items-center gap-1"><div class="w-6 h-6 rounded bg-green-500"></div> &gt;80%</div>
+        </div>
+    </div>
+
+    <!-- Grid de Recomendaciones -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Horarios a Eliminar/Reubicar -->
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 bg-red-50">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">⚠️</span>
+                    <div>
+                        <h3 class="font-bold text-red-900">Horarios con Bajo Rendimiento</h3>
+                        <p class="text-sm text-red-700">Ocupación menor al {{ occupancy_threshold }}%</p>
+                    </div>
+                </div>
+            </div>
+            
+            {% if underperforming %}
+            <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                {% for slot in underperforming %}
+                <div class="p-4 hover:bg-slate-50 transition-colors">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="font-medium text-slate-900">{{ slot.activity }}</div>
+                            <div class="text-sm text-slate-500">{{ slot.instructor }}</div>
+                            <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                                <span class="px-2 py-0.5 bg-slate-100 rounded">{{ slot.day }}</span>
+                                <span>{{ slot.hour }}</span>
+                                <span>·</span>
+                                <span>{{ slot.sessions }} sesiones</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="px-3 py-1 rounded-lg text-sm font-bold bg-red-100 text-red-700">
+                                {{ slot.occupancy|floatformat:0 }}%
+                            </div>
+                            <div class="mt-2 text-xs px-2 py-1 rounded-lg 
+                                {% if slot.recommendation == 'Eliminar' %}bg-red-50 text-red-600{% else %}bg-amber-50 text-amber-600{% endif %}">
+                                {{ slot.recommendation }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-12 text-center">
+                <div class="text-5xl mb-4">✅</div>
+                <div class="text-slate-600 font-medium">¡Excelente!</div>
+                <div class="text-sm text-slate-500">Todos los horarios tienen ocupación aceptable</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Oportunidades de Crecimiento -->
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 bg-green-50">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🔥</span>
+                    <div>
+                        <h3 class="font-bold text-green-900">Oportunidades de Crecimiento</h3>
+                        <p class="text-sm text-green-700">Horarios con alta demanda (&gt;80% ocupación)</p>
+                    </div>
+                </div>
+            </div>
+            
+            {% if high_demand %}
+            <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                {% for slot in high_demand %}
+                <div class="p-4 hover:bg-slate-50 transition-colors">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="font-medium text-slate-900">{{ slot.activity }}</div>
+                            <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                                <span class="px-2 py-0.5 bg-slate-100 rounded">{{ slot.day }}</span>
+                                <span>{{ slot.hour }}</span>
+                                <span>·</span>
+                                <span>{{ slot.sessions }} sesiones</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="px-3 py-1 rounded-lg text-sm font-bold bg-green-100 text-green-700">
+                                {{ slot.avg_occupancy|floatformat:0 }}%
+                            </div>
+                            <div class="mt-2 text-xs text-green-600">{{ slot.recommendation }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-12 text-center">
+                <div class="text-5xl mb-4">📈</div>
+                <div class="text-slate-600 font-medium">Sin horarios saturados</div>
+                <div class="text-sm text-slate-500">No hay horarios con ocupación muy alta actualmente</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tips de Optimización -->
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
+        <h3 class="font-bold text-lg mb-4">💡 Consejos de Optimización de Horarios</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="font-bold mb-2">📅 Horarios Prime</div>
+                <div class="opacity-90">Las franjas 7-9h y 18-20h suelen tener mayor demanda. Programa tus clases estrella en estos horarios.</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="font-bold mb-2">🔄 Rotación</div>
+                <div class="opacity-90">Si una clase no funciona en un horario, prueba a moverla antes de eliminarla. A veces el problema es el timing.</div>
+            </div>
+            <div class="bg-white/10 rounded-xl p-4">
+                <div class="font-bold mb-2">📊 Datos Mínimos</div>
+                <div class="opacity-90">Analiza al menos 4-6 semanas de datos antes de tomar decisiones. Una semana mala no es tendencia.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

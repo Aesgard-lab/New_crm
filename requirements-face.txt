@@ -1,0 +1,7 @@
+# Face Recognition dependencies (optional)
+# Requires CMake and system dependencies to build dlib
+# On Ubuntu/Debian: apt install cmake libboost-python-dev
+# On Windows: Install CMake from cmake.org and add to PATH
+
+face_recognition>=1.3.0
+dlib>=19.24.0

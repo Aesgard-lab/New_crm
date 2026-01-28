@@ -1,0 +1,304 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block title %}Informe por Categorías{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'settings_dashboard' %}" class="hover:underline">Configuración</a> > 
+<a href="{% url 'executive_dashboard' %}" class="hover:underline">Analytics</a> > Categorías
+{% endblock %}
+{% block page_title %}🏷️ Informe por Categorías de Actividades{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header con Filtros -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">Comparativa de Categorías</h2>
+                <p class="text-sm text-slate-500">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}</p>
+            </div>
+            <a href="{% url 'export_report_csv' %}?type=activities&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+               class="btn-brand px-4 py-2 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Exportar CSV
+            </a>
+        </div>
+
+        <!-- Filtros -->
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Inicio</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Fin</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}"
+                    class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Categoría</label>
+                <select name="category_id" class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
+                    <option value="">Todas las categorías</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category_id == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="btn-brand w-full py-2.5 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Navegación de Reportes -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="flex border-b border-slate-200 overflow-x-auto">
+            <a href="{% url 'executive_dashboard' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                📊 Ejecutivo
+            </a>
+            <a href="{% url 'attendance_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                📅 Asistencias
+            </a>
+            <a href="{% url 'category_report' %}" 
+               class="px-6 py-4 font-medium text-sm border-b-2 border-[var(--brand-color)] text-[var(--brand-color)] bg-slate-50 whitespace-nowrap flex items-center gap-2">
+                🏷️ Categorías
+            </a>
+            <a href="{% url 'activity_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                ⚡ Actividades
+            </a>
+            <a href="{% url 'staff_report' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                👥 Instructores
+            </a>
+            <a href="{% url 'schedule_optimization' %}" 
+               class="px-6 py-4 font-medium text-sm text-slate-600 hover-brand transition-colors whitespace-nowrap flex items-center gap-2">
+                🕐 Horarios
+            </a>
+        </div>
+    </div>
+
+    <!-- Resumen de Totales -->
+    {% if category_comparison.totals %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="text-3xl font-black text-slate-900">{{ category_comparison.totals.sessions }}</div>
+            <div class="text-sm text-slate-500">Total Sesiones</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="text-3xl font-black text-slate-900">{{ category_comparison.totals.attendance }}</div>
+            <div class="text-sm text-slate-500">Total Asistencias</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="text-3xl font-black text-slate-900">{{ category_comparison.totals.avg_occupancy }}%</div>
+            <div class="text-sm text-slate-500">Ocupación Promedio</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Destacados -->
+    {% if category_comparison.best_occupancy %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-3xl">🏆</span>
+                <div>
+                    <div class="text-xs uppercase opacity-80">Mejor Ocupación</div>
+                    <div class="text-xl font-bold">{{ category_comparison.best_occupancy.activity__category__name }}</div>
+                </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between">
+                <div>
+                    <div class="text-3xl font-black">{{ category_comparison.best_occupancy.occupancy_rate|floatformat:0 }}%</div>
+                    <div class="text-sm opacity-80">{{ category_comparison.best_occupancy.sessions_count }} sesiones</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ category_comparison.best_occupancy.total_attendance }}</div>
+                    <div class="text-sm opacity-80">asistentes</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-6 text-white">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-3xl">📈</span>
+                <div>
+                    <div class="text-xs uppercase opacity-80">Más Asistencia</div>
+                    <div class="text-xl font-bold">{{ category_comparison.best_attendance.activity__category__name }}</div>
+                </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between">
+                <div>
+                    <div class="text-3xl font-black">{{ category_comparison.best_attendance.total_attendance }}</div>
+                    <div class="text-sm opacity-80">asistentes totales</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ category_comparison.best_attendance.unique_clients }}</div>
+                    <div class="text-sm opacity-80">clientes únicos</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla Comparativa de Categorías -->
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-100">
+            <h3 class="font-bold text-slate-900">📊 Comparativa Detallada por Categoría</h3>
+        </div>
+        
+        {% if category_comparison.categories %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Sesiones</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Asistencia Total</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Promedio/Clase</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Clientes Únicos</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Ocupación</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Rating</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for cat in category_comparison.categories %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-900">{{ cat.activity__category__name }}</div>
+                            {% if cat.activity__category__parent__name %}
+                            <div class="text-xs text-slate-500">{{ cat.activity__category__parent__name }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center font-medium text-slate-900">{{ cat.sessions_count }}</td>
+                        <td class="px-6 py-4 text-center font-bold text-slate-900">{{ cat.total_attendance }}</td>
+                        <td class="px-6 py-4 text-center text-slate-600">{{ cat.avg_attendance|floatformat:1 }}</td>
+                        <td class="px-6 py-4 text-center text-slate-600">{{ cat.unique_clients }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="inline-flex items-center gap-2">
+                                <div class="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full {% if cat.occupancy_rate >= 70 %}bg-green-500{% elif cat.occupancy_rate >= 50 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
+                                         style="width: {{ cat.occupancy_rate|floatformat:0 }}%"></div>
+                                </div>
+                                <span class="font-bold {% if cat.occupancy_rate >= 70 %}text-green-600{% elif cat.occupancy_rate >= 50 %}text-amber-600{% else %}text-red-600{% endif %}">
+                                    {{ cat.occupancy_rate|floatformat:0 }}%
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if cat.avg_rating %}
+                            <div class="flex items-center justify-center gap-1">
+                                <span class="text-amber-500">★</span>
+                                <span class="font-medium text-slate-900">{{ cat.avg_rating|floatformat:1 }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-12 text-center">
+            <div class="text-6xl mb-4">📊</div>
+            <div class="text-slate-500">No hay datos de categorías para el período seleccionado</div>
+            <p class="text-sm text-slate-400 mt-2">Asegúrate de que las actividades tengan categorías asignadas</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Gráfica de Tendencias por Categoría -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <h3 class="font-bold text-slate-900 mb-4">📈 Tendencias de Asistencia por Categoría</h3>
+        <div class="h-64">
+            <canvas id="categoryTrendsChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Preparar datos de tendencias
+    const trendsData = JSON.parse('{{ category_trends|escapejs }}');
+    
+    // Agrupar por categoría
+    const categories = {};
+    const allLabels = new Set();
+    
+    trendsData.forEach(item => {
+        const catName = item.activity__category__name;
+        const period = item.period;
+        
+        if (!categories[catName]) {
+            categories[catName] = {};
+        }
+        categories[catName][period] = item.attendance;
+        allLabels.add(period);
+    });
+    
+    const labels = Array.from(allLabels).sort();
+    const colors = [
+        'rgb(99, 102, 241)',   // indigo
+        'rgb(16, 185, 129)',   // emerald
+        'rgb(245, 158, 11)',   // amber
+        'rgb(239, 68, 68)',    // red
+        'rgb(139, 92, 246)',   // violet
+        'rgb(20, 184, 166)',   // teal
+    ];
+    
+    const datasets = Object.keys(categories).map((catName, idx) => ({
+        label: catName,
+        data: labels.map(l => categories[catName][l] || 0),
+        borderColor: colors[idx % colors.length],
+        backgroundColor: colors[idx % colors.length] + '20',
+        fill: true,
+        tension: 0.3
+    }));
+    
+    const ctx = document.getElementById('categoryTrendsChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels.map(l => {
+                const d = new Date(l);
+                return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+            }),
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Asistentes'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

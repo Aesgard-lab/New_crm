@@ -1,0 +1,370 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Vista lineal de clases y citas</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .day-selector {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        padding: 0.5rem 0;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .day-selector::-webkit-scrollbar { display: none; }
+    
+    .day-btn {
+        flex-shrink: 0;
+        width: 56px;
+        padding: 0.75rem 0.5rem;
+        border-radius: 1rem;
+        text-align: center;
+        border: 2px solid #e2e8f0;
+        transition: all 0.2s;
+        cursor: pointer;
+        background: white;
+    }
+    .day-btn:hover { 
+        border-color: var(--brand-color); 
+    }
+    .day-btn.active {
+        background: var(--brand-color);
+        color: white;
+        border-color: var(--brand-color);
+    }
+    .day-btn .day-num { 
+        font-size: 1.25rem; 
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .day-btn .day-name { 
+        font-size: 0.65rem; 
+        text-transform: uppercase; 
+        opacity: 0.7;
+        margin-top: 2px;
+    }
+    
+    .session-card {
+        transition: all 0.2s;
+        border-left: 4px solid var(--activity-color, var(--brand-color));
+    }
+    .session-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+        color: #64748b;
+    }
+    .tab-btn:hover { 
+        color: var(--brand-color); 
+    }
+    .tab-btn.active {
+        color: var(--brand-color);
+        border-bottom-color: var(--brand-color);
+    }
+    
+    .staff-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        flex-shrink: 0;
+    }
+    
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    
+    <!-- Vista Toggle -->
+    <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+            <a href="?view=calendar" 
+               class="px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-500 hover:text-slate-700">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Calendario
+            </a>
+            <a href="?view=linear" 
+               class="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white text-[var(--brand-color)] shadow-sm">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                </svg>
+                Vista Lineal
+            </a>
+        </div>
+        
+        <a href="{% url 'calendar_view' %}?view=calendar" 
+           class="btn-brand px-4 py-2 text-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Nueva Clase
+        </a>
+    </div>
+
+    <!-- Tabs: Clases / Citas -->
+    <div class="mb-6 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="flex border-b border-slate-200">
+            <button id="tabClases" onclick="switchTab('clases')" class="tab-btn flex-1 active">
+                📅 Clases
+            </button>
+            <button id="tabCitas" onclick="switchTab('citas')" class="tab-btn flex-1">
+                🗓️ Citas
+            </button>
+        </div>
+    </div>
+
+    <!-- Selector de días -->
+    <div class="mb-6 bg-white rounded-2xl border border-slate-200 p-4">
+        <div class="day-selector" id="daySelector">
+            <!-- Se genera dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Título del día -->
+    <h2 class="text-xl font-bold text-slate-900 mb-4" id="selectedDayTitle">
+        Cargando...
+    </h2>
+
+    <!-- Lista de sesiones -->
+    <div id="sessionsContainer" class="space-y-3">
+        <!-- Skeleton loading -->
+        <div class="animate-pulse space-y-3">
+            <div class="bg-white rounded-xl p-4 flex gap-4 border border-slate-200">
+                <div class="w-10 h-10 bg-slate-200 rounded-full"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="h-5 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 flex gap-4 border border-slate-200">
+                <div class="w-10 h-10 bg-slate-200 rounded-full"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="h-5 bg-slate-200 rounded w-2/3"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentDate = new Date();
+let selectedDate = new Date();
+let activeTab = 'clases';
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    renderDaySelector();
+    loadSessions();
+});
+
+// Generar selector de días (14 días)
+function renderDaySelector() {
+    const container = document.getElementById('daySelector');
+    const days = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+    container.innerHTML = '';
+    
+    for (let i = 0; i < 14; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        
+        const isSelected = date.toDateString() === selectedDate.toDateString();
+        
+        const btn = document.createElement('button');
+        btn.className = `day-btn ${isSelected ? 'active' : ''}`;
+        btn.innerHTML = `
+            <div class="day-num">${date.getDate()}</div>
+            <div class="day-name">${days[date.getDay()]}</div>
+        `;
+        btn.onclick = () => selectDay(date);
+        container.appendChild(btn);
+    }
+}
+
+function selectDay(date) {
+    selectedDate = date;
+    renderDaySelector();
+    loadSessions();
+}
+
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tabClases').classList.toggle('active', tab === 'clases');
+    document.getElementById('tabCitas').classList.toggle('active', tab === 'citas');
+    loadSessions();
+}
+
+function updateDayTitle() {
+    const options = { weekday: 'long', day: 'numeric', month: 'long' };
+    const title = selectedDate.toLocaleDateString('es-ES', options);
+    document.getElementById('selectedDayTitle').textContent = title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+async function loadSessions() {
+    updateDayTitle();
+    const container = document.getElementById('sessionsContainer');
+    
+    // Skeleton
+    container.innerHTML = `
+        <div class="animate-pulse space-y-3">
+            <div class="bg-white rounded-xl p-4 flex gap-4 border border-slate-200">
+                <div class="w-10 h-10 bg-slate-200 rounded-full"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="h-5 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const start = selectedDate.toISOString().split('T')[0];
+    const endDate = new Date(selectedDate);
+    endDate.setDate(endDate.getDate() + 1);
+    const end = endDate.toISOString().split('T')[0];
+    
+    try {
+        const response = await fetch(`/activities/api/events/?start=${start}&end=${end}`);
+        const events = await response.json();
+        
+        // Filter by tab
+        const sessions = events.filter(e => {
+            if (activeTab === 'clases') {
+                return e.type === 'class' || !e.type;
+            } else {
+                return e.type === 'appointment';
+            }
+        });
+        
+        if (sessions.length === 0) {
+            container.innerHTML = `
+                <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">No hay sesiones programadas</h3>
+                    <p class="text-slate-500 mb-4">No hay clases ni citas para este día</p>
+                    <a href="{% url 'calendar_view' %}?view=calendar" class="btn-brand px-6 py-2 text-sm inline-flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Crear sesión
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort by time
+        sessions.sort((a, b) => new Date(a.start) - new Date(b.start));
+        
+        container.innerHTML = sessions.map(session => {
+            const startDate = new Date(session.start);
+            const endDate = session.end ? new Date(session.end) : new Date(startDate.getTime() + 60*60*1000);
+            const duration = Math.round((endDate - startDate) / (1000 * 60));
+            
+            // Get staff initials
+            let staffInitials = '?';
+            let staffName = session.staff_name || '';
+            if (staffName) {
+                const parts = staffName.split(' ');
+                staffInitials = parts.map(p => p[0]).join('').substring(0, 2).toUpperCase();
+            }
+            
+            const color = session.backgroundColor || session.color || 'var(--brand-color)';
+            const staffColor = session.staff_color || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            const attendees = session.attendees || 0;
+            const capacity = session.capacity || session.max_capacity || 20;
+            const isFull = attendees >= capacity;
+            const spotsLeft = capacity - attendees;
+            
+            return `
+                <div class="session-card bg-white rounded-xl border border-slate-200 p-4 cursor-pointer"
+                     style="--activity-color: ${color}"
+                     onclick="openSession(${session.id})">
+                    <div class="flex items-center gap-4">
+                        <!-- Avatar del instructor -->
+                        <div class="staff-avatar" 
+                             style="background: ${staffColor}">
+                            <span>${staffInitials}</span>
+                        </div>
+                        
+                        <!-- Info principal -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-bold text-slate-900 truncate">${session.title}</h3>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-slate-500">
+                                <span class="font-medium">${startDate.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}</span>
+                                <span>•</span>
+                                <span>${duration} min</span>
+                                ${staffName ? `<span>•</span><span>${staffName}</span>` : ''}
+                                ${session.room_name ? `<span>•</span><span>${session.room_name}</span>` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Disponibilidad -->
+                        <div class="flex items-center gap-3">
+                            ${isFull ? 
+                                `<span class="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-lg">Completo</span>` :
+                                `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">${spotsLeft} plazas</span>`
+                            }
+                            <div class="text-right">
+                                <div class="text-lg font-bold ${isFull ? 'text-red-600' : 'text-slate-700'}">
+                                    ${attendees}/${capacity}
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+        container.innerHTML = `
+            <div class="text-center py-12 bg-white rounded-2xl border border-slate-200">
+                <div class="text-6xl mb-4">⚠️</div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Error al cargar</h3>
+                <p class="text-slate-500">Intenta de nuevo más tarde</p>
+            </div>
+        `;
+    }
+}
+
+function openSession(sessionId) {
+    // Redirect to calendar with session selected
+    window.location.href = `{% url 'calendar_view' %}?view=calendar&session=${sessionId}`;
+}
+</script>
+{% endblock %}
