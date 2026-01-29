@@ -1,0 +1,278 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Entrenamiento - {{ workout.routine_day.name|default:"Libre" }}{% endblock %}
+
+{% block header %}
+<!-- Header fijo con timer -->
+<header class="bg-white sticky top-0 z-30 shadow-sm px-4 py-3">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="{% url 'portal_routines' %}" 
+               class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="font-bold text-slate-800">{{ workout.routine_day.name|default:"Entrenamiento Libre" }}</h1>
+                <p class="text-xs text-slate-500">{{ workout.routine.name|default:"" }}</p>
+            </div>
+        </div>
+        
+        <!-- Timer -->
+        <div class="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2" x-data="timer()" x-init="start()">
+            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="font-mono font-bold text-slate-800" x-text="display"></span>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4 pb-24" x-data="workoutTracker()">
+    
+    <!-- Progreso -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <div class="flex justify-between text-sm mb-2">
+            <span class="text-slate-600">Progreso</span>
+            <span class="font-bold text-slate-800" x-text="completedCount + '/' + totalExercises + ' ejercicios'"></span>
+        </div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                 :style="'width:' + progressPercent + '%'"></div>
+        </div>
+    </div>
+    
+    <!-- Lista de ejercicios -->
+    <div class="space-y-3">
+        {% for log in exercise_logs %}
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden" 
+             x-data="{ open: {{ forloop.first|yesno:'true,false' }}, completed: {{ log.completed|yesno:'true,false' }} }"
+             :class="{ 'border-2 border-emerald-400': completed }">
+            
+            <!-- Header del ejercicio -->
+            <div class="p-4 cursor-pointer" @click="open = !open">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                         :class="completed ? 'bg-emerald-100' : 'bg-slate-100'">
+                        <span x-show="!completed" class="text-2xl">💪</span>
+                        <svg x-show="completed" class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-slate-800" :class="{ 'text-emerald-700': completed }">
+                            {{ log.exercise.name }}
+                        </h3>
+                        <p class="text-sm text-slate-500">
+                            {% if log.routine_exercise %}
+                            {{ log.routine_exercise.sets }}×{{ log.routine_exercise.reps }}
+                            {% if log.routine_exercise.rest %} • {{ log.routine_exercise.rest }}{% endif %}
+                            {% else %}
+                            Sin prescripción
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-1 bg-slate-100 rounded-lg text-xs font-bold" 
+                              id="sets-count-{{ log.id }}">{{ log.sets_completed }} series</span>
+                        <svg class="w-5 h-5 text-slate-400 transition-transform" 
+                             :class="{ 'rotate-180': open }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel expandido -->
+            <div x-show="open" x-collapse>
+                <div class="px-4 pb-4 border-t border-slate-100 pt-4">
+                    
+                    <!-- Series registradas -->
+                    <div class="space-y-2 mb-4" id="sets-list-{{ log.id }}">
+                        {% for set in log.sets_data %}
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                            <span class="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center text-sm font-bold text-slate-600">
+                                {{ forloop.counter }}
+                            </span>
+                            <span class="flex-1 font-medium text-slate-800">
+                                {{ set.reps }} reps × {{ set.weight }} kg
+                            </span>
+                            <span class="text-sm text-slate-500">{{ set.reps|multiply:set.weight }} kg</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-sm text-slate-400 text-center py-2">No hay series registradas</p>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if not log.completed %}
+                    <!-- Formulario para añadir serie -->
+                    <form id="set-form-{{ log.id }}" class="flex gap-2 mb-4" 
+                          onsubmit="return addSet(event, {{ log.id }})">
+                        <div class="flex-1">
+                            <label class="text-xs text-slate-500 mb-1 block">Reps</label>
+                            <input type="number" name="reps" placeholder="12" min="1"
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-xl text-center font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs text-slate-500 mb-1 block">Peso (kg)</label>
+                            <input type="number" name="weight" placeholder="50" min="0" step="0.5"
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-xl text-center font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit"
+                                class="px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors">
+                                + Serie
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Botón completar -->
+                    <button onclick="completeExercise({{ log.id }})"
+                        class="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors">
+                        ✓ Marcar como completado
+                    </button>
+                    {% else %}
+                    <div class="text-center py-2">
+                        <span class="text-emerald-600 font-medium">✓ Ejercicio completado</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-12">
+            <p class="text-slate-500">No hay ejercicios en esta rutina</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Botón Finalizar (fijo abajo) -->
+    <div class="fixed bottom-20 left-4 right-4">
+        <a href="{% url 'portal_finish_workout' workout_id=workout.id %}"
+           class="block w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl font-bold text-lg text-center shadow-xl hover:opacity-90 transition-all">
+            🏁 Finalizar Entrenamiento
+        </a>
+    </div>
+    
+</div>
+
+<script>
+function timer() {
+    return {
+        seconds: 0,
+        display: '00:00',
+        interval: null,
+        start() {
+            this.interval = setInterval(() => {
+                this.seconds++;
+                const mins = Math.floor(this.seconds / 60);
+                const secs = this.seconds % 60;
+                this.display = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            }, 1000);
+        }
+    }
+}
+
+function workoutTracker() {
+    return {
+        totalExercises: {{ exercise_logs.count }},
+        completedCount: {{ exercise_logs|length }} - {{ exercise_logs.count }},
+        get progressPercent() {
+            return this.totalExercises > 0 ? (this.completedCount / this.totalExercises) * 100 : 0;
+        },
+        updateCompleted(count) {
+            this.completedCount = count;
+        }
+    }
+}
+
+async function addSet(event, logId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const reps = parseInt(form.reps.value);
+    const weight = parseFloat(form.weight.value) || 0;
+    
+    if (!reps) {
+        alert('Introduce el número de repeticiones');
+        return false;
+    }
+    
+    try {
+        const response = await fetch(`/app/workout/{{ workout.id }}/log/${logId}/set/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ reps, weight })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Añadir la serie a la lista
+            const setsList = document.getElementById(`sets-list-${logId}`);
+            const newSet = document.createElement('div');
+            newSet.className = 'flex items-center gap-3 p-3 bg-slate-50 rounded-xl';
+            newSet.innerHTML = `
+                <span class="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center text-sm font-bold text-slate-600">
+                    ${data.set_number}
+                </span>
+                <span class="flex-1 font-medium text-slate-800">
+                    ${reps} reps × ${weight} kg
+                </span>
+                <span class="text-sm text-slate-500">${reps * weight} kg</span>
+            `;
+            
+            // Limpiar mensaje vacío si existe
+            const emptyMsg = setsList.querySelector('p');
+            if (emptyMsg) emptyMsg.remove();
+            
+            setsList.appendChild(newSet);
+            
+            // Actualizar contador
+            document.getElementById(`sets-count-${logId}`).textContent = `${data.total_sets} series`;
+            
+            // Limpiar formulario
+            form.reset();
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error al registrar la serie');
+    }
+    
+    return false;
+}
+
+async function completeExercise(logId) {
+    try {
+        const response = await fetch(`/app/workout/{{ workout.id }}/log/${logId}/complete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload(); // Recargar para actualizar estado
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error al completar el ejercicio');
+    }
+}
+</script>
+{% endblock %}
+
+{% block body_class %}pb-0{% endblock %}
+{% block bottom_nav %}{% endblock %}

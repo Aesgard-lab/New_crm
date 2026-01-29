@@ -98,11 +98,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       sessionsByDate.putIfAbsent(dateKey, () => []).add(session);
     }
 
+    final api = Provider.of<ApiService>(context);
+    final brandColor = api.brandColor;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Horario de Clases'),
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: brandColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -114,7 +117,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             color: Colors.white,
             child: Row(
               children: [
-                const Icon(Icons.filter_list, color: Color(0xFF0F172A)),
+                Icon(Icons.filter_list, color: brandColor),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<int?>(

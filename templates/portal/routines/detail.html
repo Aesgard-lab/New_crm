@@ -38,39 +38,67 @@
         <div class="flex gap-4 text-sm">
             <div>
                 <span class="text-indigo-200">Asignada</span>
-                <p class="font-bold">{{ assignment.assigned_date|date:"d M Y" }}</p>
+                <p class="font-bold">{{ assignment.start_date|date:"d M Y" }}</p>
             </div>
             <div>
-                <span class="text-indigo-200">Ejercicios</span>
-                <p class="font-bold">{{ exercises|length }}</p>
+                <span class="text-indigo-200">Días</span>
+                <p class="font-bold">{{ days|length }}</p>
             </div>
+            {% if routine.objective %}
+            <div>
+                <span class="text-indigo-200">Objetivo</span>
+                <p class="font-bold">{{ routine.get_objective_display }}</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Exercises List -->
-    <div>
-        <h3 class="font-bold text-slate-800 mb-4">Ejercicios</h3>
+    <!-- Days List -->
+    {% if days %}
+    {% for day in days %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <!-- Day Header -->
+        <div class="bg-slate-50 px-5 py-4 border-b border-slate-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold flex-shrink-0">
+                        {{ forloop.counter }}
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">{{ day.name }}</h3>
+                        <p class="text-xs text-slate-500">{{ day.exercises.count }} ejercicio{{ day.exercises.count|pluralize:"s" }}</p>
+                    </div>
+                </div>
+                <!-- Start Workout Button -->
+                <a href="{% url 'portal_start_workout' day_id=day.id %}"
+                   class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Empezar
+                </a>
+            </div>
+        </div>
 
-        {% if exercises %}
-        <div class="space-y-4">
-            {% for re in exercises %}
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-                x-data="{ open: false }">
+        <!-- Exercises -->
+        <div class="divide-y divide-slate-100">
+            {% for re in day.exercises.all %}
+            <div x-data="{ open: false }">
                 <!-- Exercise Header -->
                 <button @click="open = !open"
                     class="w-full p-4 flex items-center gap-4 text-left hover:bg-slate-50 transition-colors">
                     <!-- Order Number -->
-                    <div
-                        class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold flex-shrink-0">
+                    <div class="w-8 h-8 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center font-medium text-sm flex-shrink-0">
                         {{ forloop.counter }}
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-slate-800 truncate">{{ re.exercise.name }}</h4>
+                        <h4 class="font-semibold text-slate-800 truncate">{{ re.exercise.name }}</h4>
                         <p class="text-xs text-slate-500">
                             {% if re.sets %}{{ re.sets }} series{% endif %}
-                            {% if re.reps %} × {{ re.reps }} reps{% endif %}
-                            {% if re.duration %} - {{ re.duration }}{% endif %}
+                            {% if re.reps %} × {{ re.reps }}{% endif %}
+                            {% if re.rest %} · {{ re.rest }} descanso{% endif %}
                         </p>
                     </div>
 
@@ -86,13 +114,21 @@
                     <!-- Video Preview -->
                     {% if re.exercise.video_url %}
                     <div class="aspect-video bg-slate-900">
+                        {% if 'youtube.com' in re.exercise.video_url or 'youtu.be' in re.exercise.video_url %}
+                        <iframe 
+                            src="https://www.youtube.com/embed/{{ re.exercise.video_url|cut:'https://www.youtube.com/watch?v='|cut:'https://youtu.be/' }}" 
+                            class="w-full h-full" 
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                        </iframe>
+                        {% else %}
                         <iframe src="{{ re.exercise.video_url }}" class="w-full h-full" frameborder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowfullscreen>
                         </iframe>
+                        {% endif %}
                     </div>
-                    {% elif re.exercise.image %}
-                    <img src="{{ re.exercise.image.url }}" class="w-full aspect-video object-cover">
                     {% endif %}
 
                     <div class="p-4 space-y-3">
@@ -120,17 +156,10 @@
                             </div>
                             {% endif %}
 
-                            {% if re.rest_seconds %}
+                            {% if re.rest %}
                             <div class="bg-slate-50 rounded-xl p-3 text-center">
-                                <div class="text-lg font-bold text-slate-800">{{ re.rest_seconds }}s</div>
+                                <div class="text-lg font-bold text-slate-800">{{ re.rest }}</div>
                                 <div class="text-[10px] text-slate-500 font-medium uppercase">Descanso</div>
-                            </div>
-                            {% endif %}
-
-                            {% if re.weight %}
-                            <div class="bg-indigo-50 rounded-xl p-3 text-center">
-                                <div class="text-lg font-bold text-indigo-600">{{ re.weight }}kg</div>
-                                <div class="text-[10px] text-indigo-500 font-medium uppercase">Peso</div>
                             </div>
                             {% endif %}
                         </div>
@@ -145,15 +174,20 @@
                     </div>
                 </div>
             </div>
+            {% empty %}
+            <div class="p-4 text-center text-slate-500 text-sm">
+                Este día no tiene ejercicios.
+            </div>
             {% endfor %}
         </div>
-
-        {% else %}
-        <div class="text-center py-8 bg-white rounded-2xl border border-slate-100">
-            <p class="text-slate-500">Esta rutina no tiene ejercicios.</p>
-        </div>
-        {% endif %}
     </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="text-center py-8 bg-white rounded-2xl border border-slate-100">
+        <p class="text-slate-500">Esta rutina no tiene días configurados.</p>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}

@@ -18,6 +18,9 @@ class ProfileScreen extends StatelessWidget {
       );
     }
 
+    final brandColor = api.brandColor;
+    final brandColorDark = api.brandColorDark;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: CustomScrollView(
@@ -26,21 +29,23 @@ class ProfileScreen extends StatelessWidget {
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
-            backgroundColor: const Color(0xFF0F172A),
+            backgroundColor: brandColor,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                    colors: [brandColor, brandColorDark],
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 40),
-                    Hero(
+                child: SafeArea(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 20),
+                      Hero(
                       tag: 'profile_photo',
                       child: CircleAvatar(
                         radius: 50,
@@ -77,6 +82,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             ),

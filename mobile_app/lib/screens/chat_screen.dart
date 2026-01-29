@@ -120,6 +120,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final api = Provider.of<ApiService>(context);
+    final brandColor = api.brandColor;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFE5E5E5), // WhatsApp-like background color
       appBar: AppBar(
@@ -127,7 +130,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'Chat con el Staff',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: brandColor,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
@@ -247,7 +250,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(width: 8),
           CircleAvatar(
-            backgroundColor: const Color(0xFF0F172A),
+            backgroundColor: Provider.of<ApiService>(context).brandColor,
             child: IconButton(
               icon: _isSending
                   ? const SizedBox(

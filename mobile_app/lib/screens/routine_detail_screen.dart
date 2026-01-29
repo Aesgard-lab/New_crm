@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../api/api_service.dart';
 import '../models/routine.dart';
 import 'exercise_detail_screen.dart';
+import 'workout_tracking_screen.dart';
 import 'dart:math' as math;
 
 class RoutineDetailScreen extends StatefulWidget {
@@ -387,16 +388,94 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen>
           parent: _animationController,
           curve: Curves.easeOut,
         )),
-        child: ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: day.exercises.length,
-          itemBuilder: (context, index) {
-            final exercise = day.exercises[index];
-            return _buildExerciseCard(exercise, index);
-          },
+        child: Column(
+          children: [
+            // Start Workout Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _startWorkout(day),
+                  icon: const Icon(Icons.play_circle_fill, size: 24),
+                  label: const Text(
+                    'Empezar Entrenamiento',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ),
+            // Exercises List
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: day.exercises.length,
+                itemBuilder: (context, index) {
+                  final exercise = day.exercises[index];
+                  return _buildExerciseCard(exercise, index);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _startWorkout(RoutineDay day) async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+        ),
+      ),
+    );
+
+    final result = await api.startWorkout(day.id);
+    
+    if (mounted) Navigator.pop(context); // Close loading
+
+    if (result['success'] == true) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkoutTrackingScreen(
+              workoutId: result['workout_id'],
+              routineName: _routine?.name ?? 'Entrenamiento',
+              dayName: day.name,
+              exercises: result['exercises'] ?? [],
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Error al iniciar entrenamiento'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildExerciseCard(RoutineExercise exercise, int index) {

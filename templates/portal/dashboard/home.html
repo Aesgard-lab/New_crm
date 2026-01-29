@@ -213,37 +213,68 @@
     <p class="text-center text-white/70 text-xs mt-4 font-medium relative z-10">Escanea este código en recepción</p>
 </div>
 
+<!-- ⭐ CHECK-IN RÁPIDO - Botón Grande y Fácil -->
+<a href="{% url 'portal_checkin' %}"
+   class="block bg-gradient-to-r from-emerald-500 to-green-600 rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] relative overflow-hidden">
+    <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 rounded-full bg-white opacity-10 blur-2xl"></div>
+    <div class="flex items-center gap-4 relative z-10">
+        <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <div class="text-white font-bold text-lg">Hacer Check-in</div>
+            <div class="text-white/80 text-sm">Un toque para entrar</div>
+        </div>
+        <div class="bg-white/20 rounded-full p-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </div>
+    </div>
+</a>
+
 <!-- Quick Actions - Modernizado -->
-<div class="grid grid-cols-2 gap-4">
+<div class="grid grid-cols-3 gap-3">
     <a href="{% url 'portal_bookings' %}"
-        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col items-center justify-center gap-3 card-modern group">
+        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col items-center justify-center gap-2 card-modern group">
         <div
-            class="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
                 </path>
             </svg>
         </div>
         <div class="text-center">
-            <span class="text-sm font-bold text-slate-900 block">Reservar</span>
-            <span class="text-xs text-slate-500">Clases y actividades</span>
+            <span class="text-xs font-bold text-slate-900 block">Reservar</span>
         </div>
     </a>
 
     <a href="{% url 'portal_routines' %}"
-        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col items-center justify-center gap-3 card-modern group">
+        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col items-center justify-center gap-2 card-modern group">
         <div
-            class="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                 </path>
             </svg>
         </div>
         <div class="text-center">
-            <span class="text-sm font-bold text-slate-900 block">Mi Rutina</span>
-            <span class="text-xs text-slate-500">Entrenamientos</span>
+            <span class="text-xs font-bold text-slate-900 block">Mi Rutina</span>
+        </div>
+    </a>
+
+    <a href="{% url 'portal_gamification' %}"
+        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col items-center justify-center gap-2 card-modern group">
+        <div
+            class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <span class="text-xl">🏆</span>
+        </div>
+        <div class="text-center">
+            <span class="text-xs font-bold text-slate-900 block">Logros</span>
         </div>
     </a>
 </div>

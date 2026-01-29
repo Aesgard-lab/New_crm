@@ -1811,3 +1811,669 @@ def public_checkout_membership(request, slug, membership_id):
     }
     
     return render(request, 'public_portal/profile/checkout_membership.html', context)
+
+
+# ===========================
+# RUTINAS
+# ===========================
+
+@login_required
+@login_required
+def public_routines(request, slug):
+    """Lista de rutinas asignadas al cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Obtener rutinas asignadas
+    from routines.models import ClientRoutine
+    assignments = ClientRoutine.objects.filter(
+        client=client,
+        is_active=True
+    ).select_related('routine').order_by('-start_date')
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'assignments': assignments,
+    }
+    return render(request, 'public_portal/routines/list.html', context)
+
+
+@login_required
+def public_routine_detail(request, slug, routine_id):
+    """Detalle de una rutina con sus días y ejercicios"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Verificar que la rutina está asignada al cliente
+    from routines.models import ClientRoutine
+    assignment = get_object_or_404(
+        ClientRoutine,
+        routine_id=routine_id,
+        client=client,
+        is_active=True
+    )
+    routine = assignment.routine
+    
+    # Obtener días con ejercicios
+    days = routine.days.all().prefetch_related('exercises__exercise').order_by('order')
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'routine': routine,
+        'assignment': assignment,
+        'days': days,
+    }
+    return render(request, 'public_portal/routines/detail.html', context)
+
+
+# ===========================
+# QR CHECK-IN
+# ===========================
+
+@login_required
+def public_checkin(request, slug):
+    """Página principal de check-in con escáner QR"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+    }
+    return render(request, 'public_portal/checkin/scanner.html', context)
+
+
+@login_required
+def public_my_qr(request, slug):
+    """Genera el código QR personal del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return JsonResponse({'error': 'Gimnasio no encontrado'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+    
+    import hashlib
+    import time
+    from django.conf import settings as django_settings
+    
+    # Generar token dinámico que cambia cada 30 segundos
+    timestamp = int(time.time() // 30)
+    raw = f"{client.id}-{timestamp}-{django_settings.SECRET_KEY}"
+    token = hashlib.sha256(raw.encode()).hexdigest()[:16]
+    
+    qr_data = {
+        'type': 'client_checkin',
+        'client_id': client.id,
+        'gym_id': gym.id,
+        'token': token,
+        'ts': timestamp,
+    }
+    
+    import json
+    qr_content = json.dumps(qr_data)
+    
+    return JsonResponse({
+        'qr_content': qr_content,
+        'client_name': client.full_name,
+        'valid_until': (timestamp + 1) * 30,
+    })
+
+
+@login_required
+@csrf_exempt
+def public_checkin_process(request, slug):
+    """Procesa el check-in escaneando QR de sesión"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return JsonResponse({'error': 'Gimnasio no encontrado'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+    
+    import json
+    try:
+        data = json.loads(request.body)
+        qr_token = data.get('token', '')
+    except:
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    
+    # Verificar el token QR de la sesión
+    from activities.checkin_views import verify_qr_token
+    
+    try:
+        session, client_verified = verify_qr_token(qr_token, client)
+        
+        if session and client_verified:
+            # Crear registro de check-in
+            from activities.models import SessionCheckin
+            checkin, created = SessionCheckin.objects.get_or_create(
+                session=session,
+                client=client,
+                defaults={'ip_address': request.META.get('REMOTE_ADDR', '')}
+            )
+            
+            if created:
+                return JsonResponse({
+                    'success': True,
+                    'message': f'¡Check-in exitoso para {session.activity.name}!',
+                    'session': session.activity.name,
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Ya tenías check-in para esta sesión',
+                    'already_checked_in': True,
+                })
+        else:
+            return JsonResponse({'error': 'Token QR inválido o expirado'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# ===========================
+# DOCUMENTOS
+# ===========================
+
+@login_required
+def public_documents(request, slug):
+    """Lista de documentos del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Obtener documentos del cliente
+    from clients.models import ClientDocument
+    documents = ClientDocument.objects.filter(
+        client=client
+    ).select_related('template').order_by('-created_at')
+    
+    # Contar pendientes
+    pending_count = documents.filter(signed_at__isnull=True).count()
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'documents': documents,
+        'pending_count': pending_count,
+    }
+    return render(request, 'public_portal/documents/list.html', context)
+
+
+@login_required
+def public_document_detail(request, slug, document_id):
+    """Ver detalle de un documento"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    from clients.models import ClientDocument
+    document = get_object_or_404(ClientDocument, id=document_id, client=client)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'document': document,
+    }
+    return render(request, 'public_portal/documents/detail.html', context)
+
+
+@login_required
+@csrf_exempt
+def public_document_sign(request, slug, document_id):
+    """Firmar un documento digitalmente"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return JsonResponse({'error': 'Gimnasio no encontrado'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Cliente no encontrado'}, status=404)
+    
+    from clients.models import ClientDocument
+    document = get_object_or_404(ClientDocument, id=document_id, client=client)
+    
+    if document.signed_at:
+        return JsonResponse({'error': 'Documento ya firmado'}, status=400)
+    
+    import json
+    try:
+        data = json.loads(request.body)
+        signature_data = data.get('signature', '')
+    except:
+        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    
+    if not signature_data:
+        return JsonResponse({'error': 'Firma requerida'}, status=400)
+    
+    # Guardar firma
+    document.signature = signature_data
+    document.signed_at = timezone.now()
+    document.signed_ip = request.META.get('REMOTE_ADDR', '')
+    document.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Documento firmado correctamente',
+    })
+
+
+# ===========================
+# RECUPERAR CONTRASEÑA
+# ===========================
+
+def public_forgot_password(request, slug):
+    """Solicitar recuperación de contraseña"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        
+        if not email:
+            messages.error(request, 'Por favor, introduce tu email.')
+            return redirect('public_forgot_password', slug=slug)
+        
+        # Buscar cliente
+        try:
+            client = Client.objects.get(email__iexact=email, gym=gym)
+            user = client.user
+            
+            if user:
+                # Generar token
+                import secrets
+                from django.core.cache import cache
+                
+                token = secrets.token_urlsafe(32)
+                cache_key = f"password_reset_{token}"
+                cache.set(cache_key, user.id, timeout=3600)  # 1 hora
+                
+                # Enviar email
+                reset_url = request.build_absolute_uri(
+                    f"/public/gym/{slug}/reset-password/{token}/"
+                )
+                
+                # TODO: Enviar email real
+                try:
+                    from django.core.mail import send_mail
+                    send_mail(
+                        subject=f'Recuperar contraseña - {gym.name}',
+                        message=f'Haz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expirará en 1 hora.',
+                        from_email=None,
+                        recipient_list=[email],
+                        fail_silently=True,
+                    )
+                except:
+                    pass
+                
+                messages.success(request, 'Si el email existe, recibirás instrucciones para recuperar tu contraseña.')
+            else:
+                messages.success(request, 'Si el email existe, recibirás instrucciones para recuperar tu contraseña.')
+        except Client.DoesNotExist:
+            # No revelar si el email existe o no
+            messages.success(request, 'Si el email existe, recibirás instrucciones para recuperar tu contraseña.')
+        
+        return redirect('public_login', slug=slug)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+    }
+    return render(request, 'public_portal/auth/forgot_password.html', context)
+
+
+def public_reset_password(request, slug, token):
+    """Restablecer contraseña con token"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    from django.core.cache import cache
+    from django.contrib.auth import get_user_model
+    
+    User = get_user_model()
+    cache_key = f"password_reset_{token}"
+    user_id = cache.get(cache_key)
+    
+    if not user_id:
+        messages.error(request, 'El enlace ha expirado o es inválido.')
+        return redirect('public_forgot_password', slug=slug)
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        messages.error(request, 'Usuario no encontrado.')
+        return redirect('public_forgot_password', slug=slug)
+    
+    if request.method == 'POST':
+        password = request.POST.get('password', '')
+        password_confirm = request.POST.get('password_confirm', '')
+        
+        if not password or len(password) < 8:
+            messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+            return redirect('public_reset_password', slug=slug, token=token)
+        
+        if password != password_confirm:
+            messages.error(request, 'Las contraseñas no coinciden.')
+            return redirect('public_reset_password', slug=slug, token=token)
+        
+        user.set_password(password)
+        user.save()
+        
+        # Invalidar token
+        cache.delete(cache_key)
+        
+        messages.success(request, '¡Contraseña actualizada! Ya puedes iniciar sesión.')
+        return redirect('public_login', slug=slug)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'token': token,
+    }
+    return render(request, 'public_portal/auth/reset_password.html', context)
+
+
+# ===========================
+# PWA - MANIFEST DINÁMICO
+# ===========================
+
+def gym_manifest(request, slug):
+    """
+    Genera un manifest.json dinámico para cada gimnasio.
+    Esto permite que cada gym tenga su propia PWA con nombre, colores e iconos personalizados.
+    """
+    import json
+    from django.urls import reverse
+    from django.conf import settings as django_settings
+    
+    gym = get_object_or_404(Gym, slug=slug)
+    
+    # Nombre para mostrar
+    gym_name = gym.commercial_name or gym.name
+    short_name = gym_name[:12] if len(gym_name) > 12 else gym_name
+    
+    # Color de la marca
+    theme_color = gym.brand_color or "#0f172a"
+    
+    # URL base del gym - usar reverse para obtener la URL correcta
+    base_url = reverse('public_gym_home', kwargs={'slug': slug})
+    
+    # Construir iconos - si el gym tiene logo, usamos versiones escaladas del logo
+    # Si no, usamos iconos genéricos
+    if gym.logo:
+        # El gym tiene logo - usamos endpoint dinámico para iconos
+        icon_base = reverse('gym_pwa_icon', kwargs={'slug': slug, 'size': 72}).rsplit('/72/', 1)[0]
+        icons = [
+            {
+                "src": f"{icon_base}/72/",
+                "sizes": "72x72",
+                "type": "image/png"
+            },
+            {
+                "src": f"{icon_base}/96/",
+                "sizes": "96x96",
+                "type": "image/png"
+            },
+            {
+                "src": f"{icon_base}/128/",
+                "sizes": "128x128",
+                "type": "image/png"
+            },
+            {
+                "src": f"{icon_base}/144/",
+                "sizes": "144x144",
+                "type": "image/png"
+            },
+            {
+                "src": f"{icon_base}/152/",
+                "sizes": "152x152",
+                "type": "image/png"
+            },
+            {
+                "src": f"{icon_base}/192/",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": f"{icon_base}/384/",
+                "sizes": "384x384",
+                "type": "image/png"
+            },
+            {
+                "src": f"{icon_base}/512/",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ]
+    else:
+        # Sin logo - usar iconos genéricos
+        icons = [
+            {"src": "/static/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png"},
+            {"src": "/static/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png"},
+            {"src": "/static/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png"},
+            {"src": "/static/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png"},
+            {"src": "/static/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png"},
+            {"src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/static/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png"},
+            {"src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ]
+    
+    manifest = {
+        "name": f"{gym_name} - Portal Cliente",
+        "short_name": short_name,
+        "description": f"Accede a {gym_name} desde tu móvil",
+        "start_url": base_url,
+        "display": "standalone",
+        "background_color": "#f8fafc",
+        "theme_color": theme_color,
+        "orientation": "portrait-primary",
+        "scope": base_url,
+        "icons": icons,
+        "shortcuts": [
+            {
+                "name": "Horario",
+                "short_name": "Horario",
+                "description": "Ver horario de clases",
+                "url": f"{base_url}schedule/",
+                "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]
+            },
+            {
+                "name": "Mi Perfil",
+                "short_name": "Perfil",
+                "description": "Ver mi perfil",
+                "url": f"{base_url}profile/",
+                "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]
+            }
+        ]
+    }
+    
+    return HttpResponse(
+        json.dumps(manifest, ensure_ascii=False, indent=2),
+        content_type='application/manifest+json'
+    )
+
+
+def gym_pwa_icon(request, slug, size):
+    """
+    Genera iconos PWA dinámicos basados en el logo del gimnasio.
+    Redimensiona el logo al tamaño solicitado.
+    """
+    from PIL import Image
+    from io import BytesIO
+    import os
+    
+    gym = get_object_or_404(Gym, slug=slug)
+    
+    # Validar tamaño - incluir tamaños pequeños para favicons
+    valid_sizes = [16, 32, 72, 96, 128, 144, 152, 192, 384, 512]
+    if size not in valid_sizes:
+        size = 192  # Default
+    
+    # Si el gym tiene logo, redimensionarlo
+    if gym.logo:
+        try:
+            # Abrir imagen del logo
+            img = Image.open(gym.logo.path)
+            
+            # Convertir a RGBA si es necesario
+            if img.mode != 'RGBA':
+                img = img.convert('RGBA')
+            
+            # Crear imagen cuadrada con fondo del color de marca
+            brand_color = gym.brand_color or "#0f172a"
+            # Convertir hex a RGB
+            brand_rgb = tuple(int(brand_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            
+            # Crear fondo cuadrado
+            background = Image.new('RGBA', (size, size), (*brand_rgb, 255))
+            
+            # Redimensionar logo manteniendo proporción
+            img.thumbnail((int(size * 0.7), int(size * 0.7)), Image.Resampling.LANCZOS)
+            
+            # Centrar logo sobre fondo
+            offset_x = (size - img.width) // 2
+            offset_y = (size - img.height) // 2
+            background.paste(img, (offset_x, offset_y), img if img.mode == 'RGBA' else None)
+            
+            # Guardar en buffer
+            buffer = BytesIO()
+            background.save(buffer, format='PNG')
+            buffer.seek(0)
+            
+            return HttpResponse(buffer.getvalue(), content_type='image/png')
+            
+        except Exception as e:
+            # Si hay error, devolver icono genérico
+            pass
+    
+    # Fallback: redirigir a icono genérico
+    from django.shortcuts import redirect
+    return redirect(f'/static/icons/icon-{size}x{size}.png')
+
+
+def gym_service_worker(request, slug):
+    """
+    Genera un Service Worker básico para cada gimnasio.
+    Esto permite funcionalidad offline y mejor experiencia PWA.
+    """
+    gym = get_object_or_404(Gym, slug=slug)
+    gym_name = gym.commercial_name or gym.name
+    
+    sw_content = f'''
+// Service Worker para {gym_name}
+const CACHE_NAME = 'gym-{slug}-v1';
+const urlsToCache = [
+    '/gym/{slug}/',
+    '/gym/{slug}/schedule/',
+    '/gym/{slug}/profile/',
+    '/static/icons/icon-192x192.png',
+];
+
+// Instalación
+self.addEventListener('install', function(event) {{
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(function(cache) {{
+                return cache.addAll(urlsToCache);
+            }})
+    );
+}});
+
+// Fetch con estrategia Network First
+self.addEventListener('fetch', function(event) {{
+    event.respondWith(
+        fetch(event.request)
+            .then(function(response) {{
+                // Si es exitoso, cachear y devolver
+                if (response && response.status === 200) {{
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(function(cache) {{
+                        cache.put(event.request, responseClone);
+                    }});
+                }}
+                return response;
+            }})
+            .catch(function() {{
+                // Si falla, buscar en cache
+                return caches.match(event.request);
+            }})
+    );
+}});
+
+// Activación - limpiar caches antiguas
+self.addEventListener('activate', function(event) {{
+    event.waitUntil(
+        caches.keys().then(function(cacheNames) {{
+            return Promise.all(
+                cacheNames.filter(function(cacheName) {{
+                    return cacheName.startsWith('gym-{slug}-') && cacheName !== CACHE_NAME;
+                }}).map(function(cacheName) {{
+                    return caches.delete(cacheName);
+                }})
+            );
+        }})
+    );
+}});
+'''
+    
+    return HttpResponse(sw_content, content_type='application/javascript')

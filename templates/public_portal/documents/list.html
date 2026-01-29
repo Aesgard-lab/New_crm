@@ -1,0 +1,127 @@
+{% extends "public_portal/base.html" %}
+
+{% block title %}Mis Documentos - {{ gym.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-lg">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Mis Documentos</h1>
+            <p class="text-slate-500">Contratos y documentos legales</p>
+        </div>
+        <a href="{% url 'public_dashboard' slug=settings.public_slug %}" 
+           class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </a>
+    </div>
+    
+    <!-- Stats -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+        <div class="bg-emerald-50 rounded-2xl p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600">{{ documents|length|add:"-"|add:pending_count|default:"0" }}</div>
+            <div class="text-sm text-emerald-700">Firmados</div>
+        </div>
+        <div class="bg-amber-50 rounded-2xl p-4 text-center">
+            <div class="text-2xl font-bold text-amber-600">{{ pending_count|default:"0" }}</div>
+            <div class="text-sm text-amber-700">Pendientes</div>
+        </div>
+    </div>
+    
+    {% for doc in documents %}
+    {% if not doc.signed_at %}
+    {% if forloop.first %}
+    <!-- Pending Documents -->
+    <div class="mb-8">
+        <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+            Pendientes de firma
+        </h2>
+        
+        <div class="space-y-3">
+    {% endif %}
+            <a href="{% url 'public_document_detail' slug=settings.public_slug document_id=doc.id %}"
+               class="block bg-white rounded-2xl p-4 shadow-sm border border-amber-200 hover:shadow-md transition-all">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-slate-800 mb-1">{{ doc.template.name }}</h3>
+                        <p class="text-sm text-slate-500 truncate">{{ doc.template.description|default:"Documento pendiente de firma" }}</p>
+                        <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                            Requiere firma
+                        </span>
+                    </div>
+                    <svg class="w-5 h-5 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </a>
+    {% if forloop.last %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+    
+    {% for doc in documents %}
+    {% if doc.signed_at %}
+    {% if forloop.first %}
+    <!-- Signed Documents -->
+    <div>
+        <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Documentos firmados
+        </h2>
+        
+        <div class="space-y-3">
+    {% endif %}
+            <a href="{% url 'public_document_detail' slug=settings.public_slug document_id=doc.id %}"
+               class="block bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-slate-800 mb-1">{{ doc.template.name }}</h3>
+                        <p class="text-sm text-slate-500">
+                            Firmado el {{ doc.signed_at|date:"d/m/Y" }}
+                        </p>
+                    </div>
+                    <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </a>
+    {% if forloop.last %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+    
+    {% if not documents %}
+    <!-- Empty State -->
+    <div class="text-center py-12">
+        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-800 mb-2">Sin documentos</h3>
+        <p class="text-slate-500">No tienes documentos asignados aún</p>
+    </div>
+    {% endif %}
+    
+</div>
+{% endblock %}

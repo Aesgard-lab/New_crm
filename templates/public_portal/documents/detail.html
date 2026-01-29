@@ -1,0 +1,245 @@
+{% extends "public_portal/base.html" %}
+
+{% block title %}{{ document.template.name }} - {{ gym.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-8">
+        <a href="{% url 'public_documents' slug=settings.public_slug %}" 
+           class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-xl font-bold text-slate-800">{{ document.template.name }}</h1>
+            <p class="text-sm text-slate-500">
+                {% if document.signed_at %}
+                    Firmado el {{ document.signed_at|date:"d/m/Y H:i" }}
+                {% else %}
+                    Pendiente de firma
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    
+    <!-- Status Badge -->
+    <div class="mb-6">
+        {% if document.signed_at %}
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Documento firmado
+        </div>
+        {% else %}
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+            </svg>
+            Requiere tu firma
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Document Content -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+        <div class="p-6 border-b border-slate-100">
+            <h2 class="font-semibold text-slate-800">Contenido del documento</h2>
+        </div>
+        <div class="p-6 prose prose-slate max-w-none text-sm leading-relaxed">
+            {{ document.rendered_content|safe|default:document.template.content|safe }}
+        </div>
+    </div>
+    
+    {% if not document.signed_at %}
+    <!-- Signature Section -->
+    <form method="POST" action="{% url 'public_document_sign' slug=settings.public_slug document_id=document.id %}" id="signature-form">
+        {% csrf_token %}
+        
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+            <div class="p-6 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-800">Tu firma</h2>
+                <p class="text-sm text-slate-500 mt-1">Firma en el recuadro usando tu dedo o ratón</p>
+            </div>
+            
+            <div class="p-6">
+                <div class="border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 relative">
+                    <canvas id="signature-canvas" class="w-full h-48 touch-none cursor-crosshair"></canvas>
+                </div>
+                
+                <div class="flex items-center justify-between mt-4">
+                    <button type="button" onclick="clearSignature()" 
+                        class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors">
+                        Borrar firma
+                    </button>
+                    <span id="signature-status" class="text-sm text-slate-400">
+                        Sin firma
+                    </span>
+                </div>
+                
+                <input type="hidden" name="signature" id="signature-data">
+            </div>
+        </div>
+        
+        <!-- Acceptance Checkbox -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" name="accept_terms" id="accept-terms" required
+                    class="w-5 h-5 mt-0.5 rounded border-slate-300 text-brand focus:ring-brand">
+                <span class="text-sm text-slate-600">
+                    He leído y acepto el contenido de este documento. Confirmo que los datos son correctos y entiendo las condiciones establecidas.
+                </span>
+            </label>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" id="submit-btn" disabled
+            class="w-full py-4 px-6 bg-slate-200 text-slate-400 rounded-2xl font-semibold text-lg transition-all cursor-not-allowed">
+            Firmar documento
+        </button>
+    </form>
+    
+    {% else %}
+    <!-- Signature Display -->
+    {% if document.signature_image %}
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+        <div class="p-6 border-b border-slate-100">
+            <h2 class="font-semibold text-slate-800">Firma registrada</h2>
+        </div>
+        <div class="p-6">
+            <div class="bg-slate-50 rounded-2xl p-4 flex items-center justify-center">
+                <img src="{{ document.signature_image.url }}" alt="Firma" class="max-h-32">
+            </div>
+            <p class="text-sm text-slate-500 text-center mt-4">
+                IP: {{ document.signed_ip|default:"N/A" }} • 
+                {{ document.signed_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Download Button -->
+    {% if document.pdf_file %}
+    <a href="{{ document.pdf_file.url }}" download
+       class="block w-full py-4 px-6 bg-brand text-white rounded-2xl font-semibold text-lg text-center transition-all hover:opacity-90">
+        📥 Descargar PDF
+    </a>
+    {% endif %}
+    {% endif %}
+    
+</div>
+
+{% if not document.signed_at %}
+<script>
+const canvas = document.getElementById('signature-canvas');
+const ctx = canvas.getContext('2d');
+const signatureData = document.getElementById('signature-data');
+const signatureStatus = document.getElementById('signature-status');
+const submitBtn = document.getElementById('submit-btn');
+const acceptTerms = document.getElementById('accept-terms');
+
+let isDrawing = false;
+let hasSignature = false;
+
+// Set canvas size
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Drawing functions
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x, y };
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    e.preventDefault();
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    hasSignature = true;
+    updateStatus();
+    e.preventDefault();
+}
+
+function stopDrawing(e) {
+    isDrawing = false;
+    if (hasSignature) {
+        signatureData.value = canvas.toDataURL('image/png');
+    }
+    e.preventDefault();
+}
+
+// Event listeners
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDrawing);
+canvas.addEventListener('mouseleave', stopDrawing);
+
+canvas.addEventListener('touchstart', startDrawing, { passive: false });
+canvas.addEventListener('touchmove', draw, { passive: false });
+canvas.addEventListener('touchend', stopDrawing, { passive: false });
+
+function clearSignature() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    signatureData.value = '';
+    hasSignature = false;
+    updateStatus();
+}
+
+function updateStatus() {
+    signatureStatus.textContent = hasSignature ? '✓ Firma capturada' : 'Sin firma';
+    signatureStatus.className = hasSignature 
+        ? 'text-sm text-emerald-600 font-medium' 
+        : 'text-sm text-slate-400';
+    
+    updateSubmitButton();
+}
+
+function updateSubmitButton() {
+    const canSubmit = hasSignature && acceptTerms.checked;
+    submitBtn.disabled = !canSubmit;
+    submitBtn.className = canSubmit
+        ? 'w-full py-4 px-6 bg-brand text-white rounded-2xl font-semibold text-lg transition-all hover:opacity-90 cursor-pointer'
+        : 'w-full py-4 px-6 bg-slate-200 text-slate-400 rounded-2xl font-semibold text-lg transition-all cursor-not-allowed';
+}
+
+acceptTerms.addEventListener('change', updateSubmitButton);
+
+// Form validation
+document.getElementById('signature-form').addEventListener('submit', function(e) {
+    if (!hasSignature) {
+        alert('Por favor, firma el documento antes de enviarlo.');
+        e.preventDefault();
+        return false;
+    }
+    if (!acceptTerms.checked) {
+        alert('Debes aceptar los términos del documento.');
+        e.preventDefault();
+        return false;
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends "public_portal/base.html" %}
+
+{% block title %}Check-in - {{ gym.name }}{% endblock %}
+
+{% block extra_css %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-lg">
+    
+    <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-slate-800 mb-2">Check-in</h1>
+        <p class="text-slate-500">Escanea el QR de la clase para registrar tu asistencia</p>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="flex bg-slate-100 rounded-2xl p-1 mb-6">
+        <button onclick="showTab('scanner')" id="tab-scanner"
+            class="flex-1 py-3 px-4 rounded-xl font-medium transition-all bg-white text-slate-800 shadow-sm">
+            📷 Escanear QR
+        </button>
+        <button onclick="showTab('myqr')" id="tab-myqr"
+            class="flex-1 py-3 px-4 rounded-xl font-medium transition-all text-slate-600">
+            🎫 Mi QR
+        </button>
+    </div>
+    
+    <!-- Scanner Tab -->
+    <div id="panel-scanner" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div id="qr-reader" class="w-full aspect-square bg-slate-900"></div>
+        
+        <div id="scanner-status" class="p-6 text-center">
+            <p class="text-slate-500">Apunta la cámara al código QR de la clase</p>
+        </div>
+        
+        <div id="scanner-result" class="p-6 hidden">
+            <div id="result-success" class="hidden text-center">
+                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">¡Check-in exitoso!</h3>
+                <p id="result-message" class="text-slate-500"></p>
+            </div>
+            
+            <div id="result-error" class="hidden text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Error</h3>
+                <p id="error-message" class="text-slate-500"></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- My QR Tab -->
+    <div id="panel-myqr" class="hidden">
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 text-center">
+            <div id="my-qr-container" class="mb-4">
+                <div class="bg-slate-100 rounded-2xl p-8 inline-block">
+                    <div id="my-qr-code" class="w-48 h-48 mx-auto"></div>
+                </div>
+            </div>
+            
+            <h3 class="font-bold text-slate-800 mb-1">{{ client.full_name }}</h3>
+            <p class="text-sm text-slate-500 mb-4">Muestra este QR al personal del gimnasio</p>
+            
+            <div class="flex items-center justify-center gap-2 text-xs text-slate-400">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Se actualiza automáticamente
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historial reciente -->
+    <div class="mt-8">
+        <h2 class="font-bold text-slate-800 mb-4">Últimos check-ins</h2>
+        <a href="{% url 'public_attendance_history' slug=gym.public_settings.public_slug %}" 
+           class="block bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-slate-800">Ver historial completo</h3>
+                    <p class="text-sm text-slate-500">Todas tus visitas y clases</p>
+                </div>
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+    </div>
+    
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+let html5QrCode = null;
+
+function showTab(tab) {
+    // Update tabs
+    document.getElementById('tab-scanner').className = tab === 'scanner' 
+        ? 'flex-1 py-3 px-4 rounded-xl font-medium transition-all bg-white text-slate-800 shadow-sm'
+        : 'flex-1 py-3 px-4 rounded-xl font-medium transition-all text-slate-600';
+    document.getElementById('tab-myqr').className = tab === 'myqr'
+        ? 'flex-1 py-3 px-4 rounded-xl font-medium transition-all bg-white text-slate-800 shadow-sm'
+        : 'flex-1 py-3 px-4 rounded-xl font-medium transition-all text-slate-600';
+    
+    // Show/hide panels
+    document.getElementById('panel-scanner').className = tab === 'scanner' ? '' : 'hidden';
+    document.getElementById('panel-myqr').className = tab === 'myqr' ? '' : 'hidden';
+    
+    if (tab === 'scanner') {
+        startScanner();
+    } else {
+        stopScanner();
+        loadMyQR();
+    }
+}
+
+function startScanner() {
+    if (html5QrCode) return;
+    
+    html5QrCode = new Html5Qrcode("qr-reader");
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        onScanFailure
+    ).catch(err => {
+        console.error("Camera error:", err);
+        document.getElementById('scanner-status').innerHTML = 
+            '<p class="text-red-500">No se pudo acceder a la cámara. Por favor, permite el acceso.</p>';
+    });
+}
+
+function stopScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode = null;
+        }).catch(err => console.error(err));
+    }
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+    stopScanner();
+    processCheckin(decodedText);
+}
+
+function onScanFailure(error) {
+    // Ignorar errores de escaneo continuo
+}
+
+function processCheckin(qrData) {
+    document.getElementById('scanner-status').classList.add('hidden');
+    document.getElementById('scanner-result').classList.remove('hidden');
+    
+    fetch('{% url "public_checkin_process" slug=settings.public_slug %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ token: qrData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('result-success').classList.remove('hidden');
+            document.getElementById('result-error').classList.add('hidden');
+            document.getElementById('result-message').textContent = data.message;
+        } else {
+            document.getElementById('result-success').classList.add('hidden');
+            document.getElementById('result-error').classList.remove('hidden');
+            document.getElementById('error-message').textContent = data.error || 'Error desconocido';
+        }
+    })
+    .catch(err => {
+        document.getElementById('result-success').classList.add('hidden');
+        document.getElementById('result-error').classList.remove('hidden');
+        document.getElementById('error-message').textContent = 'Error de conexión';
+    });
+}
+
+function loadMyQR() {
+    fetch('{% url "public_my_qr" slug=settings.public_slug %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.qr_content) {
+                document.getElementById('my-qr-code').innerHTML = '';
+                QRCode.toCanvas(document.createElement('canvas'), data.qr_content, {
+                    width: 192,
+                    margin: 2
+                }, function(error, canvas) {
+                    if (!error) {
+                        document.getElementById('my-qr-code').appendChild(canvas);
+                    }
+                });
+            }
+        });
+}
+
+// Start scanner on load
+document.addEventListener('DOMContentLoaded', function() {
+    startScanner();
+});
+
+// Refresh QR every 30 seconds
+setInterval(function() {
+    if (!document.getElementById('panel-myqr').classList.contains('hidden')) {
+        loadMyQR();
+    }
+}, 30000);
+</script>
+{% endblock %}

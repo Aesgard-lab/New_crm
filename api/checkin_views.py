@@ -11,11 +11,14 @@ from rest_framework import views, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 import hashlib
 import hmac
 import time
 
 from clients.models import Client, ClientVisit
+from activities.models import ActivitySession, SessionCheckin, AttendanceSettings
 
 
 def _generate_secure_qr_token(client_id: int, access_code: str, timestamp: int) -> str:
@@ -173,3 +176,166 @@ class CheckinHistoryView(views.APIView):
             'count': len(visits_data),
             'visits': visits_data,
         })
+
+
+class TodaysSessionsView(views.APIView):
+    """
+    GET: Obtener las clases reservadas de hoy para check-in rápido.
+    Incluye info sobre si ya se hizo check-in.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            client = Client.objects.select_related('gym').get(user=request.user)
+        except Client.DoesNotExist:
+            return Response({'error': 'No es un cliente'}, status=status.HTTP_403_FORBIDDEN)
+        
+        today = timezone.now().date()
+        now = timezone.now()
+        
+        # Sesiones de hoy donde el cliente está inscrito
+        sessions = ActivitySession.objects.filter(
+            gym=client.gym,
+            attendees=client,
+            start_datetime__date=today,
+            status='SCHEDULED'
+        ).select_related('activity', 'room').order_by('start_datetime')
+        
+        # Obtener configuración de check-in
+        try:
+            att_settings = client.gym.attendance_settings
+            minutes_before = att_settings.qr_checkin_minutes_before
+            minutes_after = att_settings.qr_checkin_minutes_after
+        except AttendanceSettings.DoesNotExist:
+            minutes_before = 30
+            minutes_after = 30
+        
+        sessions_data = []
+        for session in sessions:
+            # Verificar si ya hizo check-in
+            checked_in = SessionCheckin.objects.filter(
+                session=session,
+                client=client
+            ).first()
+            
+            # Calcular ventana de check-in
+            window_start = session.start_datetime - timedelta(minutes=minutes_before)
+            window_end = session.start_datetime + timedelta(minutes=minutes_after)
+            
+            can_checkin = window_start <= now <= window_end
+            
+            sessions_data.append({
+                'session_id': session.id,
+                'activity_name': session.activity.name,
+                'activity_color': session.activity.color or '#6366F1',
+                'start_time': session.start_datetime.strftime('%H:%M'),
+                'end_time': (session.start_datetime + timedelta(minutes=session.duration)).strftime('%H:%M'),
+                'duration': session.duration,
+                'room': session.room.name if session.room else None,
+                'checked_in': checked_in is not None,
+                'checked_in_at': checked_in.checked_in_at.strftime('%H:%M') if checked_in else None,
+                'can_checkin': can_checkin and not checked_in,
+                'checkin_window': {
+                    'start': window_start.strftime('%H:%M'),
+                    'end': window_end.strftime('%H:%M'),
+                },
+            })
+        
+        return Response({
+            'date': today.isoformat(),
+            'sessions': sessions_data,
+        })
+
+
+class QuickCheckinView(views.APIView):
+    """
+    POST: Check-in rápido a una clase reservada.
+    Solo requiere el session_id, no necesita escanear QR.
+    
+    Body: {
+        "session_id": 123
+    }
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            client = Client.objects.select_related('gym').get(user=request.user)
+        except Client.DoesNotExist:
+            return Response({'error': 'No es un cliente'}, status=status.HTTP_403_FORBIDDEN)
+        
+        session_id = request.data.get('session_id')
+        if not session_id:
+            return Response({'error': 'session_id requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            session = ActivitySession.objects.select_related('activity', 'gym').get(id=session_id)
+        except ActivitySession.DoesNotExist:
+            return Response({'error': 'Clase no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Verificar que pertenece al mismo gimnasio
+        if session.gym != client.gym:
+            return Response(
+                {'error': 'Esta clase no es de tu gimnasio'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar que tiene reserva
+        if client not in session.attendees.all():
+            return Response(
+                {'error': 'No tienes reserva para esta clase'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar ventana de tiempo
+        try:
+            att_settings = client.gym.attendance_settings
+            minutes_before = att_settings.qr_checkin_minutes_before
+            minutes_after = att_settings.qr_checkin_minutes_after
+        except AttendanceSettings.DoesNotExist:
+            minutes_before = 30
+            minutes_after = 30
+        
+        now = timezone.now()
+        window_start = session.start_datetime - timedelta(minutes=minutes_before)
+        window_end = session.start_datetime + timedelta(minutes=minutes_after)
+        
+        if now < window_start:
+            mins_to_wait = int((window_start - now).total_seconds() / 60)
+            return Response({
+                'success': False,
+                'error': f'Demasiado pronto. El check-in abre en {mins_to_wait} min.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if now > window_end:
+            return Response({
+                'success': False,
+                'error': 'La ventana de check-in ha cerrado.',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar si ya hizo check-in
+        existing = SessionCheckin.objects.filter(session=session, client=client).first()
+        if existing:
+            return Response({
+                'success': True,
+                'already_checked_in': True,
+                'message': f'Ya hiciste check-in a las {existing.checked_in_at.strftime("%H:%M")}',
+                'session_name': session.activity.name,
+            })
+        
+        # Crear check-in
+        checkin = SessionCheckin.objects.create(
+            session=session,
+            client=client,
+            method='APP',
+        )
+        
+        return Response({
+            'success': True,
+            'message': '¡Check-in completado!',
+            'session_name': session.activity.name,
+            'session_time': session.start_datetime.strftime('%H:%M'),
+            'checked_in_at': checkin.checked_in_at.strftime('%H:%M'),
+        })
+

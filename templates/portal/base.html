@@ -12,10 +12,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ client.gym.name|default:'Mi Gym' }}">
     <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- PWA Manifest Dinámico por Gimnasio -->
+    {% if client.gym.slug %}
+    <link rel="manifest" href="{% url 'gym_manifest' slug=client.gym.slug %}">
+    {% if client.gym.logo %}
+    <link rel="apple-touch-icon" href="{% url 'gym_pwa_icon' slug=client.gym.slug size=192 %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% url 'gym_pwa_icon' slug=client.gym.slug size=32 %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% url 'gym_pwa_icon' slug=client.gym.slug size=16 %}">
+    {% else %}
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-192x192.png">
+    {% endif %}
+    {% else %}
     <link rel="manifest" href="/static/manifest_portal.json">
     <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-192x192.png">
+    {% endif %}
 
     <title>{% block title %}{{ client.gym.name|default:'Mi Gym' }}{% endblock %}</title>
 
@@ -358,12 +373,42 @@
 
     {% block extra_js %}{% endblock %}
 
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration - Dinámico por Gimnasio -->
     <script>
         if ('serviceWorker' in navigator) {
+            {% if client.gym.slug %}
+            // Service Worker específico del gimnasio
+            navigator.serviceWorker.register('{% url "gym_service_worker" slug=client.gym.slug %}', {
+                scope: '/gym/{{ client.gym.slug }}/'
+            })
+                .then(reg => console.log('SW {{ client.gym.name }} registered:', reg.scope))
+                .catch(err => console.log('SW registration failed:', err));
+            {% else %}
+            // Service Worker genérico
             navigator.serviceWorker.register('/static/sw-portal.js')
                 .then(reg => console.log('SW Portal registered:', reg.scope))
                 .catch(err => console.log('SW Portal failed:', err));
+            {% endif %}
+        }
+        
+        // Banner de instalación PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBanner = document.getElementById('pwa-install-banner');
+            if (installBanner) installBanner.classList.remove('hidden');
+        });
+        
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    deferredPrompt = null;
+                    const installBanner = document.getElementById('pwa-install-banner');
+                    if (installBanner) installBanner.classList.add('hidden');
+                });
+            }
         }
     </script>
 </body>

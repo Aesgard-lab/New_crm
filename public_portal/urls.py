@@ -12,6 +12,11 @@ urlpatterns = [
     # Landing page del gym
     path('gym/<slug:slug>/', views.public_gym_home, name='public_gym_home'),
     
+    # PWA - Manifest dinámico, iconos y Service Worker
+    path('gym/<slug:slug>/manifest.json', views.gym_manifest, name='gym_manifest'),
+    path('gym/<slug:slug>/pwa-icon/<int:size>/', views.gym_pwa_icon, name='gym_pwa_icon'),
+    path('gym/<slug:slug>/sw.js', views.gym_service_worker, name='gym_service_worker'),
+    
     # Módulos principales
     path('gym/<slug:slug>/schedule/', views.public_schedule, name='public_schedule'),
     path('gym/<slug:slug>/pricing/', views.public_pricing, name='public_pricing'),
@@ -45,6 +50,24 @@ urlpatterns = [
     # Gamificación
     path('gym/<slug:slug>/leaderboard/', views.public_leaderboard, name='public_leaderboard'),
     path('gym/<slug:slug>/achievements/', views.public_achievements, name='public_achievements'),
+    
+    # Rutinas
+    path('gym/<slug:slug>/routines/', views.public_routines, name='public_routines'),
+    path('gym/<slug:slug>/routines/<int:routine_id>/', views.public_routine_detail, name='public_routine_detail'),
+    
+    # QR Check-in
+    path('gym/<slug:slug>/checkin/', views.public_checkin, name='public_checkin'),
+    path('gym/<slug:slug>/checkin/my-qr/', views.public_my_qr, name='public_my_qr'),
+    path('gym/<slug:slug>/checkin/process/', views.public_checkin_process, name='public_checkin_process'),
+    
+    # Documentos
+    path('gym/<slug:slug>/documents/', views.public_documents, name='public_documents'),
+    path('gym/<slug:slug>/documents/<int:document_id>/', views.public_document_detail, name='public_document_detail'),
+    path('gym/<slug:slug>/documents/<int:document_id>/sign/', views.public_document_sign, name='public_document_sign'),
+    
+    # Recuperar contraseña
+    path('gym/<slug:slug>/forgot-password/', views.public_forgot_password, name='public_forgot_password'),
+    path('gym/<slug:slug>/reset-password/<str:token>/', views.public_reset_password, name='public_reset_password'),
     
     # API para calendario
     path('gym/<slug:slug>/api/schedule/events/', views.api_public_schedule_events, name='api_public_schedule_events'),

@@ -4,6 +4,7 @@ import '../api/api_service.dart';
 import '../models/models.dart';
 import 'shop_screen.dart';
 import 'documents_screen.dart';
+import 'workout_tracking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,12 +14,35 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Map<String, dynamic>? _activeWorkout;
+  bool _loadingWorkout = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPopups();
+      _checkActiveWorkout();
     });
+  }
+
+  Future<void> _checkActiveWorkout() async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    try {
+      final workout = await api.getActiveWorkout();
+      if (mounted) {
+        setState(() {
+          _activeWorkout = workout;
+          _loadingWorkout = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingWorkout = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkPopups() async {
@@ -37,8 +61,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final type = note['type'];
     final text = note['text'];
     final author = note['author'];
+    final api = Provider.of<ApiService>(context, listen: false);
     
-    Color headerColor = const Color(0xFF6366F1);
+    Color headerColor = api.brandColor;
     IconData icon = Icons.info_outline;
     
     if (type == 'WARNING') {
@@ -89,6 +114,95 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildActiveWorkoutCard() {
+    final routineName = _activeWorkout?['routine_name'] ?? 'Entrenamiento';
+    final dayName = _activeWorkout?['day_name'] ?? '';
+    final workoutLogId = _activeWorkout?['workout_log_id'];
+    
+    return GestureDetector(
+      onTap: () {
+        if (workoutLogId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WorkoutTrackingScreen(
+                workoutId: workoutLogId,
+                routineName: routineName,
+                dayName: dayName,
+              ),
+            ),
+          ).then((_) => _checkActiveWorkout());
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF10B981), Color(0xFF059669)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF10B981).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Entrenamiento en curso',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dayName.isNotEmpty ? '$routineName - $dayName' : routineName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: Colors.white,
+              size: 28,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final api = Provider.of<ApiService>(context);
@@ -106,11 +220,11 @@ class _HomeScreenState extends State<HomeScreen> {
               // Header
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                    colors: [api.brandColor, api.brandColorDark],
                   ),
                 ),
                 child: Row(
@@ -239,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _QuickActionCard(
                             icon: Icons.shopping_bag_outlined,
                             label: 'Tienda',
-                            color: const Color(0xFF6366F1),
+                            color: api.brandColor,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -268,6 +382,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+
+                    // Active Workout Card
+                    if (_activeWorkout != null) ...[
+                      const SizedBox(height: 24),
+                      _buildActiveWorkoutCard(),
+                    ],
 
 
                     const SizedBox(height: 32),

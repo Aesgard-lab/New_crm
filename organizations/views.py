@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import translation
+from django.urls import reverse
 from .forms import GymSettingsForm
 from .models import Gym, PublicPortalSettings
 
@@ -32,8 +33,17 @@ def gym_settings_view(request):
                     messages.error(request, f'Error en {field}: {error}')
     else:
         form = GymSettingsForm(instance=gym)
+    
+    # Construir URL de la PWA del portal público
+    pwa_url = None
+    if gym.slug:
+        pwa_path = reverse('public_gym_home', kwargs={'slug': gym.slug})
+        pwa_url = request.build_absolute_uri(pwa_path)
         
-    return render(request, 'backoffice/settings/gym.html', {'form': form})
+    return render(request, 'backoffice/settings/gym.html', {
+        'form': form,
+        'pwa_url': pwa_url,
+    })
 
 
 @login_required

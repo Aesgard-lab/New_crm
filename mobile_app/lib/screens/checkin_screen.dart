@@ -18,9 +18,11 @@ class _CheckinScreenState extends State<CheckinScreen>
   String? _errorMessage;
   Map<String, dynamic>? _membershipInfo;
   List<dynamic> _recentVisits = [];
+  List<dynamic> _todaysSessions = [];
   Timer? _refreshTimer;
   Timer? _countdownTimer;
   late AnimationController _pulseController;
+  Set<int> _checkedInSessions = {};
 
   @override
   void initState() {
@@ -66,6 +68,20 @@ class _CheckinScreenState extends State<CheckinScreen>
       setState(() {
         _errorMessage = qrResult['message'] ?? 'Error generando QR';
         _isLoading = false;
+      });
+    }
+    
+    // Get today's sessions for quick check-in
+    final sessionsResult = await api.getTodaysSessions();
+    if (sessionsResult['success'] == true) {
+      setState(() {
+        _todaysSessions = sessionsResult['sessions'] ?? [];
+        // Mark already checked in sessions
+        for (var session in _todaysSessions) {
+          if (session['checked_in'] == true) {
+            _checkedInSessions.add(session['session_id']);
+          }
+        }
       });
     }
     
@@ -133,6 +149,10 @@ class _CheckinScreenState extends State<CheckinScreen>
                       children: [
                         _buildQRCard(),
                         const SizedBox(height: 24),
+                        if (_todaysSessions.isNotEmpty) ...[
+                          _buildQuickCheckinCard(),
+                          const SizedBox(height: 24),
+                        ],
                         if (_membershipInfo != null) _buildMembershipCard(),
                         const SizedBox(height: 24),
                         _buildInstructionsCard(),
@@ -143,6 +163,201 @@ class _CheckinScreenState extends State<CheckinScreen>
                   ),
                 ),
     );
+  }
+
+  Widget _buildQuickCheckinCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF10B981), Color(0xFF059669)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF10B981).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.flash_on, color: Colors.white, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Check-in Rápido',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Clases reservadas para hoy',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ..._todaysSessions.map((session) => _buildSessionTile(session)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionTile(Map<String, dynamic> session) {
+    final isCheckedIn = _checkedInSessions.contains(session['session_id']);
+    final canCheckin = session['can_checkin'] == true && !isCheckedIn;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCheckedIn ? Colors.white : Colors.white.withOpacity(0.3),
+          width: isCheckedIn ? 2 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                session['start_time'] ?? '--:--',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  session['activity_name'] ?? 'Clase',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                if (session['room'] != null)
+                  Text(
+                    session['room'],
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (isCheckedIn)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, color: Color(0xFF10B981), size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'Hecho',
+                    style: TextStyle(
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ElevatedButton(
+              onPressed: canCheckin ? () => _quickCheckin(session['session_id']) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF10B981),
+                disabledBackgroundColor: Colors.white.withOpacity(0.5),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: Text(
+                canCheckin ? 'Check-in' : 'Espera',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _quickCheckin(int sessionId) async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    
+    final result = await api.quickCheckin(sessionId);
+    
+    if (result['success'] == true) {
+      setState(() {
+        _checkedInSessions.add(sessionId);
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(result['message'] ?? '¡Check-in completado!'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Error en check-in'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildQRCard() {

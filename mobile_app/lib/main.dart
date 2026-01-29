@@ -15,7 +15,7 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        Provider(create: (_) => ApiService()),
+        ChangeNotifierProvider(create: (_) => ApiService()),
       ],
       child: const MyApp(),
     ),

@@ -33,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailCtrl.text,
       _passwordCtrl.text,
       gymId: widget.selectedGym?.id,
+      gym: widget.selectedGym, // Pasar el gym completo para guardar el brand color
     );
 
     if (mounted) {

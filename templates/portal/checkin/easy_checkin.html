@@ -1,0 +1,484 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}Check-in - {{ client.gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes pulse-ring {
+        0% { transform: scale(0.9); opacity: 1; }
+        100% { transform: scale(1.3); opacity: 0; }
+    }
+    .pulse-ring {
+        animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    
+    @keyframes success-bounce {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    .success-bounce {
+        animation: success-bounce 0.5s ease-in-out;
+    }
+    
+    .qr-glow {
+        box-shadow: 0 0 60px rgba(16, 185, 129, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="bg-white p-4 sticky top-0 z-30 shadow-sm">
+    <div class="flex items-center justify-between">
+        <a href="{% url 'portal_home' %}"
+           class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <h1 class="font-bold text-lg text-slate-800">Check-in</h1>
+        <div class="w-10"></div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div x-data="checkinApp()" class="min-h-[80vh] flex flex-col">
+    
+    <!-- Estado actual -->
+    <div class="flex-1 flex flex-col items-center justify-center p-6" x-show="!showScanner">
+        
+        <!-- Saludo -->
+        <div class="text-center mb-8">
+            <div class="text-4xl mb-3">👋</div>
+            <h2 class="text-2xl font-bold text-slate-800">¡Hola, {{ client.first_name }}!</h2>
+            <p class="text-slate-500 mt-1">¿Cómo quieres hacer check-in hoy?</p>
+        </div>
+        
+        <!-- Opción 1: Mostrar MI QR (Más Fácil) -->
+        <div class="w-full max-w-sm mb-6">
+            <button @click="showMyQR = !showMyQR" 
+                    class="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all"
+                    :class="{ 'qr-glow': showMyQR }">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-left">
+                            <div class="font-bold text-lg">Mostrar mi QR</div>
+                            <div class="text-white/80 text-sm">El staff lo escanea</div>
+                        </div>
+                    </div>
+                    <div class="bg-white/20 rounded-full px-3 py-1 text-sm font-semibold">
+                        👆 Fácil
+                    </div>
+                </div>
+            </button>
+            
+            <!-- QR Expandido -->
+            <div x-show="showMyQR" x-collapse class="mt-4">
+                <div class="bg-white rounded-3xl p-6 shadow-xl border-4 border-emerald-100 text-center">
+                    <p class="text-slate-500 text-sm mb-4">Muestra este código en recepción</p>
+                    
+                    <!-- QR Code Real -->
+                    <div id="my-qr-code" class="mx-auto mb-4"></div>
+                    
+                    <!-- Código alfanumérico -->
+                    <div class="bg-slate-50 rounded-2xl p-4 mb-4">
+                        <p class="text-3xl font-mono font-bold tracking-[0.3em] text-slate-800" x-text="qrToken">
+                            {{ qr_token }}
+                        </p>
+                    </div>
+                    
+                    <!-- Timer de renovación -->
+                    <div class="flex items-center justify-center gap-2 text-sm">
+                        <div class="relative">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <span class="text-emerald-600 font-bold text-xs" x-text="timeLeft">30</span>
+                            </div>
+                            <div class="absolute inset-0 rounded-full border-2 border-emerald-500 pulse-ring"></div>
+                        </div>
+                        <span class="text-slate-500">Se renueva automáticamente</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Clases reservadas para hoy (Check-in directo) -->
+        {% if todays_sessions %}
+        <div class="w-full max-w-sm mb-6">
+            <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3 px-2">
+                📅 Clases de hoy - Check-in directo
+            </h3>
+            <div class="space-y-3">
+                {% for session in todays_sessions %}
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100"
+                     :class="{ 'ring-2 ring-emerald-500': checkedSessions.includes({{ session.id }}) }">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-sm"
+                             style="background-color: {{ session.activity.color|default:'#6366f1' }}">
+                            {{ session.start_datetime|time:"H:i" }}
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-slate-800">{{ session.activity.name }}</div>
+                            <div class="text-sm text-slate-500">
+                                {% if session.room %}{{ session.room.name }} · {% endif %}
+                                {{ session.duration }} min
+                            </div>
+                        </div>
+                        <button @click="quickCheckin({{ session.id }}, '{{ session.activity.name }}')"
+                                class="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+                                :class="checkedSessions.includes({{ session.id }}) 
+                                    ? 'bg-emerald-100 text-emerald-700' 
+                                    : 'bg-emerald-500 text-white hover:bg-emerald-600'"
+                                :disabled="checkedSessions.includes({{ session.id }}) || checkingIn">
+                            <span x-show="!checkedSessions.includes({{ session.id }})">
+                                <span x-show="!checkingIn">Check-in</span>
+                                <span x-show="checkingIn && checkingSessionId === {{ session.id }}">...</span>
+                            </span>
+                            <span x-show="checkedSessions.includes({{ session.id }})">✓</span>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Opción 2: Escanear QR de la clase -->
+        <div class="w-full max-w-sm">
+            <button @click="startScanner()"
+                    class="w-full bg-white border-2 border-slate-200 text-slate-700 rounded-2xl p-5 hover:border-slate-300 hover:bg-slate-50 transition-all">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-left flex-1">
+                        <div class="font-semibold">Escanear QR de clase</div>
+                        <div class="text-slate-500 text-sm">Usa tu cámara</div>
+                    </div>
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </button>
+        </div>
+        
+        <!-- Historial reciente -->
+        {% if recent_checkins %}
+        <div class="w-full max-w-sm mt-8">
+            <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3 px-2">
+                Últimos check-ins
+            </h3>
+            <div class="bg-white rounded-2xl divide-y divide-slate-100">
+                {% for checkin in recent_checkins %}
+                <div class="p-4 flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
+                        ✓
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-slate-800">{{ checkin.session.activity.name }}</div>
+                        <div class="text-sm text-slate-500">{{ checkin.checked_in_at|date:"d/m H:i" }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+    </div>
+    
+    <!-- Vista del Scanner -->
+    <div x-show="showScanner" x-cloak class="flex-1 flex flex-col">
+        <div class="p-4">
+            <button @click="stopScanner()" class="flex items-center gap-2 text-slate-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Volver
+            </button>
+        </div>
+        
+        <div class="flex-1 flex flex-col items-center justify-center p-6">
+            <div class="text-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Escanea el QR de la clase</h2>
+                <p class="text-slate-500 text-sm mt-1">Apunta la cámara al código de la pantalla</p>
+            </div>
+            
+            <div class="w-full max-w-sm">
+                <div id="qr-scanner" class="rounded-2xl overflow-hidden bg-slate-900"></div>
+            </div>
+            
+            <div id="scanner-status" class="mt-4 text-center text-slate-500">
+                Iniciando cámara...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de resultado -->
+    <div x-show="showResult" x-cloak
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="transform scale-95 opacity-0"
+             x-transition:enter-end="transform scale-100 opacity-100">
+            
+            <!-- Success -->
+            <template x-if="resultSuccess">
+                <div>
+                    <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 success-bounce">
+                        <span class="text-4xl">✅</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">¡Listo!</h3>
+                    <p class="text-slate-600 mb-2" x-text="resultMessage"></p>
+                    <p class="text-emerald-600 font-semibold mb-6" x-text="resultDetails"></p>
+                </div>
+            </template>
+            
+            <!-- Error -->
+            <template x-if="!resultSuccess">
+                <div>
+                    <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-4xl">❌</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Oops</h3>
+                    <p class="text-slate-600 mb-6" x-text="resultMessage"></p>
+                </div>
+            </template>
+            
+            <button @click="closeResult()" 
+                    class="w-full py-4 bg-slate-800 text-white rounded-2xl font-semibold hover:bg-slate-700 transition-colors">
+                Entendido
+            </button>
+        </div>
+    </div>
+    
+</div>
+
+<!-- QRCode.js para generar QR -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<!-- HTML5 QR Scanner -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+function checkinApp() {
+    return {
+        showMyQR: false,
+        showScanner: false,
+        showResult: false,
+        resultSuccess: false,
+        resultMessage: '',
+        resultDetails: '',
+        qrToken: '{{ qr_token }}',
+        timeLeft: 30,
+        scanner: null,
+        isProcessing: false,
+        checkedSessions: [],
+        checkingIn: false,
+        checkingSessionId: null,
+        
+        init() {
+            // Iniciar timer para renovar QR
+            this.startQRTimer();
+            
+            // Generar QR inicial
+            this.$nextTick(() => {
+                if (this.showMyQR) {
+                    this.generateQRCode();
+                }
+            });
+            
+            // Watch para generar QR cuando se muestre
+            this.$watch('showMyQR', (value) => {
+                if (value) {
+                    this.$nextTick(() => this.generateQRCode());
+                }
+            });
+        },
+        
+        generateQRCode() {
+            const container = document.getElementById('my-qr-code');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Datos del QR: client_id + token
+            const qrData = `CHECKIN:{{ client.id }}:${this.qrToken}`;
+            
+            QRCode.toCanvas(qrData, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#1e293b',
+                    light: '#ffffff'
+                }
+            }, function(error, canvas) {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+                canvas.style.borderRadius = '1rem';
+                container.appendChild(canvas);
+            });
+        },
+        
+        startQRTimer() {
+            setInterval(() => {
+                this.timeLeft--;
+                if (this.timeLeft <= 0) {
+                    this.refreshQRToken();
+                }
+            }, 1000);
+        },
+        
+        async refreshQRToken() {
+            try {
+                const response = await fetch('{% url "portal_checkin_refresh" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                this.qrToken = data.token;
+                this.timeLeft = data.expires_in || 30;
+                
+                if (this.showMyQR) {
+                    this.generateQRCode();
+                }
+            } catch (error) {
+                console.error('Error refreshing QR:', error);
+                this.timeLeft = 30;
+            }
+        },
+        
+        async quickCheckin(sessionId, sessionName) {
+            if (this.checkingIn) return;
+            
+            this.checkingIn = true;
+            this.checkingSessionId = sessionId;
+            
+            try {
+                const response = await fetch('{% url "portal_quick_checkin" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.checkedSessions.push(sessionId);
+                    this.showResultModal(true, '¡Check-in completado!', sessionName);
+                } else {
+                    this.showResultModal(false, data.error || 'No se pudo completar el check-in');
+                }
+            } catch (error) {
+                this.showResultModal(false, 'Error de conexión');
+            }
+            
+            this.checkingIn = false;
+            this.checkingSessionId = null;
+        },
+        
+        startScanner() {
+            this.showScanner = true;
+            this.$nextTick(() => {
+                this.initScanner();
+            });
+        },
+        
+        stopScanner() {
+            if (this.scanner) {
+                this.scanner.stop().catch(err => console.log(err));
+                this.scanner = null;
+            }
+            this.showScanner = false;
+        },
+        
+        initScanner() {
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+            };
+            
+            this.scanner = new Html5Qrcode("qr-scanner");
+            
+            this.scanner.start(
+                { facingMode: "environment" },
+                config,
+                (text) => this.onScanSuccess(text),
+                (error) => {} // Ignorar errores de no detección
+            ).then(() => {
+                document.getElementById('scanner-status').textContent = 'Apunta al código QR';
+            }).catch(err => {
+                document.getElementById('scanner-status').innerHTML = `
+                    <span class="text-red-500">No se pudo acceder a la cámara</span>
+                `;
+            });
+        },
+        
+        async onScanSuccess(text) {
+            if (this.isProcessing) return;
+            this.isProcessing = true;
+            
+            this.scanner.pause();
+            document.getElementById('scanner-status').innerHTML = `
+                <span class="text-emerald-500">Procesando...</span>
+            `;
+            
+            try {
+                const response = await fetch('{% url "portal_checkin_process" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ qr_content: text })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showResultModal(true, data.message || '¡Check-in exitoso!', data.session_name);
+                    this.stopScanner();
+                } else {
+                    this.showResultModal(false, data.error);
+                    this.scanner.resume();
+                    document.getElementById('scanner-status').textContent = 'Apunta al código QR';
+                }
+            } catch (error) {
+                this.showResultModal(false, 'Error de conexión');
+                this.scanner.resume();
+            }
+            
+            this.isProcessing = false;
+        },
+        
+        showResultModal(success, message, details = '') {
+            this.resultSuccess = success;
+            this.resultMessage = message;
+            this.resultDetails = details;
+            this.showResult = true;
+        },
+        
+        closeResult() {
+            this.showResult = false;
+        }
+    }
+}
+</script>
+{% endblock %}

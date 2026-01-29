@@ -19,6 +19,10 @@ class _ShopScreenState extends State<ShopScreen>
   List<dynamic> _plans = [];
   bool _isLoading = true;
   String? _errorMessage;
+  
+  // Colores del branding - se actualizan en build()
+  Color _brandColor = const Color(0xFF6366F1);
+  Color _brandColorDark = const Color(0xFF4F46E5);
 
   @override
   void initState() {
@@ -93,6 +97,10 @@ class _ShopScreenState extends State<ShopScreen>
 
   @override
   Widget build(BuildContext context) {
+    final api = Provider.of<ApiService>(context);
+    _brandColor = api.brandColor;
+    _brandColorDark = api.brandColorDark;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: NestedScrollView(
@@ -100,12 +108,12 @@ class _ShopScreenState extends State<ShopScreen>
           SliverAppBar(
             expandedHeight: 140,
             pinned: true,
-            backgroundColor: const Color(0xFF6366F1),
+            backgroundColor: _brandColor,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    colors: [_brandColor, _brandColorDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -152,9 +160,9 @@ class _ShopScreenState extends State<ShopScreen>
             delegate: _SliverTabBarDelegate(
               TabBar(
                 controller: _tabController,
-                labelColor: const Color(0xFF6366F1),
+                labelColor: _brandColor,
                 unselectedLabelColor: const Color(0xFF64748B),
-                indicatorColor: const Color(0xFF6366F1),
+                indicatorColor: _brandColor,
                 indicatorWeight: 3,
                 tabs: [
                   Tab(
@@ -239,15 +247,15 @@ class _ShopScreenState extends State<ShopScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+        gradient: LinearGradient(
+          colors: [_brandColor, _brandColorDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.3),
+            color: _brandColor.withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -306,7 +314,7 @@ class _ShopScreenState extends State<ShopScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${plan['price']?.toStringAsFixed(2) ?? '0.00'}€',
+                  '${plan['price'] ?? '0.00'}€',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -318,7 +326,7 @@ class _ShopScreenState extends State<ShopScreen>
                       _requestInfo('plan', plan['id'], plan['name']),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF6366F1),
+                    foregroundColor: _brandColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -402,7 +410,7 @@ class _ShopScreenState extends State<ShopScreen>
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '${service['price']?.toStringAsFixed(2) ?? '0.00'}€',
+                        '${service['price'] ?? '0.00'}€',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -418,7 +426,7 @@ class _ShopScreenState extends State<ShopScreen>
               onPressed: () =>
                   _requestInfo('service', service['id'], service['name']),
               icon: const Icon(Icons.info_outline),
-              color: const Color(0xFF6366F1),
+              color: _brandColor,
             ),
           ],
         ),
@@ -507,11 +515,11 @@ class _ShopScreenState extends State<ShopScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${product['price']?.toStringAsFixed(2) ?? '0.00'}€',
-                        style: const TextStyle(
+                        '${product['price'] ?? '0.00'}€',
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF6366F1),
+                          color: _brandColor,
                         ),
                       ),
                       if (product['in_stock'] == false)

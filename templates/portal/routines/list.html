@@ -5,6 +5,16 @@
 
 {% block header_left %}{% endblock %}
 
+{% block header_right %}
+<a href="{% url 'portal_workout_history' %}"
+   class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
+   title="Historial">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+</a>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-5">
 
@@ -42,17 +52,16 @@
                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
                             </path>
                         </svg>
-                        {{ assignment.assigned_date|date:"d M Y" }}
+                        {{ assignment.start_date|date:"d M Y" }}
                     </span>
 
-                    {% if assignment.routine.exercises.count %}
+                    {% if assignment.routine.days.count %}
                     <span class="flex items-center gap-1.5 text-brand bg-brand bg-opacity-10 px-3 py-1.5 rounded-full font-bold">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
                         </svg>
-                        {{ assignment.routine.exercises.count }} ejercicio{{
-                        assignment.routine.exercises.count|pluralize:"s" }}
+                        {{ assignment.routine.days.count }} día{{ assignment.routine.days.count|pluralize:"s" }}
                     </span>
                     {% endif %}
                 </div>

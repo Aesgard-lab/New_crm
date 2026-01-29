@@ -1,0 +1,130 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Resumen del Entrenamiento{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen px-4 py-8">
+    
+    <div class="max-w-md mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="text-6xl mb-4">💪</div>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">¡Entrenamiento completado!</h1>
+            <p class="text-slate-500">{{ workout.date|date:"d/m/Y" }}</p>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white">
+                <div class="text-3xl font-bold mb-1">{{ workout.duration_minutes }}</div>
+                <div class="text-sm text-white/80">Minutos</div>
+            </div>
+            <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
+                <div class="text-3xl font-bold mb-1">{{ exercise_logs.count }}</div>
+                <div class="text-sm text-white/80">Ejercicios</div>
+            </div>
+            <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-5 text-white">
+                <div class="text-3xl font-bold mb-1">{{ workout.total_sets }}</div>
+                <div class="text-sm text-white/80">Series</div>
+            </div>
+            <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-5 text-white">
+                <div class="text-3xl font-bold mb-1">{{ workout.total_volume|floatformat:0 }}</div>
+                <div class="text-sm text-white/80">Kg total</div>
+            </div>
+        </div>
+        
+        <!-- Rutina -->
+        {% if workout.routine_day %}
+        <div class="bg-white rounded-2xl p-4 shadow-sm mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                    <span class="text-2xl">📋</span>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">{{ workout.routine_day.name }}</p>
+                    <p class="text-sm text-slate-500">{{ workout.routine.name }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Dificultad -->
+        {% if workout.difficulty_rating %}
+        <div class="bg-white rounded-2xl p-4 shadow-sm mb-6">
+            <p class="text-sm text-slate-500 mb-2">Dificultad percibida</p>
+            <div class="flex items-center gap-2">
+                {% for i in "12345678910" %}
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold
+                            {% if forloop.counter <= workout.difficulty_rating %}
+                                {% if workout.difficulty_rating <= 3 %}bg-green-100 text-green-600
+                                {% elif workout.difficulty_rating <= 6 %}bg-amber-100 text-amber-600
+                                {% else %}bg-red-100 text-red-600{% endif %}
+                            {% else %}bg-slate-100 text-slate-300{% endif %}">
+                    {{ forloop.counter }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Notas -->
+        {% if workout.notes %}
+        <div class="bg-white rounded-2xl p-4 shadow-sm mb-6">
+            <p class="text-sm text-slate-500 mb-2">Notas</p>
+            <p class="text-slate-800">{{ workout.notes }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Lista de ejercicios completados -->
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
+            <div class="p-4 border-b border-slate-100">
+                <h3 class="font-bold text-slate-800">Ejercicios realizados</h3>
+            </div>
+            <div class="divide-y divide-slate-100">
+                {% for log in exercise_logs %}
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-medium text-slate-800">{{ log.exercise.name }}</h4>
+                        <span class="text-sm text-slate-500">{{ log.sets_completed }} series</span>
+                    </div>
+                    {% if log.sets_data %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for set in log.sets_data %}
+                        <span class="px-2 py-1 bg-slate-100 rounded-lg text-xs text-slate-600">
+                            {{ set.reps }}×{{ set.weight }}kg
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="p-4 text-center text-slate-500">
+                    No se registraron ejercicios
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Botones -->
+        <div class="space-y-3">
+            <a href="{% url 'portal_routines' %}"
+               class="block w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl font-bold text-lg text-center shadow-xl hover:opacity-90 transition-all">
+                Volver a Rutinas
+            </a>
+            
+            <a href="{% url 'portal_workout_history' %}"
+               class="block w-full py-4 bg-slate-100 text-slate-700 rounded-2xl font-semibold text-center hover:bg-slate-200 transition-colors">
+                Ver historial de entrenamientos
+            </a>
+        </div>
+        
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block body_class %}{% endblock %}
+{% block bottom_nav %}{% endblock %}

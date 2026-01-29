@@ -16,6 +16,18 @@ class ShopView(APIView):
     """
     permission_classes = [IsAuthenticated]
     
+    def _calculate_duration_days(self, amount, unit):
+        """Convert frequency amount and unit to days"""
+        if unit == 'DAY':
+            return amount
+        elif unit == 'WEEK':
+            return amount * 7
+        elif unit == 'MONTH':
+            return amount * 30
+        elif unit == 'YEAR':
+            return amount * 365
+        return amount * 30  # default to months
+    
     def get(self, request):
         try:
             client = get_object_or_404(Client, user=request.user)
@@ -23,23 +35,66 @@ class ShopView(APIView):
             
             # Get active membership plans available for online purchase
             from memberships.models import MembershipPlan
-            plans = MembershipPlan.objects.filter(
+            plans_qs = MembershipPlan.objects.filter(
                 gym=gym, 
                 is_active=True,
-                available_online=True
-            ).values('id', 'name', 'price', 'duration_days', 'description')
+                is_visible_online=True
+            ).values('id', 'name', 'base_price', 'description', 'frequency_amount', 'frequency_unit')
+            # Map fields to expected names
+            plans = [
+                {
+                    'id': p['id'],
+                    'name': p['name'],
+                    'price': str(p['base_price']),
+                    'description': p['description'] or '',
+                    'duration_days': self._calculate_duration_days(p['frequency_amount'], p['frequency_unit'])
+                }
+                for p in plans_qs
+            ]
             
             # Get active products available for online purchase
             from products.models import Product
-            products = Product.objects.filter(
+            products_qs = Product.objects.filter(
                 gym=gym,
                 is_active=True,
-                available_online=True
-            ).values('id', 'name', 'price', 'description', 'stock')
+                is_visible_online=True
+            ).values('id', 'name', 'base_price', 'description', 'stock_quantity')
+            # Map fields to expected names
+            products = [
+                {
+                    'id': p['id'],
+                    'name': p['name'],
+                    'price': str(p['base_price']),
+                    'description': p['description'] or '',
+                    'stock': p['stock_quantity']
+                }
+                for p in products_qs
+            ]
+            
+            # Get active services available for online booking
+            from services.models import Service
+            services_qs = Service.objects.filter(
+                gym=gym,
+                is_active=True,
+                is_visible_online=True
+            ).values('id', 'name', 'base_price', 'description', 'duration')
+            # Map fields to expected names
+            services = [
+                {
+                    'id': s['id'],
+                    'name': s['name'],
+                    'price': str(s['base_price']),
+                    'description': s['description'] or '',
+                    'duration_minutes': s['duration']
+                }
+                for s in services_qs
+            ]
             
             return Response({
-                'membership_plans': list(plans),
-                'products': list(products)
+                'success': True,
+                'membership_plans': plans,
+                'products': products,
+                'services': services
             })
             
         except Client.DoesNotExist:

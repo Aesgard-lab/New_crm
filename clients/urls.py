@@ -38,9 +38,27 @@ urlpatterns = [
     path('routines/', portal_views.portal_routines, name='portal_routines'),
     path('routines/<int:routine_id>/', portal_views.portal_routine_detail, name='portal_routine_detail'),
     
+    # Workout Tracking
+    path('routines/day/<int:day_id>/start/', portal_views.portal_start_workout, name='portal_start_workout'),
+    path('workout/<int:workout_id>/', portal_views.portal_workout_tracking, name='portal_workout_tracking'),
+    path('workout/<int:workout_id>/log/<int:exercise_log_id>/set/', portal_views.portal_log_set, name='portal_log_set'),
+    path('workout/<int:workout_id>/log/<int:exercise_log_id>/complete/', portal_views.portal_complete_exercise, name='portal_complete_exercise'),
+    path('workout/<int:workout_id>/finish/', portal_views.portal_finish_workout, name='portal_finish_workout'),
+    path('workout/<int:workout_id>/summary/', portal_views.portal_workout_summary, name='portal_workout_summary'),
+    path('workout-history/', portal_views.portal_workout_history, name='portal_workout_history'),
+    
+    # Gamificación
+    path('gamification/', portal_views.portal_gamification_dashboard, name='portal_gamification'),
+    path('gamification/achievements/', portal_views.portal_achievements, name='portal_achievements'),
+    path('gamification/leaderboard/', portal_views.portal_leaderboard, name='portal_leaderboard'),
+    path('gamification/challenges/', portal_views.portal_challenges, name='portal_challenges'),
+    path('gamification/challenges/<int:challenge_id>/join/', portal_views.portal_join_challenge, name='portal_join_challenge'),
+    
     # Check-in QR (escáner de cámara)
-    path('checkin/', portal_views.portal_checkin_scanner, name='portal_checkin'),
+    path('checkin/', portal_views.portal_easy_checkin, name='portal_checkin'),  # Nueva vista unificada
+    path('checkin/scanner/', portal_views.portal_checkin_scanner, name='portal_checkin_scanner'),  # Vista antigua
     path('checkin/process/', portal_views.portal_checkin_process, name='portal_checkin_process'),
+    path('checkin/quick/', portal_views.portal_quick_checkin, name='portal_quick_checkin'),  # Check-in directo
     path('checkin/my-qr/', portal_views.portal_checkin_qr, name='portal_checkin_qr'),
     path('checkin/refresh/', portal_views.portal_checkin_refresh, name='portal_checkin_refresh'),
     

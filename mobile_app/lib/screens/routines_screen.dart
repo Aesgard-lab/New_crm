@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../api/api_service.dart';
 import '../models/routine.dart';
 import 'routine_detail_screen.dart';
+import 'workout_history_screen.dart';
 
 class RoutinesScreen extends StatefulWidget {
   const RoutinesScreen({super.key});
@@ -17,6 +18,10 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
   String? _errorMessage;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  
+  // Colores del branding
+  Color _brandColor = const Color(0xFF6366F1);
+  Color _brandColorDark = const Color(0xFF4F46E5);
 
   @override
   void initState() {
@@ -64,6 +69,10 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final api = Provider.of<ApiService>(context);
+    _brandColor = api.brandColor;
+    _brandColorDark = api.brandColorDark;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: CustomScrollView(
@@ -75,8 +84,8 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(_brandColor),
                       strokeWidth: 3,
                     ),
                     const SizedBox(height: 16),
@@ -133,18 +142,32 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
       expandedHeight: 160,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _brandColor,
       elevation: 0,
+      actions: [
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const WorkoutHistoryScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.history_rounded),
+          color: Colors.white,
+          tooltip: 'Historial',
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF6366F1),
-                Color(0xFF8B5CF6),
-                Color(0xFFA855F7),
+                _brandColor,
+                _brandColorDark,
               ],
             ),
           ),
@@ -461,7 +484,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
 
   List<Color> _getGradientColors(int index) {
     final gradients = [
-      [const Color(0xFF6366F1), const Color(0xFF8B5CF6)],
+      [_brandColor, _brandColorDark],
       [const Color(0xFF06B6D4), const Color(0xFF3B82F6)],
       [const Color(0xFFF59E0B), const Color(0xFFEF4444)],
       [const Color(0xFF10B981), const Color(0xFF059669)],
@@ -481,15 +504,15 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
               width: 140,
               height: 140,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                gradient: LinearGradient(
+                  colors: [_brandColor, _brandColorDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                    color: _brandColor.withOpacity(0.3),
                     blurRadius: 24,
                     offset: const Offset(0, 12),
                   ),
@@ -530,19 +553,19 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(
                     Icons.info_outline_rounded,
-                    color: Color(0xFF6366F1),
+                    color: _brandColor,
                     size: 20,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Text(
                     'Habla con tu entrenador',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF6366F1),
+                      color: _brandColor,
                     ),
                   ),
                 ],
@@ -597,14 +620,14 @@ class _RoutinesScreenState extends State<RoutinesScreen> with SingleTickerProvid
             ElevatedButton(
               onPressed: _loadRoutines,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
+                backgroundColor: _brandColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 0,
-                shadowColor: const Color(0xFF6366F1).withOpacity(0.4),
+                shadowColor: _brandColor.withOpacity(0.4),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

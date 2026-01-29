@@ -1,0 +1,76 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Finalizar Entrenamiento{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+    
+    <div class="w-full max-w-md">
+        <!-- Icono de celebración -->
+        <div class="text-center mb-8">
+            <div class="text-7xl mb-4">🎉</div>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">¡Gran entrenamiento!</h1>
+            <p class="text-slate-500">¿Cómo te ha ido hoy?</p>
+        </div>
+        
+        <form method="POST" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Dificultad percibida -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <label class="block font-semibold text-slate-800 mb-4">Dificultad percibida</label>
+                <div class="flex justify-between gap-2" x-data="{ selected: null }">
+                    {% for i in "12345678910" %}
+                    <label class="flex-1">
+                        <input type="radio" name="difficulty" value="{{ forloop.counter }}" class="sr-only peer"
+                               @click="selected = {{ forloop.counter }}">
+                        <div class="w-full aspect-square rounded-xl border-2 flex items-center justify-center cursor-pointer transition-all
+                                    peer-checked:border-emerald-500 peer-checked:bg-emerald-50
+                                    border-slate-200 hover:border-slate-300"
+                             :class="{ 'border-emerald-500 bg-emerald-50': selected === {{ forloop.counter }} }">
+                            <span class="font-bold text-sm" 
+                                  :class="selected === {{ forloop.counter }} ? 'text-emerald-600' : 'text-slate-600'">
+                                {{ forloop.counter }}
+                            </span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 mt-2">
+                    <span>Muy fácil</span>
+                    <span>Muy difícil</span>
+                </div>
+            </div>
+            
+            <!-- Notas -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <label class="block font-semibold text-slate-800 mb-3" for="notes">
+                    Notas (opcional)
+                </label>
+                <textarea name="notes" id="notes" rows="3"
+                    placeholder="¿Cómo te has sentido? ¿Algún comentario?"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"></textarea>
+            </div>
+            
+            <!-- Botones -->
+            <div class="space-y-3">
+                <button type="submit"
+                    class="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:opacity-90 transition-all">
+                    ✓ Guardar y finalizar
+                </button>
+                
+                <a href="{% url 'portal_workout_tracking' workout_id=workout.id %}"
+                   class="block w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-semibold text-center hover:bg-slate-200 transition-colors">
+                    ← Volver al entrenamiento
+                </a>
+            </div>
+        </form>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block body_class %}{% endblock %}
+{% block bottom_nav %}{% endblock %}

@@ -15,10 +15,21 @@ from .routine_views import (
     RoutineDetailView,
     ExerciseDetailView
 )
+from .workout_views import (
+    StartWorkoutView,
+    WorkoutStatusView,
+    LogSetView,
+    CompleteExerciseView,
+    FinishWorkoutView,
+    WorkoutHistoryView,
+    ActiveWorkoutView
+)
 from .checkin_views import (
     GenerateQRTokenView,
     RefreshQRTokenView,
-    CheckinHistoryView
+    CheckinHistoryView,
+    TodaysSessionsView,
+    QuickCheckinView
 )
 from .profile_views import (
     ProfileView,
@@ -81,10 +92,21 @@ urlpatterns = [
     path('routines/<int:routine_id>/', RoutineDetailView.as_view(), name='api_routine_detail'),
     path('exercises/<int:exercise_id>/', ExerciseDetailView.as_view(), name='api_exercise_detail'),
     
+    # Workout Tracking (Mobile App)
+    path('workout/start/', StartWorkoutView.as_view(), name='api_workout_start'),
+    path('workout/active/', ActiveWorkoutView.as_view(), name='api_workout_active'),
+    path('workout/history/', WorkoutHistoryView.as_view(), name='api_workout_history'),
+    path('workout/<int:workout_id>/', WorkoutStatusView.as_view(), name='api_workout_status'),
+    path('workout/<int:workout_id>/log/<int:exercise_log_id>/set/', LogSetView.as_view(), name='api_workout_log_set'),
+    path('workout/<int:workout_id>/log/<int:exercise_log_id>/complete/', CompleteExerciseView.as_view(), name='api_workout_complete_exercise'),
+    path('workout/<int:workout_id>/finish/', FinishWorkoutView.as_view(), name='api_workout_finish'),
+    
     # Check-in QR (Mobile App)
     path('checkin/generate/', GenerateQRTokenView.as_view(), name='api_checkin_generate'),
     path('checkin/refresh/', RefreshQRTokenView.as_view(), name='api_checkin_refresh'),
     path('checkin/history/', CheckinHistoryView.as_view(), name='api_checkin_history'),
+    path('checkin/todays-sessions/', TodaysSessionsView.as_view(), name='api_checkin_todays_sessions'),
+    path('checkin/quick/', QuickCheckinView.as_view(), name='api_checkin_quick'),
     
     # Profile (Mobile App)
     path('profile/', ProfileView.as_view(), name='api_profile'),

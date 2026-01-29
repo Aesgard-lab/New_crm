@@ -1,0 +1,124 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Ranking{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-lg">
+    
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'portal_gamification' %}" 
+           class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-xl font-bold text-slate-800">Ranking</h1>
+            <p class="text-sm text-slate-500">Top 50 miembros</p>
+        </div>
+    </div>
+    
+    <!-- Tu posición -->
+    {% if my_rank %}
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-4 text-white mb-6">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
+                <span class="text-2xl font-bold">#{{ my_rank }}</span>
+            </div>
+            <div class="flex-1">
+                <p class="text-white/80 text-sm">Tu posición actual</p>
+                <p class="font-semibold">{{ client.full_name }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-white/80 text-sm">XP Total</p>
+                <p class="font-bold text-lg">{{ client.gamification_progress.total_xp|default:0|floatformat:0 }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Period Filter -->
+    <div class="flex bg-slate-100 rounded-2xl p-1 mb-6">
+        <a href="?period=weekly" 
+           class="flex-1 py-2 px-4 rounded-xl text-center text-sm font-medium transition-all {% if period == 'weekly' %}bg-white text-slate-800 shadow-sm{% else %}text-slate-600{% endif %}">
+            Semanal
+        </a>
+        <a href="?period=monthly" 
+           class="flex-1 py-2 px-4 rounded-xl text-center text-sm font-medium transition-all {% if period == 'monthly' %}bg-white text-slate-800 shadow-sm{% else %}text-slate-600{% endif %}">
+            Mensual
+        </a>
+        <a href="?period=total" 
+           class="flex-1 py-2 px-4 rounded-xl text-center text-sm font-medium transition-all {% if period == 'total' %}bg-white text-slate-800 shadow-sm{% else %}text-slate-600{% endif %}">
+            Total
+        </a>
+    </div>
+    
+    <!-- Top 3 Podium -->
+    {% if leaderboard|length >= 3 %}
+    <div class="flex items-end justify-center gap-4 mb-6 px-4">
+        <!-- 2nd Place -->
+        <div class="flex-1 text-center">
+            <div class="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center mb-2 border-4 border-slate-300">
+                <span class="text-xl font-bold text-slate-600">2</span>
+            </div>
+            <p class="font-medium text-slate-800 text-sm truncate">{{ leaderboard.1.client.first_name }}</p>
+            <p class="text-xs text-slate-500">{{ leaderboard.1.xp|floatformat:0 }} XP</p>
+            <div class="h-20 bg-slate-200 rounded-t-xl mt-2"></div>
+        </div>
+        
+        <!-- 1st Place -->
+        <div class="flex-1 text-center">
+            <div class="text-4xl mb-2">👑</div>
+            <div class="w-20 h-20 mx-auto bg-amber-400 rounded-full flex items-center justify-center mb-2 border-4 border-amber-500 shadow-lg">
+                <span class="text-2xl font-bold text-white">1</span>
+            </div>
+            <p class="font-bold text-slate-800 text-sm truncate">{{ leaderboard.0.client.first_name }}</p>
+            <p class="text-xs text-amber-600 font-medium">{{ leaderboard.0.xp|floatformat:0 }} XP</p>
+            <div class="h-28 bg-amber-400 rounded-t-xl mt-2"></div>
+        </div>
+        
+        <!-- 3rd Place -->
+        <div class="flex-1 text-center">
+            <div class="w-16 h-16 mx-auto bg-orange-200 rounded-full flex items-center justify-center mb-2 border-4 border-orange-300">
+                <span class="text-xl font-bold text-orange-600">3</span>
+            </div>
+            <p class="font-medium text-slate-800 text-sm truncate">{{ leaderboard.2.client.first_name }}</p>
+            <p class="text-xs text-slate-500">{{ leaderboard.2.xp|floatformat:0 }} XP</p>
+            <div class="h-16 bg-orange-200 rounded-t-xl mt-2"></div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Full Leaderboard -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div class="divide-y divide-slate-100">
+            {% for item in leaderboard %}
+            {% if forloop.counter > 3 %}
+            <div class="flex items-center gap-4 p-4 {% if item.is_current %}bg-indigo-50{% endif %}">
+                <div class="w-8 h-8 flex items-center justify-center font-bold {% if item.is_current %}text-indigo-600{% else %}text-slate-400{% endif %}">
+                    {{ item.rank }}
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium text-slate-800 {% if item.is_current %}text-indigo-600{% endif %}">
+                        {{ item.client.first_name }} {{ item.client.last_name|slice:":1" }}.
+                        {% if item.is_current %}<span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">Tú</span>{% endif %}
+                    </p>
+                    <p class="text-xs text-slate-500">Nivel {{ item.level }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-slate-800">{{ item.xp|floatformat:0 }}</p>
+                    <p class="text-xs text-slate-500">XP</p>
+                </div>
+            </div>
+            {% endif %}
+            {% empty %}
+            <div class="p-8 text-center">
+                <p class="text-slate-500">No hay datos de ranking aún</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+</div>
+{% endblock %}

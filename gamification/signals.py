@@ -35,7 +35,7 @@ def award_xp_for_attendance(sender, instance, created, **kwargs):
     
     # Actualizar estadísticas
     progress.total_visits += 1
-    progress.update_streak(instance.timestamp.date())
+    progress.update_streak(instance.date)
     progress.save()
     
     # Verificar logros relacionados con asistencia

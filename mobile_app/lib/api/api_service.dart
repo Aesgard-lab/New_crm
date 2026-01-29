@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -6,7 +7,7 @@ import '../models/advertisement.dart';
 
 import 'package:flutter/foundation.dart'; // for kIsWeb
 
-class ApiService {
+class ApiService extends ChangeNotifier {
   // Use localhost for Web, 10.0.2.2 for Android Emulator
   static String get baseUrl {
     if (kIsWeb) return 'http://127.0.0.1:8000/api';
@@ -15,8 +16,42 @@ class ApiService {
 
   String? _token;
   Client? _currentClient;
+  Gym? _currentGym;
 
   Client? get currentClient => _currentClient;
+  Gym? get currentGym => _currentGym;
+  
+  // Colores del branding del gimnasio
+  Color get brandColor {
+    if (_currentGym?.brandColor != null) {
+      return _hexToColor(_currentGym!.brandColor);
+    }
+    return const Color(0xFF6366F1); // Color por defecto (indigo)
+  }
+  
+  Color get brandColorDark {
+    final base = brandColor;
+    // Oscurecer el color un 20%
+    return Color.fromARGB(
+      base.alpha,
+      (base.red * 0.8).round(),
+      (base.green * 0.8).round(),
+      (base.blue * 0.8).round(),
+    );
+  }
+  
+  Color _hexToColor(String hex) {
+    hex = hex.replaceFirst('#', '');
+    if (hex.length == 6) {
+      hex = 'FF$hex';
+    }
+    return Color(int.parse(hex, radix: 16));
+  }
+  
+  void setCurrentGym(Gym gym) {
+    _currentGym = gym;
+    notifyListeners();
+  }
 
   Future<List<Gym>> searchGyms(String query) async {
     if (query.length < 2) return [];
@@ -42,7 +77,7 @@ class ApiService {
     }
   }
 
-  Future<bool> login(String email, String password, {int? gymId}) async {
+  Future<bool> login(String email, String password, {int? gymId, Gym? gym}) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login/'),
@@ -58,9 +93,22 @@ class ApiService {
         final data = json.decode(response.body);
         _token = data['token'];
         _currentClient = Client.fromJson(data['client']);
+        
+        // Guardar el gym si se proporcionó
+        if (gym != null) {
+          _currentGym = gym;
+        }
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
+        // Guardar el color del gym
+        if (_currentGym != null) {
+          await prefs.setString('gym_brand_color', _currentGym!.brandColor);
+          await prefs.setString('gym_name', _currentGym!.name);
+          await prefs.setInt('gym_id', _currentGym!.id);
+        }
+        
+        notifyListeners();
         return true;
       }
       return false;
@@ -89,6 +137,22 @@ class ApiService {
         final data = json.decode(response.body);
         _currentClient = Client.fromJson(data['client']);
         _token = token;
+        
+        // Restaurar el gym desde SharedPreferences
+        final gymId = prefs.getInt('gym_id');
+        final gymName = prefs.getString('gym_name');
+        final brandColor = prefs.getString('gym_brand_color');
+        if (gymId != null && gymName != null) {
+          _currentGym = Gym(
+            id: gymId,
+            name: gymName,
+            city: '',
+            address: '',
+            brandColor: brandColor ?? '#6366F1',
+          );
+        }
+        
+        notifyListeners();
         return true;
       }
       return false;
@@ -623,7 +687,12 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body) as List<dynamic>;
+        final data = json.decode(response.body);
+        // API returns {'count': X, 'invoices': [...]}
+        if (data is Map && data.containsKey('invoices')) {
+          return data['invoices'] as List<dynamic>;
+        }
+        return [];
       }
       return [];
     } catch (e) {
@@ -854,7 +923,12 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body) as List<dynamic>;
+        final data = json.decode(response.body);
+        // API returns {'classes': [...]}
+        if (data is Map && data.containsKey('classes')) {
+          return data['classes'] as List<dynamic>;
+        }
+        return [];
       }
       return [];
     } catch (e) {
@@ -939,6 +1013,238 @@ class ApiService {
       return {'success': false, 'message': 'Error al cargar rutinas'};
     } catch (e) {
       print('Error getting routines: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // ===========================
+  // WORKOUT TRACKING
+  // ===========================
+
+  // Start a new workout from a routine day
+  Future<Map<String, dynamic>> startWorkout(int dayId) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/workout/start/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'day_id': dayId}),
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Error al iniciar entrenamiento'};
+    } catch (e) {
+      print('Error starting workout: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Check if there's an active workout
+  Future<Map<String, dynamic>> getActiveWorkout() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/workout/active/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': 'Error al verificar entrenamiento activo'};
+    } catch (e) {
+      print('Error checking active workout: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Get workout status and exercises
+  Future<Map<String, dynamic>> getWorkoutStatus(int workoutId) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/workout/$workoutId/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': 'Error al cargar entrenamiento'};
+    } catch (e) {
+      print('Error getting workout status: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Log a set for an exercise
+  Future<Map<String, dynamic>> logSet(int workoutId, int exerciseLogId, int reps, double weight) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/workout/$workoutId/log/$exerciseLogId/set/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'reps': reps, 'weight': weight}),
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Error al registrar serie'};
+    } catch (e) {
+      print('Error logging set: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Mark exercise as completed
+  Future<Map<String, dynamic>> completeExercise(int workoutId, int exerciseLogId) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/workout/$workoutId/log/$exerciseLogId/complete/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Error al completar ejercicio'};
+    } catch (e) {
+      print('Error completing exercise: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Finish workout
+  Future<Map<String, dynamic>> finishWorkout(int workoutId, {int? difficultyRating, String? notes}) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final body = <String, dynamic>{};
+      if (difficultyRating != null) body['difficulty_rating'] = difficultyRating;
+      if (notes != null) body['notes'] = notes;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/workout/$workoutId/finish/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode(body),
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Error al finalizar entrenamiento'};
+    } catch (e) {
+      print('Error finishing workout: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Get workout history
+  Future<Map<String, dynamic>> getWorkoutHistory({int limit = 20, int offset = 0}) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/workout/history/?limit=$limit&offset=$offset'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': 'Error al cargar historial'};
+    } catch (e) {
+      print('Error getting workout history: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // ===========================
+  // QUICK CHECK-IN
+  // ===========================
+
+  // Get today's booked sessions for quick check-in
+  Future<Map<String, dynamic>> getTodaysSessions() async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/checkin/todays-sessions/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': 'Error al cargar clases'};
+    } catch (e) {
+      print('Error getting today sessions: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  // Quick check-in to a booked session
+  Future<Map<String, dynamic>> quickCheckin(int sessionId) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/checkin/quick/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'session_id': sessionId}),
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, ...data};
+      }
+      return {'success': false, 'message': data['error'] ?? 'Error en check-in'};
+    } catch (e) {
+      print('Error quick checkin: $e');
       return {'success': false, 'message': 'Error de conexión'};
     }
   }

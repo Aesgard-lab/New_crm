@@ -1,0 +1,153 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Retos{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-lg" x-data="{ joining: null }">
+    
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'portal_gamification' %}" 
+           class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-xl font-bold text-slate-800">Retos Activos</h1>
+            <p class="text-sm text-slate-500">Completa desafíos y gana XP extra</p>
+        </div>
+    </div>
+    
+    {% if challenges %}
+    <div class="space-y-4">
+        {% for item in challenges %}
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden {% if item.completed %}border-2 border-emerald-400{% endif %}">
+            <!-- Challenge Header -->
+            <div class="p-4 {% if item.completed %}bg-emerald-50{% else %}bg-gradient-to-r from-purple-500 to-indigo-600{% endif %}">
+                <div class="flex items-start gap-3">
+                    <div class="w-12 h-12 {% if item.completed %}bg-emerald-200{% else %}bg-white/20{% endif %} rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="text-2xl">{{ item.challenge.icon|default:"🎯" }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold {% if item.completed %}text-emerald-800{% else %}text-white{% endif %}">
+                            {{ item.challenge.name }}
+                        </h3>
+                        <p class="text-sm {% if item.completed %}text-emerald-600{% else %}text-white/80{% endif %}">
+                            {{ item.challenge.description|default:"Completa este reto para ganar XP" }}
+                        </p>
+                    </div>
+                    {% if item.completed %}
+                    <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Challenge Body -->
+            <div class="p-4">
+                <!-- Recompensa -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-500">⭐</span>
+                        <span class="font-bold text-slate-800">{{ item.challenge.xp_reward }} XP</span>
+                    </div>
+                    <div class="text-sm text-slate-500">
+                        📅 Hasta {{ item.challenge.end_date|date:"d/m" }}
+                    </div>
+                </div>
+                
+                {% if item.participation %}
+                <!-- Progreso -->
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-600">Progreso</span>
+                        <span class="font-medium">{{ item.participation.current_progress|floatformat:0 }} / {{ item.challenge.goal|floatformat:0 }}</span>
+                    </div>
+                    <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full {% if item.completed %}bg-emerald-500{% else %}bg-gradient-to-r from-purple-500 to-indigo-600{% endif %} rounded-full transition-all duration-500" 
+                             style="width: {{ item.progress_percent|floatformat:0 }}%"></div>
+                    </div>
+                </div>
+                
+                {% if item.completed %}
+                <div class="bg-emerald-50 rounded-xl p-3 text-center">
+                    <p class="text-emerald-700 font-medium">🎉 ¡Reto completado!</p>
+                    <p class="text-sm text-emerald-600">Has ganado {{ item.challenge.xp_reward }} XP</p>
+                </div>
+                {% else %}
+                <p class="text-sm text-slate-500 text-center">
+                    {% if item.challenge.challenge_type == 'VISITS' %}
+                    Realiza {{ item.challenge.goal|floatformat:0 }} visitas al gimnasio
+                    {% elif item.challenge.challenge_type == 'CLASSES' %}
+                    Asiste a {{ item.challenge.goal|floatformat:0 }} clases
+                    {% elif item.challenge.challenge_type == 'STREAK' %}
+                    Mantén una racha de {{ item.challenge.goal|floatformat:0 }} días consecutivos
+                    {% else %}
+                    Completa el objetivo para ganar la recompensa
+                    {% endif %}
+                </p>
+                {% endif %}
+                
+                {% else %}
+                <!-- No participando aún -->
+                <button @click="joinChallenge({{ item.challenge.id }})"
+                    :disabled="joining === {{ item.challenge.id }}"
+                    class="w-full py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-semibold hover:opacity-90 transition-all disabled:opacity-50">
+                    <span x-show="joining !== {{ item.challenge.id }}">🚀 Unirme al reto</span>
+                    <span x-show="joining === {{ item.challenge.id }}">Uniéndote...</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">🎯</div>
+        <h3 class="text-lg font-semibold text-slate-800 mb-2">Sin retos activos</h3>
+        <p class="text-slate-500 mb-4">No hay retos disponibles en este momento</p>
+        <a href="{% url 'portal_gamification' %}" class="inline-flex items-center gap-2 text-indigo-600 font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Volver a Gamificación
+        </a>
+    </div>
+    {% endif %}
+    
+</div>
+
+<script>
+function joinChallenge(challengeId) {
+    const data = Alpine.$data(document.querySelector('[x-data]'));
+    data.joining = challengeId;
+    
+    fetch(`{% url 'portal_join_challenge' challenge_id=0 %}`.replace('/0/', `/${challengeId}/`), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.error || 'Error al unirse al reto');
+            data.joining = null;
+        }
+    })
+    .catch(err => {
+        alert('Error de conexión');
+        data.joining = null;
+    });
+}
+</script>
+{% endblock %}

@@ -10,8 +10,20 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ gym.commercial_name|default:gym.name }}">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="/static/manifest_public.json">
+    
+    <!-- PWA Manifest Dinámico por Gimnasio -->
+    <link rel="manifest" href="{% url 'gym_manifest' slug=gym.slug %}">
+    
+    <!-- PWA Icons - Dinámicos si el gym tiene logo -->
+    {% if gym.logo %}
+    <link rel="apple-touch-icon" href="{% url 'gym_pwa_icon' slug=gym.slug size=192 %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% url 'gym_pwa_icon' slug=gym.slug size=32 %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% url 'gym_pwa_icon' slug=gym.slug size=16 %}">
+    {% else %}
     <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-192x192.png">
+    {% endif %}
     
     <title>{% block title %}{{ gym.commercial_name|default:gym.name }}{% endblock %}</title>
     
@@ -53,6 +65,31 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-slate-50 min-h-screen">
+    
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" class="hidden fixed bottom-24 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50">
+        <div class="brand-bg text-white rounded-2xl shadow-2xl p-4 flex items-center gap-4">
+            {% if gym.logo %}
+            <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="h-14 w-14 rounded-xl object-cover bg-white/10 p-1">
+            {% else %}
+            <div class="h-14 w-14 bg-white/20 rounded-xl flex items-center justify-center font-bold text-2xl">
+                {{ gym.commercial_name|default:gym.name|slice:":1" }}
+            </div>
+            {% endif %}
+            <div class="flex-1">
+                <h4 class="font-bold text-lg">Instalar App</h4>
+                <p class="text-sm text-white/80">Accede rápido a {{ gym.commercial_name|default:gym.name }}</p>
+            </div>
+            <div class="flex flex-col gap-2">
+                <button onclick="installPWA()" class="bg-white text-[var(--brand-color)] font-semibold px-4 py-2 rounded-xl text-sm hover:bg-gray-100 transition">
+                    Instalar
+                </button>
+                <button onclick="document.getElementById('pwa-install-banner').classList.add('hidden')" class="text-white/70 text-xs hover:text-white transition">
+                    Ahora no
+                </button>
+            </div>
+        </div>
+    </div>
     
     <!-- HEADER -->
     <header class="brand-bg text-white sticky top-0 z-50 shadow-lg">
@@ -290,18 +327,50 @@
     
     {% block extra_js %}{% endblock %}
     
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Service Worker Registration - Dinámico por Gimnasio -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw-public.js')
+                // Registrar Service Worker específico del gimnasio
+                navigator.serviceWorker.register('{% url "gym_service_worker" slug=gym.slug %}', {
+                    scope: '/gym/{{ gym.slug }}/'
+                })
                     .then(registration => {
-                        console.log('SW Public Portal registered:', registration.scope);
+                        console.log('SW {{ gym.name }} registered:', registration.scope);
                     })
                     .catch(err => {
-                        console.log('SW Public registration failed:', err);
+                        console.log('SW registration failed:', err);
                     });
             });
+        }
+        
+        // Banner de instalación PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostrar banner de instalación personalizado
+            const installBanner = document.getElementById('pwa-install-banner');
+            if (installBanner) {
+                installBanner.classList.remove('hidden');
+            }
+        });
+        
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA instalada');
+                    }
+                    deferredPrompt = null;
+                    const installBanner = document.getElementById('pwa-install-banner');
+                    if (installBanner) {
+                        installBanner.classList.add('hidden');
+                    }
+                });
+            }
         }
     </script>
 </body>

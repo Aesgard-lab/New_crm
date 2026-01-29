@@ -119,3 +119,109 @@ class ClientRoutine(models.Model):
     class Meta:
         verbose_name = "Asignación de Rutina"
         verbose_name_plural = "Asignaciones de Rutina"
+
+
+class WorkoutLog(models.Model):
+    """Registro de un entrenamiento realizado por el cliente"""
+    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='workout_logs')
+    routine = models.ForeignKey(WorkoutRoutine, on_delete=models.SET_NULL, null=True, blank=True)
+    routine_day = models.ForeignKey(RoutineDay, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    date = models.DateField(_("Fecha"), auto_now_add=True)
+    started_at = models.DateTimeField(_("Hora Inicio"), auto_now_add=True)
+    completed_at = models.DateTimeField(_("Hora Fin"), null=True, blank=True)
+    
+    # Duración en minutos
+    duration_minutes = models.PositiveIntegerField(_("Duración (min)"), default=0)
+    
+    # Valoración del cliente
+    difficulty_rating = models.PositiveSmallIntegerField(
+        _("Dificultad percibida"),
+        null=True, blank=True,
+        help_text="1-10"
+    )
+    notes = models.TextField(_("Notas"), blank=True)
+    
+    # Estadísticas
+    total_sets = models.PositiveIntegerField(default=0)
+    total_reps = models.PositiveIntegerField(default=0)
+    total_volume = models.DecimalField(
+        _("Volumen total (kg)"),
+        max_digits=10, decimal_places=2,
+        default=0
+    )
+    
+    class Meta:
+        verbose_name = "Registro de Entrenamiento"
+        verbose_name_plural = "Registros de Entrenamiento"
+        ordering = ['-date', '-started_at']
+    
+    def __str__(self):
+        return f"{self.client.first_name} - {self.date}"
+    
+    def calculate_stats(self):
+        """Calcula las estadísticas del entrenamiento"""
+        from django.db.models import Sum
+        stats = self.exercise_logs.aggregate(
+            total_sets=Sum('sets_completed'),
+            total_reps=Sum('total_reps'),
+            total_volume=Sum('total_volume')
+        )
+        self.total_sets = stats['total_sets'] or 0
+        self.total_reps = stats['total_reps'] or 0
+        self.total_volume = stats['total_volume'] or 0
+        self.save()
+
+
+class ExerciseLog(models.Model):
+    """Registro detallado de un ejercicio dentro de un entrenamiento"""
+    workout_log = models.ForeignKey(WorkoutLog, on_delete=models.CASCADE, related_name='exercise_logs')
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    routine_exercise = models.ForeignKey(
+        RoutineExercise, on_delete=models.SET_NULL, 
+        null=True, blank=True,
+        help_text="Referencia al ejercicio de la rutina (si aplica)"
+    )
+    
+    # Resultados
+    sets_completed = models.PositiveSmallIntegerField(_("Series completadas"), default=0)
+    
+    # Para guardar el detalle de cada serie: [{"reps": 12, "weight": 50}, ...]
+    sets_data = models.JSONField(_("Datos de series"), default=list, blank=True)
+    
+    # Estadísticas calculadas
+    total_reps = models.PositiveIntegerField(_("Total repeticiones"), default=0)
+    total_volume = models.DecimalField(
+        _("Volumen (kg)"),
+        max_digits=10, decimal_places=2,
+        default=0
+    )
+    max_weight = models.DecimalField(
+        _("Peso máximo (kg)"),
+        max_digits=7, decimal_places=2,
+        default=0
+    )
+    
+    notes = models.CharField(_("Notas"), max_length=255, blank=True)
+    completed = models.BooleanField(_("Completado"), default=False)
+    
+    class Meta:
+        verbose_name = "Registro de Ejercicio"
+        verbose_name_plural = "Registros de Ejercicios"
+        ordering = ['id']
+    
+    def __str__(self):
+        return f"{self.exercise.name} - {self.sets_completed} series"
+    
+    def save(self, *args, **kwargs):
+        # Calcular estadísticas antes de guardar
+        if self.sets_data:
+            self.sets_completed = len(self.sets_data)
+            self.total_reps = sum(s.get('reps', 0) for s in self.sets_data)
+            weights = [s.get('weight', 0) for s in self.sets_data]
+            self.max_weight = max(weights) if weights else 0
+            self.total_volume = sum(
+                s.get('reps', 0) * s.get('weight', 0) 
+                for s in self.sets_data
+            )
+        super().save(*args, **kwargs)
