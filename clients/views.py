@@ -534,6 +534,14 @@ def client_settings(request):
             messages.success(request, "Configuración de reservas actualizada.")
             return redirect("client_settings")
 
+        # Handle DNI settings
+        if request.POST.get("form_type") == "dni_settings":
+            gym.require_unique_dni = request.POST.get("require_unique_dni") == "on"
+            gym.auto_calculate_dni_letter = request.POST.get("auto_calculate_dni_letter") == "on"
+            gym.save(update_fields=["require_unique_dni", "auto_calculate_dni_letter"])
+            messages.success(request, "Configuración de DNI/documentos actualizada.")
+            return redirect("client_settings")
+
         delete_id = request.POST.get("delete_field")
         if delete_id:
             field = get_object_or_404(ClientField, id=delete_id, gym=gym)

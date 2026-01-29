@@ -9,6 +9,65 @@
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
 
+    <!-- CONFIGURACIÓN DE DNI / DOCUMENTOS -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900">Configuración de DNI / Documentos</h3>
+                <p class="text-sm text-slate-500">Opciones para validación y cálculo automático de documentos de identidad.</p>
+            </div>
+        </div>
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="dni_settings">
+            
+            <!-- Exigir DNI único -->
+            <div class="flex items-start gap-4">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="require_unique_dni" 
+                           class="sr-only peer" 
+                           {% if gym.require_unique_dni %}checked{% endif %}>
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                </label>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-slate-900">Exigir DNI único</h4>
+                    <p class="text-sm text-slate-500 mt-1">
+                        No permite registrar dos clientes con el mismo número de documento (DNI, NIE o Pasaporte).
+                        Útil para evitar duplicados y asegurar la identidad de cada cliente.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Calcular letra DNI automáticamente -->
+            <div class="flex items-start gap-4">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="auto_calculate_dni_letter" 
+                           class="sr-only peer" 
+                           {% if gym.auto_calculate_dni_letter %}checked{% endif %}>
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                </label>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-slate-900">Calcular letra del DNI automáticamente</h4>
+                    <p class="text-sm text-slate-500 mt-1">
+                        Si se introduce un DNI español de 8 dígitos sin letra, el sistema calculará y añadirá automáticamente la letra correcta.
+                        También funciona para NIE (X/Y/Z + 7 dígitos).
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors">
+                    Guardar configuración
+                </button>
+            </div>
+        </form>
+    </div>
+
     <!-- CONFIGURACIÓN DE RESERVAS CON PAGO PENDIENTE -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
         <div class="p-5 border-b border-slate-100 flex items-center gap-3">

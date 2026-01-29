@@ -103,6 +103,18 @@ class Gym(models.Model):
         verbose_name="Permitir reservas con pago pendiente",
         help_text="Permite que los clientes con suscripción activa pero pago pendiente puedan hacer reservas"
     )
+    
+    # DNI/Document settings
+    require_unique_dni = models.BooleanField(
+        default=False,
+        verbose_name="Exigir DNI único",
+        help_text="No permite registrar dos clientes con el mismo DNI/NIE/documento"
+    )
+    auto_calculate_dni_letter = models.BooleanField(
+        default=True,
+        verbose_name="Calcular letra del DNI automáticamente",
+        help_text="Calcula automáticamente la letra del DNI español si no se proporciona"
+    )
 
     class Meta:
         unique_together = ("franchise", "name")  # nombre único dentro de una franquicia

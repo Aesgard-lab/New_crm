@@ -44,6 +44,12 @@ class Client(models.Model):
         OTHER = "O", "Otro"
         NOT_SPECIFIED = "X", "No especificado"
 
+    class DocumentType(models.TextChoices):
+        DNI = "DNI", "DNI"
+        NIE = "NIE", "NIE"
+        PASSPORT = "PASSPORT", "Pasaporte"
+        OTHER = "OTHER", "Otro"
+
     gym = models.ForeignKey("organizations.Gym", on_delete=models.CASCADE, related_name="clients")
     
     # Vinculación opcional a usuario real (Login)
@@ -65,6 +71,18 @@ class Client(models.Model):
     phone_number = models.CharField(max_length=50, blank=True)
     
     # Datos secundarios
+    document_type = models.CharField(
+        max_length=20, 
+        choices=DocumentType.choices, 
+        default=DocumentType.DNI,
+        verbose_name="Tipo de documento"
+    )
+    other_document_type = models.CharField(
+        max_length=100, 
+        blank=True,
+        verbose_name="Especificar otro documento",
+        help_text="Indica el tipo de documento si seleccionaste 'Otro'"
+    )
     dni = models.CharField(max_length=20, blank=True, help_text="DNI/NIE/Pasaporte")
     birth_date = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=2, choices=Gender.choices, default=Gender.NOT_SPECIFIED)
@@ -116,11 +134,68 @@ class Client(models.Model):
         """Indica si el cliente tiene acceso al portal (tiene usuario vinculado)"""
         return self.user is not None
 
+    @staticmethod
+    def calculate_dni_letter(dni_number: str) -> str:
+        """Calcula la letra del DNI español dado los 8 números."""
+        letters = "TRWAGMYFPDXBNJZSQVHLCKE"
+        try:
+            number = int(dni_number)
+            return letters[number % 23]
+        except (ValueError, TypeError):
+            return ""
+
+    @staticmethod
+    def calculate_nie_letter(nie: str) -> str:
+        """Calcula la letra del NIE español (X, Y, Z seguido de 7 números)."""
+        letters = "TRWAGMYFPDXBNJZSQVHLCKE"
+        # El NIE comienza con X, Y o Z que equivalen a 0, 1, 2
+        replacements = {"X": "0", "Y": "1", "Z": "2"}
+        try:
+            nie_upper = nie.upper().strip()
+            if nie_upper[0] in replacements:
+                number_str = replacements[nie_upper[0]] + nie_upper[1:8]
+                number = int(number_str)
+                return letters[number % 23]
+        except (ValueError, TypeError, IndexError):
+            pass
+        return ""
+
+    def clean(self):
+        """Validación del modelo antes de guardar."""
+        super().clean()
+        
+        # Validación de DNI único si está habilitado en el gym
+        if self.dni and self.gym and self.gym.require_unique_dni:
+            existing = Client.objects.filter(
+                gym=self.gym, 
+                dni__iexact=self.dni
+            ).exclude(pk=self.pk)
+            
+            if existing.exists():
+                raise ValidationError({
+                    'dni': f'Ya existe un cliente con el documento "{self.dni}" en este gimnasio.'
+                })
+
     def save(self, *args, **kwargs):
-        # Lógica simple de DNI: Si falta letra para formato español estándar, calcularla (simplificado)
-        # Esto es un placeholder, la lógica real de DNI es más compleja.
         if self.dni:
             self.dni = self.dni.upper().strip()
+            
+            # Calcular letra automáticamente si está habilitado en el gym
+            if self.gym and self.gym.auto_calculate_dni_letter:
+                # Solo para DNI español (8 números sin letra)
+                if self.document_type == self.DocumentType.DNI:
+                    dni_clean = self.dni.replace(" ", "").replace("-", "")
+                    if len(dni_clean) == 8 and dni_clean.isdigit():
+                        calculated_letter = self.calculate_dni_letter(dni_clean)
+                        self.dni = dni_clean + calculated_letter
+                
+                # Para NIE (X/Y/Z + 7 números sin letra)
+                elif self.document_type == self.DocumentType.NIE:
+                    nie_clean = self.dni.replace(" ", "").replace("-", "")
+                    if len(nie_clean) == 8 and nie_clean[0] in "XYZ" and nie_clean[1:].isdigit():
+                        calculated_letter = self.calculate_nie_letter(nie_clean)
+                        self.dni = nie_clean + calculated_letter
+        
         super().save(*args, **kwargs)
 
 
