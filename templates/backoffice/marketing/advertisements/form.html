@@ -175,12 +175,60 @@
                         </svg>
                         Segmentación
                     </h3>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">
-                            Gimnasios Objetivo
-                            <span class="text-xs text-slate-500 font-normal">(Vacío = todos)</span>
+                    
+                    <!-- Gimnasios con Checkboxes -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-3">
+                            🏢 Gimnasios Objetivo
+                            <span class="text-xs text-slate-500 font-normal">(Vacío = todos los gimnasios)</span>
                         </label>
-                        {{ form.target_gyms }}
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl max-h-48 overflow-y-auto">
+                            {% for checkbox in form.target_gyms %}
+                            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 hover:border-purple-300 cursor-pointer transition-colors">
+                                {{ checkbox.tag }}
+                                <span class="text-sm text-slate-700">{{ checkbox.choice_label }}</span>
+                            </label>
+                            {% empty %}
+                            <p class="text-sm text-slate-500 col-span-full">No hay gimnasios disponibles</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Audiencia -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-3">
+                            👥 Audiencia Objetivo
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Tipo de Audiencia</label>
+                                {{ form.audience_type }}
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">
+                                    Filtro Específico
+                                    <span class="text-slate-400">(opcional)</span>
+                                </label>
+                                {{ form.audience_filter_value }}
+                                <p class="text-xs text-slate-400 mt-1">Ej: nombre de etiqueta para "Etiqueta Personalizada"</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pantallas -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-3">
+                            📱 Pantallas donde mostrar
+                            <span class="text-xs text-slate-500 font-normal">(Vacío = todas las pantallas)</span>
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl">
+                            {% for checkbox in form.target_screens %}
+                            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 hover:border-purple-300 cursor-pointer transition-colors">
+                                {{ checkbox.tag }}
+                                <span class="text-sm text-slate-700">{{ checkbox.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
 

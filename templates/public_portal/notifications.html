@@ -1,0 +1,165 @@
+{% extends 'public_portal/base.html' %}
+{% load static %}
+
+{% block title %}Notificaciones - {{ gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --brand-color: {{ settings.primary_color|default:'#6366f1' }};
+    }
+    .brand-bg { background-color: var(--brand-color); }
+    .brand-text { color: var(--brand-color); }
+    
+    .tab-btn {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        text-align: center;
+        font-weight: 600;
+        color: #64748b;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--brand-color); }
+    .tab-btn.active {
+        color: var(--brand-color);
+        border-bottom-color: var(--brand-color);
+    }
+    
+    .notification-card {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .ad-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .ad-card img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .ad-card .ad-content {
+        padding: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Notificaciones</h1>
+            <p class="text-slate-500 text-sm">Chat, anuncios y alertas</p>
+        </div>
+        <a href="{% url 'public_client_profile' slug=settings.public_slug %}" class="text-slate-500 hover:text-slate-700">
+            Volver
+        </a>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="flex border-b border-slate-200 mb-6 bg-white rounded-t-xl">
+        <button onclick="showTab('chat')" id="tab-chat" class="tab-btn">
+            💬 Chat
+            {% if unread_messages > 0 %}
+            <span class="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{{ unread_messages }}</span>
+            {% endif %}
+        </button>
+        <button onclick="showTab('ads')" id="tab-ads" class="tab-btn active">
+            📢 Anuncios
+        </button>
+        <button onclick="showTab('alerts')" id="tab-alerts" class="tab-btn">
+            🔔 Alertas
+        </button>
+    </div>
+    
+    <!-- Tab: Chat -->
+    <div id="content-chat" style="display: none;">
+        <div class="notification-card text-center py-8">
+            <div class="text-4xl mb-3">💬</div>
+            <h3 class="font-bold text-slate-900 mb-2">Chat con {{ gym.name }}</h3>
+            <p class="text-slate-500 mb-4">Habla directamente con el gimnasio</p>
+            <a href="{% url 'public_chat' slug=settings.public_slug %}" class="inline-block px-6 py-3 brand-bg text-white font-bold rounded-xl">
+                Ir al Chat
+            </a>
+        </div>
+    </div>
+    
+    <!-- Tab: Anuncios -->
+    <div id="content-ads">
+        {% if advertisements %}
+            {% for ad in advertisements %}
+            <div class="ad-card">
+                {% if ad.image_mobile %}
+                <img src="{{ ad.image_mobile.url }}" alt="{{ ad.title }}" class="md:hidden">
+                {% endif %}
+                {% if ad.image_desktop %}
+                <img src="{{ ad.image_desktop.url }}" alt="{{ ad.title }}" class="{% if ad.image_mobile %}hidden md:block{% endif %}">
+                {% endif %}
+                <div class="ad-content">
+                    {% if ad.cta_text and ad.cta_action != 'NONE' %}
+                    <div class="mt-2">
+                        {% if ad.cta_action == 'EXTERNAL_URL' and ad.cta_url %}
+                        <a href="{{ ad.cta_url }}" target="_blank" class="inline-block px-4 py-2 brand-bg text-white font-semibold rounded-lg text-sm">
+                            {{ ad.cta_text }}
+                        </a>
+                        {% elif ad.cta_action == 'BOOK_CLASS' %}
+                        <a href="{% url 'public_schedule' slug=settings.public_slug %}" class="inline-block px-4 py-2 brand-bg text-white font-semibold rounded-lg text-sm">
+                            {{ ad.cta_text }}
+                        </a>
+                        {% elif ad.cta_action == 'VIEW_CATALOG' %}
+                        <a href="{% url 'public_pricing' slug=settings.public_slug %}" class="inline-block px-4 py-2 brand-bg text-white font-semibold rounded-lg text-sm">
+                            {{ ad.cta_text }}
+                        </a>
+                        {% else %}
+                        <span class="inline-block px-4 py-2 brand-bg text-white font-semibold rounded-lg text-sm">
+                            {{ ad.cta_text }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">📢</div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">No hay anuncios activos</h3>
+                <p class="text-slate-500">Te notificaremos cuando haya novedades</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Tab: Alertas -->
+    <div id="content-alerts" style="display: none;">
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">🔔</div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Sin alertas pendientes</h3>
+            <p class="text-slate-500">Aquí aparecerán recordatorios y alertas importantes</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tab) {
+    // Update tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    
+    // Update content
+    document.getElementById('content-chat').style.display = tab === 'chat' ? 'block' : 'none';
+    document.getElementById('content-ads').style.display = tab === 'ads' ? 'block' : 'none';
+    document.getElementById('content-alerts').style.display = tab === 'alerts' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

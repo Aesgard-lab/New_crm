@@ -8,6 +8,7 @@ from django_ratelimit.decorators import ratelimit
 from organizations.models import Gym
 from accounts.services import user_gym_ids
 from accounts.decorators import require_staff
+from core.mixins import require_gym
 
 
 @ratelimit(key='ip', rate='5/m', method='POST', block=True)
@@ -205,6 +206,7 @@ def marketing_page(request):
 
 
 @login_required
+@require_gym
 def settings_dashboard(request):
     """
     Centralized Settings Hub.

@@ -95,6 +95,46 @@ def public_gym_home(request, slug):
             'message': 'Gimnasio no encontrado o portal no habilitado'
         }, status=404)
     
+    # Obtener anuncios activos para la HOME
+    from marketing.models import Advertisement
+    from django.db.models import Q
+    now = timezone.now()
+    
+    def filter_ads_by_screen(queryset, screen='HOME'):
+        """Filtrar anuncios por pantalla de manera compatible con SQLite"""
+        # Obtener todos y filtrar en Python para evitar problemas con JSONField en SQLite
+        ads = list(queryset)
+        return [
+            ad for ad in ads 
+            if not ad.target_screens or  # Lista vacía = todas las pantallas
+               screen in ad.target_screens or 
+               'ALL' in ad.target_screens
+        ]
+    
+    # Anuncios para este gym, activos, en fecha válida
+    hero_ads_base = Advertisement.objects.filter(
+        Q(gym=gym) | Q(target_gyms=gym),
+        is_active=True,
+        start_date__lte=now,
+        position='HERO_CAROUSEL'
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=now)
+    ).distinct().order_by('priority', '-created_at')
+    
+    hero_ads = filter_ads_by_screen(hero_ads_base, 'HOME')[:5]
+    
+    footer_ads_base = Advertisement.objects.filter(
+        Q(gym=gym) | Q(target_gyms=gym),
+        is_active=True,
+        start_date__lte=now,
+        position='STICKY_FOOTER'
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=now)
+    ).distinct().order_by('priority', '-created_at')
+    
+    footer_ads = filter_ads_by_screen(footer_ads_base, 'HOME')
+    footer_ad = footer_ads[0] if footer_ads else None
+    
     context = {
         'gym': gym,
         'settings': settings,
@@ -103,7 +143,9 @@ def public_gym_home(request, slug):
             'pricing': settings.show_pricing,
             'services': settings.show_services,
             'shop': settings.show_shop,
-        }
+        },
+        'hero_ads': hero_ads,
+        'footer_ad': footer_ad,
     }
     
     return render(request, 'public_portal/home.html', context)
@@ -148,6 +190,8 @@ def public_schedule(request, slug):
 
 def api_public_schedule_events(request, slug):
     """API para FullCalendar y vista lista - solo sesiones de actividades visibles"""
+    from datetime import timedelta
+    
     gym, settings = get_gym_by_slug(slug)
     
     if not gym or not settings.show_schedule:
@@ -155,6 +199,12 @@ def api_public_schedule_events(request, slug):
     
     start = request.GET.get('start')
     end = request.GET.get('end')
+    
+    # Si no se proporcionan fechas, usar rango por defecto (semana actual)
+    if not start:
+        start = timezone.now().date()
+    if not end:
+        end = timezone.now().date() + timedelta(days=14)
     
     sessions = ActivitySession.objects.filter(
         gym=gym,
@@ -1301,7 +1351,7 @@ def public_attendance_history(request, slug):
     
     # Historial de visitas
     from clients.models import ClientVisit
-    visits = ClientVisit.objects.filter(client=client).order_by('-check_in_date')[:50]
+    visits = ClientVisit.objects.filter(client=client).order_by('-date', '-check_in_time')[:50]
     
     # Historial de asistencia a clases
     from activities.models import ActivitySessionBooking
@@ -2477,3 +2527,88 @@ self.addEventListener('activate', function(event) {{
 '''
     
     return HttpResponse(sw_content, content_type='application/javascript')
+
+
+# ===========================
+# NOTIFICACIONES Y ANUNCIOS
+# ===========================
+
+def public_notifications(request, slug):
+    """Vista de notificaciones: chat, anuncios y alertas"""
+    gym, settings = get_gym_by_slug(slug)
+    
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    # Verificar autenticación - redirigir al login del portal público
+    if not request.user.is_authenticated:
+        from django.urls import reverse
+        login_url = reverse('public_login', kwargs={'slug': slug})
+        return redirect(f'{login_url}?next={request.path}')
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Obtener anuncios activos para este gym
+    from marketing.models import Advertisement
+    from django.db.models import Q
+    now = timezone.now()
+    
+    # Anuncios donde:
+    # 1. gym = este gym (el que lo creó), O
+    # 2. este gym está en target_gyms
+    # Y además: is_active=True, start_date <= now, end_date is null o > now
+    advertisements = Advertisement.objects.filter(
+        Q(gym=gym) | Q(target_gyms=gym),
+        is_active=True,
+        start_date__lte=now
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=now)
+    ).distinct().order_by('priority', '-created_at')
+    
+    # Obtener mensajes del chat
+    from clients.models import ChatRoom, ChatMessage
+    chat_room = ChatRoom.objects.filter(client=client).first()
+    unread_messages = 0
+    if chat_room:
+        unread_messages = ChatMessage.objects.filter(
+            room=chat_room,
+            is_from_client=False,
+            is_read=False
+        ).count()
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'advertisements': advertisements,
+        'unread_messages': unread_messages,
+    }
+    
+    return render(request, 'public_portal/notifications.html', context)
+
+
+def get_advertisements_for_screen(gym, screen_name='HOME'):
+    """Helper para obtener anuncios filtrados por pantalla"""
+    from marketing.models import Advertisement
+    now = timezone.now()
+    
+    ads = Advertisement.objects.filter(
+        gym=gym,
+        is_active=True,
+        start_date__lte=now
+    ).exclude(
+        end_date__lt=now
+    ).order_by('priority', '-created_at')
+    
+    # Filtrar por pantalla
+    filtered_ads = []
+    for ad in ads:
+        target_screens = ad.target_screens or []
+        # Si no tiene pantallas específicas o incluye la pantalla actual o incluye 'ALL'
+        if not target_screens or screen_name in target_screens or 'ALL' in target_screens:
+            filtered_ads.append(ad)
+    
+    return filtered_ads

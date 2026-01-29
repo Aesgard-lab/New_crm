@@ -11,10 +11,22 @@ import datetime
 from .models import Client, ClientMembership
 from finance.stripe_utils import list_payment_methods, create_setup_intent, detach_payment_method
 
+
+def _get_pwa_redirect_url(client):
+    """Helper para obtener la URL de la PWA del gym del cliente."""
+    if client and client.gym and client.gym.slug:
+        return reverse('public_gym_home', kwargs={'slug': client.gym.slug})
+    return None
+
+
 def portal_login(request):
     if request.user.is_authenticated:
-        # Check if is client
+        # Check if is client - redirect to PWA
         if hasattr(request.user, 'client_profile'):
+            client = request.user.client_profile
+            pwa_url = _get_pwa_redirect_url(client)
+            if pwa_url:
+                return redirect(pwa_url)
             return redirect('portal_home')
         # If staff, redirect to backoffice home
         return redirect('home')
@@ -33,6 +45,11 @@ def portal_login(request):
             if user_obj.check_password(password):
                 if hasattr(user_obj, 'client_profile'):
                     login(request, user_obj)
+                    # Redirect to PWA
+                    client = user_obj.client_profile
+                    pwa_url = _get_pwa_redirect_url(client)
+                    if pwa_url:
+                        return redirect(pwa_url)
                     return redirect('portal_home')
                 else:
                     messages.error(request, 'Este usuario no es un cliente.')
@@ -50,11 +67,16 @@ def portal_logout(request):
 
 @login_required
 def portal_home(request):
-    # Verify is client
+    """Redirige al portal PWA del gym del cliente."""
     if not hasattr(request.user, 'client_profile'):
         return redirect('portal_login')
-        
+    
     client = request.user.client_profile
+    pwa_url = _get_pwa_redirect_url(client)
+    if pwa_url:
+        return redirect(pwa_url)
+    
+    # Fallback al portal antiguo si el gym no tiene slug
     active_membership = client.memberships.filter(status='ACTIVE').first()
     pending_membership = client.memberships.filter(status='PENDING').order_by('start_date').first()
     finance_settings = getattr(client.gym, 'finance_settings', None)

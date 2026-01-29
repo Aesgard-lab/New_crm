@@ -255,12 +255,26 @@ class Advertisement(models.Model):
         help_text="URL o parámetro según la acción (ej: clase_id, producto_id, url externa)"
     )
     
-    # Segmentación (Fase 1: básica)
+    # Segmentación por gimnasios
     target_gyms = models.ManyToManyField(
         Gym,
         blank=True,
         related_name='targeted_ads',
         help_text="Dejar vacío para todos los gimnasios de la franquicia"
+    )
+    
+    # Segmentación por audiencia (igual que Popup)
+    audience_type = models.CharField(
+        max_length=50,
+        choices=Campaign.AudienceType.choices,
+        default=Campaign.AudienceType.ALL_ACTIVE,
+        help_text="Tipo de audiencia objetivo"
+    )
+    audience_filter_value = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Tag o filtro específico según tipo de audiencia"
     )
     
     # Segmentación por pantallas

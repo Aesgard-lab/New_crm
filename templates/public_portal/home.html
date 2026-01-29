@@ -2,7 +2,148 @@
 
 {% block title %}{{ gym.commercial_name|default:gym.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Hero Carousel */
+    .hero-carousel {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1.5rem;
+    }
+    .hero-carousel .slides {
+        display: flex;
+        transition: transform 0.5s ease-in-out;
+    }
+    .hero-carousel .slide {
+        min-width: 100%;
+        position: relative;
+    }
+    .hero-carousel .slide img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+    }
+    @media (min-width: 768px) {
+        .hero-carousel .slide img {
+            height: 400px;
+        }
+    }
+    .hero-carousel .cta-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 1.5rem;
+        background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    }
+    .hero-carousel .dots {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 0.5rem;
+    }
+    .hero-carousel .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .hero-carousel .dot.active {
+        background: white;
+        width: 24px;
+        border-radius: 4px;
+    }
+    
+    /* Sticky Footer Banner */
+    .sticky-footer-ad {
+        position: fixed;
+        bottom: 80px; /* Above bottom nav */
+        left: 0;
+        right: 0;
+        z-index: 40;
+        padding: 0 1rem;
+    }
+    @media (min-width: 768px) {
+        .sticky-footer-ad {
+            bottom: 1rem;
+            max-width: 600px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+    }
+    .sticky-footer-ad .ad-content {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+    }
+    .sticky-footer-ad .ad-image {
+        width: 100px;
+        height: 80px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+    .sticky-footer-ad .ad-text {
+        flex: 1;
+        padding: 0.75rem 1rem;
+    }
+    .sticky-footer-ad .close-btn {
+        padding: 0.75rem;
+        color: #94a3b8;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- Hero Carousel (Anuncios) -->
+{% if hero_ads %}
+<div class="hero-carousel mb-8" x-data="heroCarousel({{ hero_ads|length }}, [{% for ad in hero_ads %}{{ ad.duration_seconds }}{% if not forloop.last %},{% endif %}{% endfor %}])">
+    <div class="slides" :style="'transform: translateX(-' + (currentSlide * 100) + '%)'">
+        {% for ad in hero_ads %}
+        <div class="slide">
+            {% if ad.image_mobile %}
+            <img src="{{ ad.image_mobile.url }}" alt="" class="md:hidden">
+            {% endif %}
+            <img src="{{ ad.image_desktop.url }}" alt="" class="{% if ad.image_mobile %}hidden md:block{% endif %}">
+            
+            {% if ad.cta_text and ad.cta_action != 'NONE' %}
+            <div class="cta-overlay">
+                {% if ad.cta_action == 'EXTERNAL_URL' and ad.cta_url %}
+                <a href="{{ ad.cta_url }}" target="_blank" class="inline-block px-6 py-3 brand-bg text-white font-bold rounded-xl hover:opacity-90 transition-opacity">
+                    {{ ad.cta_text }}
+                </a>
+                {% elif ad.cta_action == 'BOOK_CLASS' %}
+                <a href="{% url 'public_schedule' slug=settings.public_slug %}" class="inline-block px-6 py-3 brand-bg text-white font-bold rounded-xl hover:opacity-90 transition-opacity">
+                    {{ ad.cta_text }}
+                </a>
+                {% elif ad.cta_action == 'VIEW_CATALOG' %}
+                <a href="{% url 'public_pricing' slug=settings.public_slug %}" class="inline-block px-6 py-3 brand-bg text-white font-bold rounded-xl hover:opacity-90 transition-opacity">
+                    {{ ad.cta_text }}
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if hero_ads|length > 1 %}
+    <div class="dots">
+        {% for ad in hero_ads %}
+        <div class="dot" :class="{ 'active': currentSlide === {{ forloop.counter0 }} }" @click="goToSlide({{ forloop.counter0 }})"></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
 <!-- Hero Section -->
 <div class="text-center py-12">
     {% if gym.logo %}
@@ -78,4 +219,82 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Sticky Footer Ad -->
+{% if footer_ad %}
+<div class="sticky-footer-ad" x-data="{ show: true }" x-show="show" x-transition>
+    <div class="ad-content">
+        {% if footer_ad.image_desktop %}
+        <img src="{{ footer_ad.image_desktop.url }}" alt="" class="ad-image">
+        {% endif %}
+        <div class="ad-text">
+            {% if footer_ad.cta_text and footer_ad.cta_action != 'NONE' %}
+                {% if footer_ad.cta_action == 'EXTERNAL_URL' and footer_ad.cta_url %}
+                <a href="{{ footer_ad.cta_url }}" target="_blank" class="inline-block px-4 py-2 brand-bg text-white text-sm font-bold rounded-lg">
+                    {{ footer_ad.cta_text }}
+                </a>
+                {% elif footer_ad.cta_action == 'BOOK_CLASS' %}
+                <a href="{% url 'public_schedule' slug=settings.public_slug %}" class="inline-block px-4 py-2 brand-bg text-white text-sm font-bold rounded-lg">
+                    {{ footer_ad.cta_text }}
+                </a>
+                {% elif footer_ad.cta_action == 'VIEW_CATALOG' %}
+                <a href="{% url 'public_pricing' slug=settings.public_slug %}" class="inline-block px-4 py-2 brand-bg text-white text-sm font-bold rounded-lg">
+                    {{ footer_ad.cta_text }}
+                </a>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% if footer_ad.is_collapsible %}
+        <button @click="show = false" class="close-btn">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function heroCarousel(totalSlides, durations) {
+    return {
+        currentSlide: 0,
+        totalSlides: totalSlides,
+        durations: durations,
+        interval: null,
+        
+        init() {
+            if (this.totalSlides > 1) {
+                this.startAutoPlay();
+            }
+        },
+        
+        startAutoPlay() {
+            this.stopAutoPlay();
+            const duration = (this.durations[this.currentSlide] || 5) * 1000;
+            this.interval = setTimeout(() => {
+                this.nextSlide();
+                this.startAutoPlay();
+            }, duration);
+        },
+        
+        stopAutoPlay() {
+            if (this.interval) {
+                clearTimeout(this.interval);
+            }
+        },
+        
+        nextSlide() {
+            this.currentSlide = (this.currentSlide + 1) % this.totalSlides;
+        },
+        
+        goToSlide(index) {
+            this.currentSlide = index;
+            this.startAutoPlay();
+        }
+    }
+}
+</script>
 {% endblock %}

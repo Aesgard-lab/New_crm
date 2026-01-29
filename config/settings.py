@@ -124,6 +124,7 @@ if DEBUG:
                     "saas_billing.context_processors.subscription_warnings",
                     "saas_billing.context_processors.system_branding",
                     "core.context_processors.translations",
+                    "public_portal.context_processors.portal_advertisements",
                 ],
             },
         },
@@ -144,6 +145,7 @@ else:
                     "saas_billing.context_processors.subscription_warnings",
                     "saas_billing.context_processors.system_branding",
                     "core.context_processors.translations",
+                    "public_portal.context_processors.portal_advertisements",
                 ],
                 "loaders": [
                     (

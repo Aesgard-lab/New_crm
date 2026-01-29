@@ -103,7 +103,8 @@ class AdvertisementForm(forms.ModelForm):
             'title', 'position', 'ad_type',
             'image_desktop', 'image_mobile', 'video_url',
             'cta_text', 'cta_action', 'cta_url',
-            'target_gyms', 'target_screens', 'start_date', 'end_date',
+            'target_gyms', 'audience_type', 'audience_filter_value',
+            'target_screens', 'start_date', 'end_date',
             'priority', 'duration_seconds', 'is_collapsible', 'is_active'
         ]
         widgets = {
@@ -140,9 +141,15 @@ class AdvertisementForm(forms.ModelForm):
                 'class': 'w-full rounded-xl border-slate-200 p-2.5',
                 'placeholder': 'URL o parámetro según la acción'
             }),
-            'target_gyms': forms.SelectMultiple(attrs={
+            'target_gyms': forms.CheckboxSelectMultiple(attrs={
+                'class': 'rounded border-slate-300 text-purple-600 focus:ring-purple-500'
+            }),
+            'audience_type': forms.Select(attrs={
+                'class': 'w-full rounded-xl border-slate-200 p-2.5'
+            }),
+            'audience_filter_value': forms.TextInput(attrs={
                 'class': 'w-full rounded-xl border-slate-200 p-2.5',
-                'size': '4'
+                'placeholder': 'Ej: nombre de etiqueta'
             }),
             'start_date': forms.DateTimeInput(attrs={
                 'type': 'datetime-local',
@@ -173,7 +180,8 @@ class AdvertisementForm(forms.ModelForm):
             'title': 'Nombre interno del anuncio (no visible para clientes)',
             'image_desktop': 'Recomendado: 1080x600px para hero carousel, 1080x200px para footer',
             'image_mobile': 'Si está vacío, se usará image_desktop',
-            'target_gyms': 'Dejar vacío para mostrar en todos los gimnasios',
+            'target_gyms': 'Selecciona los gimnasios. Vacío = todos',
+            'audience_type': 'Segmenta por tipo de cliente',
             'end_date': 'Dejar vacío para anuncio indefinido',
         }
     

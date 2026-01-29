@@ -5,12 +5,14 @@ from django.utils import translation
 from django.urls import reverse
 from .forms import GymSettingsForm
 from .models import Gym, PublicPortalSettings
+from core.mixins import require_gym
 
 LANGUAGE_SESSION_KEY = 'django_language'
 
 # Create your views here.
 
 @login_required
+@require_gym
 def gym_settings_view(request):
     gym = request.gym
     
@@ -47,6 +49,7 @@ def gym_settings_view(request):
 
 
 @login_required
+@require_gym
 def widget_code_generator(request):
     """Vista para generar código del widget embebible"""
     gym = request.gym

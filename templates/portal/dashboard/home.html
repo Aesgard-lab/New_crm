@@ -80,8 +80,7 @@
             <div class="flex-1">
                 <p class="text-white/70 text-xs font-medium uppercase tracking-wide mb-1">Tu Membresía</p>
                 {% with membership|default_if_none:pending_membership as current_membership %}
-                <h3 class="text-2xl font-bold leading-tight mb-1">{{ current_membership.name|default:"Sin Membresía
-                    Activa" }}</h3>
+                <h3 class="text-2xl font-bold leading-tight mb-1">{{ current_membership.name|default:"Sin Membresía Activa" }}</h3>
                 {% if membership %}
                 <p class="text-white/60 text-xs">Válida hasta {{ membership.end_date|date:"d M Y" }}</p>
                 {% elif pending_membership %}
@@ -109,8 +108,7 @@
         <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-6 relative z-10">
             <div class="flex justify-between items-center mb-2">
                 <span class="text-white/80 text-xs font-medium">Sesiones disponibles</span>
-                <span class="text-white font-bold text-lg">{{ membership.sessions_remaining|default:"0" }} / {{
-                    membership.sessions_total }}</span>
+                <span class="text-white font-bold text-lg">{{ membership.sessions_remaining|default:"0" }} / {{ membership.sessions_total }}</span>
             </div>
             <!-- Progress Bar -->
             <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
@@ -143,8 +141,7 @@
                 <div class="flex-1">
                     <p class="text-white font-semibold text-sm">Pagar siguiente cuota</p>
                     {% if pending_membership %}
-                    <p class="text-white/70 text-xs mt-1">El cobro activa la cuota que comienza el {{
-                        pending_membership.start_date|date:"d M Y" }}.</p>
+                    <p class="text-white/70 text-xs mt-1">El cobro activa la cuota que comienza el {{ pending_membership.start_date|date:"d M Y" }}.</p>
                     {% else %}
                     <p class="text-white/70 text-xs mt-1">Necesitas tener la cuota pagada para poder reservar.</p>
                     {% endif %}
@@ -206,8 +203,7 @@
                 style="background-image: repeating-linear-gradient(90deg, #0f172a 0px, #0f172a 3px, transparent 3px, transparent 8px);">
             </div>
         </div>
-        <p class="text-slate-900 font-mono text-base font-bold tracking-[0.3em]">{{
-            client.access_code|default:"0000" }}</p>
+        <p class="text-slate-900 font-mono text-base font-bold tracking-[0.3em]">{{ client.access_code|default:"0000" }}</p>
         <p class="text-slate-500 text-xs mt-2">Código de acceso</p>
     </div>
     <p class="text-center text-white/70 text-xs mt-4 font-medium relative z-10">Escanea este código en recepción</p>

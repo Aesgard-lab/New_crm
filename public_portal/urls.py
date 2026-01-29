@@ -47,6 +47,9 @@ urlpatterns = [
     path('gym/<slug:slug>/chat/', views.public_chat, name='public_chat'),
     path('gym/<slug:slug>/chat/send/', views.public_chat_send_message, name='public_chat_send'),
     
+    # Notificaciones y anuncios
+    path('gym/<slug:slug>/notifications/', views.public_notifications, name='public_notifications'),
+    
     # Gamificación
     path('gym/<slug:slug>/leaderboard/', views.public_leaderboard, name='public_leaderboard'),
     path('gym/<slug:slug>/achievements/', views.public_achievements, name='public_achievements'),
