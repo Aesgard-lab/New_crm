@@ -79,6 +79,12 @@ urlpatterns = [
     path('gym/<slug:slug>/api/bookings/book/', views.api_book_session, name='api_book_session'),
     path('gym/<slug:slug>/api/bookings/<int:booking_id>/cancel/', views.api_cancel_booking, name='api_cancel_booking'),
     
+    # Calendar Sync (iCal)
+    path('gym/<slug:slug>/calendar/', views.public_calendar_sync, name='public_calendar_sync'),
+    path('gym/<slug:slug>/calendar/settings/', views.public_calendar_settings, name='public_calendar_settings'),
+    path('gym/<slug:slug>/calendar/regenerate-token/', views.public_calendar_regenerate, name='public_calendar_regenerate'),
+    path('gym/<slug:slug>/calendar/booking/<int:booking_id>/download/', views.public_download_booking_ics, name='public_download_booking_ics'),
+    
     # Autenticación de clientes
     path('gym/<slug:slug>/login/', views.public_login, name='public_login'),
     path('gym/<slug:slug>/logout/', views.public_logout, name='public_logout'),

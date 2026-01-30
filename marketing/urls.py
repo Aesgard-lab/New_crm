@@ -48,6 +48,17 @@ urlpatterns = [
     path('leads/settings/', views.lead_settings_view, name='lead_settings'),
     path('leads/api/card/<int:card_id>/move/', views.lead_card_move_api, name='lead_card_move_api'),
     path('leads/api/card/<int:card_id>/', views.lead_card_detail_api, name='lead_card_detail_api'),
+    # Stage management
+    path('leads/api/stage/create/', views.lead_stage_create, name='lead_stage_create'),
+    path('leads/api/stage/<int:stage_id>/', views.lead_stage_update, name='lead_stage_update'),
+    path('leads/api/stage/<int:stage_id>/delete/', views.lead_stage_delete, name='lead_stage_delete'),
+    path('leads/api/stages/reorder/', views.lead_stage_reorder, name='lead_stage_reorder'),
+    
+    # Lead Stage Automation management
+    path('leads/automation/create/', views.lead_automation_create, name='lead_automation_create'),
+    path('leads/automation/<int:rule_id>/', views.lead_automation_detail, name='lead_automation_detail'),
+    path('leads/automation/<int:rule_id>/toggle/', views.lead_automation_toggle, name='lead_automation_toggle'),
+    path('leads/automation/<int:rule_id>/delete/', views.lead_automation_delete, name='lead_automation_delete'),
     
     # Automatizaciones
     path('automation/', views.automation_dashboard, name='automation_dashboard'),

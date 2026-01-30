@@ -68,6 +68,12 @@ from .gamification_views import (
     XPHistoryView
 )
 from .advance_payment_api import advance_payment_info, process_advance_payment
+from .calendar_views import (
+    CalendarSettingsView,
+    RegenerateCalendarTokenView,
+    DownloadBookingICSView,
+    AddToCalendarView
+)
 
 urlpatterns = [
     # Authentication & Registration
@@ -152,6 +158,12 @@ urlpatterns = [
     path('gamification/challenges/', ChallengesView.as_view(), name='api_gamification_challenges'),
     path('gamification/challenges/<int:challenge_id>/join/', JoinChallengeView.as_view(), name='api_gamification_join_challenge'),
     path('gamification/xp-history/', XPHistoryView.as_view(), name='api_gamification_xp_history'),
+    
+    # Calendar Sync (Mobile App)
+    path('calendar/settings/', CalendarSettingsView.as_view(), name='api_calendar_settings'),
+    path('calendar/regenerate-token/', RegenerateCalendarTokenView.as_view(), name='api_calendar_regenerate'),
+    path('calendar/booking/<int:booking_id>/ics/', DownloadBookingICSView.as_view(), name='api_calendar_booking_ics'),
+    path('calendar/add-event/', AddToCalendarView.as_view(), name='api_calendar_add_event'),
 ]
 
 

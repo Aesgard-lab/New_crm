@@ -400,11 +400,25 @@ class LeadStage(models.Model):
     """
     pipeline = models.ForeignKey(LeadPipeline, on_delete=models.CASCADE, related_name='stages')
     name = models.CharField(max_length=50)
+    description = models.TextField(blank=True, help_text="Descripción de la etapa")
     order = models.IntegerField(default=0)
     color = models.CharField(max_length=7, default='#6366f1')  # Indigo
     monthly_quota = models.IntegerField(default=0, help_text="Monthly goal (0 = no quota)")
     is_won = models.BooleanField(default=False, help_text="Mark this as the 'Converted' stage")
     is_lost = models.BooleanField(default=False, help_text="Mark this as the 'Lost' stage")
+    # Servicios y planes asociados a esta etapa (cuando se convierte)
+    required_services = models.ManyToManyField(
+        'services.Service',
+        blank=True,
+        related_name='lead_stages',
+        help_text="Servicios que debe contratar el lead en esta etapa"
+    )
+    required_plans = models.ManyToManyField(
+        'memberships.MembershipPlan',
+        blank=True,
+        related_name='lead_stages',
+        help_text="Planes de membresía asociados a esta etapa"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -424,41 +438,92 @@ class LeadStage(models.Model):
 class LeadStageAutomation(models.Model):
     """
     Configurable automation rules for moving leads between stages.
+    Supports time-based rules, action-based rules, and inactivity rules.
     """
     class TriggerType(models.TextChoices):
-        FIRST_VISIT = 'FIRST_VISIT', _('Primera Visita')
-        MEMBERSHIP_CREATED = 'MEMBERSHIP_CREATED', _('Membresía Creada')
-        DAYS_INACTIVE = 'DAYS_INACTIVE', _('Días Sin Actividad')
-        TRIAL_ENDED = 'TRIAL_ENDED', _('Periodo de Prueba Finalizado')
+        # Action-based triggers (positive)
+        FIRST_VISIT = 'FIRST_VISIT', _('Primera Visita Realizada')
+        MEMBERSHIP_CREATED = 'MEMBERSHIP_CREATED', _('Membresía Contratada')
         ORDER_CREATED = 'ORDER_CREATED', _('Compra Realizada')
+        SERVICE_BOOKED = 'SERVICE_BOOKED', _('Servicio Reservado')
+        TRIAL_STARTED = 'TRIAL_STARTED', _('Prueba Iniciada')
+        
+        # Time-based triggers (negative/timeout)
+        DAYS_IN_STAGE = 'DAYS_IN_STAGE', _('Días en esta Fase (timeout)')
+        DAYS_NO_RESPONSE = 'DAYS_NO_RESPONSE', _('Días Sin Respuesta')
+        DAYS_NO_PURCHASE = 'DAYS_NO_PURCHASE', _('Días Sin Compra')
+        DAYS_NO_VISIT = 'DAYS_NO_VISIT', _('Días Sin Visita')
+        TRIAL_ENDED = 'TRIAL_ENDED', _('Periodo de Prueba Finalizado')
+        
+        # Scheduled
+        DAYS_INACTIVE = 'DAYS_INACTIVE', _('Días Sin Actividad General')
     
+    class ActionType(models.TextChoices):
+        MOVE_STAGE = 'MOVE_STAGE', _('Mover a otra fase')
+        SEND_EMAIL = 'SEND_EMAIL', _('Enviar email')
+        CREATE_TASK = 'CREATE_TASK', _('Crear tarea para comercial')
+        NOTIFY_STAFF = 'NOTIFY_STAFF', _('Notificar al equipo')
+    
+    name = models.CharField(max_length=100, blank=True, help_text="Nombre descriptivo de la regla")
     from_stage = models.ForeignKey(
         LeadStage, 
         on_delete=models.CASCADE, 
         related_name='automations_from',
-        help_text="Source stage"
+        help_text="Fase origen (donde está el lead)"
     )
     to_stage = models.ForeignKey(
         LeadStage, 
         on_delete=models.CASCADE, 
         related_name='automations_to',
-        help_text="Destination stage"
+        null=True,
+        blank=True,
+        help_text="Fase destino (a donde mover el lead)"
     )
     trigger_type = models.CharField(max_length=50, choices=TriggerType.choices)
-    trigger_value = models.IntegerField(
-        null=True, 
-        blank=True, 
-        help_text="Days for DAYS_INACTIVE trigger"
+    trigger_days = models.IntegerField(
+        default=0,
+        help_text="Días para triggers basados en tiempo (0 = inmediato)"
     )
+    action_type = models.CharField(
+        max_length=20, 
+        choices=ActionType.choices, 
+        default='MOVE_STAGE'
+    )
+    # Para acciones de email
+    email_template = models.ForeignKey(
+        'EmailTemplate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stage_automations',
+        help_text="Plantilla de email a enviar (si la acción es SEND_EMAIL)"
+    )
+    # Para notificaciones
+    notify_message = models.TextField(
+        blank=True,
+        help_text="Mensaje de notificación (si la acción es NOTIFY_STAFF)"
+    )
+    # Control
     is_active = models.BooleanField(default=True)
+    priority = models.IntegerField(default=0, help_text="Mayor prioridad se ejecuta primero")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = _("Lead Automation Rule")
-        verbose_name_plural = _("Lead Automation Rules")
+        verbose_name = _("Regla de Automatización")
+        verbose_name_plural = _("Reglas de Automatización")
+        ordering = ['-priority', 'from_stage__order']
 
     def __str__(self):
-        return f"{self.from_stage.name} → {self.to_stage.name} ({self.get_trigger_type_display()})"
+        if self.name:
+            return self.name
+        return f"{self.from_stage.name} → {self.to_stage.name if self.to_stage else 'N/A'} ({self.get_trigger_type_display()})"
+    
+    def get_trigger_description(self):
+        """Returns a human-readable description of the trigger."""
+        if self.trigger_days > 0:
+            return f"{self.get_trigger_type_display()} ({self.trigger_days} días)"
+        return self.get_trigger_type_display()
 
 
 class LeadCard(models.Model):

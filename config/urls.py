@@ -7,10 +7,16 @@ from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+# Calendar feed view (público, sin autenticación)
+from clients.calendar_views import calendar_feed
+
 
 urlpatterns = [
     # Health Check endpoints (para Docker, Kubernetes, Load Balancers)
     path("health/", include("core.urls", namespace="health")),
+    
+    # Calendar Feed (público, para suscripción desde apps de calendario)
+    path("calendar/feed/<str:token>.ics", calendar_feed, name="calendar_feed"),
     
     # API Documentation (OpenAPI / Swagger)
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

@@ -3,6 +3,7 @@ from . import views
 from . import portal_views
 from . import review_views
 from . import advance_payment_views
+from . import calendar_views
 
 urlpatterns = [
     # Duplicate clients and merging
@@ -22,6 +23,12 @@ urlpatterns = [
     path('bookings/', portal_views.portal_bookings, name='portal_bookings'),
     path('bookings/<int:session_id>/action/', portal_views.portal_book_session, name='portal_book_session'),
     path('history/', portal_views.portal_history, name='portal_history'),
+    
+    # Calendar Sync (iCal)
+    path('calendar/', calendar_views.calendar_sync_page, name='portal_calendar_sync'),
+    path('calendar/settings/', calendar_views.get_calendar_settings, name='portal_calendar_settings'),
+    path('calendar/regenerate-token/', calendar_views.regenerate_calendar_token, name='portal_calendar_regenerate'),
+    path('calendar/booking/<int:booking_id>/download/', calendar_views.download_booking_ics, name='portal_download_booking_ics'),
     
     # Profile
     path('profile/', portal_views.portal_profile, name='portal_profile'),

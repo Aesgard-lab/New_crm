@@ -10,7 +10,7 @@
     <div class="flex justify-between items-center">
         <div>
             <h1 class="text-2xl font-bold text-slate-900">{{ pipeline.name }}</h1>
-            <p class="text-sm text-slate-500">Configura las fases y automatizaciones del pipeline</p>
+            <p class="text-sm text-slate-500">Configura las fases del embudo de ventas</p>
         </div>
         <a href="{% url 'lead_board' %}"
             class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 flex items-center gap-2">
@@ -20,80 +20,224 @@
 
     <!-- Stages Configuration -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div class="p-5 border-b border-slate-100">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
             <h2 class="font-bold text-slate-800 flex items-center gap-2">
                 <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
                     </path>
                 </svg>
-                Fases del Pipeline
+                Fases del Pipeline (Embudo de Ventas)
             </h2>
+            <button onclick="openCreateStageModal()" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nueva Fase
+            </button>
         </div>
         <div class="p-5">
-            <div class="space-y-3">
+            <div id="stages-list" class="space-y-3">
                 {% for stage in stages %}
-                <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <div class="w-4 h-4 rounded-full" style="background-color: {{ stage.color }};"></div>
-                    <div class="flex-1">
-                        <div class="font-bold text-slate-800">{{ stage.name }}</div>
-                        <div class="text-xs text-slate-500">Orden: {{ stage.order }}</div>
+                <div class="stage-item flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors cursor-move" 
+                     data-stage-id="{{ stage.id }}">
+                    <!-- Drag Handle -->
+                    <div class="text-slate-400 cursor-move">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                        </svg>
                     </div>
-                    <div class="flex items-center gap-4 text-sm">
+                    
+                    <!-- Color Indicator -->
+                    <div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: {{ stage.color }};"></div>
+                    
+                    <!-- Stage Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-slate-800">{{ stage.name }}</div>
+                        {% if stage.description %}
+                        <div class="text-xs text-slate-500 truncate">{{ stage.description }}</div>
+                        {% endif %}
+                        
+                        <!-- Associated Services/Plans -->
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            {% for service in stage.required_services.all %}
+                            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">
+                                {{ service.name }}
+                            </span>
+                            {% endfor %}
+                            {% for plan in stage.required_plans.all %}
+                            <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs">
+                                {{ plan.name }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Stats & Tags -->
+                    <div class="flex items-center gap-3 text-sm">
                         {% if stage.monthly_quota > 0 %}
-                        <span class="text-slate-500">Cuota: {{ stage.monthly_quota }}/mes</span>
+                        <span class="text-slate-500 text-xs">Meta: {{ stage.monthly_quota }}/mes</span>
                         {% endif %}
                         {% if stage.is_won %}
-                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Ganado</span>
+                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">✓ Ganado</span>
                         {% endif %}
                         {% if stage.is_lost %}
-                        <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">Perdido</span>
+                        <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">✗ Perdido</span>
                         {% endif %}
                     </div>
+                    
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="editStage({{ stage.id }})" 
+                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Editar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="deleteStage({{ stage.id }}, '{{ stage.name }}')" 
+                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8 text-slate-400">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <p>No hay fases configuradas</p>
+                    <p class="text-xs mt-1">Crea tu primera fase para comenzar</p>
                 </div>
                 {% endfor %}
             </div>
-            <p class="text-xs text-slate-400 mt-4">
-                💡 Para editar fases, usa el panel de administración de Django.
+            <p class="text-xs text-slate-400 mt-4 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Arrastra las fases para reordenarlas
             </p>
         </div>
     </div>
 
     <!-- Automations -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div class="p-5 border-b border-slate-100">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
             <h2 class="font-bold text-slate-800 flex items-center gap-2">
                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
-                Automatizaciones
+                Automatizaciones del Pipeline
             </h2>
+            <button onclick="openAutomationModal()" 
+                class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nueva Regla
+            </button>
         </div>
         <div class="p-5">
             {% if automations %}
             <div class="space-y-3">
                 {% for rule in automations %}
-                <div
-                    class="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 {% if not rule.is_active %}opacity-50{% endif %}">
-                    <div class="flex items-center gap-2">
-                        <span class="font-medium text-slate-800">{{ rule.from_stage.name }}</span>
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                        </svg>
-                        <span class="font-medium text-slate-800">{{ rule.to_stage.name }}</span>
+                <div class="automation-item flex items-start gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors {% if not rule.is_active %}opacity-50{% endif %}"
+                     data-rule-id="{{ rule.id }}">
+                    <!-- Priority Badge -->
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">
+                        {{ rule.priority }}
                     </div>
-                    <div class="ml-auto flex items-center gap-3">
-                        <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-bold">
-                            {{ rule.get_trigger_type_display }}
-                        </span>
-                        {% if rule.trigger_value %}
-                        <span class="text-sm text-slate-500">{{ rule.trigger_value }} días</span>
-                        {% endif %}
-                        <span class="{% if rule.is_active %}text-green-500{% else %}text-slate-400{% endif %}">
-                            {% if rule.is_active %}✓ Activa{% else %}○ Inactiva{% endif %}
-                        </span>
+                    
+                    <!-- Rule Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-slate-800">{{ rule.name|default:"Regla sin nombre" }}</div>
+                        
+                        <!-- Flow visualization -->
+                        <div class="flex items-center gap-2 mt-2 text-sm">
+                            <span class="inline-flex items-center gap-1">
+                                <div class="w-3 h-3 rounded-full" style="background-color: {{ rule.from_stage.color }};"></div>
+                                <span class="text-slate-600">{{ rule.from_stage.name }}</span>
+                            </span>
+                            
+                            {% if rule.action_type == 'MOVE_STAGE' and rule.to_stage %}
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                            </svg>
+                            <span class="inline-flex items-center gap-1">
+                                <div class="w-3 h-3 rounded-full" style="background-color: {{ rule.to_stage.color }};"></div>
+                                <span class="text-slate-600">{{ rule.to_stage.name }}</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Tags -->
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <!-- Trigger Type -->
+                            <span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-bold">
+                                {% if 'DAYS' in rule.trigger_type %}
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {% else %}
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                {% endif %}
+                                {{ rule.get_trigger_type_display }}
+                            </span>
+                            
+                            {% if rule.trigger_days %}
+                            <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-bold">
+                                {{ rule.trigger_days }} días
+                            </span>
+                            {% endif %}
+                            
+                            <!-- Action Type -->
+                            <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
+                                {{ rule.get_action_type_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Status & Actions -->
+                    <div class="flex items-center gap-3">
+                        <button onclick="toggleAutomation({{ rule.id }})" 
+                            class="p-2 rounded-lg transition-colors {% if rule.is_active %}bg-green-100 text-green-600 hover:bg-green-200{% else %}bg-slate-100 text-slate-400 hover:bg-slate-200{% endif %}"
+                            title="{% if rule.is_active %}Desactivar{% else %}Activar{% endif %}">
+                            {% if rule.is_active %}
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {% else %}
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {% endif %}
+                        </button>
+                        <button onclick="editAutomation({{ rule.id }})" 
+                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Editar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="deleteAutomation({{ rule.id }}, '{{ rule.name|default:"esta regla" }}')" 
+                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 {% endfor %}
@@ -104,43 +248,635 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
-                <p>No hay automatizaciones configuradas</p>
-                <p class="text-xs mt-1">Crea reglas desde el panel de administración de Django</p>
+                <p>No hay reglas de automatización configuradas</p>
+                <p class="text-xs mt-1">Crea reglas para mover leads automáticamente entre fases</p>
             </div>
             {% endif %}
 
-            <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                <h4 class="font-bold text-blue-800 mb-2">Tipos de Automatización Disponibles:</h4>
-                <ul class="text-sm text-blue-700 space-y-1">
-                    {% for value, label in trigger_choices %}
-                    <li>• <strong>{{ label }}</strong></li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Celery Info -->
-    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-        <div class="flex gap-3">
-            <svg class="w-6 h-6 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div>
-                <h3 class="font-bold text-amber-800">Tareas en Segundo Plano (Celery)</h3>
-                <p class="text-sm text-amber-700 mt-1">
-                    Las automatizaciones se ejecutan mediante Celery. Asegúrate de que el worker y el beat estén
-                    corriendo:
-                </p>
-                <pre class="bg-amber-100 rounded-lg p-3 mt-2 text-xs text-amber-900 overflow-x-auto">
-# Worker (procesa tareas)
-celery -A config worker -l info
-
-# Beat (tareas periódicas - inactividad)
-celery -A config beat -l info</pre>
+            <!-- Quick Guide -->
+            <div class="mt-6 grid md:grid-cols-2 gap-4">
+                <!-- Time-based triggers -->
+                <div class="p-4 bg-orange-50 rounded-xl border border-orange-100">
+                    <h4 class="font-bold text-orange-800 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Reglas basadas en tiempo
+                    </h4>
+                    <ul class="text-sm text-orange-700 space-y-1">
+                        <li>• <strong>Días en Fase:</strong> Timeout si no hay avance</li>
+                        <li>• <strong>Sin Respuesta:</strong> Lead no interactúa</li>
+                        <li>• <strong>Sin Compra:</strong> No compra en X días</li>
+                        <li>• <strong>Sin Visita:</strong> No viene al gimnasio</li>
+                    </ul>
+                </div>
+                
+                <!-- Action-based triggers -->
+                <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <h4 class="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Reglas por acciones
+                    </h4>
+                    <ul class="text-sm text-blue-700 space-y-1">
+                        <li>• <strong>Primera Visita:</strong> Cuando viene al gym</li>
+                        <li>• <strong>Membresía:</strong> Cuando se hace socio</li>
+                        <li>• <strong>Pedido:</strong> Cuando compra algo</li>
+                        <li>• <strong>Servicio:</strong> Cuando reserva clase</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Stage Modal (Create/Edit) -->
+<div id="stageModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 id="modalTitle" class="font-bold text-lg text-slate-800">Nueva Fase</h3>
+            <button onclick="closeStageModal()" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="stageForm" class="p-5 space-y-4">
+            <input type="hidden" id="stageId" value="">
+            
+            <div class="grid grid-cols-3 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Nombre *</label>
+                    <input type="text" id="stageName" required
+                        class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Ej: Primer Contacto">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Color</label>
+                    <input type="color" id="stageColor" value="#6366f1"
+                        class="w-full h-10 border border-slate-200 rounded-xl cursor-pointer">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Descripción</label>
+                <textarea id="stageDescription" rows="2"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Descripción opcional de esta fase..."></textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Meta Mensual</label>
+                <input type="number" id="stageQuota" min="0" value="0"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="0 = sin meta">
+                <p class="text-xs text-slate-500 mt-1">Número de leads que deben llegar a esta fase cada mes</p>
+            </div>
+            
+            <div class="flex gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="stageIsWon" class="w-4 h-4 rounded text-green-600">
+                    <span class="text-sm text-slate-700">Fase de Conversión (Ganado)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="stageIsLost" class="w-4 h-4 rounded text-red-600">
+                    <span class="text-sm text-slate-700">Fase de Pérdida</span>
+                </label>
+            </div>
+            
+            <hr class="border-slate-200">
+            
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Servicios Asociados
+                    <span class="font-normal text-slate-500">(requeridos para esta fase)</span>
+                </label>
+                <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl">
+                    {% for service in services %}
+                    <label class="flex items-center gap-2 cursor-pointer text-sm">
+                        <input type="checkbox" name="services" value="{{ service.id }}" 
+                            class="service-checkbox w-4 h-4 rounded text-blue-600">
+                        <span class="text-slate-700 truncate">{{ service.name }}</span>
+                    </label>
+                    {% empty %}
+                    <p class="text-slate-400 text-sm col-span-2">No hay servicios disponibles</p>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    Planes de Membresía
+                    <span class="font-normal text-slate-500">(asociados a esta fase)</span>
+                </label>
+                <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl">
+                    {% for plan in plans %}
+                    <label class="flex items-center gap-2 cursor-pointer text-sm">
+                        <input type="checkbox" name="plans" value="{{ plan.id }}" 
+                            class="plan-checkbox w-4 h-4 rounded text-purple-600">
+                        <span class="text-slate-700 truncate">{{ plan.name }}</span>
+                    </label>
+                    {% empty %}
+                    <p class="text-slate-400 text-sm col-span-2">No hay planes disponibles</p>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeStageModal()" 
+                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-colors">
+                    Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Automation Modal (Create/Edit) -->
+<div id="automationModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 id="automationModalTitle" class="font-bold text-lg text-slate-800">Nueva Regla de Automatización</h3>
+            <button onclick="closeAutomationModal()" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="automationForm" class="p-5 space-y-4">
+            <input type="hidden" id="automationId" value="">
+            
+            <!-- Name -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Nombre de la Regla *</label>
+                <input type="text" id="automationName" required
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    placeholder="Ej: Timeout si no responde en 7 días">
+            </div>
+            
+            <!-- From Stage -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Desde la Fase *</label>
+                <select id="automationFromStage" required
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <option value="">Selecciona fase origen...</option>
+                    {% for stage in stages %}
+                    <option value="{{ stage.id }}" data-color="{{ stage.color }}">{{ stage.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Trigger Type -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Condición (Trigger) *</label>
+                <select id="automationTriggerType" required onchange="toggleTriggerDays()"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <option value="">Selecciona condición...</option>
+                    <optgroup label="⏱️ Basadas en Tiempo">
+                        <option value="DAYS_IN_STAGE">Días en esta Fase (timeout)</option>
+                        <option value="DAYS_NO_RESPONSE">Días Sin Respuesta</option>
+                        <option value="DAYS_NO_PURCHASE">Días Sin Compra</option>
+                        <option value="DAYS_NO_VISIT">Días Sin Visita</option>
+                        <option value="DAYS_INACTIVE">Días de Inactividad General</option>
+                        <option value="TRIAL_ENDED">Período de Prueba Terminado</option>
+                    </optgroup>
+                    <optgroup label="⚡ Por Acción del Lead">
+                        <option value="FIRST_VISIT">Primera Visita al Gimnasio</option>
+                        <option value="MEMBERSHIP_CREATED">Membresía Creada</option>
+                        <option value="ORDER_CREATED">Pedido Realizado</option>
+                        <option value="SERVICE_BOOKED">Servicio Reservado</option>
+                        <option value="TRIAL_STARTED">Período de Prueba Iniciado</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <!-- Trigger Days (only for time-based triggers) -->
+            <div id="triggerDaysContainer" class="hidden">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Número de Días *</label>
+                <div class="flex items-center gap-3">
+                    <input type="number" id="automationTriggerDays" min="1" max="365" value="7"
+                        class="w-32 border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <span class="text-slate-500">días</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Se ejecutará cuando pasen estos días sin cumplir la condición</p>
+            </div>
+            
+            <hr class="border-slate-200">
+            
+            <!-- Action Type -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Acción a Realizar *</label>
+                <select id="automationActionType" required onchange="toggleActionFields()"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <option value="MOVE_STAGE">Mover a otra fase</option>
+                    <option value="SEND_EMAIL">Enviar email</option>
+                    <option value="CREATE_TASK">Crear tarea para el equipo</option>
+                    <option value="NOTIFY_STAFF">Notificar al equipo</option>
+                </select>
+            </div>
+            
+            <!-- To Stage (only for MOVE_STAGE action) -->
+            <div id="toStageContainer">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Mover a la Fase *</label>
+                <select id="automationToStage"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <option value="">Selecciona fase destino...</option>
+                    {% for stage in stages %}
+                    <option value="{{ stage.id }}" data-color="{{ stage.color }}">{{ stage.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Notify Message (for NOTIFY_STAFF and CREATE_TASK) -->
+            <div id="notifyMessageContainer" class="hidden">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Mensaje de Notificación</label>
+                <textarea id="automationNotifyMessage" rows="2"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    placeholder="Mensaje que verá el equipo..."></textarea>
+                <p class="text-xs text-slate-500 mt-1">Variables: {lead_name}, {stage_name}, {days}</p>
+            </div>
+            
+            <hr class="border-slate-200">
+            
+            <!-- Priority -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Prioridad</label>
+                    <input type="number" id="automationPriority" min="0" max="100" value="0"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                    <p class="text-xs text-slate-500 mt-1">0 = mayor prioridad</p>
+                </div>
+                <div class="flex items-end pb-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="automationIsActive" checked class="w-4 h-4 rounded text-green-600">
+                        <span class="text-sm text-slate-700 font-bold">Regla Activa</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeAutomationModal()" 
+                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                    class="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold transition-colors">
+                    Guardar Regla
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Sortable for drag & drop reordering
+    const stagesList = document.getElementById('stages-list');
+    if (stagesList) {
+        new Sortable(stagesList, {
+            animation: 150,
+            handle: '.stage-item',
+            ghostClass: 'opacity-50',
+            onEnd: function(evt) {
+                saveStageOrder();
+            }
+        });
+    }
+});
+
+function saveStageOrder() {
+    const stages = document.querySelectorAll('.stage-item');
+    const order = Array.from(stages).map(el => el.dataset.stageId);
+    
+    fetch('{% url "lead_stage_reorder" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ order: order })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error al reordenar: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+function openCreateStageModal() {
+    document.getElementById('modalTitle').textContent = 'Nueva Fase';
+    document.getElementById('stageId').value = '';
+    document.getElementById('stageName').value = '';
+    document.getElementById('stageDescription').value = '';
+    document.getElementById('stageColor').value = '#6366f1';
+    document.getElementById('stageQuota').value = '0';
+    document.getElementById('stageIsWon').checked = false;
+    document.getElementById('stageIsLost').checked = false;
+    
+    // Clear checkboxes
+    document.querySelectorAll('.service-checkbox, .plan-checkbox').forEach(cb => cb.checked = false);
+    
+    document.getElementById('stageModal').classList.remove('hidden');
+    document.getElementById('stageModal').classList.add('flex');
+}
+
+function editStage(stageId) {
+    const url = `{% url 'lead_stage_update' stage_id=0 %}`.replace('0', stageId);
+    console.log('Editing stage:', stageId, 'URL:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Stage data:', data);
+            document.getElementById('modalTitle').textContent = 'Editar Fase';
+            document.getElementById('stageId').value = data.id;
+            document.getElementById('stageName').value = data.name;
+            document.getElementById('stageDescription').value = data.description || '';
+            document.getElementById('stageColor').value = data.color;
+            document.getElementById('stageQuota').value = data.monthly_quota;
+            document.getElementById('stageIsWon').checked = data.is_won;
+            document.getElementById('stageIsLost').checked = data.is_lost;
+            
+            // Set service checkboxes
+            document.querySelectorAll('.service-checkbox').forEach(cb => {
+                cb.checked = data.required_services.includes(parseInt(cb.value));
+            });
+            
+            // Set plan checkboxes
+            document.querySelectorAll('.plan-checkbox').forEach(cb => {
+                cb.checked = data.required_plans.includes(parseInt(cb.value));
+            });
+            
+            document.getElementById('stageModal').classList.remove('hidden');
+            document.getElementById('stageModal').classList.add('flex');
+        })
+        .catch(error => {
+            console.error('Error loading stage:', error);
+            alert('Error al cargar la fase: ' + error.message);
+        });
+}
+
+function closeStageModal() {
+    document.getElementById('stageModal').classList.add('hidden');
+    document.getElementById('stageModal').classList.remove('flex');
+}
+
+document.getElementById('stageForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const stageId = document.getElementById('stageId').value;
+    const isEdit = !!stageId;
+    
+    const services = Array.from(document.querySelectorAll('.service-checkbox:checked')).map(cb => parseInt(cb.value));
+    const plans = Array.from(document.querySelectorAll('.plan-checkbox:checked')).map(cb => parseInt(cb.value));
+    
+    const data = {
+        name: document.getElementById('stageName').value,
+        description: document.getElementById('stageDescription').value,
+        color: document.getElementById('stageColor').value,
+        monthly_quota: parseInt(document.getElementById('stageQuota').value) || 0,
+        is_won: document.getElementById('stageIsWon').checked,
+        is_lost: document.getElementById('stageIsLost').checked,
+        required_services: services,
+        required_plans: plans
+    };
+    
+    const url = isEdit 
+        ? `{% url 'lead_stage_update' stage_id=0 %}`.replace('0', stageId)
+        : '{% url "lead_stage_create" %}';
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    });
+});
+
+function deleteStage(stageId, stageName) {
+    if (!confirm(`¿Estás seguro de eliminar la fase "${stageName}"?`)) return;
+    
+    fetch(`{% url 'lead_stage_delete' stage_id=0 %}`.replace('0', stageId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+// Close modal when clicking outside
+document.getElementById('stageModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeStageModal();
+    }
+});
+
+// ==========================================
+// AUTOMATION FUNCTIONS
+// ==========================================
+
+const timeBasedTriggers = ['DAYS_IN_STAGE', 'DAYS_NO_RESPONSE', 'DAYS_NO_PURCHASE', 'DAYS_NO_VISIT', 'DAYS_INACTIVE', 'TRIAL_ENDED'];
+
+function toggleTriggerDays() {
+    const triggerType = document.getElementById('automationTriggerType').value;
+    const container = document.getElementById('triggerDaysContainer');
+    
+    if (timeBasedTriggers.includes(triggerType)) {
+        container.classList.remove('hidden');
+        document.getElementById('automationTriggerDays').required = true;
+    } else {
+        container.classList.add('hidden');
+        document.getElementById('automationTriggerDays').required = false;
+    }
+}
+
+function toggleActionFields() {
+    const actionType = document.getElementById('automationActionType').value;
+    const toStageContainer = document.getElementById('toStageContainer');
+    const notifyContainer = document.getElementById('notifyMessageContainer');
+    
+    // Reset
+    toStageContainer.classList.add('hidden');
+    notifyContainer.classList.add('hidden');
+    document.getElementById('automationToStage').required = false;
+    
+    if (actionType === 'MOVE_STAGE') {
+        toStageContainer.classList.remove('hidden');
+        document.getElementById('automationToStage').required = true;
+    } else if (actionType === 'NOTIFY_STAFF' || actionType === 'CREATE_TASK') {
+        notifyContainer.classList.remove('hidden');
+    }
+}
+
+function openAutomationModal() {
+    document.getElementById('automationModalTitle').textContent = 'Nueva Regla de Automatización';
+    document.getElementById('automationId').value = '';
+    document.getElementById('automationName').value = '';
+    document.getElementById('automationFromStage').value = '';
+    document.getElementById('automationTriggerType').value = '';
+    document.getElementById('automationTriggerDays').value = '7';
+    document.getElementById('automationActionType').value = 'MOVE_STAGE';
+    document.getElementById('automationToStage').value = '';
+    document.getElementById('automationNotifyMessage').value = '';
+    document.getElementById('automationPriority').value = '0';
+    document.getElementById('automationIsActive').checked = true;
+    
+    toggleTriggerDays();
+    toggleActionFields();
+    
+    document.getElementById('automationModal').classList.remove('hidden');
+    document.getElementById('automationModal').classList.add('flex');
+}
+
+function editAutomation(ruleId) {
+    fetch(`/marketing/leads/automation/${ruleId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('automationModalTitle').textContent = 'Editar Regla de Automatización';
+            document.getElementById('automationId').value = data.id;
+            document.getElementById('automationName').value = data.name || '';
+            document.getElementById('automationFromStage').value = data.from_stage;
+            document.getElementById('automationTriggerType').value = data.trigger_type;
+            document.getElementById('automationTriggerDays').value = data.trigger_days || '7';
+            document.getElementById('automationActionType').value = data.action_type || 'MOVE_STAGE';
+            document.getElementById('automationToStage').value = data.to_stage || '';
+            document.getElementById('automationNotifyMessage').value = data.notify_message || '';
+            document.getElementById('automationPriority').value = data.priority || '0';
+            document.getElementById('automationIsActive').checked = data.is_active;
+            
+            toggleTriggerDays();
+            toggleActionFields();
+            
+            document.getElementById('automationModal').classList.remove('hidden');
+            document.getElementById('automationModal').classList.add('flex');
+        })
+        .catch(err => {
+            console.error('Error loading automation:', err);
+            alert('Error al cargar la regla');
+        });
+}
+
+function closeAutomationModal() {
+    document.getElementById('automationModal').classList.add('hidden');
+    document.getElementById('automationModal').classList.remove('flex');
+}
+
+document.getElementById('automationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const ruleId = document.getElementById('automationId').value;
+    const isEdit = !!ruleId;
+    const actionType = document.getElementById('automationActionType').value;
+    
+    const data = {
+        name: document.getElementById('automationName').value,
+        from_stage: parseInt(document.getElementById('automationFromStage').value),
+        trigger_type: document.getElementById('automationTriggerType').value,
+        trigger_days: parseInt(document.getElementById('automationTriggerDays').value) || null,
+        action_type: actionType,
+        to_stage: actionType === 'MOVE_STAGE' ? parseInt(document.getElementById('automationToStage').value) : null,
+        notify_message: document.getElementById('automationNotifyMessage').value,
+        priority: parseInt(document.getElementById('automationPriority').value) || 0,
+        is_active: document.getElementById('automationIsActive').checked
+    };
+    
+    const url = isEdit 
+        ? `/marketing/leads/automation/${ruleId}/`
+        : '/marketing/leads/automation/create/';
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    });
+});
+
+function toggleAutomation(ruleId) {
+    fetch(`/marketing/leads/automation/${ruleId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+function deleteAutomation(ruleId, ruleName) {
+    if (!confirm(`¿Estás seguro de eliminar la regla "${ruleName}"?`)) return;
+    
+    fetch(`/marketing/leads/automation/${ruleId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+// Close automation modal when clicking outside
+document.getElementById('automationModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAutomationModal();
+    }
+});
+</script>
 {% endblock %}

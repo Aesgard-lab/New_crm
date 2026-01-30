@@ -68,6 +68,43 @@
         </form>
     </div>
 
+    <!-- GESTIÓN DE DUPLICADOS -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-slate-900">Gestión de Duplicados</h3>
+                <p class="text-sm text-slate-500">Detecta y fusiona clientes duplicados para mantener la base de datos limpia.</p>
+            </div>
+            <a href="{% url 'clients_duplicates' %}" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-medium transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Buscar Duplicados
+            </a>
+        </div>
+        <div class="p-6">
+            <div class="bg-orange-50 border border-orange-100 rounded-xl p-4">
+                <p class="text-sm text-orange-800">
+                    <strong>¿Cómo funciona?</strong> El sistema detecta posibles duplicados comparando:
+                </p>
+                <ul class="text-sm text-orange-700 mt-2 space-y-1 ml-4 list-disc">
+                    <li>Nombres y apellidos similares (coincidencia aproximada)</li>
+                    <li>Mismo número de teléfono</li>
+                    <li>Mismo email</li>
+                    <li>Mismo DNI/NIE</li>
+                </ul>
+                <p class="text-sm text-orange-700 mt-3">
+                    Una vez detectados, podrás revisar cada par y fusionarlos manteniendo los datos más completos.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- CONFIGURACIÓN DE RESERVAS CON PAGO PENDIENTE -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
         <div class="p-5 border-b border-slate-100 flex items-center gap-3">

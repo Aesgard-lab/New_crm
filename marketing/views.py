@@ -516,6 +516,8 @@ def lead_settings_view(request):
     Pipeline and automation settings.
     """
     from .models import LeadPipeline, LeadStage, LeadStageAutomation
+    from services.models import Service
+    from memberships.models import MembershipPlan
     from django.contrib import messages
     
     gym = request.gym
@@ -525,18 +527,349 @@ def lead_settings_view(request):
         messages.warning(request, 'No hay pipeline activo. Ve al tablero para crear uno.')
         return redirect('lead_board')
     
-    stages = pipeline.stages.all()
+    stages = pipeline.stages.prefetch_related('required_services', 'required_plans').all()
     automations = LeadStageAutomation.objects.filter(
         from_stage__pipeline=pipeline
-    ).select_related('from_stage', 'to_stage')
+    ).select_related('from_stage', 'to_stage').order_by('priority', 'created_at')
+    
+    # Servicios y planes disponibles para asignar
+    services = Service.objects.filter(gym=gym, is_active=True)
+    plans = MembershipPlan.objects.filter(gym=gym, is_active=True)
     
     context = {
         'pipeline': pipeline,
         'stages': stages,
         'automations': automations,
         'trigger_choices': LeadStageAutomation.TriggerType.choices,
+        'services': services,
+        'plans': plans,
     }
     return render(request, 'backoffice/marketing/leads/settings.html', context)
+
+
+@login_required
+def lead_stage_create(request):
+    """Create a new pipeline stage."""
+    from .models import LeadPipeline, LeadStage
+    from django.http import JsonResponse
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    gym = request.gym
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    
+    if not pipeline:
+        return JsonResponse({'error': 'No pipeline found'}, status=404)
+    
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        color = data.get('color', '#6366f1')
+        description = data.get('description', '')
+        
+        if not name:
+            return JsonResponse({'error': 'Name is required'}, status=400)
+        
+        # Get max order
+        max_order = pipeline.stages.aggregate(models.Max('order'))['order__max'] or 0
+        
+        stage = LeadStage.objects.create(
+            pipeline=pipeline,
+            name=name,
+            color=color,
+            description=description,
+            order=max_order + 1
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'stage': {
+                'id': stage.id,
+                'name': stage.name,
+                'color': stage.color,
+                'order': stage.order
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def lead_stage_update(request, stage_id):
+    """Update a pipeline stage."""
+    from .models import LeadStage
+    from services.models import Service
+    from memberships.models import MembershipPlan
+    from django.http import JsonResponse
+    from django.shortcuts import get_object_or_404
+    import json
+    
+    stage = get_object_or_404(LeadStage, id=stage_id, pipeline__gym=request.gym)
+    
+    if request.method == 'GET':
+        # Return stage data for editing
+        return JsonResponse({
+            'id': stage.id,
+            'name': stage.name,
+            'description': stage.description,
+            'color': stage.color,
+            'monthly_quota': stage.monthly_quota,
+            'is_won': stage.is_won,
+            'is_lost': stage.is_lost,
+            'required_services': list(stage.required_services.values_list('id', flat=True)),
+            'required_plans': list(stage.required_plans.values_list('id', flat=True)),
+        })
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        stage.name = data.get('name', stage.name)
+        stage.description = data.get('description', '')
+        stage.color = data.get('color', stage.color)
+        stage.monthly_quota = data.get('monthly_quota', 0)
+        stage.is_won = data.get('is_won', False)
+        stage.is_lost = data.get('is_lost', False)
+        stage.save()
+        
+        # Update services and plans
+        service_ids = data.get('required_services', [])
+        plan_ids = data.get('required_plans', [])
+        
+        stage.required_services.set(
+            Service.objects.filter(id__in=service_ids, gym=request.gym)
+        )
+        stage.required_plans.set(
+            MembershipPlan.objects.filter(id__in=plan_ids, gym=request.gym)
+        )
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def lead_stage_delete(request, stage_id):
+    """Delete a pipeline stage."""
+    from .models import LeadStage
+    from django.http import JsonResponse
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    stage = get_object_or_404(LeadStage, id=stage_id, pipeline__gym=request.gym)
+    
+    # Check if stage has leads
+    if stage.lead_cards.exists():
+        return JsonResponse({
+            'error': 'No se puede eliminar una etapa que tiene leads. Mueve los leads primero.'
+        }, status=400)
+    
+    stage.delete()
+    return JsonResponse({'success': True})
+
+
+@login_required
+def lead_stage_reorder(request):
+    """Reorder pipeline stages."""
+    from .models import LeadStage, LeadPipeline
+    from django.http import JsonResponse
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        stage_order = data.get('order', [])  # List of stage IDs in new order
+        
+        pipeline = LeadPipeline.objects.filter(gym=request.gym, is_active=True).first()
+        if not pipeline:
+            return JsonResponse({'error': 'No pipeline found'}, status=404)
+        
+        for index, stage_id in enumerate(stage_order):
+            LeadStage.objects.filter(
+                id=stage_id, 
+                pipeline=pipeline
+            ).update(order=index)
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ==========================================
+# LEAD STAGE AUTOMATION CRUD
+# ==========================================
+
+@login_required
+def lead_automation_create(request):
+    """Create a new automation rule for the pipeline."""
+    from .models import LeadStageAutomation, LeadStage, LeadPipeline
+    from django.http import JsonResponse
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    gym = request.gym
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    
+    if not pipeline:
+        return JsonResponse({'error': 'No pipeline found'}, status=404)
+    
+    try:
+        data = json.loads(request.body)
+        
+        from_stage = LeadStage.objects.get(id=data['from_stage'], pipeline=pipeline)
+        to_stage = None
+        if data.get('to_stage'):
+            to_stage = LeadStage.objects.get(id=data['to_stage'], pipeline=pipeline)
+        
+        rule = LeadStageAutomation.objects.create(
+            name=data.get('name', ''),
+            from_stage=from_stage,
+            to_stage=to_stage,
+            trigger_type=data['trigger_type'],
+            trigger_days=data.get('trigger_days'),
+            action_type=data.get('action_type', 'MOVE_STAGE'),
+            notify_message=data.get('notify_message', ''),
+            priority=data.get('priority', 0),
+            is_active=data.get('is_active', True)
+        )
+        
+        return JsonResponse({'success': True, 'id': rule.id})
+    except LeadStage.DoesNotExist:
+        return JsonResponse({'error': 'Stage not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def lead_automation_detail(request, rule_id):
+    """Get or update an automation rule."""
+    from .models import LeadStageAutomation, LeadStage, LeadPipeline
+    from django.http import JsonResponse
+    import json
+    
+    gym = request.gym
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    
+    if not pipeline:
+        return JsonResponse({'error': 'No pipeline found'}, status=404)
+    
+    try:
+        rule = LeadStageAutomation.objects.get(
+            id=rule_id,
+            from_stage__pipeline=pipeline
+        )
+    except LeadStageAutomation.DoesNotExist:
+        return JsonResponse({'error': 'Rule not found'}, status=404)
+    
+    if request.method == 'GET':
+        return JsonResponse({
+            'id': rule.id,
+            'name': rule.name,
+            'from_stage': rule.from_stage_id,
+            'to_stage': rule.to_stage_id,
+            'trigger_type': rule.trigger_type,
+            'trigger_days': rule.trigger_days,
+            'action_type': rule.action_type,
+            'notify_message': rule.notify_message,
+            'priority': rule.priority,
+            'is_active': rule.is_active
+        })
+    
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            from_stage = LeadStage.objects.get(id=data['from_stage'], pipeline=pipeline)
+            to_stage = None
+            if data.get('to_stage'):
+                to_stage = LeadStage.objects.get(id=data['to_stage'], pipeline=pipeline)
+            
+            rule.name = data.get('name', rule.name)
+            rule.from_stage = from_stage
+            rule.to_stage = to_stage
+            rule.trigger_type = data['trigger_type']
+            rule.trigger_days = data.get('trigger_days')
+            rule.action_type = data.get('action_type', 'MOVE_STAGE')
+            rule.notify_message = data.get('notify_message', '')
+            rule.priority = data.get('priority', 0)
+            rule.is_active = data.get('is_active', True)
+            rule.save()
+            
+            return JsonResponse({'success': True})
+        except LeadStage.DoesNotExist:
+            return JsonResponse({'error': 'Stage not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def lead_automation_toggle(request, rule_id):
+    """Toggle an automation rule active/inactive."""
+    from .models import LeadStageAutomation, LeadPipeline
+    from django.http import JsonResponse
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    gym = request.gym
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    
+    if not pipeline:
+        return JsonResponse({'error': 'No pipeline found'}, status=404)
+    
+    try:
+        rule = LeadStageAutomation.objects.get(
+            id=rule_id,
+            from_stage__pipeline=pipeline
+        )
+        rule.is_active = not rule.is_active
+        rule.save()
+        
+        return JsonResponse({'success': True, 'is_active': rule.is_active})
+    except LeadStageAutomation.DoesNotExist:
+        return JsonResponse({'error': 'Rule not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def lead_automation_delete(request, rule_id):
+    """Delete an automation rule."""
+    from .models import LeadStageAutomation, LeadPipeline
+    from django.http import JsonResponse
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    gym = request.gym
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    
+    if not pipeline:
+        return JsonResponse({'error': 'No pipeline found'}, status=404)
+    
+    try:
+        rule = LeadStageAutomation.objects.get(
+            id=rule_id,
+            from_stage__pipeline=pipeline
+        )
+        rule.delete()
+        
+        return JsonResponse({'success': True})
+    except LeadStageAutomation.DoesNotExist:
+        return JsonResponse({'error': 'Rule not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @login_required

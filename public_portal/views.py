@@ -2612,3 +2612,133 @@ def get_advertisements_for_screen(gym, screen_name='HOME'):
             filtered_ads.append(ad)
     
     return filtered_ads
+
+# ===========================
+# CALENDAR SYNC (iCal)
+# ===========================
+
+@login_required
+def public_calendar_sync(request, slug):
+    """Página de sincronización de calendario en el portal público"""
+    from clients import calendar_service
+    from activities.models import ActivitySessionBooking
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        messages.error(request, 'No tienes acceso a este gimnasio')
+        return redirect('public_gym_home', slug=slug)
+    
+    token = calendar_service.get_or_create_calendar_token(client)
+    feed_url = calendar_service.get_calendar_feed_url(client, request)
+    
+    # Obtener próximas reservas
+    upcoming_bookings = ActivitySessionBooking.objects.filter(
+        client=client,
+        status='CONFIRMED',
+        session__start_datetime__gte=timezone.now()
+    ).select_related(
+        'session',
+        'session__activity',
+        'session__room'
+    ).order_by('session__start_datetime')[:10]
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'feed_url': feed_url,
+        'upcoming_bookings': upcoming_bookings,
+    }
+    
+    return render(request, 'public_portal/calendar_sync.html', context)
+
+
+@login_required
+def public_calendar_settings(request, slug):
+    """API para obtener configuración de calendario"""
+    from clients import calendar_service
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'error': 'Gym not found'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Not a client'}, status=403)
+    
+    token = calendar_service.get_or_create_calendar_token(client)
+    feed_url = calendar_service.get_calendar_feed_url(client, request)
+    
+    return JsonResponse({
+        'feed_url': feed_url,
+        'has_token': bool(token),
+    })
+
+
+@login_required
+def public_calendar_regenerate(request, slug):
+    """API para regenerar token de calendario"""
+    from clients import calendar_service
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'error': 'Gym not found'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Not a client'}, status=403)
+    
+    new_token = calendar_service.regenerate_calendar_token(client)
+    new_url = calendar_service.get_calendar_feed_url(client, request)
+    
+    return JsonResponse({
+        'success': True,
+        'feed_url': new_url,
+        'message': 'Token regenerado correctamente'
+    })
+
+
+@login_required
+def public_download_booking_ics(request, slug, booking_id):
+    """Descarga archivo .ics para una reserva específica"""
+    from clients import calendar_service
+    from activities.models import ActivitySessionBooking
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Not a client'}, status=403)
+    
+    booking = get_object_or_404(
+        ActivitySessionBooking,
+        id=booking_id,
+        client=client,
+        status='CONFIRMED'
+    )
+    
+    # Generar el archivo .ics
+    ics_content = calendar_service.generate_booking_ics(booking)
+    
+    # Nombre del archivo
+    activity_name = booking.session.activity.name.replace(' ', '_')
+    date_str = booking.session.start_datetime.strftime('%Y%m%d')
+    filename = f"reserva_{activity_name}_{date_str}.ics"
+    
+    response = HttpResponse(ics_content, content_type='text/calendar; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response

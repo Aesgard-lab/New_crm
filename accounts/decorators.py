@@ -32,9 +32,8 @@ def require_staff(view_func):
         
         # Verificar si es staff o superuser
         if not (request.user.is_staff or request.user.is_superuser):
-            # Si es un cliente, redirigir al portal de clientes
+            # Si es un cliente, redirigir al portal de clientes silenciosamente
             if hasattr(request.user, 'client_profile'):
-                messages.warning(request, 'No tienes permiso para acceder al backoffice.')
                 return redirect('portal_home')
             else:
                 messages.error(request, 'No tienes permisos para acceder a esta área.')

@@ -119,6 +119,15 @@ class Client(models.Model):
     # Preferencias de comunicación
     email_notifications_enabled = models.BooleanField(default=True, help_text="Si el cliente quiere recibir emails del gimnasio")
 
+    # Calendar Sync Token (para feed iCal)
+    calendar_token = models.CharField(
+        max_length=64, 
+        blank=True, 
+        null=True, 
+        unique=True,
+        help_text="Token único para la URL de suscripción al calendario"
+    )
+
     # App/Portal Activity Tracking
     last_app_access = models.DateTimeField(null=True, blank=True, help_text="Última vez que accedió a la app o portal")
     app_access_count = models.IntegerField(default=0, help_text="Número de veces que ha accedido")

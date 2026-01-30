@@ -11,7 +11,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
         <!-- 1. GENERAL (Empresa) -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'gym_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,34 +25,20 @@
                     <p class="text-sm text-slate-500">Datos, branding y ubicación</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'gym_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Perfil del Centro</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    <span>Perfil del Centro</span>
                 </li>
-                <li>
-                    <a href="{% url 'gym_opening_hours' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Horarios de Apertura</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    <span>Horarios de Apertura</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- PORTAL PÚBLICO & WIDGETS -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'widget_code' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center text-cyan-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,23 +52,16 @@
                     <p class="text-sm text-slate-500">Widgets embebibles y códigos</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'widget_code' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Código Widget Horarios & Precios</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    <span>Código Widget Horarios & Precios</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- 2. STAFF & PERMISSIONS -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'staff_list' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,45 +75,24 @@
                     <p class="text-sm text-slate-500">Usuarios, roles y permisos</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'staff_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Ver Usuarios</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    <span>Ver Usuarios</span>
                 </li>
-                <li>
-                    <a href="{% url 'role_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Roles y Permisos</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    <span>Roles y Permisos</span>
                 </li>
-                <li>
-                    <a href="{% url 'incentive_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Configurar Incentivos</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    <span>Configurar Incentivos</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- 3. SERVICES & PRODUCTS -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'service_list' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,9 +106,28 @@
                     <p class="text-sm text-slate-500">Actividades, cuotas y productos</p>
                 </div>
             </div>
-        
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>Servicios y Categorías</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>Actividades Grupales</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>Planes de Membresía</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>Productos y Tienda</span>
+                </li>
+            </ul>
+        </a>
+
         <!-- CONFIGURACIÓN DE HORARIOS -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'schedule_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,70 +140,16 @@
                     <p class="text-sm text-slate-500">Validaciones, reservas y restricciones</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'schedule_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Configurar Sistema de Horarios</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                    <span>Configurar Sistema de Horarios</span>
                 </li>
             </ul>
-        </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'service_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Servicios y Categorías</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'activity_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Actividades Grupales</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'membership_plan_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Planes de Membresía</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'product_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Productos y Tienda</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
-                </li>
-            </ul>
-        </div>
+        </a>
 
         <!-- ASISTENCIAS / CHECK-IN -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'attendance_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-green-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,46 +161,25 @@
                     <p class="text-sm text-slate-500">Check-in QR y control de acceso</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'attendance_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Configuración Check-in</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span>Configuración Check-in</span>
                 </li>
-                <li>
-                    <a href="{% url 'today_sessions_qr' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Proyectar QR de Clases</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span>Proyectar QR de Clases</span>
                 </li>
-                <li>
-                    <a href="{% url 'review_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Valoraciones de Clases</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span>Valoraciones de Clases</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         {% if can_view_providers %}
         <!-- 3b. PROVIDERS -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'providers:provider_list' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,37 +191,23 @@
                     <p class="text-sm text-slate-500">Catálogo, precios y órdenes</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'providers:provider_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Listado de Proveedores</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Listado de Proveedores</span>
                 </li>
                 {% if can_view_purchase_orders %}
-                <li>
-                    <a href="{% url 'providers:purchase_order_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Órdenes de Compra</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Órdenes de Compra</span>
                 </li>
                 {% endif %}
             </ul>
-        </div>
+        </a>
         {% endif %}
 
         <!-- 4. FINANCE -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'finance_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,27 +221,20 @@
                     <p class="text-sm text-slate-500">Impuestos y pasarelas de pago</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'finance_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Impuestos y Métodos de Pago</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Impuestos y Métodos de Pago</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- 4b. CLIENT APP -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'client_app_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                     </svg>
                 </div>
                 <div>
@@ -361,23 +242,16 @@
                     <p class="text-sm text-slate-500">Portal y acciones del cliente</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'client_app_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Permisos de App</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                    <span>Permisos de App</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- 4c. CLIENTES -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'client_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -386,26 +260,27 @@
                 </div>
                 <div>
                     <h3 class="font-bold text-slate-800 text-lg">Clientes</h3>
-                    <p class="text-sm text-slate-500">Campos personalizados y reservas</p>
+                    <p class="text-sm text-slate-500">Campos, reservas y duplicados</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'client_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Campos, flags y reservas</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Campos personalizados y flags</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Configuración de reservas</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Gestión de duplicados</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- 5. MARKETING & LEADS -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'lead_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -419,34 +294,20 @@
                     <p class="text-sm text-slate-500">Leads, email y campañas</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'lead_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Pipeline de Leads</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400"></span>
+                    <span>Pipeline de Leads</span>
                 </li>
-                <li>
-                    <a href="{% url 'marketing_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Configuración Email (SMTP)</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400"></span>
+                    <span>Configuración Email (SMTP)</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
         <!-- 6. SYSTEM (Integrations) -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer">
+        <a href="{% url 'audit_log_list' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">
                 <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,31 +323,17 @@
                     <p class="text-sm text-slate-500">Integraciones y avanzado</p>
                 </div>
             </div>
-            <ul class="space-y-2">
-                <li>
-                    <a href="{% url 'audit_log_list' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Logs de Auditoría</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+                    <span>Logs de Auditoría</span>
                 </li>
-                <li>
-                    <a href="{% url 'finance_hardware_settings' %}"
-                        class="flex items-center justify-between hover-brand group text-sm font-medium">
-                        <span>Hardware TPV (Terminales)</span>
-                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 icon-brand-hover transition-opacity" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                            </path>
-                        </svg>
-                    </a>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+                    <span>Hardware TPV (Terminales)</span>
                 </li>
             </ul>
-        </div>
+        </a>
 
     </div>
 </div>

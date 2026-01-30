@@ -111,9 +111,11 @@ class LeadStageAdmin(admin.ModelAdmin):
 
 @admin.register(LeadStageAutomation)
 class LeadStageAutomationAdmin(admin.ModelAdmin):
-    list_display = ('from_stage', 'to_stage', 'trigger_type', 'trigger_value', 'is_active')
-    list_filter = ('trigger_type', 'is_active', 'from_stage__pipeline')
-    search_fields = ('from_stage__name', 'to_stage__name')
+    list_display = ('name', 'from_stage', 'to_stage', 'trigger_type', 'trigger_days', 'action_type', 'is_active', 'priority')
+    list_filter = ('trigger_type', 'action_type', 'is_active', 'from_stage__pipeline')
+    search_fields = ('name', 'from_stage__name', 'to_stage__name')
+    list_editable = ('is_active', 'priority')
+    ordering = ['-priority', 'from_stage__order']
 
 @admin.register(LeadCard)
 class LeadCardAdmin(admin.ModelAdmin):

@@ -53,4 +53,5 @@ sentry-sdk[django,celery]>=2.0.0
 # Utils
 pyyaml>=6.0.0
 
-
+# Calendar (iCal) Generation
+icalendar>=5.0.0
