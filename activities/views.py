@@ -297,3 +297,128 @@ def schedule_settings(request):
         'settings': settings,
         'title': 'Configuración de Horarios'
     })
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from django.utils import timezone
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission('activities.view_activity')
+def activity_export_excel(request):
+    """Exporta listado de actividades/clases a Excel"""
+    gym = request.gym
+    activities = Activity.objects.filter(gym=gym).select_related('category')
+    
+    config = ExportConfig(
+        title="Listado de Actividades",
+        headers=['ID', 'Nombre', 'Categoría', 'Capacidad', 'Duración', 'QR Checkin', 'Visible Online', 'Estado'],
+        data_extractor=lambda a: [
+            a.id,
+            a.name,
+            a.category.name if a.category else '-',
+            a.capacity if hasattr(a, 'capacity') and a.capacity else '-',
+            f"{a.duration} min" if hasattr(a, 'duration') and a.duration else '-',
+            'Sí' if a.qr_checkin_enabled else 'No',
+            'Sí' if a.is_visible_online else 'No',
+            'Activa' if a.is_active else 'Inactiva',
+        ],
+        column_widths=[8, 25, 18, 12, 12, 12, 14, 10]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(activities.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="actividades_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('activities.view_activity')
+def activity_export_pdf(request):
+    """Exporta listado de actividades/clases a PDF"""
+    gym = request.gym
+    activities = Activity.objects.filter(gym=gym).select_related('category')
+    
+    config = ExportConfig(
+        title="Listado de Actividades",
+        headers=['Nombre', 'Categoría', 'Capacidad', 'Duración', 'Visible', 'Estado'],
+        data_extractor=lambda a: [
+            a.name,
+            a.category.name if a.category else '-',
+            a.capacity if hasattr(a, 'capacity') and a.capacity else '-',
+            f"{a.duration} min" if hasattr(a, 'duration') and a.duration else '-',
+            'Sí' if a.is_visible_online else 'No',
+            'Activa' if a.is_active else 'Inactiva',
+        ],
+        column_widths=[25, 18, 12, 12, 10, 10]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(activities.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="actividades_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response
+
+
+# --- Room Export Functions ---
+
+@login_required
+@require_gym_permission('activities.view_room')
+def room_export_excel(request):
+    """Exporta listado de salas a Excel"""
+    gym = request.gym
+    rooms = Room.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Salas",
+        headers=['ID', 'Nombre', 'Capacidad', 'Descripción'],
+        data_extractor=lambda r: [
+            r.id,
+            r.name,
+            r.capacity,
+            r.description or '-',
+        ],
+        column_widths=[8, 25, 12, 40]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(rooms.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="salas_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('activities.view_room')
+def room_export_pdf(request):
+    """Exporta listado de salas a PDF"""
+    gym = request.gym
+    rooms = Room.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Salas",
+        headers=['Nombre', 'Capacidad', 'Descripción'],
+        data_extractor=lambda r: [
+            r.name,
+            r.capacity,
+            r.description or '-',
+        ],
+        column_widths=[25, 12, 50]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(rooms.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="salas_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

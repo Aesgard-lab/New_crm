@@ -106,7 +106,7 @@ def attendance_report(request):
         'noshow_rates': analytics.get_noshow_cancellation_rates(),
     }
     
-    return render(request, 'activities/reports/attendance_report.html', context)
+    return render(request, 'activities/reports/attendance_report_modern.html', context)
 
 
 @login_required

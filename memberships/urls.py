@@ -6,4 +6,6 @@ urlpatterns = [
     path('create/', views.plan_create, name='membership_plan_create'),
     path('<int:pk>/edit/', views.plan_edit, name='membership_plan_edit'),
     path('api/pause/', views.api_create_pause, name='api_membership_pause'),
+    path('export/excel/', views.plan_export_excel, name='membership_plan_export_excel'),
+    path('export/pdf/', views.plan_export_pdf, name='membership_plan_export_pdf'),
 ]

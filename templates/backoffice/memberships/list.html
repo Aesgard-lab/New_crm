@@ -10,17 +10,46 @@
 
 <div class="mb-6 flex justify-between items-center mt-6">
     <div class="flex gap-2"></div>
-    {% load gym_tags %}
-    {% has_gym_perm 'memberships.add_membershipplan' as can_add %}
-    {% if can_add %}
-    <a href="{% url 'membership_plan_create' %}"
-        class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-opacity flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-        Nueva Cuota
-    </a>
-    {% endif %}
+    <div class="flex gap-2">
+        <!-- Dropdown Exportar -->
+        <div class="relative group">
+            <button class="bg-green-50 text-green-600 border border-green-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-100 transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Descargar
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                </svg>
+            </button>
+            <div class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                <a href="{% url 'membership_plan_export_excel' %}" class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 first:rounded-t-xl flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Descargar Excel
+                </a>
+                <a href="{% url 'membership_plan_export_pdf' %}" class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 last:rounded-b-xl flex items-center gap-2 border-t border-slate-100">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    Descargar PDF
+                </a>
+            </div>
+        </div>
+        
+        {% load gym_tags %}
+        {% has_gym_perm 'memberships.add_membershipplan' as can_add %}
+        {% if can_add %}
+        <a href="{% url 'membership_plan_create' %}"
+            class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-opacity flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Nueva Cuota
+        </a>
+        {% endif %}
+    </div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

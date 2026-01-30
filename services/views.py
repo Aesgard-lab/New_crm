@@ -122,3 +122,71 @@ def category_edit(request, pk):
         'form': form,
         'title': f'Editar {category.name}'
     })
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from django.utils import timezone
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission('services.view_service')
+def service_export_excel(request):
+    """Exporta listado de servicios a Excel"""
+    gym = request.gym
+    services = Service.objects.filter(gym=gym).select_related('category')
+    
+    config = ExportConfig(
+        title="Listado de Servicios",
+        headers=['ID', 'Nombre', 'Categoría', 'Precio', 'Duración', 'Visible Online', 'Estado'],
+        data_extractor=lambda s: [
+            s.id,
+            s.name,
+            s.category.name if s.category else '-',
+            s.price,
+            f"{s.duration} min" if hasattr(s, 'duration') and s.duration else '-',
+            'Sí' if s.is_visible_online else 'No',
+            'Activo' if s.is_active else 'Inactivo',
+        ],
+        column_widths=[8, 28, 18, 12, 12, 14, 10]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(services.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="servicios_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('services.view_service')
+def service_export_pdf(request):
+    """Exporta listado de servicios a PDF"""
+    gym = request.gym
+    services = Service.objects.filter(gym=gym).select_related('category')
+    
+    config = ExportConfig(
+        title="Listado de Servicios",
+        headers=['Nombre', 'Categoría', 'Precio', 'Duración', 'Visible', 'Estado'],
+        data_extractor=lambda s: [
+            s.name,
+            s.category.name if s.category else '-',
+            s.price,
+            f"{s.duration} min" if hasattr(s, 'duration') and s.duration else '-',
+            'Sí' if s.is_visible_online else 'No',
+            'Activo' if s.is_active else 'Inactivo',
+        ],
+        column_widths=[28, 18, 12, 12, 10, 10]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(services.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="servicios_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

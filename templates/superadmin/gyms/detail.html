@@ -143,8 +143,7 @@
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Renovación Auto.</span>
-                    <span class="text-white font-medium">{% if subscription.auto_renew %}Sí{% else %}No{% endif
-                        %}</span>
+                    <span class="text-white font-medium">{% if subscription.auto_renew %}Sí{% else %}No{% endif %}</span>
                 </div>
             </div>
 
@@ -172,8 +171,7 @@
                 <div>
                     <div class="flex justify-between text-sm mb-1">
                         <span class="text-gray-300">Socios Activos</span>
-                        <span class="text-gray-400">{{ total_members }} / {{ subscription.plan.max_members|default:"∞"
-                            }}</span>
+                        <span class="text-gray-400">{{ total_members }} / {{ subscription.plan.max_members|default:"∞" }}</span>
                     </div>
                     {% if subscription.plan.max_members %}
                     <div class="w-full bg-gray-700 rounded-full h-2">
@@ -187,8 +185,7 @@
                 <div>
                     <div class="flex justify-between text-sm mb-1">
                         <span class="text-gray-300">Usuarios Staff</span>
-                        <span class="text-gray-400">{{ total_staff }} / {{ subscription.plan.max_staff|default:"∞"
-                            }}</span>
+                        <span class="text-gray-400">{{ total_staff }} / {{ subscription.plan.max_staff|default:"∞" }}</span>
                     </div>
                     {% if subscription.plan.max_staff %}
                     <div class="w-full bg-gray-700 rounded-full h-2">

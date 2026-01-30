@@ -55,10 +55,7 @@
                 Guardar y Salir
             </a>
         </div>
-    </div>
 
-    <!-- Main Builder Area -->
-    <div class="flex gap-4 h-full overflow-hidden">
 
         <!-- Left Sidebar: Exercise Library with Previews -->
         <div class="w-80 bg-white rounded-2xl border border-slate-200 flex flex-col h-full shadow-lg overflow-hidden">
@@ -151,7 +148,22 @@
                         <div class="bg-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm">
                             {{ forloop.counter }}
                         </div>
-                        <h3 class="font-bold text-lg text-slate-800">{{ day.name }}</h3>
+                        <div x-data="{ editing: false, name: '{{ day.name|escapejs }}', orig: '{{ day.name|escapejs }}' }" class="flex items-center gap-2">
+                            <template x-if="!editing">
+                                <div class="flex items-center gap-1">
+                                    <h3 class="font-bold text-lg text-slate-800" x-text="name"></h3>
+                                    <button @click="editing = true; $nextTick(() => $refs.input && $refs.input.focus())" class="ml-1 text-slate-400 hover:text-indigo-600" title="Editar nombre">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 10-4-4l-8 8v3z"></path></svg>
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="editing">
+                                <form @submit.prevent="if(name.trim() && name !== orig){ $dispatch('update-day-name', {id: {{ day.id }}, name: name}); orig = name; } editing = false; " class="flex items-center gap-1">
+                                    <input x-ref="input" x-model="name" type="text" class="border border-indigo-400 rounded px-2 py-1 text-lg font-bold w-40 focus:outline-none focus:ring-2 focus:ring-indigo-300" @keydown.enter.prevent="$event.target.form.requestSubmit()" @blur="editing = false" />
+                                    <button type="submit" class="text-indigo-600 hover:text-indigo-800" title="Guardar"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></button>
+                                </form>
+                            </template>
+                        </div>
                     </div>
                     <div class="flex gap-2">
                         <button @click="duplicateDay({{ day.id }})" title="Duplicar Día"
@@ -257,7 +269,7 @@
         </div>
 
         <!-- Right Sidebar: Exercise Preview Panel -->
-        <div class="w-96 bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden" 
+        <div class="w-1/2 max-w-xl bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden"
              x-show="selectedExercise.id" 
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 transform translate-x-4"

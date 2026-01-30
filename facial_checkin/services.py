@@ -14,12 +14,22 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 
 logger = logging.getLogger(__name__)
 
-# Intentamos importar face_recognition, si no está instalado usamos mock
-try:
-    import face_recognition
-    FACE_RECOGNITION_AVAILABLE = True
-except ImportError:
-    FACE_RECOGNITION_AVAILABLE = False
+# Función para verificar disponibilidad de face_recognition dinámicamente
+def check_face_recognition_available():
+    """
+    Verifica si la librería face_recognition está disponible.
+    Se evalúa cada vez que se llama para detectar instalaciones en caliente.
+    """
+    try:
+        import face_recognition
+        return True
+    except ImportError:
+        return False
+
+# Variable global que se puede actualizar
+FACE_RECOGNITION_AVAILABLE = check_face_recognition_available()
+
+if not FACE_RECOGNITION_AVAILABLE:
     logger.warning(
         "La librería face_recognition no está instalada. "
         "Instálala con: pip install face_recognition"
@@ -180,6 +190,110 @@ class FaceRecognitionService:
             'success': True,
             'created': created,
             'quality_score': quality_score
+        }
+    
+    def register_from_client_photo(self, client, consent: bool = True) -> dict:
+        """
+        Registra el rostro desde la foto de perfil existente del cliente.
+        
+        Args:
+            client: Instancia de Client
+            consent: Si el cliente dio consentimiento GDPR
+        
+        Returns:
+            {
+                'success': bool,
+                'error': str (si hay error),
+                'quality_score': float
+            }
+        """
+        if not client.photo:
+            return {
+                'success': False,
+                'error': 'El cliente no tiene foto de perfil'
+            }
+        
+        try:
+            # Abrir la foto del cliente
+            photo_path = client.photo.path
+            return self.register_face(client, photo_path, consent=consent)
+        except Exception as e:
+            logger.error(f"Error registrando rostro desde foto del cliente: {e}")
+            return {
+                'success': False,
+                'error': f'Error al procesar la foto: {str(e)}'
+            }
+    
+    def do_session_checkin(self, client, session, confidence: float = None) -> dict:
+        """
+        Realiza el check-in de un cliente a una sesión de actividad usando reconocimiento facial.
+        
+        Args:
+            client: Cliente que hace check-in
+            session: ActivitySession
+            confidence: Nivel de confianza del reconocimiento
+        
+        Returns:
+            {
+                'success': bool,
+                'error': str (si hay error),
+                'checkin': SessionCheckin (si éxito)
+            }
+        """
+        from activities.models import SessionCheckin, ActivitySessionBooking
+        
+        # Verificar si el cliente tiene reserva para esta sesión
+        booking = ActivitySessionBooking.objects.filter(
+            client=client,
+            session=session,
+            status='CONFIRMED'
+        ).first()
+        
+        # Si no tiene reserva pero la sesión permite walk-ins, crear registro
+        if not booking:
+            # Verificar si hay espacio disponible
+            if session.booked_count >= session.capacity:
+                return {
+                    'success': False,
+                    'error': 'La sesión está completa'
+                }
+        
+        # Verificar si ya tiene check-in
+        existing = SessionCheckin.objects.filter(
+            session=session,
+            client=client
+        ).first()
+        
+        if existing:
+            return {
+                'success': False,
+                'error': 'El cliente ya tiene check-in en esta sesión',
+                'checkin': existing
+            }
+        
+        # Crear check-in
+        checkin = SessionCheckin.objects.create(
+            session=session,
+            client=client,
+            method='FACE'
+        )
+        
+        # Si tenía reserva, marcar asistencia correctamente
+        if booking:
+            booking.mark_attendance('ATTENDED')
+        
+        # Registrar en el log
+        self._log_attempt(
+            result='success',
+            client=client,
+            confidence=confidence,
+            activity_session=session
+        )
+        
+        return {
+            'success': True,
+            'checkin': checkin,
+            'had_booking': booking is not None
         }
     
     def verify_face(self, image_file, client=None) -> dict:

@@ -25,12 +25,16 @@ urlpatterns = [
     path('expenses/<int:pk>/delete/', views.expense_delete, name='expense_delete'),
     path('expenses/<int:pk>/mark-paid/', views.expense_mark_paid, name='expense_mark_paid'),
     path('expenses/generate-recurring/', views.expense_generate_recurring, name='expense_generate_recurring'),
+    path('expenses/export/excel/', views.expense_export_excel, name='expense_export_excel'),
+    path('expenses/export/pdf/', views.expense_export_pdf, name='expense_export_pdf'),
     
     # Suppliers
     path('suppliers/', views.supplier_list, name='supplier_list'),
     path('suppliers/create/', views.supplier_create, name='supplier_create'),
     path('suppliers/<int:pk>/edit/', views.supplier_edit, name='supplier_edit'),
     path('suppliers/<int:pk>/delete/', views.supplier_delete, name='supplier_delete'),
+    path('suppliers/export/excel/', views.supplier_export_excel, name='supplier_export_excel'),
+    path('suppliers/export/pdf/', views.supplier_export_pdf, name='supplier_export_pdf'),
     
     # Categories
     path('categories/', views.category_list, name='category_list'),

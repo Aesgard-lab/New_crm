@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from .services import FaceRecognitionService, FACE_RECOGNITION_AVAILABLE
+from .services import FaceRecognitionService, check_face_recognition_available
 from .models import ClientFaceEncoding, FaceRecognitionSettings
 
 
@@ -36,8 +36,11 @@ def face_recognition_status(request):
     # Ver si el cliente tiene face registered
     has_face = ClientFaceEncoding.objects.filter(client=client).exists()
     
+    # Verificar librería dinámicamente
+    library_available = check_face_recognition_available()
+    
     return Response({
-        'library_available': FACE_RECOGNITION_AVAILABLE,
+        'library_available': library_available,
         'enabled_for_gym': settings.enabled and settings.allow_face_checkin,
         'client_registered': has_face,
         'checkin_methods': {
@@ -112,6 +115,59 @@ def register_face(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def register_from_photo(request):
+    """
+    Registra el rostro del cliente usando su foto de perfil existente.
+    Solo para staff - permite registrar masivamente.
+    
+    POST con:
+    - client_id: ID del cliente
+    - consent: bool (consentimiento GDPR)
+    """
+    staff = getattr(request.user, 'staff_profile', None)
+    
+    if not staff:
+        return Response({
+            'success': False,
+            'error': 'Solo disponible para staff'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    client_id = request.data.get('client_id')
+    if not client_id:
+        return Response({
+            'success': False,
+            'error': 'Se requiere client_id'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    from clients.models import Client
+    try:
+        client = Client.objects.get(id=client_id, gym=staff.gym)
+    except Client.DoesNotExist:
+        return Response({
+            'success': False,
+            'error': 'Cliente no encontrado'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    consent = request.data.get('consent', 'false').lower() == 'true'
+    
+    service = FaceRecognitionService(staff.gym)
+    result = service.register_from_client_photo(client, consent=consent)
+    
+    if result['success']:
+        return Response({
+            'success': True,
+            'message': f'Rostro de {client.full_name} registrado correctamente',
+            'quality_score': result['quality_score']
+        })
+    else:
+        return Response({
+            'success': False,
+            'error': result.get('error', 'Error desconocido')
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def verify_face(request):
     """
@@ -121,10 +177,10 @@ def verify_face(request):
     - image: archivo de imagen
     - session_id: (opcional) ID de la sesión de actividad
     """
-    from activities.models import ActivitySession, Booking
+    from activities.models import ActivitySession, SessionCheckin
     
     client = getattr(request.user, 'client', None)
-    staff = getattr(request.user, 'staff', None)
+    staff = getattr(request.user, 'staff_profile', None)
     
     # Determinar el gym
     if client:
@@ -163,25 +219,18 @@ def verify_face(request):
         
         # Si hay session_id, hacer check-in automático
         session_id = request.data.get('session_id')
-        checkin_done = False
+        checkin_result = None
         
         if session_id:
             try:
                 session = ActivitySession.objects.get(id=session_id, activity__gym=gym)
-                booking = Booking.objects.filter(
+                checkin_result = service.do_session_checkin(
                     client=matched_client,
                     session=session,
-                    status='confirmed'
-                ).first()
-                
-                if booking:
-                    booking.status = 'checked_in'
-                    booking.checked_in_at = timezone.now()
-                    booking.checkin_method = 'face_recognition'
-                    booking.save()
-                    checkin_done = True
+                    confidence=result['confidence']
+                )
             except ActivitySession.DoesNotExist:
-                pass
+                checkin_result = {'success': False, 'error': 'Sesión no encontrada'}
         
         return Response({
             'success': True,
@@ -192,7 +241,8 @@ def verify_face(request):
             },
             'confidence': result['confidence'],
             'processing_time_ms': result.get('processing_time_ms'),
-            'checkin_done': checkin_done,
+            'checkin_done': checkin_result['success'] if checkin_result else False,
+            'checkin_error': checkin_result.get('error') if checkin_result and not checkin_result['success'] else None,
             'message': f'¡Hola {matched_client.first_name}!'
         })
     else:
@@ -302,3 +352,96 @@ def kiosk_verify(request, gym_id):
             'error': 'not_recognized',
             'message': 'No reconocido. Usa QR o contacta recepción.'
         }, status=status.HTTP_404_NOT_FOUND)
+
+# ============================================
+# Endpoints auxiliares para gestión de clientes
+# ============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clients_with_photos_no_face(request):
+    """
+    Devuelve la lista de clientes que tienen foto de perfil pero no tienen
+    rostro registrado para reconocimiento facial.
+    Solo para staff.
+    """
+    from clients.models import Client
+    from django.db.models import Exists, OuterRef
+    
+    staff = getattr(request.user, 'staff_profile', None)
+    
+    if not staff:
+        return Response({
+            'error': 'Solo disponible para staff'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Clientes con foto pero sin face encoding
+    clients = Client.objects.filter(
+        gym=staff.gym,
+        status='active'
+    ).exclude(
+        photo=''
+    ).exclude(
+        photo__isnull=True
+    ).exclude(
+        # Excluir los que ya tienen face encoding
+        id__in=ClientFaceEncoding.objects.values_list('client_id', flat=True)
+    ).select_related('gym')[:50]  # Limitar a 50 para rendimiento
+    
+    return Response({
+        'clients': [
+            {
+                'id': c.id,
+                'full_name': c.full_name,
+                'email': c.email,
+                'photo': c.photo.url if c.photo else None
+            }
+            for c in clients
+        ]
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_clients(request):
+    """
+    Busca clientes por nombre, email o teléfono.
+    Solo para staff.
+    """
+    from clients.models import Client
+    from django.db.models import Q
+    
+    staff = getattr(request.user, 'staff_profile', None)
+    
+    if not staff:
+        return Response({
+            'error': 'Solo disponible para staff'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    query = request.query_params.get('q', '')
+    
+    if len(query) < 2:
+        return Response({'results': []})
+    
+    clients = Client.objects.filter(
+        gym=staff.gym,
+        status='active'
+    ).filter(
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query) |
+        Q(email__icontains=query) |
+        Q(phone__icontains=query)
+    )[:20]
+    
+    return Response({
+        'results': [
+            {
+                'id': c.id,
+                'full_name': c.full_name,
+                'email': c.email,
+                'phone': c.phone,
+                'photo': c.photo.url if c.photo else None
+            }
+            for c in clients
+        ]
+    })

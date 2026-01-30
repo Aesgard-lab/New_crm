@@ -1,6 +1,27 @@
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+import json
+from .models import WorkoutRoutine, RoutineDay, RoutineExercise, Exercise, ClientRoutine
+from clients.models import Client
+from django.db import transaction
+
+@login_required
+@require_http_methods(["PATCH"])
+def api_update_day_name(request, day_id):
+    """Updates the name of a RoutineDay"""
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        if not name:
+            return JsonResponse({'status': 'error', 'message': 'El nombre no puede estar vacío.'}, status=400)
+        day = get_object_or_404(RoutineDay, id=day_id, routine__gym=request.gym)
+        day.name = name
+        day.save()
+        return JsonResponse({'status': 'success', 'name': day.name})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 from django.shortcuts import get_object_or_404
 from .models import WorkoutRoutine, RoutineDay, RoutineExercise, Exercise
 import json

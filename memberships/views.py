@@ -189,3 +189,70 @@ def api_create_pause(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission('memberships.view_membershipplan')
+def plan_export_excel(request):
+    """Exporta listado de planes de membresía a Excel"""
+    gym = request.gym
+    plans = MembershipPlan.objects.filter(gym=gym).order_by('display_order', '-created_at')
+    
+    config = ExportConfig(
+        title="Listado de Cuotas y Bonos",
+        headers=['ID', 'Nombre', 'Precio', 'Duración', 'Recurrente', 'Sesiones Incluidas', 'Estado'],
+        data_extractor=lambda p: [
+            p.id,
+            p.name,
+            p.price,
+            f"{p.duration_days} días" if p.duration_days else 'Ilimitado',
+            'Sí' if p.is_recurring else 'No',
+            p.included_sessions if p.included_sessions else 'Ilimitadas',
+            'Activo' if p.is_active else 'Inactivo',
+        ],
+        column_widths=[8, 28, 12, 15, 12, 18, 10]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(plans, config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="cuotas_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('memberships.view_membershipplan')
+def plan_export_pdf(request):
+    """Exporta listado de planes de membresía a PDF"""
+    gym = request.gym
+    plans = MembershipPlan.objects.filter(gym=gym).order_by('display_order', '-created_at')
+    
+    config = ExportConfig(
+        title="Listado de Cuotas y Bonos",
+        headers=['Nombre', 'Precio', 'Duración', 'Recurrente', 'Sesiones', 'Estado'],
+        data_extractor=lambda p: [
+            p.name,
+            p.price,
+            f"{p.duration_days} días" if p.duration_days else 'Ilimitado',
+            'Sí' if p.is_recurring else 'No',
+            p.included_sessions if p.included_sessions else 'Ilimitadas',
+            'Activo' if p.is_active else 'Inactivo',
+        ],
+        column_widths=[28, 12, 15, 12, 15, 10]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(plans, config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="cuotas_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

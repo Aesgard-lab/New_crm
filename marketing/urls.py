@@ -35,6 +35,8 @@ urlpatterns = [
     path('popups/create/', views.popup_create_view, name='marketing_popup_create'),
     path('popups/<int:pk>/edit/', views.popup_edit_view, name='marketing_popup_edit'),
     path('popups/<int:pk>/delete/', views.popup_delete_view, name='marketing_popup_delete'),
+    path('popups/export/excel/', views.popup_export_excel, name='marketing_popup_export_excel'),
+    path('popups/export/pdf/', views.popup_export_pdf, name='marketing_popup_export_pdf'),
     
     # Advertisements / Banners
     path('advertisements/', views.advertisement_list_view, name='marketing_advertisement_list'),
@@ -42,6 +44,8 @@ urlpatterns = [
     path('advertisements/<int:pk>/edit/', views.advertisement_edit_view, name='marketing_advertisement_edit'),
     path('advertisements/<int:pk>/delete/', views.advertisement_delete_view, name='marketing_advertisement_delete'),
     path('advertisements/<int:pk>/toggle/', views.advertisement_toggle_status_view, name='marketing_advertisement_toggle'),
+    path('advertisements/export/excel/', views.advertisement_export_excel, name='marketing_advertisement_export_excel'),
+    path('advertisements/export/pdf/', views.advertisement_export_pdf, name='marketing_advertisement_export_pdf'),
     
     # Lead Management
     path('leads/', views.lead_board_view, name='lead_board'),
@@ -76,5 +80,9 @@ urlpatterns = [
     path('automation/retention/', views.retention_alerts_list, name='retention_alerts_list'),
     path('automation/retention/create/', views.retention_rule_create, name='retention_rule_create'),
     path('automation/retention/<int:pk>/resolve/', views.retention_alert_resolve, name='retention_alert_resolve'),
+    
+    # Campaign exports
+    path('campaigns/export/excel/', views.campaign_export_excel, name='marketing_campaign_export_excel'),
+    path('campaigns/export/pdf/', views.campaign_export_pdf, name='marketing_campaign_export_pdf'),
 ]
 

@@ -123,3 +123,71 @@ def category_edit(request, pk):
         'form': form,
         'title': f'Editar {category.name}'
     })
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from django.utils import timezone
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission('products.view_product')
+def product_export_excel(request):
+    """Exporta listado de productos a Excel"""
+    gym = request.gym
+    products = Product.objects.filter(gym=gym).select_related('category')
+    
+    config = ExportConfig(
+        title="Listado de Productos",
+        headers=['ID', 'Código', 'Nombre', 'Categoría', 'Precio', 'Stock', 'Estado'],
+        data_extractor=lambda p: [
+            p.id,
+            p.sku or '-',
+            p.name,
+            p.category.name if p.category else '-',
+            p.price,
+            p.stock if hasattr(p, 'stock') else '-',
+            'Activo' if p.is_active else 'Inactivo',
+        ],
+        column_widths=[8, 12, 28, 18, 12, 10, 10]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(products.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="productos_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('products.view_product')
+def product_export_pdf(request):
+    """Exporta listado de productos a PDF"""
+    gym = request.gym
+    products = Product.objects.filter(gym=gym).select_related('category')
+    
+    config = ExportConfig(
+        title="Listado de Productos",
+        headers=['Código', 'Nombre', 'Categoría', 'Precio', 'Stock', 'Estado'],
+        data_extractor=lambda p: [
+            p.sku or '-',
+            p.name,
+            p.category.name if p.category else '-',
+            p.price,
+            p.stock if hasattr(p, 'stock') else '-',
+            'Activo' if p.is_active else 'Inactivo',
+        ],
+        column_widths=[12, 28, 18, 12, 10, 10]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(products.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="productos_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

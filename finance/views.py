@@ -859,3 +859,173 @@ def category_delete(request, pk):
         'category': category,
     }
     return render(request, 'backoffice/finance/category_confirm_delete.html', context)
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_export_excel(request):
+    """Exporta listado de gastos a Excel"""
+    gym = request.gym
+    expenses = Expense.objects.filter(gym=gym).select_related('supplier', 'category')
+    
+    # Aplicar filtros si existen
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    status = request.GET.get('status')
+    
+    if date_from:
+        expenses = expenses.filter(issue_date__gte=date_from)
+    if date_to:
+        expenses = expenses.filter(issue_date__lte=date_to)
+    if status:
+        expenses = expenses.filter(status=status)
+    
+    # Calcular totales
+    totals = expenses.aggregate(
+        total_base=Sum('base_amount'),
+        total_tax=Sum('tax_amount'),
+        total=Sum('total_amount')
+    )
+    
+    config = ExportConfig(
+        title="Listado de Gastos",
+        headers=['ID', 'Fecha', 'Proveedor', 'Concepto', 'Categoría', 'Base', 'IVA', 'Total', 'Estado'],
+        data_extractor=lambda e: [
+            e.id,
+            e.issue_date,
+            e.supplier.name if e.supplier else '-',
+            e.concept[:40] + '...' if len(e.concept) > 40 else e.concept,
+            e.category.name if e.category else '-',
+            e.base_amount,
+            e.tax_amount,
+            e.total_amount,
+            e.get_status_display(),
+        ],
+        column_widths=[8, 12, 18, 25, 15, 12, 10, 12, 12],
+        landscape_mode=True,
+        footer_text=f"TOTALES: Base: {totals['total_base'] or 0:.2f}€ | IVA: {totals['total_tax'] or 0:.2f}€ | Total: {totals['total'] or 0:.2f}€"
+    )
+    
+    excel_file = GenericExportService.export_to_excel(expenses.order_by('-issue_date'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="gastos_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def expense_export_pdf(request):
+    """Exporta listado de gastos a PDF"""
+    gym = request.gym
+    expenses = Expense.objects.filter(gym=gym).select_related('supplier', 'category')
+    
+    # Aplicar filtros si existen
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    status = request.GET.get('status')
+    
+    if date_from:
+        expenses = expenses.filter(issue_date__gte=date_from)
+    if date_to:
+        expenses = expenses.filter(issue_date__lte=date_to)
+    if status:
+        expenses = expenses.filter(status=status)
+    
+    # Calcular totales
+    totals = expenses.aggregate(
+        total_base=Sum('base_amount'),
+        total_tax=Sum('tax_amount'),
+        total=Sum('total_amount')
+    )
+    
+    config = ExportConfig(
+        title="Listado de Gastos",
+        headers=['Fecha', 'Proveedor', 'Concepto', 'Base', 'IVA', 'Total', 'Estado'],
+        data_extractor=lambda e: [
+            e.issue_date,
+            e.supplier.name if e.supplier else '-',
+            e.concept[:30] + '...' if len(e.concept) > 30 else e.concept,
+            e.base_amount,
+            e.tax_amount,
+            e.total_amount,
+            e.get_status_display(),
+        ],
+        column_widths=[12, 18, 25, 12, 10, 12, 12],
+        landscape_mode=True,
+        footer_text=f"TOTALES: Base: {totals['total_base'] or 0:.2f}€ | IVA: {totals['total_tax'] or 0:.2f}€ | Total: {totals['total'] or 0:.2f}€"
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(expenses.order_by('-issue_date'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="gastos_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def supplier_export_excel(request):
+    """Exporta listado de proveedores a Excel"""
+    gym = request.gym
+    suppliers = Supplier.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Proveedores",
+        headers=['ID', 'Nombre', 'CIF/NIF', 'Email', 'Teléfono', 'Dirección', 'Estado'],
+        data_extractor=lambda s: [
+            s.id,
+            s.name,
+            s.tax_id or '-',
+            s.email or '-',
+            s.phone or '-',
+            s.address or '-',
+            'Activo' if s.is_active else 'Inactivo',
+        ],
+        column_widths=[8, 20, 15, 25, 15, 30, 10]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(suppliers.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="proveedores_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def supplier_export_pdf(request):
+    """Exporta listado de proveedores a PDF"""
+    gym = request.gym
+    suppliers = Supplier.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Proveedores",
+        headers=['Nombre', 'CIF/NIF', 'Email', 'Teléfono', 'Estado'],
+        data_extractor=lambda s: [
+            s.name,
+            s.tax_id or '-',
+            s.email or '-',
+            s.phone or '-',
+            'Activo' if s.is_active else 'Inactivo',
+        ],
+        column_widths=[25, 15, 25, 15, 10]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(suppliers.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="proveedores_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

@@ -64,5 +64,9 @@ urlpatterns = [
     path("vacations/blocked-periods/", views.blocked_periods_list, name="blocked_periods_list"),
     path("vacations/blocked-periods/create/", views.blocked_period_create, name="blocked_period_create"),
     path("vacations/blocked-periods/<int:pk>/delete/", views.blocked_period_delete, name="blocked_period_delete"),
+    
+    # Export
+    path("export/excel/", views.staff_export_excel, name="staff_export_excel"),
+    path("export/pdf/", views.staff_export_pdf, name="staff_export_pdf"),
 ]
 

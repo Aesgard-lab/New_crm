@@ -1456,3 +1456,70 @@ def blocked_period_delete(request, pk):
     
     return redirect('blocked_periods_list')
 
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission("staff.view_staffprofile")
+def staff_export_excel(request):
+    """Exporta listado de personal a Excel"""
+    gym = request.gym
+    staff_members = StaffProfile.objects.filter(gym=gym).select_related('user')
+    
+    config = ExportConfig(
+        title="Listado de Personal",
+        headers=['ID', 'Nombre', 'Email', 'Rol', 'PIN', 'Estado', 'Fecha Alta'],
+        data_extractor=lambda s: [
+            s.id,
+            f"{s.user.first_name} {s.user.last_name}",
+            s.user.email,
+            s.role or 'Sin rol',
+            s.pin_code or '-',
+            'Activo' if s.is_active else 'Inactivo',
+            s.user.date_joined,
+        ],
+        column_widths=[8, 22, 28, 15, 10, 10, 15]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(staff_members, config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="personal_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission("staff.view_staffprofile")
+def staff_export_pdf(request):
+    """Exporta listado de personal a PDF"""
+    gym = request.gym
+    staff_members = StaffProfile.objects.filter(gym=gym).select_related('user')
+    
+    config = ExportConfig(
+        title="Listado de Personal",
+        headers=['ID', 'Nombre', 'Email', 'Rol', 'Estado', 'Fecha Alta'],
+        data_extractor=lambda s: [
+            s.id,
+            f"{s.user.first_name} {s.user.last_name}",
+            s.user.email,
+            s.role or 'Sin rol',
+            'Activo' if s.is_active else 'Inactivo',
+            s.user.date_joined,
+        ],
+        column_widths=[8, 22, 28, 15, 10, 15]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(staff_members, config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="personal_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response
+

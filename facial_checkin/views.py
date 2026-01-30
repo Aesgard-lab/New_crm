@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 
 from .models import FaceRecognitionSettings, ClientFaceEncoding
-from .services import FaceRecognitionService, FACE_RECOGNITION_AVAILABLE
+from .services import FaceRecognitionService, check_face_recognition_available
 
 
 @login_required
@@ -15,15 +15,17 @@ def face_settings_view(request):
     """
     Vista de configuración de reconocimiento facial (backoffice).
     """
-    staff = getattr(request.user, 'staff', None)
+    gym = getattr(request, 'gym', None)
     
-    if not staff:
+    if not gym:
         messages.error(request, 'Acceso no autorizado')
-        return redirect('backoffice:dashboard')
+        return redirect('home')
     
-    gym = staff.gym
     settings, created = FaceRecognitionSettings.objects.get_or_create(gym=gym)
     service = FaceRecognitionService(gym)
+    
+    # Re-verificar disponibilidad de la librería (por si se instaló en caliente)
+    library_available = check_face_recognition_available()
     
     if request.method == 'POST':
         # Actualizar configuración
@@ -46,7 +48,7 @@ def face_settings_view(request):
         
         settings.save()
         messages.success(request, 'Configuración guardada correctamente')
-        return redirect('face_recognition:settings')
+        return redirect('facial_checkin:settings')
     
     # Obtener estadísticas
     stats = service.get_stats()
@@ -54,7 +56,7 @@ def face_settings_view(request):
     context = {
         'settings': settings,
         'stats': stats,
-        'library_available': FACE_RECOGNITION_AVAILABLE,
+        'library_available': library_available,
         'gym': gym,
     }
     
@@ -86,7 +88,7 @@ def client_register_face(request):
     context = {
         'has_face_registered': existing is not None,
         'registration_date': existing.registered_at if existing else None,
-        'library_available': FACE_RECOGNITION_AVAILABLE,
+        'library_available': check_face_recognition_available(),
         'gym': gym,
     }
     

@@ -97,8 +97,8 @@
 <style>
     .fc {
         font-family: 'Inter', sans-serif;
-        --fc-border-color: #f1f5f9;
-        --fc-today-bg-color: #f8fafc;
+        --fc-border-color: #e2e8f0;
+        --fc-today-bg-color: #eff6ff;
         --fc-event-border-color: transparent;
         height: 100% !important;
         width: 100% !important;
@@ -112,7 +112,24 @@
     /* Expand day columns to fill available space */
     .fc-col-header-cell,
     .fc-timegrid-col {
-        min-width: 120px !important;
+        min-width: 140px !important;
+    }
+    
+    /* Highlight today's column header */
+    .fc-col-header-cell.fc-day-today {
+        background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%) !important;
+    }
+    
+    .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+        color: #1d4ed8 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Highlight today's column in the grid */
+    .fc-timegrid-col.fc-day-today {
+        background: rgba(59, 130, 246, 0.04) !important;
+        border-left: 2px solid #3b82f6 !important;
+        border-right: 2px solid #3b82f6 !important;
     }
 
     .fc-scrollgrid {
@@ -140,6 +157,13 @@
     /* Expand header cells */
     .fc-col-header {
         width: 100% !important;
+    }
+    
+    /* Better day header styling */
+    .fc-col-header-cell-cushion {
+        padding: 10px 4px !important;
+        font-weight: 600;
+        color: #475569;
     }
 
     .fc-toolbar-title {
@@ -169,19 +193,20 @@
     .fc-event {
         border-radius: 8px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-        padding: 0;
-        font-size: 0.85rem;
+        padding: 4px 6px;
+        font-size: 0.8rem;
         cursor: pointer;
         transition: all 0.2s ease;
         border: 2px solid rgba(255, 255, 255, 0.3) !important;
         overflow: hidden;
+        margin: 1px 2px !important;
     }
 
     .fc-event:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        z-index: 5;
-        border-color: rgba(255, 255, 255, 0.5) !important;
+        transform: translateY(-1px) scale(1.02);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        z-index: 10 !important;
+        border-color: rgba(255, 255, 255, 0.6) !important;
     }
     
     /* Better text shadows for readability */
@@ -189,9 +214,27 @@
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
     
+    /* Event title styling */
+    .fc-event-title {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .fc-event-time {
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+    
     /* Ensure minimum height for events */
     .fc-timegrid-event {
-        min-height: 80px !important;
+        min-height: 70px !important;
+    }
+    
+    /* Better handling of overlapping events */
+    .fc-timegrid-event-harness {
+        margin-right: 3px !important;
     }
     
     /* Increase slot height for better readability */
@@ -1667,8 +1710,8 @@
             firstDay: 1,
             slotMinTime: '06:00:00',
             slotMaxTime: '23:00:00',
-            slotDuration: '00:30:00',  // 30 minutos por slot para más altura
-            slotLabelInterval: '01:00', // Etiquetas cada hora
+            slotDuration: '00:30:00',
+            slotLabelInterval: '01:00',
             allDaySlot: false,
             selectable: true,
             selectMirror: true,
@@ -1678,6 +1721,17 @@
             displayEventEnd: false,
             expandRows: true,
             height: '100%',
+            // Better overlap handling
+            slotEventOverlap: false,
+            eventMaxStack: 3,
+            dayMaxEventRows: 4,
+            // Day header format
+            dayHeaderFormat: { 
+                weekday: 'short', 
+                day: 'numeric',
+                month: 'numeric',
+                omitCommas: true
+            },
             slotLabelFormat: {
                 hour: '2-digit',
                 minute: '2-digit',

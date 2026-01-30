@@ -158,7 +158,7 @@ def gym_detail(request, gym_id):
     
     # Usage stats
     total_members = Client.objects.filter(gym=gym, status='ACTIVE').count()
-    total_staff = gym.gym_users.count()
+    total_staff = gym.staff.count()
     
     # Invoices
     invoices = Invoice.objects.filter(gym=gym).order_by('-created_at')[:10]

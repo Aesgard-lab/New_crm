@@ -2,6 +2,7 @@ from django.urls import path
 from . import views, api
 
 urlpatterns = [
+        path('api/days/<int:day_id>/update-name/', api.api_update_day_name, name='api_update_day_name'),
     path('exercises/', views.exercise_list, name='exercise_list'),
     path('exercises/add/', views.exercise_create, name='exercise_create'),
     path('exercises/<int:pk>/edit/', views.exercise_update, name='exercise_edit'),

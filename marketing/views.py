@@ -1341,3 +1341,185 @@ def demo_advertisements_view(request):
     Renderiza el archivo HTML con ejemplos visuales.
     """
     return render(request, 'demo_advertisements.html')
+
+
+# =============================================================================
+# EXPORT FUNCTIONS
+# =============================================================================
+from django.http import HttpResponse
+from django.utils import timezone as tz_utils
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+def campaign_export_excel(request):
+    """Exporta listado de campañas a Excel"""
+    gym = request.gym
+    campaigns = Campaign.objects.filter(gym=gym).select_related('template')
+    
+    config = ExportConfig(
+        title="Listado de Campañas",
+        headers=['ID', 'Nombre', 'Asunto', 'Plantilla', 'Estado', 'Programada', 'Creada'],
+        data_extractor=lambda c: [
+            c.id,
+            c.name,
+            c.subject,
+            c.template.name if c.template else '-',
+            c.get_status_display(),
+            c.scheduled_at.strftime('%d/%m/%Y %H:%M') if c.scheduled_at else '-',
+            c.created_at.strftime('%d/%m/%Y') if c.created_at else '-',
+        ],
+        column_widths=[8, 25, 30, 20, 12, 18, 14]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(campaigns.order_by('-created_at'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="campanas_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+def campaign_export_pdf(request):
+    """Exporta listado de campañas a PDF"""
+    gym = request.gym
+    campaigns = Campaign.objects.filter(gym=gym).select_related('template')
+    
+    config = ExportConfig(
+        title="Listado de Campañas",
+        headers=['Nombre', 'Asunto', 'Estado', 'Programada'],
+        data_extractor=lambda c: [
+            c.name,
+            c.subject[:40] + '...' if len(c.subject) > 40 else c.subject,
+            c.get_status_display(),
+            c.scheduled_at.strftime('%d/%m/%Y') if c.scheduled_at else '-',
+        ],
+        column_widths=[25, 35, 12, 14],
+        landscape=True
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(campaigns.order_by('-created_at'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="campanas_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.pdf"'
+    return response
+
+
+@login_required
+def popup_export_excel(request):
+    """Exporta listado de popups a Excel"""
+    gym = request.gym
+    popups = Popup.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Popups",
+        headers=['ID', 'Título', 'Tipo', 'Posición', 'Activo', 'Inicio', 'Fin'],
+        data_extractor=lambda p: [
+            p.id,
+            p.title,
+            p.popup_type if hasattr(p, 'popup_type') else '-',
+            p.position if hasattr(p, 'position') else '-',
+            'Sí' if p.is_active else 'No',
+            p.start_date.strftime('%d/%m/%Y') if hasattr(p, 'start_date') and p.start_date else '-',
+            p.end_date.strftime('%d/%m/%Y') if hasattr(p, 'end_date') and p.end_date else '-',
+        ],
+        column_widths=[8, 30, 15, 15, 10, 14, 14]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(popups.order_by('-created_at'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="popups_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+def popup_export_pdf(request):
+    """Exporta listado de popups a PDF"""
+    gym = request.gym
+    popups = Popup.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Popups",
+        headers=['Título', 'Activo', 'Inicio', 'Fin'],
+        data_extractor=lambda p: [
+            p.title,
+            'Sí' if p.is_active else 'No',
+            p.start_date.strftime('%d/%m/%Y') if hasattr(p, 'start_date') and p.start_date else '-',
+            p.end_date.strftime('%d/%m/%Y') if hasattr(p, 'end_date') and p.end_date else '-',
+        ],
+        column_widths=[40, 10, 14, 14]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(popups.order_by('-created_at'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="popups_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.pdf"'
+    return response
+
+
+@login_required
+def advertisement_export_excel(request):
+    """Exporta listado de anuncios a Excel"""
+    gym = request.gym
+    from .models import Advertisement
+    ads = Advertisement.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Anuncios",
+        headers=['ID', 'Título', 'Posición', 'Activo', 'Clics', 'Impresiones', 'Inicio', 'Fin'],
+        data_extractor=lambda a: [
+            a.id,
+            a.title,
+            a.position if hasattr(a, 'position') else '-',
+            'Sí' if a.is_active else 'No',
+            a.clicks if hasattr(a, 'clicks') else 0,
+            a.impressions if hasattr(a, 'impressions') else 0,
+            a.start_date.strftime('%d/%m/%Y') if hasattr(a, 'start_date') and a.start_date else '-',
+            a.end_date.strftime('%d/%m/%Y') if hasattr(a, 'end_date') and a.end_date else '-',
+        ],
+        column_widths=[8, 30, 15, 10, 10, 12, 14, 14]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(ads.order_by('-created_at'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="anuncios_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+def advertisement_export_pdf(request):
+    """Exporta listado de anuncios a PDF"""
+    gym = request.gym
+    from .models import Advertisement
+    ads = Advertisement.objects.filter(gym=gym)
+    
+    config = ExportConfig(
+        title="Listado de Anuncios",
+        headers=['Título', 'Posición', 'Activo', 'Clics', 'Impresiones'],
+        data_extractor=lambda a: [
+            a.title,
+            a.position if hasattr(a, 'position') else '-',
+            'Sí' if a.is_active else 'No',
+            a.clicks if hasattr(a, 'clicks') else 0,
+            a.impressions if hasattr(a, 'impressions') else 0,
+        ],
+        column_widths=[35, 15, 10, 12, 14],
+        landscape=True
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(ads.order_by('-created_at'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="anuncios_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.pdf"'
+    return response

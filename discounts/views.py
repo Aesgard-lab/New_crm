@@ -410,3 +410,84 @@ def discount_analytics(request):
         'daily_stats': list(daily_stats),
     }
     return render(request, 'discounts/analytics.html', context)
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission('discounts.view')
+def discount_export_excel(request):
+    """Exporta listado de descuentos a Excel"""
+    gym = request.gym
+    discounts = Discount.objects.filter(gym=gym).select_related('created_by')
+    
+    def format_discount_value(d):
+        if d.discount_type == 'percentage':
+            return f"{d.value}%"
+        else:
+            return f"€{d.value}"
+    
+    config = ExportConfig(
+        title="Listado de Descuentos",
+        headers=['ID', 'Nombre', 'Código', 'Tipo', 'Valor', 'Usos Máx.', 'Válido Desde', 'Válido Hasta', 'Estado'],
+        data_extractor=lambda d: [
+            d.id,
+            d.name,
+            d.code or '-',
+            d.get_discount_type_display(),
+            format_discount_value(d),
+            d.max_uses if d.max_uses else 'Ilimitado',
+            d.valid_from.strftime('%d/%m/%Y') if d.valid_from else '-',
+            d.valid_until.strftime('%d/%m/%Y') if d.valid_until else '-',
+            'Activo' if d.is_active else 'Inactivo',
+        ],
+        column_widths=[8, 25, 15, 14, 12, 12, 14, 14, 10]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(discounts.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="descuentos_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission('discounts.view')
+def discount_export_pdf(request):
+    """Exporta listado de descuentos a PDF"""
+    gym = request.gym
+    discounts = Discount.objects.filter(gym=gym).select_related('created_by')
+    
+    def format_discount_value(d):
+        if d.discount_type == 'percentage':
+            return f"{d.value}%"
+        else:
+            return f"€{d.value}"
+    
+    config = ExportConfig(
+        title="Listado de Descuentos",
+        headers=['Nombre', 'Código', 'Tipo', 'Valor', 'Válido Hasta', 'Estado'],
+        data_extractor=lambda d: [
+            d.name,
+            d.code or '-',
+            d.get_discount_type_display(),
+            format_discount_value(d),
+            d.valid_until.strftime('%d/%m/%Y') if d.valid_until else '-',
+            'Activo' if d.is_active else 'Inactivo',
+        ],
+        column_widths=[25, 15, 14, 12, 14, 10]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(discounts.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="descuentos_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

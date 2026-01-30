@@ -185,3 +185,72 @@ def purchase_order_edit(request, pk):
             "title": f"Editar PO-{po.id}",
         },
     )
+
+
+# ==========================================
+# EXPORT FUNCTIONS
+# ==========================================
+from django.http import HttpResponse
+from django.utils import timezone
+from core.export_service import GenericExportService, ExportConfig
+
+
+@login_required
+@require_gym_permission("providers.view")
+def provider_export_excel(request):
+    """Exporta listado de proveedores a Excel"""
+    gym = request.gym
+    providers = Provider.objects.filter(gym=gym).prefetch_related('contacts')
+    
+    config = ExportConfig(
+        title="Listado de Proveedores",
+        headers=['ID', 'Nombre', 'Razón Social', 'CIF/NIF', 'Email', 'Teléfono', 'Ciudad', 'País'],
+        data_extractor=lambda p: [
+            p.id,
+            p.name,
+            p.legal_name or '-',
+            p.tax_id or '-',
+            p.email or '-',
+            p.phone or '-',
+            p.city or '-',
+            p.country or '-',
+        ],
+        column_widths=[8, 25, 25, 15, 25, 15, 15, 12]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(providers.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="proveedores_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    return response
+
+
+@login_required
+@require_gym_permission("providers.view")
+def provider_export_pdf(request):
+    """Exporta listado de proveedores a PDF"""
+    gym = request.gym
+    providers = Provider.objects.filter(gym=gym).prefetch_related('contacts')
+    
+    config = ExportConfig(
+        title="Listado de Proveedores",
+        headers=['Nombre', 'Razón Social', 'CIF/NIF', 'Email', 'Teléfono'],
+        data_extractor=lambda p: [
+            p.name,
+            p.legal_name or '-',
+            p.tax_id or '-',
+            p.email or '-',
+            p.phone or '-',
+        ],
+        column_widths=[22, 22, 15, 25, 15],
+        landscape=True
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(providers.order_by('name'), config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="proveedores_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    return response

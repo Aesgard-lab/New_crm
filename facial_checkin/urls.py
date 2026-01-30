@@ -10,9 +10,14 @@ urlpatterns = [
     # API endpoints
     path('api/status/', api.face_recognition_status, name='api_status'),
     path('api/register/', api.register_face, name='api_register'),
+    path('api/register-from-photo/', api.register_from_photo, name='api_register_from_photo'),
     path('api/verify/', api.verify_face, name='api_verify'),
     path('api/delete/', api.delete_face_data, name='api_delete'),
     path('api/stats/', api.face_recognition_stats, name='api_stats'),
+    
+    # APIs auxiliares para gestión de clientes
+    path('api/clients/with-photos-no-face/', api.clients_with_photos_no_face, name='api_clients_photos'),
+    path('api/clients/search/', api.search_clients, name='api_clients_search'),
     
     # Kiosko
     path('api/kiosk/<int:gym_id>/verify/', api.kiosk_verify, name='kiosk_verify'),

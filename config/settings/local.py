@@ -105,13 +105,13 @@ CORS_ALLOW_CREDENTIALS = True
 # Ya configurado en base.py con APP_DIRS = True
 
 # --------------------------------------------------
-# LOGGING (más verboso en desarrollo)
+# LOGGING (reducido para desarrollo)
 # --------------------------------------------------
-LOGGING['handlers']['console']['level'] = 'DEBUG'
-LOGGING['loggers']['django']['level'] = 'DEBUG'
+LOGGING['handlers']['console']['level'] = 'INFO'
+LOGGING['loggers']['django']['level'] = 'INFO'
 LOGGING['loggers']['django.db.backends'] = {
     'handlers': ['console'],
-    'level': 'INFO',  # Cambiar a DEBUG para ver queries SQL
+    'level': 'WARNING',  # Cambiar a DEBUG para ver queries SQL
     'propagate': False,
 }
 
@@ -120,7 +120,7 @@ for app in LOCAL_APPS:
     app_name = app.split('.')[0]  # Obtener el nombre base de la app
     LOGGING['loggers'][app_name] = {
         'handlers': ['console'],
-        'level': 'DEBUG',
+        'level': 'INFO',
         'propagate': False,
     }
 

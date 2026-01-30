@@ -6,10 +6,14 @@ urlpatterns = [
     path('rooms/', views.room_list, name='room_list'),
     path('rooms/create/', views.room_create, name='room_create'),
     path('rooms/<int:pk>/edit/', views.room_edit, name='room_edit'),
+    path('rooms/export/excel/', views.room_export_excel, name='room_export_excel'),
+    path('rooms/export/pdf/', views.room_export_pdf, name='room_export_pdf'),
     
     path('classes/', views.activity_list, name='activity_list'),
     path('classes/create/', views.activity_create, name='activity_create'),
     path('classes/<int:pk>/edit/', views.activity_edit, name='activity_edit'),
+    path('classes/export/excel/', views.activity_export_excel, name='activity_export_excel'),
+    path('classes/export/pdf/', views.activity_export_pdf, name='activity_export_pdf'),
 
     path('categories/', views.category_list, name='category_list'),
     path('categories/create/', views.category_create, name='category_create'),

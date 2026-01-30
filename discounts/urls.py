@@ -9,6 +9,8 @@ urlpatterns = [
     path('<int:pk>/edit/', views.discount_edit, name='discount_edit'),
     path('<int:pk>/delete/', views.discount_delete, name='discount_delete'),
     path('<int:pk>/toggle/', views.discount_toggle_active, name='discount_toggle_active'),
+    path('export/excel/', views.discount_export_excel, name='discount_export_excel'),
+    path('export/pdf/', views.discount_export_pdf, name='discount_export_pdf'),
     
     # AJAX
     path('validate/', views.validate_discount_code, name='validate_discount_code'),
