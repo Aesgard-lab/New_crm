@@ -1,0 +1,176 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Configuración de Vacaciones - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>Configuración de Vacaciones</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Define la política de vacaciones del centro</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Navigation Tabs -->
+<div class="mb-6 flex flex-wrap gap-2">
+  <a href="{% url 'vacation_calendar' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    📅 Calendario
+  </a>
+  <a href="{% url 'my_vacations' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    🏖️ Mis Vacaciones
+  </a>
+  <a href="{% url 'vacation_pending_list' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    ⏳ Pendientes
+  </a>
+  <a href="{% url 'vacation_balances' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    📊 Balances
+  </a>
+  <a href="{% url 'vacation_settings' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white">
+    ⚙️ Configuración
+  </a>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  
+  <!-- Policy Form -->
+  <div class="lg:col-span-2">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <h3 class="text-lg font-bold text-slate-900 mb-6">Política de Vacaciones</h3>
+      
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Base days section -->
+        <div class="border-b border-slate-100 pb-6">
+          <h4 class="text-sm font-medium text-slate-700 mb-4">📅 Días Base</h4>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.base_days_per_year.label }}</label>
+              {{ form.base_days_per_year }}
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.extra_days_per_year_worked.label }}</label>
+              {{ form.extra_days_per_year_worked }}
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.max_seniority_days.label }}</label>
+              {{ form.max_seniority_days }}
+            </div>
+          </div>
+          <p class="mt-3 text-xs text-slate-500">
+            Ejemplo: 22 días base + 1 día por año de antigüedad (máx 5) = hasta 27 días/año
+          </p>
+        </div>
+        
+        <!-- Carry-over section -->
+        <div class="border-b border-slate-100 pb-6">
+          <h4 class="text-sm font-medium text-slate-700 mb-4">↩️ Arrastre de Días</h4>
+          <div class="mb-4">
+            <label class="inline-flex items-center gap-2">
+              {{ form.allow_carry_over }}
+              <span class="text-sm text-slate-700">{{ form.allow_carry_over.label }}</span>
+            </label>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.max_carry_over_days.label }}</label>
+              {{ form.max_carry_over_days }}
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.carry_over_deadline_months.label }}</label>
+              {{ form.carry_over_deadline_months }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Request rules section -->
+        <div class="border-b border-slate-100 pb-6">
+          <h4 class="text-sm font-medium text-slate-700 mb-4">📋 Reglas de Solicitud</h4>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.min_advance_days.label }}</label>
+              {{ form.min_advance_days }}
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">{{ form.max_consecutive_days.label }}</label>
+              {{ form.max_consecutive_days }}
+              <p class="text-xs text-slate-400 mt-1">0 = sin límite</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Calculation rules -->
+        <div>
+          <h4 class="text-sm font-medium text-slate-700 mb-4">🧮 Cálculo de Días</h4>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3">
+              {{ form.count_weekends }}
+              <span class="text-sm text-slate-700">{{ form.count_weekends.label }}</span>
+            </label>
+            <label class="flex items-center gap-3">
+              {{ form.exclude_holidays }}
+              <span class="text-sm text-slate-700">{{ form.exclude_holidays.label }}</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="pt-4">
+          <button type="submit" 
+                  class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors">
+            Guardar Política
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Sidebar -->
+  <div class="lg:col-span-1 space-y-6">
+    <!-- Absence Types -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <h3 class="text-lg font-bold text-slate-900 mb-4">Tipos de Ausencia</h3>
+      
+      <div class="space-y-3">
+        {% for atype in absence_types %}
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+          <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full" style="background-color: {{ atype.color|default:'#3788d8' }}"></span>
+            <div>
+              <div class="text-sm font-medium text-slate-900">{{ atype.name }}</div>
+              <div class="text-xs text-slate-500">
+                {% if atype.is_paid %}Pagado{% else %}No pagado{% endif %}
+                {% if atype.requires_approval %}· Requiere aprobación{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-sm text-slate-500">No hay tipos de ausencia configurados.</p>
+        {% endfor %}
+      </div>
+      
+      <p class="mt-4 text-xs text-slate-500">
+        Los tipos de ausencia se gestionan desde el panel de administración.
+      </p>
+    </div>
+    
+    <!-- Blocked Periods -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-900">Periodos Bloqueados</h3>
+        <a href="{% url 'blocked_period_create' %}" 
+           class="text-sm text-blue-600 hover:text-blue-700">+ Añadir</a>
+      </div>
+      
+      <a href="{% url 'blocked_periods_list' %}" 
+         class="block text-sm text-slate-600 hover:text-slate-900">
+        Ver todos los periodos →
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

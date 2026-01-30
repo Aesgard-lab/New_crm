@@ -1,0 +1,161 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Solicitudes Pendientes - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>Solicitudes Pendientes</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Aprueba o rechaza solicitudes de vacaciones</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Navigation Tabs -->
+<div class="mb-6 flex flex-wrap gap-2">
+  <a href="{% url 'vacation_calendar' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    📅 Calendario
+  </a>
+  <a href="{% url 'my_vacations' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    🏖️ Mis Vacaciones
+  </a>
+  <a href="{% url 'vacation_pending_list' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white flex items-center gap-2">
+    ⏳ Pendientes
+    {% if pending_requests.count > 0 %}
+    <span class="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{{ pending_requests.count }}</span>
+    {% endif %}
+  </a>
+  <a href="{% url 'vacation_balances' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    📊 Balances
+  </a>
+  <a href="{% url 'vacation_settings' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    ⚙️ Configuración
+  </a>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  {% if pending_requests %}
+  <div class="divide-y divide-slate-100">
+    {% for req in pending_requests %}
+    <div class="px-6 py-4 hover:bg-slate-50">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Employee Info -->
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 overflow-hidden">
+            {% if req.staff.photo %}
+            <img src="{{ req.staff.photo.url }}" alt="{{ req.staff.user.first_name }}" class="w-full h-full object-cover">
+            {% else %}
+            {{ req.staff.user.first_name.0 }}{{ req.staff.user.last_name.0 }}
+            {% endif %}
+          </div>
+          <div>
+            <div class="font-medium text-slate-900">
+              {{ req.staff.user.get_full_name }}
+            </div>
+            <div class="text-sm text-slate-500">
+              {{ req.staff.get_role_display }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Request Info -->
+        <div class="flex-1 lg:text-center">
+          <div class="font-medium text-slate-900">
+            {{ req.absence_type.name }}
+          </div>
+          <div class="text-sm text-slate-500">
+            {{ req.start_date|date:"d M Y" }} → {{ req.end_date|date:"d M Y" }}
+          </div>
+          <div class="text-sm text-slate-400">
+            {{ req.working_days }} días laborables
+          </div>
+        </div>
+        
+        <!-- Notes if any -->
+        {% if req.notes %}
+        <div class="flex-1 text-sm text-slate-500 italic lg:text-center">
+          "{{ req.notes|truncatewords:20 }}"
+        </div>
+        {% endif %}
+        
+        <!-- Actions -->
+        <div class="flex items-center gap-2">
+          <form method="post" action="{% url 'vacation_request_approve' req.pk %}">
+            {% csrf_token %}
+            <button type="submit" 
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+              ✓ Aprobar
+            </button>
+          </form>
+          
+          <button type="button" 
+                  onclick="showRejectModal({{ req.pk }}, '{{ req.staff.user.get_full_name|escapejs }}')"
+                  class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+            ✗ Rechazar
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="px-6 py-12 text-center text-slate-400">
+    <div class="text-4xl mb-2">✅</div>
+    <p>No hay solicitudes pendientes.</p>
+    <p class="text-sm mt-1">Todas las solicitudes han sido procesadas.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Reject Modal -->
+<div id="reject-modal" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6">
+    <h3 class="text-lg font-bold text-slate-900 mb-4">Rechazar Solicitud</h3>
+    <p class="text-sm text-slate-600 mb-4">
+      ¿Estás seguro de rechazar la solicitud de <span id="reject-staff-name" class="font-medium"></span>?
+    </p>
+    <form id="reject-form" method="post">
+      {% csrf_token %}
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          Motivo del rechazo (opcional)
+        </label>
+        <textarea name="reason" rows="3" 
+                  class="w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Explica el motivo del rechazo..."></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" 
+                class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+          Confirmar Rechazo
+        </button>
+        <button type="button" onclick="hideRejectModal()"
+                class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showRejectModal(requestId, staffName) {
+  document.getElementById('reject-modal').classList.remove('hidden');
+  document.getElementById('reject-staff-name').textContent = staffName;
+  document.getElementById('reject-form').action = "{% url 'vacation_request_reject' 0 %}".replace('0', requestId);
+}
+
+function hideRejectModal() {
+  document.getElementById('reject-modal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('reject-modal').addEventListener('click', function(e) {
+  if (e.target === this) hideRejectModal();
+});
+</script>
+
+{% endblock %}

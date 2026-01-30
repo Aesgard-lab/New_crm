@@ -1,0 +1,168 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Balances de Vacaciones - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>Balances de Vacaciones</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Estado de días de todo el equipo</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Navigation Tabs -->
+<div class="mb-6 flex flex-wrap gap-2">
+  <a href="{% url 'vacation_calendar' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    📅 Calendario
+  </a>
+  <a href="{% url 'my_vacations' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    🏖️ Mis Vacaciones
+  </a>
+  <a href="{% url 'vacation_pending_list' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    ⏳ Pendientes
+  </a>
+  <a href="{% url 'vacation_balances' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white">
+    📊 Balances
+  </a>
+  <a href="{% url 'vacation_settings' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    ⚙️ Configuración
+  </a>
+</div>
+
+<!-- Year Selector -->
+<div class="mb-6 flex items-center gap-4">
+  <span class="text-sm text-slate-600">Año:</span>
+  <div class="flex gap-1">
+    {% for year in years %}
+    <a href="?year={{ year }}" 
+       class="px-3 py-1 rounded-lg text-sm {% if year == current_year %}bg-slate-900 text-white{% else %}bg-white text-slate-600 hover:bg-slate-100{% endif %}">
+      {{ year }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+      <tr>
+        <th class="px-6 py-4">Empleado</th>
+        <th class="px-6 py-4 text-center">Asignados</th>
+        <th class="px-6 py-4 text-center">Arrastrados</th>
+        <th class="px-6 py-4 text-center">Usados</th>
+        <th class="px-6 py-4 text-center">Pendientes</th>
+        <th class="px-6 py-4 text-center">Disponibles</th>
+        <th class="px-6 py-4 text-center">Progreso</th>
+        <th class="px-6 py-4 text-right">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for item in balances %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 overflow-hidden">
+              {% if item.staff.photo %}
+              <img src="{{ item.staff.photo.url }}" alt="{{ item.staff.user.first_name }}" class="w-full h-full object-cover">
+              {% else %}
+              {{ item.staff.user.first_name.0 }}{{ item.staff.user.last_name.0 }}
+              {% endif %}
+            </div>
+            <div>
+              <div class="font-medium text-slate-900">
+                {{ item.staff.user.get_full_name }}
+              </div>
+              <div class="text-xs text-slate-500">
+                {{ item.staff.get_role_display }}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4 text-center font-medium">
+          {{ item.balance.days_allocated|floatformat:1 }}
+        </td>
+        <td class="px-6 py-4 text-center">
+          {% if item.balance.days_carried_over > 0 %}
+          <span class="text-blue-600">+{{ item.balance.days_carried_over|floatformat:1 }}</span>
+          {% else %}
+          <span class="text-slate-400">0</span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 text-center text-emerald-600 font-medium">
+          {{ item.balance.days_used|floatformat:1 }}
+        </td>
+        <td class="px-6 py-4 text-center">
+          {% if item.balance.days_pending > 0 %}
+          <span class="text-amber-600 font-medium">{{ item.balance.days_pending|floatformat:1 }}</span>
+          {% else %}
+          <span class="text-slate-400">0</span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 text-center">
+          <span class="{% if item.balance.days_available > 5 %}text-emerald-600{% elif item.balance.days_available > 0 %}text-amber-600{% else %}text-red-600{% endif %} font-bold text-lg">
+            {{ item.balance.days_available|floatformat:1 }}
+          </span>
+        </td>
+        <td class="px-6 py-4">
+          <div class="w-24 mx-auto">
+            {% widthratio item.balance.days_used item.balance.total_days 100 as used_pct %}
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div class="bg-emerald-500 h-full" style="width: {{ used_pct|default:0 }}%"></div>
+            </div>
+            <div class="text-xs text-slate-500 text-center mt-1">{{ used_pct|default:0 }}%</div>
+          </div>
+        </td>
+        <td class="px-6 py-4 text-right">
+          <a href="{% url 'vacation_balance_adjust' item.balance.pk %}" 
+             class="text-slate-400 hover:text-slate-600 transition-colors"
+             title="Ajustar balance">
+            <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="px-6 py-12 text-center text-slate-400">
+          No hay empleados activos.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Summary -->
+<div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+  {% with total_allocated=0 total_used=0 total_available=0 %}
+  <div class="bg-white rounded-xl p-4 border border-slate-100">
+    <div class="text-2xl font-bold text-slate-900">{{ balances|length }}</div>
+    <div class="text-xs text-slate-500">Empleados</div>
+  </div>
+  <div class="bg-white rounded-xl p-4 border border-slate-100">
+    <div class="text-2xl font-bold text-blue-600">
+      {% for item in balances %}{{ item.balance.days_allocated|add:0 }}{% if not forloop.last %}+{% endif %}{% empty %}0{% endfor %}
+    </div>
+    <div class="text-xs text-slate-500">Total asignados</div>
+  </div>
+  <div class="bg-white rounded-xl p-4 border border-slate-100">
+    <div class="text-2xl font-bold text-emerald-600">
+      {% for item in balances %}{{ item.balance.days_used|add:0 }}{% if not forloop.last %}+{% endif %}{% empty %}0{% endfor %}
+    </div>
+    <div class="text-xs text-slate-500">Total usados</div>
+  </div>
+  <div class="bg-white rounded-xl p-4 border border-slate-100">
+    <div class="text-2xl font-bold text-amber-600">
+      {% for item in balances %}{{ item.balance.days_pending|add:0 }}{% if not forloop.last %}+{% endif %}{% empty %}0{% endfor %}
+    </div>
+    <div class="text-xs text-slate-500">Total pendientes</div>
+  </div>
+  {% endwith %}
+</div>
+
+{% endblock %}

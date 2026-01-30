@@ -423,3 +423,498 @@ class RatingIncentive(models.Model):
             return float(self.bonus_value)
 
 
+# ==========================================
+# VACATION & ABSENCE MANAGEMENT
+# ==========================================
+
+class AbsenceType(models.Model):
+    """
+    Types of absences: Vacation, Sick Leave, Personal Days, etc.
+    """
+    class Category(models.TextChoices):
+        VACATION = "VACATION", "Vacaciones"
+        SICK = "SICK", "Enfermedad / Baja Médica"
+        PERSONAL = "PERSONAL", "Asuntos Propios"
+        MATERNITY = "MATERNITY", "Maternidad / Paternidad"
+        UNPAID = "UNPAID", "Permiso Sin Sueldo"
+        TRAINING = "TRAINING", "Formación"
+        OTHER = "OTHER", "Otro"
+    
+    gym = models.ForeignKey(
+        "organizations.Gym", 
+        on_delete=models.CASCADE, 
+        related_name="absence_types"
+    )
+    name = models.CharField(max_length=100, help_text="Ej: Vacaciones, Baja Médica")
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.VACATION)
+    
+    # Configuration
+    is_paid = models.BooleanField(default=True, help_text="¿Se remunera este tipo de ausencia?")
+    requires_approval = models.BooleanField(default=True, help_text="¿Requiere aprobación del manager?")
+    requires_documentation = models.BooleanField(default=False, help_text="¿Requiere justificante?")
+    deducts_from_balance = models.BooleanField(default=True, help_text="¿Descuenta del saldo de vacaciones?")
+    
+    color = models.CharField(max_length=7, default="#3b82f6", help_text="Color en calendario (HEX)")
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = "Tipo de Ausencia"
+        verbose_name_plural = "Tipos de Ausencia"
+        ordering = ["name"]
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_category_display()})"
+
+
+class VacationPolicy(models.Model):
+    """
+    Vacation policy configuration per gym.
+    Defines how many days employees get and rules for requesting.
+    """
+    gym = models.OneToOneField(
+        "organizations.Gym", 
+        on_delete=models.CASCADE, 
+        related_name="vacation_policy"
+    )
+    
+    # Base allowance
+    base_days_per_year = models.PositiveIntegerField(
+        default=22, 
+        help_text="Días de vacaciones base anuales (típico España: 22-30)"
+    )
+    
+    # Seniority bonuses
+    extra_days_per_year_worked = models.PositiveIntegerField(
+        default=0,
+        help_text="Días extra por cada año de antigüedad (ej: 1 día extra por año)"
+    )
+    max_seniority_days = models.PositiveIntegerField(
+        default=5,
+        help_text="Máximo de días extra por antigüedad"
+    )
+    
+    # Carry-over rules
+    allow_carry_over = models.BooleanField(
+        default=True,
+        help_text="¿Permitir arrastrar días no usados al siguiente año?"
+    )
+    max_carry_over_days = models.PositiveIntegerField(
+        default=5,
+        help_text="Máximo de días que se pueden arrastrar"
+    )
+    carry_over_deadline_months = models.PositiveIntegerField(
+        default=3,
+        help_text="Meses para usar los días arrastrados (ej: 3 = hasta marzo)"
+    )
+    
+    # Request rules
+    min_advance_days = models.PositiveIntegerField(
+        default=15,
+        help_text="Días mínimos de antelación para solicitar vacaciones"
+    )
+    min_consecutive_days = models.PositiveIntegerField(
+        default=1,
+        help_text="Mínimo de días consecutivos por solicitud"
+    )
+    max_consecutive_days = models.PositiveIntegerField(
+        default=21,
+        help_text="Máximo de días consecutivos por solicitud"
+    )
+    
+    # Calendar settings
+    count_weekends = models.BooleanField(
+        default=False,
+        help_text="¿Contar fines de semana como días de vacaciones?"
+    )
+    exclude_holidays = models.BooleanField(
+        default=True,
+        help_text="¿Excluir festivos del recuento?"
+    )
+    
+    # Overlap control
+    max_staff_absent_percent = models.PositiveIntegerField(
+        default=30,
+        help_text="% máximo del equipo que puede estar ausente simultáneamente"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Política de Vacaciones"
+        verbose_name_plural = "Políticas de Vacaciones"
+    
+    def __str__(self):
+        return f"Política de {self.gym.name}"
+    
+    def calculate_days_for_staff(self, staff_profile):
+        """
+        Calculate total vacation days for a staff member based on seniority.
+        """
+        from django.utils import timezone
+        
+        # Calculate years worked
+        years_worked = 0
+        if staff_profile.created_at:
+            delta = timezone.now() - staff_profile.created_at
+            years_worked = delta.days // 365
+        
+        # Calculate seniority bonus
+        seniority_bonus = min(
+            years_worked * self.extra_days_per_year_worked,
+            self.max_seniority_days
+        )
+        
+        return self.base_days_per_year + seniority_bonus
+
+
+class StaffVacationBalance(models.Model):
+    """
+    Tracks vacation balance per staff member per year.
+    """
+    staff = models.ForeignKey(
+        StaffProfile, 
+        on_delete=models.CASCADE, 
+        related_name="vacation_balances"
+    )
+    year = models.PositiveIntegerField(help_text="Año fiscal")
+    
+    # Allocation
+    days_allocated = models.DecimalField(
+        max_digits=5, 
+        decimal_places=1, 
+        default=0,
+        help_text="Días asignados para el año"
+    )
+    days_carried_over = models.DecimalField(
+        max_digits=5, 
+        decimal_places=1, 
+        default=0,
+        help_text="Días arrastrados del año anterior"
+    )
+    days_adjustment = models.DecimalField(
+        max_digits=5, 
+        decimal_places=1, 
+        default=0,
+        help_text="Ajustes manuales (+/-)"
+    )
+    
+    # Usage tracking
+    days_used = models.DecimalField(
+        max_digits=5, 
+        decimal_places=1, 
+        default=0,
+        help_text="Días ya disfrutados"
+    )
+    days_pending = models.DecimalField(
+        max_digits=5, 
+        decimal_places=1, 
+        default=0,
+        help_text="Días en solicitudes pendientes de aprobación"
+    )
+    
+    notes = models.TextField(blank=True, help_text="Notas o comentarios")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Saldo de Vacaciones"
+        verbose_name_plural = "Saldos de Vacaciones"
+        unique_together = ["staff", "year"]
+        ordering = ["-year", "staff__user__first_name"]
+    
+    def __str__(self):
+        return f"{self.staff} - {self.year}: {self.days_available} días disponibles"
+    
+    @property
+    def days_total(self):
+        """Total days available for the year"""
+        return float(self.days_allocated) + float(self.days_carried_over) + float(self.days_adjustment)
+    
+    @property
+    def days_available(self):
+        """Days remaining (not used and not pending)"""
+        return self.days_total - float(self.days_used) - float(self.days_pending)
+    
+    @classmethod
+    def get_or_create_for_year(cls, staff, year):
+        """
+        Get or create balance for a staff member for a specific year.
+        Automatically calculates allocation based on policy.
+        """
+        balance, created = cls.objects.get_or_create(
+            staff=staff,
+            year=year,
+            defaults={'days_allocated': 0}
+        )
+        
+        if created:
+            # Calculate allocation from policy
+            try:
+                policy = staff.gym.vacation_policy
+                balance.days_allocated = policy.calculate_days_for_staff(staff)
+                
+                # Check for carry-over from previous year
+                if policy.allow_carry_over:
+                    try:
+                        prev_balance = cls.objects.get(staff=staff, year=year - 1)
+                        carry_over = min(
+                            prev_balance.days_available,
+                            policy.max_carry_over_days
+                        )
+                        if carry_over > 0:
+                            balance.days_carried_over = carry_over
+                    except cls.DoesNotExist:
+                        pass
+                
+                balance.save()
+            except VacationPolicy.DoesNotExist:
+                # No policy defined, use default
+                balance.days_allocated = 22
+                balance.save()
+        
+        return balance
+
+
+class VacationRequest(models.Model):
+    """
+    Individual vacation/absence request from a staff member.
+    """
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Borrador"
+        PENDING = "PENDING", "Pendiente de Aprobación"
+        APPROVED = "APPROVED", "Aprobada"
+        REJECTED = "REJECTED", "Rechazada"
+        CANCELLED = "CANCELLED", "Cancelada"
+    
+    staff = models.ForeignKey(
+        StaffProfile, 
+        on_delete=models.CASCADE, 
+        related_name="vacation_requests"
+    )
+    absence_type = models.ForeignKey(
+        AbsenceType,
+        on_delete=models.PROTECT,
+        related_name="requests",
+        help_text="Tipo de ausencia"
+    )
+    
+    # Date range
+    start_date = models.DateField(help_text="Fecha de inicio")
+    end_date = models.DateField(help_text="Fecha de fin (inclusive)")
+    
+    # Calculated days
+    working_days = models.DecimalField(
+        max_digits=5, 
+        decimal_places=1, 
+        default=0,
+        help_text="Días laborables solicitados (excluye fines de semana/festivos si aplica)"
+    )
+    
+    # Request details
+    reason = models.TextField(blank=True, help_text="Motivo o notas de la solicitud")
+    documentation = models.FileField(
+        upload_to="staff/vacation_docs/", 
+        blank=True, 
+        null=True,
+        help_text="Justificante si es requerido"
+    )
+    
+    # Status tracking
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    
+    # Approval workflow
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_vacation_requests"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, help_text="Motivo del rechazo si aplica")
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Solicitud de Vacaciones"
+        verbose_name_plural = "Solicitudes de Vacaciones"
+        ordering = ["-created_at"]
+        permissions = [
+            ("approve_vacation", "Puede aprobar solicitudes de vacaciones"),
+            ("view_all_vacations", "Ver vacaciones de todo el equipo"),
+            ("view_own_vacations", "Ver solo sus propias vacaciones"),
+        ]
+    
+    def __str__(self):
+        return f"{self.staff} - {self.start_date} a {self.end_date} ({self.get_status_display()})"
+    
+    @property
+    def duration_days(self):
+        """Total calendar days"""
+        if self.start_date and self.end_date:
+            return (self.end_date - self.start_date).days + 1
+        return 0
+    
+    def calculate_working_days(self):
+        """
+        Calculate working days excluding weekends and holidays.
+        """
+        from django.utils import timezone
+        import datetime
+        
+        if not self.start_date or not self.end_date:
+            return 0
+        
+        try:
+            policy = self.staff.gym.vacation_policy
+        except VacationPolicy.DoesNotExist:
+            policy = None
+        
+        working_days = 0
+        current_date = self.start_date
+        
+        # Get holidays for the gym
+        holidays = set()
+        try:
+            from organizations.models import GymHoliday
+            gym_holidays = GymHoliday.objects.filter(
+                gym=self.staff.gym,
+                date__gte=self.start_date,
+                date__lte=self.end_date
+            )
+            holidays = set(h.date for h in gym_holidays)
+        except:
+            pass
+        
+        while current_date <= self.end_date:
+            is_weekend = current_date.weekday() >= 5  # Saturday = 5, Sunday = 6
+            is_holiday = current_date in holidays
+            
+            # Count day based on policy
+            count_day = True
+            
+            if policy:
+                if not policy.count_weekends and is_weekend:
+                    count_day = False
+                if policy.exclude_holidays and is_holiday:
+                    count_day = False
+            else:
+                # Default: exclude weekends
+                if is_weekend:
+                    count_day = False
+            
+            if count_day:
+                working_days += 1
+            
+            current_date += datetime.timedelta(days=1)
+        
+        return working_days
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate working days
+        if not self.working_days or self.working_days == 0:
+            self.working_days = self.calculate_working_days()
+        super().save(*args, **kwargs)
+    
+    def approve(self, user):
+        """Approve the request and update balance"""
+        from django.utils import timezone
+        
+        if self.status != self.Status.PENDING:
+            raise ValueError("Solo se pueden aprobar solicitudes pendientes")
+        
+        # Update balance
+        if self.absence_type.deducts_from_balance:
+            year = self.start_date.year
+            balance = StaffVacationBalance.get_or_create_for_year(self.staff, year)
+            balance.days_pending = float(balance.days_pending) - float(self.working_days)
+            balance.days_used = float(balance.days_used) + float(self.working_days)
+            balance.save()
+        
+        self.status = self.Status.APPROVED
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.save()
+    
+    def reject(self, user, reason=""):
+        """Reject the request and restore pending balance"""
+        from django.utils import timezone
+        
+        if self.status != self.Status.PENDING:
+            raise ValueError("Solo se pueden rechazar solicitudes pendientes")
+        
+        # Restore pending balance
+        if self.absence_type.deducts_from_balance:
+            year = self.start_date.year
+            balance = StaffVacationBalance.get_or_create_for_year(self.staff, year)
+            balance.days_pending = float(balance.days_pending) - float(self.working_days)
+            balance.save()
+        
+        self.status = self.Status.REJECTED
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.rejection_reason = reason
+        self.save()
+    
+    def cancel(self):
+        """Cancel the request"""
+        if self.status == self.Status.APPROVED:
+            # Restore used days
+            if self.absence_type.deducts_from_balance:
+                year = self.start_date.year
+                balance = StaffVacationBalance.get_or_create_for_year(self.staff, year)
+                balance.days_used = float(balance.days_used) - float(self.working_days)
+                balance.save()
+        elif self.status == self.Status.PENDING:
+            # Restore pending days
+            if self.absence_type.deducts_from_balance:
+                year = self.start_date.year
+                balance = StaffVacationBalance.get_or_create_for_year(self.staff, year)
+                balance.days_pending = float(balance.days_pending) - float(self.working_days)
+                balance.save()
+        
+        self.status = self.Status.CANCELLED
+        self.save()
+
+
+class BlockedVacationPeriod(models.Model):
+    """
+    Periods where vacations are not allowed (e.g., Christmas in retail).
+    """
+    gym = models.ForeignKey(
+        "organizations.Gym", 
+        on_delete=models.CASCADE, 
+        related_name="blocked_vacation_periods"
+    )
+    name = models.CharField(max_length=100, help_text="Ej: Temporada Alta, Navidad")
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField(blank=True)
+    
+    # Optional: allow for specific roles
+    applies_to_roles = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Roles afectados. Vacío = todos. Ej: ['TRAINER', 'RECEPTIONIST']"
+    )
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Período Bloqueado"
+        verbose_name_plural = "Períodos Bloqueados"
+        ordering = ["start_date"]
+    
+    def __str__(self):
+        return f"{self.name}: {self.start_date} - {self.end_date}"
+    
+    def affects_role(self, role):
+        """Check if this block affects a specific role"""
+        if not self.applies_to_roles:
+            return True  # Empty = affects all
+        return role in self.applies_to_roles

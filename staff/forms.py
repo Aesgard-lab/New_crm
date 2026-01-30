@@ -213,3 +213,210 @@ class IncentiveRuleForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+# =====================================================
+# VACATION & ABSENCE MANAGEMENT FORMS
+# =====================================================
+from .models import VacationRequest, VacationPolicy, BlockedVacationPeriod, AbsenceType, StaffVacationBalance
+from django.db.models import Q
+
+
+class VacationRequestForm(forms.ModelForm):
+    """Formulario para solicitar vacaciones/ausencias"""
+    
+    class Meta:
+        model = VacationRequest
+        fields = ['absence_type', 'start_date', 'end_date', 'reason']
+        widgets = {
+            'absence_type': forms.Select(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500',
+            }),
+            'start_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500',
+            }),
+            'end_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500',
+            }),
+            'reason': forms.Textarea(attrs={
+                'rows': 3,
+                'class': 'w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500',
+                'placeholder': 'Notas adicionales (opcional)...'
+            }),
+        }
+    
+    def __init__(self, *args, gym=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        if gym:
+            # Filtrar tipos de ausencia por gym
+            self.fields['absence_type'].queryset = AbsenceType.objects.filter(
+                gym=gym,
+                is_active=True
+            ).order_by('name')
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date:
+            if end_date < start_date:
+                raise forms.ValidationError(
+                    "La fecha de fin debe ser posterior o igual a la fecha de inicio."
+                )
+            
+            # Validar que no sea más de 365 días
+            from datetime import timedelta
+            if (end_date - start_date).days > 365:
+                raise forms.ValidationError(
+                    "No puedes solicitar más de 365 días de ausencia en una sola solicitud."
+                )
+        
+        return cleaned_data
+
+
+class VacationPolicyForm(forms.ModelForm):
+    """Formulario para configurar política de vacaciones"""
+    
+    class Meta:
+        model = VacationPolicy
+        fields = [
+            'base_days_per_year', 'extra_days_per_year_worked', 'max_seniority_days',
+            'allow_carry_over', 'max_carry_over_days', 'carry_over_deadline_months',
+            'min_advance_days', 'max_consecutive_days',
+            'count_weekends', 'exclude_holidays'
+        ]
+        widgets = {
+            'base_days_per_year': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+                'max': '365',
+            }),
+            'extra_days_per_year_worked': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+                'step': '1',
+            }),
+            'max_seniority_days': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+            }),
+            'allow_carry_over': forms.CheckboxInput(attrs={
+                'class': 'rounded border-slate-300 text-blue-600 focus:ring-blue-500'
+            }),
+            'max_carry_over_days': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+            }),
+            'carry_over_deadline_months': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+                'max': '12',
+            }),
+            'min_advance_days': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+            }),
+            'max_consecutive_days': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+            }),
+            'count_weekends': forms.CheckboxInput(attrs={
+                'class': 'rounded border-slate-300 text-blue-600 focus:ring-blue-500'
+            }),
+            'exclude_holidays': forms.CheckboxInput(attrs={
+                'class': 'rounded border-slate-300 text-blue-600 focus:ring-blue-500'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Añadir labels en español
+        self.fields['base_days_per_year'].label = 'Días base por año'
+        self.fields['extra_days_per_year_worked'].label = 'Días extra por año de antigüedad'
+        self.fields['max_seniority_days'].label = 'Máximo bonus por antigüedad'
+        self.fields['allow_carry_over'].label = 'Permitir arrastre de días'
+        self.fields['max_carry_over_days'].label = 'Máximo días a arrastrar'
+        self.fields['carry_over_deadline_months'].label = 'Meses para usar días arrastrados'
+        self.fields['min_advance_days'].label = 'Días mínimos de antelación'
+        self.fields['max_consecutive_days'].label = 'Máximo días consecutivos'
+        self.fields['count_weekends'].label = 'Contar fines de semana'
+        self.fields['exclude_holidays'].label = 'Excluir festivos'
+
+
+class BlockedPeriodForm(forms.ModelForm):
+    """Formulario para crear periodos bloqueados"""
+    
+    class Meta:
+        model = BlockedVacationPeriod
+        fields = ['name', 'start_date', 'end_date', 'reason']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'placeholder': 'Ej: Navidad, Campaña Verano...'
+            }),
+            'start_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+            }),
+            'end_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+            }),
+            'reason': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'placeholder': 'Motivo del bloqueo (opcional)...'
+            }),
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError(
+                "La fecha de fin debe ser posterior o igual a la fecha de inicio."
+            )
+        
+        return cleaned_data
+
+
+class BalanceAdjustForm(forms.ModelForm):
+    """Formulario para ajustar manualmente el balance de vacaciones"""
+    
+    class Meta:
+        model = StaffVacationBalance
+        fields = ['days_allocated', 'days_carried_over', 'days_adjustment', 'notes']
+        widgets = {
+            'days_allocated': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+                'step': '0.5',
+            }),
+            'days_carried_over': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'min': '0',
+                'step': '0.5',
+            }),
+            'days_adjustment': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'step': '0.5',
+            }),
+            'notes': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500',
+                'placeholder': 'Notas del ajuste (opcional)...'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['days_allocated'].label = 'Días asignados'
+        self.fields['days_carried_over'].label = 'Días arrastrados del año anterior'
+        self.fields['days_adjustment'].label = 'Ajuste manual (+/-)'
+        self.fields['notes'].label = 'Notas'

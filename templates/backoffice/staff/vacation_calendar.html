@@ -1,0 +1,111 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Calendario de Vacaciones - {{ request.gym.name }}{% endblock %}
+
+{% block extra_head %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+{% endblock %}
+
+{% block page_title %}
+<div>Calendario de Vacaciones</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Vista del equipo</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Navigation Tabs -->
+<div class="mb-6 flex flex-wrap gap-2">
+  <a href="{% url 'vacation_calendar' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white">
+    📅 Calendario
+  </a>
+  <a href="{% url 'my_vacations' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    🏖️ Mis Vacaciones
+  </a>
+  {% load gym_tags %}
+  {% has_gym_perm 'staff.change_staffprofile' as can_manage %}
+  {% if can_manage %}
+  <a href="{% url 'vacation_pending_list' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 flex items-center gap-2">
+    ⏳ Pendientes
+    {% if pending_count > 0 %}
+    <span class="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{{ pending_count }}</span>
+    {% endif %}
+  </a>
+  <a href="{% url 'vacation_balances' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    📊 Balances
+  </a>
+  <a href="{% url 'vacation_settings' %}" 
+     class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
+    ⚙️ Configuración
+  </a>
+  {% endif %}
+</div>
+
+<!-- Calendar Container -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+  <div id="calendar"></div>
+</div>
+
+<!-- Legend -->
+<div class="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
+  <div class="flex items-center gap-2">
+    <span class="w-4 h-4 rounded bg-blue-500"></span>
+    <span>Vacaciones</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="w-4 h-4 rounded bg-amber-500"></span>
+    <span>Baja médica</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="w-4 h-4 rounded bg-purple-500"></span>
+    <span>Asuntos propios</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="w-4 h-4 rounded bg-red-500 opacity-50"></span>
+    <span>Periodo bloqueado</span>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var calendarEl = document.getElementById('calendar');
+  var calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'es',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,dayGridWeek,listMonth'
+    },
+    buttonText: {
+      today: 'Hoy',
+      month: 'Mes',
+      week: 'Semana',
+      list: 'Lista'
+    },
+    events: '{% url "vacation_calendar_data" %}',
+    eventClick: function(info) {
+      if (info.event.extendedProps.type === 'vacation') {
+        alert(
+          'Empleado: ' + info.event.title.split(' - ')[0] + '\n' +
+          'Tipo: ' + info.event.extendedProps.absence_type + '\n' +
+          'Días laborables: ' + info.event.extendedProps.days
+        );
+      } else if (info.event.extendedProps.type === 'blocked') {
+        alert('Periodo bloqueado: ' + info.event.title.replace('🚫 ', '') + '\n' + 
+              (info.event.extendedProps.reason || 'Sin motivo especificado'));
+      }
+    },
+    height: 'auto',
+    eventDisplay: 'block',
+    dayMaxEvents: 3,
+  });
+  calendar.render();
+});
+</script>
+
+{% endblock %}

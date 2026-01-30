@@ -1,0 +1,69 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{{ title }} - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Define un periodo sin vacaciones</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          Nombre del periodo
+        </label>
+        {{ form.name }}
+        <p class="mt-1 text-xs text-slate-500">Ej: "Navidad 2025", "Campaña Verano"</p>
+      </div>
+      
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Fecha inicio
+          </label>
+          {{ form.start_date }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Fecha fin
+          </label>
+          {{ form.end_date }}
+        </div>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          Motivo (opcional)
+        </label>
+        {{ form.reason }}
+      </div>
+      
+      {% if form.non_field_errors %}
+      <div class="p-4 bg-red-50 text-red-700 rounded-xl text-sm">
+        {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      
+      <div class="flex gap-3 pt-4">
+        <button type="submit" 
+                class="flex-1 bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl text-sm font-medium transition-colors">
+          Crear Periodo
+        </button>
+        <a href="{% url 'blocked_periods_list' %}" 
+           class="px-4 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

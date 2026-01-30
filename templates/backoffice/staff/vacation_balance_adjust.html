@@ -1,0 +1,93 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Ajustar Balance - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Modifica manualmente el balance de vacaciones</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+  <!-- Current Status -->
+  <div class="bg-slate-50 rounded-2xl p-6 mb-6">
+    <h3 class="text-sm font-medium text-slate-700 mb-4">Balance Actual - {{ balance.year }}</h3>
+    <div class="grid grid-cols-4 gap-4 text-center">
+      <div>
+        <div class="text-xl font-bold text-slate-900">{{ balance.total_days|floatformat:1 }}</div>
+        <div class="text-xs text-slate-500">Total</div>
+      </div>
+      <div>
+        <div class="text-xl font-bold text-emerald-600">{{ balance.days_used|floatformat:1 }}</div>
+        <div class="text-xs text-slate-500">Usados</div>
+      </div>
+      <div>
+        <div class="text-xl font-bold text-amber-600">{{ balance.days_pending|floatformat:1 }}</div>
+        <div class="text-xs text-slate-500">Pendientes</div>
+      </div>
+      <div>
+        <div class="text-xl font-bold text-blue-600">{{ balance.days_available|floatformat:1 }}</div>
+        <div class="text-xs text-slate-500">Disponibles</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            {{ form.days_allocated.label }}
+          </label>
+          {{ form.days_allocated }}
+          <p class="mt-1 text-xs text-slate-500">Días base asignados según política</p>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            {{ form.days_carried_over.label }}
+          </label>
+          {{ form.days_carried_over }}
+          <p class="mt-1 text-xs text-slate-500">Días del año anterior</p>
+        </div>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          {{ form.days_adjustment.label }}
+        </label>
+        {{ form.days_adjustment }}
+        <p class="mt-1 text-xs text-slate-500">Ajuste extraordinario (puede ser negativo)</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          {{ form.notes.label }}
+        </label>
+        {{ form.notes }}
+        <p class="mt-1 text-xs text-slate-500">Explica el motivo del ajuste</p>
+      </div>
+      
+      <div class="flex gap-3 pt-4">
+        <button type="submit" 
+                class="flex-1 bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl text-sm font-medium transition-colors">
+          Guardar Cambios
+        </button>
+        <a href="{% url 'vacation_balances' %}" 
+           class="px-4 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+  
+  <div class="mt-6 p-4 bg-amber-50 rounded-xl text-sm text-amber-700">
+    <p class="font-medium mb-1">⚠️ Nota importante</p>
+    <p>Los cambios manuales en el balance deben documentarse adecuadamente. Los días usados y pendientes se calculan automáticamente a partir de las solicitudes aprobadas.</p>
+  </div>
+</div>
+
+{% endblock %}

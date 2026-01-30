@@ -973,3 +973,486 @@ def my_commissions(request):
     }
     return render(request, 'backoffice/staff/my_commissions.html', context)
 
+
+# =====================================================
+# VACATION & ABSENCE MANAGEMENT VIEWS
+# =====================================================
+from .models import (
+    VacationPolicy, StaffVacationBalance, VacationRequest, 
+    AbsenceType, BlockedVacationPeriod
+)
+from .forms import VacationRequestForm, VacationPolicyForm, BlockedPeriodForm, BalanceAdjustForm
+import json
+from datetime import datetime, timedelta
+from django.db.models import Q
+from calendar import monthrange
+
+
+@login_required
+@require_gym_permission("vacations.view")
+def vacation_calendar(request):
+    """Vista de calendario de vacaciones del equipo"""
+    gym = request.gym
+    
+    # Obtener mes/año actual o del parámetro
+    year = int(request.GET.get('year', timezone.now().year))
+    month = int(request.GET.get('month', timezone.now().month))
+    
+    # Rango del mes
+    first_day = timezone.datetime(year, month, 1).date()
+    last_day = timezone.datetime(year, month, monthrange(year, month)[1]).date()
+    
+    # Obtener todas las solicitudes aprobadas del mes
+    requests = VacationRequest.objects.filter(
+        staff__gym=gym,
+        status=VacationRequest.Status.APPROVED,
+        start_date__lte=last_day,
+        end_date__gte=first_day
+    ).select_related('staff__user', 'absence_type')
+    
+    # Obtener periodos bloqueados
+    blocked_periods = BlockedVacationPeriod.objects.filter(
+        gym=gym,
+        start_date__lte=last_day,
+        end_date__gte=first_day
+    )
+    
+    # Pendientes de aprobar (para managers)
+    pending_count = VacationRequest.objects.filter(
+        staff__gym=gym,
+        status=VacationRequest.Status.PENDING
+    ).count()
+    
+    context = {
+        'title': 'Calendario de Vacaciones',
+        'requests': requests,
+        'blocked_periods': blocked_periods,
+        'pending_count': pending_count,
+        'year': year,
+        'month': month,
+        'month_name': first_day.strftime('%B %Y'),
+        'prev_month': (first_day - timedelta(days=1)).replace(day=1),
+        'next_month': (last_day + timedelta(days=1)),
+    }
+    return render(request, 'backoffice/staff/vacation_calendar.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.view")
+def vacation_calendar_data(request):
+    """API para datos del calendario (JSON para FullCalendar)"""
+    gym = request.gym
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+    
+    try:
+        start_date = datetime.strptime(start[:10], '%Y-%m-%d').date()
+        end_date = datetime.strptime(end[:10], '%Y-%m-%d').date()
+    except (ValueError, IndexError):
+        start_date = timezone.now().date().replace(day=1)
+        end_date = start_date + timedelta(days=31)
+    
+    events = []
+    
+    # Solicitudes aprobadas
+    requests = VacationRequest.objects.filter(
+        staff__gym=gym,
+        status=VacationRequest.Status.APPROVED,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    ).select_related('staff__user', 'absence_type')
+    
+    for req in requests:
+        staff_name = req.staff.user.get_full_name() or req.staff.user.email
+        events.append({
+            'id': f'vacation_{req.id}',
+            'title': f'{staff_name} - {req.absence_type.name}',
+            'start': req.start_date.isoformat(),
+            'end': (req.end_date + timedelta(days=1)).isoformat(),  # FullCalendar exclusive end
+            'color': req.absence_type.color or '#3788d8',
+            'allDay': True,
+            'extendedProps': {
+                'type': 'vacation',
+                'staff_id': req.staff.id,
+                'absence_type': req.absence_type.name,
+                'days': req.working_days,
+            }
+        })
+    
+    # Periodos bloqueados
+    blocked = BlockedVacationPeriod.objects.filter(
+        gym=gym,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    )
+    
+    for block in blocked:
+        events.append({
+            'id': f'blocked_{block.id}',
+            'title': f'🚫 {block.name}',
+            'start': block.start_date.isoformat(),
+            'end': (block.end_date + timedelta(days=1)).isoformat(),
+            'color': '#dc3545',
+            'allDay': True,
+            'display': 'background',
+            'extendedProps': {
+                'type': 'blocked',
+                'reason': block.reason,
+            }
+        })
+    
+    return JsonResponse(events, safe=False)
+
+
+@login_required
+def my_vacations(request):
+    """Vista de mis vacaciones (empleado)"""
+    user = request.user
+    
+    # Obtener perfil de staff
+    staff = StaffProfile.objects.filter(user=user, is_active=True).first()
+    if not staff:
+        messages.error(request, "No tienes un perfil de empleado activo.")
+        return redirect('vacation_calendar')
+    
+    gym = staff.gym
+    current_year = timezone.now().year
+    
+    # Obtener o crear balance
+    balance, created = StaffVacationBalance.objects.get_or_create(
+        staff=staff,
+        year=current_year,
+        defaults={'days_allocated': 22}  # Valor por defecto
+    )
+    
+    # Aplicar política si existe
+    if created:
+        policy = VacationPolicy.objects.filter(gym=gym).first()
+        if policy:
+            balance.days_allocated = policy.calculate_days_for_staff(staff)
+            balance.save()
+    
+    # Mis solicitudes
+    my_requests = VacationRequest.objects.filter(
+        staff=staff
+    ).select_related('absence_type', 'approved_by').order_by('-created_at')
+    
+    # Solicitudes del año actual
+    year_requests = my_requests.filter(start_date__year=current_year)
+    
+    # Tipos de ausencia disponibles
+    absence_types = AbsenceType.objects.filter(
+        gym=gym,
+        is_active=True
+    )
+    
+    context = {
+        'title': 'Mis Vacaciones',
+        'staff': staff,
+        'balance': balance,
+        'my_requests': my_requests[:20],
+        'year_requests': year_requests,
+        'absence_types': absence_types,
+        'current_year': current_year,
+    }
+    return render(request, 'backoffice/staff/my_vacations.html', context)
+
+
+@login_required
+def vacation_request_create(request):
+    """Crear nueva solicitud de vacaciones"""
+    user = request.user
+    
+    staff = StaffProfile.objects.filter(user=user, is_active=True).first()
+    if not staff:
+        messages.error(request, "No tienes un perfil de empleado activo.")
+        return redirect('vacation_calendar')
+    
+    gym = staff.gym
+    
+    if request.method == 'POST':
+        form = VacationRequestForm(request.POST, gym=gym)
+        if form.is_valid():
+            vacation = form.save(commit=False)
+            vacation.staff = staff
+            
+            # Calcular días laborables (usa la política del gym internamente)
+            vacation.working_days = vacation.calculate_working_days()
+            
+            # Obtener política para cálculos de balance
+            policy = VacationPolicy.objects.filter(gym=gym).first()
+            
+            # Validar días disponibles si es tipo que afecta balance
+            if vacation.absence_type.deducts_from_balance:
+                current_year = vacation.start_date.year
+                balance, _ = StaffVacationBalance.objects.get_or_create(
+                    staff=staff,
+                    year=current_year,
+                    defaults={'days_allocated': policy.calculate_days_for_staff(staff) if policy else 22}
+                )
+                
+                if vacation.working_days > balance.days_available:
+                    messages.error(request, 
+                        f"No tienes suficientes días disponibles. Solicitados: {vacation.working_days}, Disponibles: {balance.days_available}")
+                    return render(request, 'backoffice/staff/vacation_request_form.html', {
+                        'form': form,
+                        'title': 'Nueva Solicitud de Vacaciones'
+                    })
+            
+            # Verificar periodo bloqueado
+            blocked = BlockedVacationPeriod.objects.filter(
+                gym=gym,
+                start_date__lte=vacation.end_date,
+                end_date__gte=vacation.start_date
+            ).first()
+            
+            if blocked and blocked.affects_role(staff.role):
+                messages.error(request, 
+                    f"No puedes solicitar vacaciones en este periodo: {blocked.name}")
+                return render(request, 'backoffice/staff/vacation_request_form.html', {
+                    'form': form,
+                    'title': 'Nueva Solicitud de Vacaciones'
+                })
+            
+            # Auto-aprobar si no requiere aprobación
+            if not vacation.absence_type.requires_approval:
+                vacation.status = VacationRequest.Status.APPROVED
+                vacation.approved_at = timezone.now()
+            
+            vacation.save()
+            
+            # Actualizar balance pendiente si está pendiente
+            if vacation.status == VacationRequest.Status.PENDING and vacation.absence_type.deducts_from_balance:
+                balance.days_pending += vacation.working_days
+                balance.save()
+            
+            messages.success(request, "Solicitud creada correctamente.")
+            return redirect('my_vacations')
+    else:
+        form = VacationRequestForm(gym=gym)
+    
+    context = {
+        'title': 'Nueva Solicitud de Vacaciones',
+        'form': form,
+    }
+    return render(request, 'backoffice/staff/vacation_request_form.html', context)
+
+
+@login_required
+def vacation_request_cancel(request, pk):
+    """Cancelar solicitud de vacaciones"""
+    vacation = get_object_or_404(VacationRequest, pk=pk)
+    
+    # Verificar que sea el dueño o manager
+    if vacation.staff.user != request.user:
+        if hasattr(request, 'gym') and vacation.staff.gym != request.gym:
+            messages.error(request, "No tienes permiso para cancelar esta solicitud.")
+            return redirect('my_vacations')
+    
+    if request.method == 'POST':
+        try:
+            vacation.cancel()
+            messages.success(request, "Solicitud cancelada correctamente.")
+        except ValueError as e:
+            messages.error(request, str(e))
+    
+    return redirect('my_vacations')
+
+
+@login_required
+@require_gym_permission("vacations.approve")
+def vacation_pending_list(request):
+    """Lista de solicitudes pendientes de aprobar"""
+    gym = request.gym
+    
+    pending = VacationRequest.objects.filter(
+        staff__gym=gym,
+        status=VacationRequest.Status.PENDING
+    ).select_related('staff__user', 'absence_type').order_by('start_date')
+    
+    context = {
+        'title': 'Solicitudes Pendientes',
+        'pending_requests': pending,
+    }
+    return render(request, 'backoffice/staff/vacation_pending.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.approve")
+def vacation_request_approve(request, pk):
+    """Aprobar solicitud de vacaciones"""
+    vacation = get_object_or_404(VacationRequest, pk=pk, staff__gym=request.gym)
+    
+    if request.method == 'POST':
+        try:
+            vacation.approve(request.user)
+            messages.success(request, f"Solicitud de {vacation.staff.user.get_full_name()} aprobada.")
+        except ValueError as e:
+            messages.error(request, str(e))
+    
+    return redirect('vacation_pending_list')
+
+
+@login_required
+@require_gym_permission("vacations.approve")
+def vacation_request_reject(request, pk):
+    """Rechazar solicitud de vacaciones"""
+    vacation = get_object_or_404(VacationRequest, pk=pk, staff__gym=request.gym)
+    
+    reason = request.POST.get('reason', '')
+    
+    if request.method == 'POST':
+        try:
+            vacation.reject(request.user, reason)
+            messages.success(request, f"Solicitud de {vacation.staff.user.get_full_name()} rechazada.")
+        except ValueError as e:
+            messages.error(request, str(e))
+    
+    return redirect('vacation_pending_list')
+
+
+@login_required
+@require_gym_permission("vacations.manage_balances")
+def vacation_balances(request):
+    """Vista de balances de todos los empleados"""
+    gym = request.gym
+    current_year = int(request.GET.get('year', timezone.now().year))
+    
+    # Obtener todos los staff activos
+    staff_list = StaffProfile.objects.filter(gym=gym, is_active=True).select_related('user')
+    
+    # Obtener balances
+    balances = []
+    for staff in staff_list:
+        balance, created = StaffVacationBalance.objects.get_or_create(
+            staff=staff,
+            year=current_year,
+            defaults={'days_allocated': 22}
+        )
+        balances.append({
+            'staff': staff,
+            'balance': balance,
+        })
+    
+    context = {
+        'title': 'Balances de Vacaciones',
+        'balances': balances,
+        'current_year': current_year,
+        'years': range(current_year - 2, current_year + 2),
+    }
+    return render(request, 'backoffice/staff/vacation_balances.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.manage_balances")
+def vacation_balance_adjust(request, pk):
+    """Ajustar balance de un empleado"""
+    balance = get_object_or_404(StaffVacationBalance, pk=pk, staff__gym=request.gym)
+    
+    if request.method == 'POST':
+        form = BalanceAdjustForm(request.POST, instance=balance)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Balance actualizado correctamente.")
+            return redirect('vacation_balances')
+    else:
+        form = BalanceAdjustForm(instance=balance)
+    
+    context = {
+        'title': f'Ajustar Balance - {balance.staff.user.get_full_name()}',
+        'form': form,
+        'balance': balance,
+    }
+    return render(request, 'backoffice/staff/vacation_balance_adjust.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.settings")
+def vacation_settings(request):
+    """Configuración de política de vacaciones"""
+    gym = request.gym
+    
+    policy, created = VacationPolicy.objects.get_or_create(
+        gym=gym,
+        defaults={
+            'base_days_per_year': 22,
+            'extra_days_per_year_worked': 1,
+            'max_seniority_days': 5,
+        }
+    )
+    
+    if request.method == 'POST':
+        form = VacationPolicyForm(request.POST, instance=policy)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Política de vacaciones actualizada.")
+            return redirect('vacation_settings')
+    else:
+        form = VacationPolicyForm(instance=policy)
+    
+    # Tipos de ausencia
+    absence_types = AbsenceType.objects.filter(
+        gym=gym,
+        is_active=True
+    )
+    
+    context = {
+        'title': 'Configuración de Vacaciones',
+        'form': form,
+        'policy': policy,
+        'absence_types': absence_types,
+    }
+    return render(request, 'backoffice/staff/vacation_settings.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.blocked_periods")
+def blocked_periods_list(request):
+    """Lista de periodos bloqueados"""
+    gym = request.gym
+    
+    periods = BlockedVacationPeriod.objects.filter(gym=gym).order_by('-start_date')
+    
+    context = {
+        'title': 'Periodos Bloqueados',
+        'periods': periods,
+    }
+    return render(request, 'backoffice/staff/blocked_periods.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.blocked_periods")
+def blocked_period_create(request):
+    """Crear periodo bloqueado"""
+    gym = request.gym
+    
+    if request.method == 'POST':
+        form = BlockedPeriodForm(request.POST)
+        if form.is_valid():
+            period = form.save(commit=False)
+            period.gym = gym
+            period.save()
+            messages.success(request, "Periodo bloqueado creado.")
+            return redirect('blocked_periods_list')
+    else:
+        form = BlockedPeriodForm()
+    
+    context = {
+        'title': 'Nuevo Periodo Bloqueado',
+        'form': form,
+    }
+    return render(request, 'backoffice/staff/blocked_period_form.html', context)
+
+
+@login_required
+@require_gym_permission("vacations.blocked_periods")
+def blocked_period_delete(request, pk):
+    """Eliminar periodo bloqueado"""
+    period = get_object_or_404(BlockedVacationPeriod, pk=pk, gym=request.gym)
+    
+    if request.method == 'POST':
+        period.delete()
+        messages.success(request, "Periodo bloqueado eliminado.")
+    
+    return redirect('blocked_periods_list')
+

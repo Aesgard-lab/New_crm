@@ -20,6 +20,13 @@ DEFAULT_PERMS = [
     ("providers.manage", "Gestionar proveedores"),
     ("providers.purchase_orders.view", "Ver órdenes de compra"),
     ("providers.purchase_orders.manage", "Gestionar órdenes de compra"),
+    # Vacaciones
+    ("vacations.view", "Ver calendario de vacaciones"),
+    ("vacations.request", "Solicitar vacaciones propias"),
+    ("vacations.approve", "Aprobar/rechazar solicitudes de vacaciones"),
+    ("vacations.manage_balances", "Gestionar balances de días"),
+    ("vacations.settings", "Configurar política de vacaciones"),
+    ("vacations.blocked_periods", "Gestionar períodos bloqueados"),
 ]
 
 

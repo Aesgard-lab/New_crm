@@ -1,0 +1,137 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}{{ title }} - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>{{ title }}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Solicita tus días de ausencia</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      
+      <!-- Absence Type -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          Tipo de ausencia
+        </label>
+        {{ form.absence_type }}
+        {% if form.absence_type.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.absence_type.errors.0 }}</p>
+        {% endif %}
+      </div>
+      
+      <!-- Dates -->
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Fecha inicio
+          </label>
+          {{ form.start_date }}
+          {% if form.start_date.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ form.start_date.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Fecha fin
+          </label>
+          {{ form.end_date }}
+          {% if form.end_date.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ form.end_date.errors.0 }}</p>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Days calculation preview -->
+      <div id="days-preview" class="p-4 bg-blue-50 text-blue-700 rounded-xl text-sm hidden">
+        <span class="font-medium">Días laborables:</span> <span id="days-count">0</span> días
+      </div>
+      
+      <!-- Notes -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">
+          Notas (opcional)
+        </label>
+        {{ form.reason }}
+      </div>
+      
+      <!-- Form errors -->
+      {% if form.non_field_errors %}
+      <div class="p-4 bg-red-50 text-red-700 rounded-xl text-sm">
+        {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      
+      <!-- Actions -->
+      <div class="flex gap-3 pt-4">
+        <button type="submit" 
+                class="flex-1 bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl text-sm font-medium transition-colors">
+          Enviar Solicitud
+        </button>
+        <a href="{% url 'my_vacations' %}" 
+           class="px-4 py-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Info card -->
+  <div class="mt-6 p-4 bg-slate-50 rounded-xl text-sm text-slate-600">
+    <p class="font-medium text-slate-700 mb-2">💡 Información</p>
+    <ul class="list-disc list-inside space-y-1">
+      <li>Las solicitudes de vacaciones requieren aprobación del manager.</li>
+      <li>Algunas ausencias (como bajas médicas) se aprueban automáticamente.</li>
+      <li>Puedes cancelar solicitudes pendientes en cualquier momento.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// Simple preview of working days (approximate)
+document.addEventListener('DOMContentLoaded', function() {
+  const startInput = document.querySelector('[name="start_date"]');
+  const endInput = document.querySelector('[name="end_date"]');
+  const preview = document.getElementById('days-preview');
+  const daysCount = document.getElementById('days-count');
+  
+  function calculateDays() {
+    if (startInput.value && endInput.value) {
+      const start = new Date(startInput.value);
+      const end = new Date(endInput.value);
+      
+      if (end >= start) {
+        let days = 0;
+        let current = new Date(start);
+        
+        while (current <= end) {
+          const dayOfWeek = current.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            days++;
+          }
+          current.setDate(current.getDate() + 1);
+        }
+        
+        daysCount.textContent = days;
+        preview.classList.remove('hidden');
+      } else {
+        preview.classList.add('hidden');
+      }
+    } else {
+      preview.classList.add('hidden');
+    }
+  }
+  
+  startInput.addEventListener('change', calculateDays);
+  endInput.addEventListener('change', calculateDays);
+});
+</script>
+
+{% endblock %}

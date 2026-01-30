@@ -1,0 +1,70 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Periodos Bloqueados - {{ request.gym.name }}{% endblock %}
+
+{% block page_title %}
+<div>Periodos Bloqueados</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Fechas en las que no se permiten vacaciones</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex justify-between items-center">
+  <a href="{% url 'vacation_settings' %}" 
+     class="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1">
+    ← Volver a configuración
+  </a>
+  <a href="{% url 'blocked_period_create' %}"
+     class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+    </svg>
+    Nuevo Periodo
+  </a>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  {% if periods %}
+  <div class="divide-y divide-slate-100">
+    {% for period in periods %}
+    <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50">
+      <div>
+        <div class="font-medium text-slate-900">{{ period.name }}</div>
+        <div class="text-sm text-slate-500">
+          {{ period.start_date|date:"d M Y" }} → {{ period.end_date|date:"d M Y" }}
+        </div>
+        {% if period.reason %}
+        <div class="text-sm text-slate-400 mt-1">{{ period.reason }}</div>
+        {% endif %}
+        {% if period.applies_to_roles %}
+        <div class="mt-2 flex gap-1 flex-wrap">
+          {% for role in period.applies_to_roles %}
+          <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{{ role }}</span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-xs text-slate-400 mt-1">Aplica a todos los roles</div>
+        {% endif %}
+      </div>
+      <form method="post" action="{% url 'blocked_period_delete' period.pk %}" 
+            onsubmit="return confirm('¿Eliminar este periodo bloqueado?')">
+        {% csrf_token %}
+        <button type="submit" class="text-slate-400 hover:text-red-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="px-6 py-12 text-center text-slate-400">
+    <div class="text-4xl mb-2">📅</div>
+    <p>No hay periodos bloqueados.</p>
+    <p class="text-sm mt-1">Los empleados pueden solicitar vacaciones en cualquier fecha.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
