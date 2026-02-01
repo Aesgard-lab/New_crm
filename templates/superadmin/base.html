@@ -112,6 +112,16 @@
                     Configuración
                 </a>
 
+                <a href="{% url 'superadmin:verifactu_developer_config' %}"
+                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md {% if 'verifactu-config' in request.path %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800 hover:text-white{% endif %}">
+                    <svg class="mr-3 h-5 w-5 text-amber-500 group-hover:text-amber-400" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Verifactu (AEAT)
+                </a>
+
                 <div class="mt-8 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Seguridad</div>
 
                 <a href="{% url 'superadmin:audit_logs' %}"

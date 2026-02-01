@@ -12,7 +12,7 @@
         <p class="text-slate-500">Gestiona los impuestos, métodos de pago y pasarelas de tu centro</p>
     </div>
 
-    <div x-data="{ tab: 'taxes' }">
+    <div x-data="{ tab: 'taxes' }" x-cloak>
         <!-- Tabs -->
         <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
             <button @click="tab = 'taxes'"
@@ -23,12 +23,20 @@
             <button @click="tab = 'methods'"
                 :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'methods', 'text-slate-500 hover:text-slate-700': tab !== 'methods'}"
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                Métodos de Pago
             </button>
             <button @click="tab = 'config'"
                 :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'config', 'text-slate-500 hover:text-slate-700': tab !== 'config'}"
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
                 Pasarelas de Pago
             </button>
+            {% if has_verifactu_module %}
+            <button @click="tab = 'verifactu'"
+                :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'verifactu', 'text-slate-500 hover:text-slate-700': tab !== 'verifactu'}"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                🇪🇸 Verifactu
+            </button>
+            {% endif %}
         </div>
 
         <!-- Taxes Tab -->
@@ -93,7 +101,7 @@
 
         <!-- Methods Tab -->
         <div x-show="tab === 'methods'" x-transition
-            class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" style="display: none;">
+            class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 class="font-bold text-slate-700">Métodos de Pago</h3>
                 <a href="{% url 'finance_method_create' %}"
@@ -159,7 +167,7 @@
 
         <!-- Configuration Tab (Stripe) -->
         <div x-show="tab === 'config'" x-transition
-            class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" style="display: none;">
+            class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50">
                 <h3 class="font-bold text-slate-700">Configuración & Pasarelas</h3>
             </div>
@@ -319,23 +327,6 @@
                                 </svg>
                             </div>
                         </a>
-                                        {{ settings_form.redsys_environment }}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-1">Clave Secreta
-                                        (SHA-256)</label>
-                                    {{ settings_form.redsys_secret_key }}
-                                    <p class="text-xs text-slate-400 mt-1">Clave de encriptación del comercio</p>
-                                </div>
-                                {% if settings_form.redsys_secret_key.value %}
-                                <div class="text-right">
-                                    <button type="button" @click="editingRedsys = false"
-                                        class="text-xs text-slate-400 hover:text-slate-600">Cancelar edición</button>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
 
                         <!-- General Finance -->
                         <div>
@@ -444,6 +435,55 @@
                 </form>
             </div>
         </div>
+
+        {% if has_verifactu_module %}
+        <!-- Verifactu Tab -->
+        <div x-show="tab === 'verifactu'" x-transition
+            class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50">
+                <h3 class="font-bold text-slate-700">🇪🇸 Verifactu - Sistema de Verificación de Facturas AEAT</h3>
+            </div>
+            <div class="p-8">
+                <div class="max-w-2xl mx-auto text-center">
+                    <div class="bg-gradient-to-br from-red-50 to-amber-50 rounded-2xl p-8 border border-red-100 mb-6">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-slate-800 mb-2">Cumplimiento RD 1007/2023</h4>
+                        <p class="text-slate-600 mb-4">
+                            Verifactu es el sistema de la Agencia Tributaria para verificar la integridad de las facturas mediante hash SHA-256 encadenado y código QR.
+                        </p>
+                        <div class="flex flex-wrap gap-3 justify-center text-sm">
+                            <span class="bg-white px-3 py-1 rounded-full border border-slate-200">
+                                🔗 Hash encadenado
+                            </span>
+                            <span class="bg-white px-3 py-1 rounded-full border border-slate-200">
+                                📱 Código QR verificable
+                            </span>
+                            <span class="bg-white px-3 py-1 rounded-full border border-slate-200">
+                                🔒 Firma electrónica
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <a href="{% url 'verifactu_settings' %}" 
+                       class="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Configurar Verifactu
+                    </a>
+                    
+                    <p class="text-xs text-slate-400 mt-4">
+                        ⚠️ Atención: Una vez activado Verifactu, no se puede desactivar.
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

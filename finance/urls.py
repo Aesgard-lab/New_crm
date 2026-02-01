@@ -44,6 +44,11 @@ urlpatterns = [
     path('stripe/migration/', views.stripe_migration, name='stripe_migration'),
     path('stripe/migration/template/', views.stripe_migration_template, name='stripe_migration_template'),
     
+    # Verifactu
+    path('verifactu/', views.verifactu_settings, name='verifactu_settings'),
+    path('verifactu/records/', views.verifactu_records, name='verifactu_records'),
+    path('verifactu/api/enroll/', views.verifactu_enroll_api, name='verifactu_enroll_api'),
+    
     # Reports
     path('report/billing/', views.billing_dashboard, name='finance_billing_dashboard'),
 ]

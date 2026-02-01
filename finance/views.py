@@ -31,6 +31,16 @@ def settings_view(request):
     # Get or create finance settings
     finance_settings, created = FinanceSettings.objects.get_or_create(gym=gym)
     
+    # Check if gym has Verifactu module enabled
+    has_verifactu_module = False
+    try:
+        from saas_billing.models import GymSubscription
+        subscription = GymSubscription.objects.filter(gym=gym, status='ACTIVE').first()
+        if subscription and subscription.plan:
+            has_verifactu_module = subscription.plan.module_verifactu
+    except Exception:
+        pass  # If no subscription system, default to False
+    
     if request.method == 'POST' and 'save_settings' in request.POST:
         settings_form = FinanceSettingsForm(request.POST, instance=finance_settings)
         if settings_form.is_valid():
@@ -57,6 +67,7 @@ def settings_view(request):
         'tax_rates': tax_rates,
         'payment_methods': payment_methods,
         'settings_form': settings_form,
+        'has_verifactu_module': has_verifactu_module,
     }
     return render(request, 'backoffice/finance/settings.html', context)
 
@@ -1117,4 +1128,175 @@ def stripe_migration_template(request):
     writer.writerow(['otro@ejemplo.com', 'María', 'Pérez', '698765432', 'cus_DEF456abc'])
     
     return response
+
+
+# =============================================================================
+# VERIFACTU - Sistema de Verificación de Facturas AEAT (RD 1007/2023)
+# =============================================================================
+
+def _check_verifactu_module(gym):
+    """Helper para verificar si el gimnasio tiene el módulo Verifactu activo"""
+    try:
+        from saas_billing.models import GymSubscription
+        subscription = GymSubscription.objects.filter(gym=gym, status='ACTIVE').first()
+        if subscription and subscription.plan:
+            return subscription.plan.module_verifactu
+    except Exception:
+        pass
+    return False
+
+@login_required
+@require_gym_permission('finance.manage_finance')
+def verifactu_settings(request):
+    """Configuración de Verifactu para el gimnasio"""
+    from .models import FinanceSettings, VerifactuRecord
+    
+    gym = request.gym
+    if not gym:
+        messages.error(request, 'No hay gimnasio seleccionado.')
+        return redirect('dashboard')
+    
+    # Verificar que el gimnasio tiene el módulo Verifactu
+    if not _check_verifactu_module(gym):
+        messages.error(request, '⚠️ El módulo Verifactu no está incluido en tu plan actual.')
+        return redirect('finance_settings')
+    
+    settings, created = FinanceSettings.objects.get_or_create(gym=gym)
+    
+    # Obtener configuración global del desarrollador
+    from saas_billing.models import VerifactuDeveloperConfig
+    developer_config = VerifactuDeveloperConfig.get_config()
+    
+    # Estadísticas de registros Verifactu
+    stats = {
+        'total_records': VerifactuRecord.objects.filter(gym=gym).count(),
+        'pending': VerifactuRecord.objects.filter(gym=gym, status='PENDING').count(),
+        'sent': VerifactuRecord.objects.filter(gym=gym, status='SENT').count(),
+        'accepted': VerifactuRecord.objects.filter(gym=gym, status='ACCEPTED').count(),
+        'rejected': VerifactuRecord.objects.filter(gym=gym, status='REJECTED').count(),
+    }
+    
+    if request.method == 'POST':
+        # Solo permitir cambios si NO está inscrito aún
+        if settings.verifactu_enrolled_at:
+            messages.error(request, '⚠️ Verifactu ya está activado. La configuración no puede modificarse.')
+            return redirect('verifactu_settings')
+        
+        # Guardar configuración (solo modo y certificado - datos del desarrollador vienen de superadmin)
+        settings.verifactu_mode = request.POST.get('verifactu_mode', 'LOCAL')
+        
+        # Certificado (solo si se sube uno nuevo)
+        if 'certificate' in request.FILES:
+            settings.verifactu_certificate = request.FILES['certificate']
+        
+        if request.POST.get('certificate_password'):
+            settings.verifactu_certificate_password = request.POST.get('certificate_password')
+        
+        settings.save()
+        messages.success(request, 'Configuración guardada correctamente.')
+        return redirect('verifactu_settings')
+    
+    context = {
+        'settings': settings,
+        'stats': stats,
+        'gym': gym,
+        'developer_config': developer_config,
+    }
+    return render(request, 'backoffice/finance/verifactu_settings.html', context)
+
+
+@login_required
+@require_gym_permission('finance.view_finance')
+def verifactu_records(request):
+    """Lista de registros Verifactu"""
+    from .models import VerifactuRecord
+    
+    gym = request.gym
+    if not gym:
+        messages.error(request, 'No hay gimnasio seleccionado.')
+        return redirect('dashboard')
+    
+    # Verificar que el gimnasio tiene el módulo Verifactu
+    if not _check_verifactu_module(gym):
+        messages.error(request, '⚠️ El módulo Verifactu no está incluido en tu plan actual.')
+        return redirect('finance_settings')
+    
+    records = VerifactuRecord.objects.filter(gym=gym).select_related('gym', 'previous_record').order_by('-created_at')
+    
+    # Filtros
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        records = records.filter(status=status_filter)
+    
+    # Paginación
+    from django.core.paginator import Paginator
+    paginator = Paginator(records, 50)
+    page = request.GET.get('page', 1)
+    records_page = paginator.get_page(page)
+    
+    context = {
+        'records': records_page,
+        'status_filter': status_filter,
+        'status_choices': VerifactuRecord.STATUS_CHOICES,
+        'gym': gym,
+    }
+    return render(request, 'backoffice/finance/verifactu_records.html', context)
+
+
+@login_required
+@require_gym_permission('finance.manage_finance')
+def verifactu_enroll_api(request):
+    """API para inscribirse en Verifactu (IRREVERSIBLE)"""
+    from django.http import JsonResponse
+    from django.utils import timezone
+    from .models import FinanceSettings
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    gym = request.gym
+    if not gym:
+        return JsonResponse({'success': False, 'error': 'No hay gimnasio seleccionado'}, status=400)
+    
+    # Verificar que el gimnasio tiene el módulo Verifactu
+    if not _check_verifactu_module(gym):
+        return JsonResponse({'success': False, 'error': 'El módulo Verifactu no está incluido en tu plan actual.'}, status=403)
+    
+    try:
+        settings = FinanceSettings.objects.get(gym=gym)
+    except FinanceSettings.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Configuración no encontrada'}, status=404)
+    
+    # Verificar que no está ya inscrito
+    if settings.verifactu_enrolled_at:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Ya estás inscrito en Verifactu. Esta acción no se puede deshacer.'
+        }, status=400)
+    
+    # Verificar confirmación explícita
+    import json
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = {}
+    
+    confirmation = data.get('confirm_enrollment', False)
+    if not confirmation:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Debes confirmar explícitamente la inscripción'
+        }, status=400)
+    
+    # ⚠️ INSCRIPCIÓN IRREVERSIBLE
+    settings.verifactu_enabled = True
+    settings.verifactu_enrolled_at = timezone.now()
+    settings.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': '✅ Inscripción en Verifactu completada correctamente.',
+        'enrolled_at': settings.verifactu_enrolled_at.isoformat(),
+        'warning': 'ATENCIÓN: Esta inscripción es PERMANENTE y no puede deshacerse.'
+    })
 

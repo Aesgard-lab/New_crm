@@ -317,6 +317,7 @@ def plan_create(request):
             module_automations=request.POST.get('module_automations') == 'on',
             module_routines=request.POST.get('module_routines') == 'on',
             module_gamification=request.POST.get('module_gamification') == 'on',
+            module_verifactu=request.POST.get('module_verifactu') == 'on',
             
             # Limits
             max_members=int(request.POST.get('max_members')) if request.POST.get('max_members') else None,
@@ -367,6 +368,7 @@ def plan_edit(request, plan_id):
         plan.module_automations = request.POST.get('module_automations') == 'on'
         plan.module_routines = request.POST.get('module_routines') == 'on'
         plan.module_gamification = request.POST.get('module_gamification') == 'on'
+        plan.module_verifactu = request.POST.get('module_verifactu') == 'on'
         
         # Limits
         plan.max_members = int(request.POST.get('max_members')) if request.POST.get('max_members') else None
@@ -444,6 +446,45 @@ def billing_config(request):
     
     context = {'config': config}
     return render(request, 'superadmin/billing_config.html', context)
+
+
+@superuser_required
+def verifactu_developer_config(request):
+    """
+    Configuración del desarrollador del software para Verifactu.
+    Estos datos se aplican a TODOS los gimnasios que usen Verifactu.
+    """
+    from saas_billing.models import VerifactuDeveloperConfig
+    
+    config = VerifactuDeveloperConfig.get_config()
+    
+    if request.method == 'POST':
+        config.software_name = request.POST.get('software_name', 'GymCRM')
+        config.software_version = request.POST.get('software_version', '1.0.0')
+        config.developer_country = request.POST.get('developer_country', 'ES')
+        config.developer_tax_id = request.POST.get('developer_tax_id', '')
+        config.developer_name = request.POST.get('developer_name', '')
+        config.save()
+        
+        # Log this action
+        from saas_billing.models import AuditLog
+        from .decorators import get_client_ip
+        AuditLog.objects.create(
+            superadmin=request.user,
+            action='UPDATE_BILLING_CONFIG',
+            description='Updated Verifactu developer configuration',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:500]
+        )
+        
+        messages.success(request, "Configuración de Verifactu actualizada correctamente")
+        return redirect('superadmin:verifactu_developer_config')
+    
+    context = {
+        'config': config,
+        'country_choices': VerifactuDeveloperConfig.DEVELOPER_COUNTRY_CHOICES,
+    }
+    return render(request, 'superadmin/verifactu_config.html', context)
 
 
 @superuser_required

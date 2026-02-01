@@ -30,6 +30,9 @@ urlpatterns = [
     # Billing Config
     path('billing-config/', views.billing_config, name='billing_config'),
     
+    # Verifactu Developer Config
+    path('verifactu-config/', views.verifactu_developer_config, name='verifactu_developer_config'),
+    
     # Audit Logs
     path('audit-logs/', views.audit_logs, name='audit_logs'),
     

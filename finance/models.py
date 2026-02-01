@@ -158,6 +158,74 @@ class FinanceSettings(models.Model):
     allow_client_delete_card = models.BooleanField(default=False, help_text="Permitir que el cliente elimine sus tarjetas guardadas desde la app.")
     allow_client_pay_next_fee = models.BooleanField(default=False, help_text="Permitir que el cliente adelante/pague su siguiente cuota desde la app.")
 
+    # =============================================
+    # VERIFACTU - Sistema de Verificación de Facturas
+    # =============================================
+    verifactu_enabled = models.BooleanField(
+        _("Verifactu Activado"), 
+        default=False,
+        help_text=_("⚠️ ATENCIÓN: Una vez activado, NO SE PUEDE DESACTIVAR. Cumplimiento RD 1007/2023")
+    )
+    verifactu_enrolled_at = models.DateTimeField(
+        _("Fecha de Alta Verifactu"), 
+        null=True, 
+        blank=True,
+        help_text=_("Fecha y hora en que se activó Verifactu")
+    )
+    verifactu_mode = models.CharField(
+        _("Modo Verifactu"), 
+        max_length=20, 
+        choices=[
+            ('LOCAL', _('Solo local (hash + QR, sin envío)')),
+            ('FULL', _('Completo (envío inmediato a AEAT)')),
+        ],
+        default='LOCAL',
+        help_text=_("LOCAL: genera hash/QR pero no envía. FULL: envía cada factura a la AEAT.")
+    )
+    verifactu_certificate = models.FileField(
+        _("Certificado Digital (.p12/.pfx)"),
+        upload_to='verifactu_certs/',
+        null=True,
+        blank=True,
+        help_text=_("Certificado digital para firmar los registros (requerido para modo FULL)")
+    )
+    verifactu_certificate_password = models.CharField(
+        _("Contraseña del Certificado"),
+        max_length=255,
+        blank=True,
+        help_text=_("Contraseña para desbloquear el certificado .p12")
+    )
+    verifactu_software_name = models.CharField(
+        _("Nombre del Software"),
+        max_length=100,
+        default="GymCRM",
+        help_text=_("Nombre del software que genera las facturas")
+    )
+    verifactu_software_version = models.CharField(
+        _("Versión del Software"),
+        max_length=20,
+        default="1.0.0"
+    )
+    DEVELOPER_COUNTRY_CHOICES = [
+        ('ES', _('España (NIF/CIF)')),
+        ('EU', _('Unión Europea (VAT)')),
+        ('US', _('Estados Unidos (EIN)')),
+        ('OTHER', _('Otro país')),
+    ]
+    verifactu_developer_country = models.CharField(
+        _("País del Desarrollador"),
+        max_length=5,
+        choices=DEVELOPER_COUNTRY_CHOICES,
+        default='ES',
+        help_text=_("País donde está registrada la empresa desarrolladora")
+    )
+    verifactu_software_nif = models.CharField(
+        _("ID Fiscal del Desarrollador"),
+        max_length=50,
+        blank=True,
+        help_text=_("NIF español, VAT europeo (ej: DE123456789), EIN americano (ej: 12-3456789), u otro ID fiscal")
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -487,3 +555,194 @@ class Expense(models.Model):
         self.save()
         
         return new_expense
+
+
+# =============================================
+# VERIFACTU - Registros de Facturación
+# =============================================
+
+class VerifactuRecord(models.Model):
+    """
+    Registro Verifactu según RD 1007/2023.
+    Cada factura emitida genera un registro con hash encadenado.
+    """
+    STATUS_CHOICES = [
+        ('PENDING', _('Pendiente de envío')),
+        ('SENT', _('Enviado a AEAT')),
+        ('ACCEPTED', _('Aceptado por AEAT')),
+        ('REJECTED', _('Rechazado por AEAT')),
+        ('ERROR', _('Error de envío')),
+        ('LOCAL_ONLY', _('Solo local (sin envío)')),
+    ]
+    
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='verifactu_records')
+    
+    # Referencia a la factura (usamos GenericForeignKey para flexibilidad)
+    invoice_type = models.CharField(_("Tipo de documento"), max_length=50, default='INVOICE')
+    invoice_id = models.PositiveIntegerField(_("ID del documento"))
+    invoice_number = models.CharField(_("Número de factura"), max_length=50)
+    invoice_series = models.CharField(_("Serie"), max_length=20, blank=True, default='')
+    
+    # Datos fiscales
+    issuer_nif = models.CharField(_("NIF Emisor"), max_length=15)
+    issuer_name = models.CharField(_("Nombre/Razón Social Emisor"), max_length=255)
+    recipient_nif = models.CharField(_("NIF Receptor"), max_length=15, blank=True)
+    recipient_name = models.CharField(_("Nombre Receptor"), max_length=255)
+    
+    # Importes
+    base_amount = models.DecimalField(_("Base Imponible"), max_digits=12, decimal_places=2)
+    tax_rate = models.DecimalField(_("Tipo IVA"), max_digits=5, decimal_places=2, default=21)
+    tax_amount = models.DecimalField(_("Cuota IVA"), max_digits=12, decimal_places=2)
+    total_amount = models.DecimalField(_("Total Factura"), max_digits=12, decimal_places=2)
+    
+    # Fechas
+    invoice_date = models.DateField(_("Fecha de factura"))
+    record_timestamp = models.DateTimeField(_("Momento de registro"), auto_now_add=True)
+    
+    # Hash encadenado (SHA-256)
+    previous_record = models.ForeignKey(
+        'self', 
+        on_delete=models.PROTECT, 
+        null=True, 
+        blank=True, 
+        related_name='next_record',
+        help_text=_("Registro anterior en la cadena")
+    )
+    previous_hash = models.CharField(_("Hash del registro anterior"), max_length=64, blank=True, default='')
+    record_hash = models.CharField(_("Hash de este registro"), max_length=64, unique=True)
+    
+    # QR y verificación
+    qr_code = models.TextField(_("Datos del QR"), blank=True, help_text=_("URL de verificación codificada"))
+    verification_url = models.URLField(_("URL de verificación"), max_length=500, blank=True)
+    
+    # Estado y envío a AEAT
+    status = models.CharField(_("Estado"), max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    aeat_response_code = models.CharField(_("Código respuesta AEAT"), max_length=50, blank=True)
+    aeat_response_message = models.TextField(_("Mensaje AEAT"), blank=True)
+    sent_at = models.DateTimeField(_("Enviado a AEAT"), null=True, blank=True)
+    
+    # Firma electrónica
+    signature = models.TextField(_("Firma electrónica"), blank=True, help_text=_("Firma del registro"))
+    
+    # Metadatos
+    software_name = models.CharField(_("Software"), max_length=100, default='GymCRM')
+    software_version = models.CharField(_("Versión"), max_length=20, default='1.0.0')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _("Registro Verifactu")
+        verbose_name_plural = _("Registros Verifactu")
+        ordering = ['-record_timestamp']
+        indexes = [
+            models.Index(fields=['gym', 'invoice_number']),
+            models.Index(fields=['gym', 'record_timestamp']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"VF-{self.invoice_series}{self.invoice_number} ({self.status})"
+    
+    def calculate_hash(self):
+        """
+        Calcula el hash SHA-256 del registro según especificación Verifactu.
+        """
+        import hashlib
+        import json
+        
+        # Construir string para hash según especificación
+        data = {
+            'nif_emisor': self.issuer_nif,
+            'num_serie_factura': f"{self.invoice_series}{self.invoice_number}",
+            'fecha_expedicion': self.invoice_date.strftime('%d-%m-%Y'),
+            'tipo_factura': 'F1',  # Factura normal
+            'base_imponible': str(self.base_amount),
+            'cuota_total': str(self.tax_amount),
+            'importe_total': str(self.total_amount),
+            'huella_anterior': self.previous_hash or '0' * 64,
+            'fecha_hora_registro': self.record_timestamp.strftime('%Y-%m-%dT%H:%M:%S') if self.record_timestamp else '',
+        }
+        
+        # Concatenar valores en orden
+        hash_string = '|'.join([str(v) for v in data.values()])
+        
+        # Calcular SHA-256
+        return hashlib.sha256(hash_string.encode('utf-8')).hexdigest()
+    
+    def generate_qr_data(self):
+        """
+        Genera los datos para el código QR de verificación.
+        """
+        # URL base de verificación de la AEAT
+        base_url = "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR"
+        
+        params = {
+            'nif': self.issuer_nif,
+            'numserie': f"{self.invoice_series}{self.invoice_number}",
+            'fecha': self.invoice_date.strftime('%d-%m-%Y'),
+            'importe': str(self.total_amount),
+        }
+        
+        from urllib.parse import urlencode
+        self.verification_url = f"{base_url}?{urlencode(params)}"
+        self.qr_code = self.verification_url
+        
+        return self.verification_url
+    
+    def save(self, *args, **kwargs):
+        # Si es nuevo registro, calcular hash
+        if not self.record_hash:
+            # Obtener registro anterior
+            last_record = VerifactuRecord.objects.filter(
+                gym=self.gym
+            ).exclude(pk=self.pk).order_by('-record_timestamp').first()
+            
+            if last_record:
+                self.previous_record = last_record
+                self.previous_hash = last_record.record_hash
+            
+            # Guardar primero para tener timestamp
+            if not self.pk:
+                self.record_timestamp = timezone.now()
+            
+            self.record_hash = self.calculate_hash()
+            self.generate_qr_data()
+        
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def create_from_invoice(cls, invoice, gym):
+        """
+        Crea un registro Verifactu a partir de una factura.
+        """
+        settings = gym.finance_settings
+        
+        if not settings.verifactu_enabled:
+            return None
+        
+        # Obtener configuración global del desarrollador
+        from saas_billing.models import VerifactuDeveloperConfig
+        developer_config = VerifactuDeveloperConfig.get_config()
+        
+        record = cls(
+            gym=gym,
+            invoice_type=invoice.__class__.__name__,
+            invoice_id=invoice.pk,
+            invoice_number=str(invoice.invoice_number if hasattr(invoice, 'invoice_number') else invoice.pk),
+            invoice_series=getattr(invoice, 'series', ''),
+            issuer_nif=gym.nif if hasattr(gym, 'nif') else '',
+            issuer_name=gym.legal_name if hasattr(gym, 'legal_name') else gym.name,
+            recipient_nif=getattr(invoice, 'client_nif', '') or '',
+            recipient_name=getattr(invoice, 'client_name', '') or str(invoice.client) if hasattr(invoice, 'client') else '',
+            base_amount=invoice.subtotal if hasattr(invoice, 'subtotal') else invoice.total,
+            tax_rate=getattr(invoice, 'tax_rate', 21),
+            tax_amount=getattr(invoice, 'tax_amount', 0),
+            total_amount=invoice.total if hasattr(invoice, 'total') else invoice.amount,
+            invoice_date=invoice.created_at.date() if hasattr(invoice, 'created_at') else timezone.now().date(),
+            software_name=developer_config.software_name,
+            software_version=developer_config.software_version,
+            status='LOCAL_ONLY' if settings.verifactu_mode == 'LOCAL' else 'PENDING',
+        )
+        
+        record.save()
+        return record

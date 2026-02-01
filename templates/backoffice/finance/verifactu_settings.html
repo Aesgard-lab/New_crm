@@ -1,0 +1,402 @@
+{% extends "base/base.html" %}
+{% load i18n %}
+
+{% block title %}Configuración Verifactu - {{ gym.name }}{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'finance_settings' %}" class="hover:underline">Finanzas</a> > Verifactu
+{% endblock %}
+{% block page_title %}Verifactu - Sistema de Verificación de Facturas{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-6 flex items-center justify-between">
+        <p class="text-slate-500">Cumplimiento RD 1007/2023 - AEAT</p>
+        <a href="{% url 'verifactu_records' %}" 
+           class="text-[var(--brand-color)] hover-brand font-medium flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            Ver Registros
+        </a>
+    </div>
+
+    <!-- Estado de Inscripción -->
+    <div class="mb-6">
+        {% if settings.verifactu_enrolled_at %}
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="bg-emerald-100 p-3 rounded-xl">
+                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-emerald-800">✅ Verifactu Activo</h3>
+                    <p class="text-emerald-600">
+                        Inscrito desde: <strong>{{ settings.verifactu_enrolled_at|date:"d/m/Y H:i" }}</strong>
+                        &bull; Modo: <span class="font-semibold">{% if settings.verifactu_mode == 'LOCAL' %}Local (Hash + QR){% else %}Completo (Envío a AEAT){% endif %}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="bg-amber-100 p-3 rounded-xl">
+                    <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-amber-800">⚠️ Verifactu No Activo</h3>
+                    <p class="text-amber-600">Configura los parámetros e inscríbete cuando estés listo.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Estadísticas -->
+    {% if settings.verifactu_enrolled_at %}
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
+            <div class="text-2xl font-bold text-slate-800">{{ stats.total_records }}</div>
+            <div class="text-sm text-slate-500">Total</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
+            <div class="text-2xl font-bold text-slate-500">{{ stats.pending }}</div>
+            <div class="text-sm text-slate-500">Pendientes</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ stats.sent }}</div>
+            <div class="text-sm text-slate-500">Enviados</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
+            <div class="text-2xl font-bold text-emerald-600">{{ stats.accepted }}</div>
+            <div class="text-sm text-slate-500">Aceptados</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
+            <div class="text-2xl font-bold text-red-600">{{ stats.rejected }}</div>
+            <div class="text-sm text-slate-500">Rechazados</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Configuración -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 bg-slate-50">
+                    <h3 class="font-bold text-slate-700">Configuración de Verifactu</h3>
+                </div>
+                <div class="p-6">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <fieldset {% if settings.verifactu_enrolled_at %}disabled class="opacity-60"{% endif %}>
+                            <!-- Modo de operación -->
+                            <div class="mb-6">
+                                <label class="block text-sm font-bold text-slate-700 mb-3">Modo de Operación</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <label class="relative flex cursor-pointer rounded-xl border p-4 {% if settings.verifactu_mode == 'LOCAL' or not settings.verifactu_mode %}border-[var(--brand-color)] bg-slate-50{% else %}border-slate-200{% endif %}">
+                                        <input type="radio" name="verifactu_mode" value="LOCAL" class="sr-only" 
+                                               {% if settings.verifactu_mode == 'LOCAL' or not settings.verifactu_mode %}checked{% endif %}>
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-slate-800">🏠 Modo Local</span>
+                                            <span class="text-sm text-slate-500 mt-1">
+                                                Genera hash SHA-256 y código QR. No envía a AEAT automáticamente.
+                                            </span>
+                                        </div>
+                                    </label>
+                                    <label class="relative flex cursor-pointer rounded-xl border p-4 {% if settings.verifactu_mode == 'FULL' %}border-[var(--brand-color)] bg-slate-50{% else %}border-slate-200{% endif %}">
+                                        <input type="radio" name="verifactu_mode" value="FULL" class="sr-only"
+                                               {% if settings.verifactu_mode == 'FULL' %}checked{% endif %}>
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-slate-800">🌐 Modo Completo</span>
+                                            <span class="text-sm text-slate-500 mt-1">
+                                                Envía automáticamente cada factura a la AEAT. Requiere certificado.
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <hr class="my-6 border-slate-100">
+
+                            <!-- Datos del Software (solo lectura - configurado por superadmin) -->
+                            <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                                </svg>
+                                Datos del Software de Facturación
+                                <span class="text-xs font-normal text-slate-400 ml-2">(configurado por el proveedor)</span>
+                            </h4>
+                            
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span class="text-slate-500">Software:</span>
+                                        <span class="font-medium text-slate-800 ml-2">{{ developer_config.software_name }} v{{ developer_config.software_version }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-500">Desarrollador:</span>
+                                        <span class="font-medium text-slate-800 ml-2">{{ developer_config.developer_name|default:"No configurado" }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-500">País:</span>
+                                        <span class="font-medium text-slate-800 ml-2">{{ developer_config.get_developer_country_display }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-500">{{ developer_config.get_tax_id_label }}:</span>
+                                        <span class="font-medium text-slate-800 ml-2">{{ developer_config.developer_tax_id|default:"No configurado" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-6 border-slate-100">
+
+                            <!-- Certificado Digital -->
+                            <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                </svg>
+                                Certificado Digital (para firma)
+                            </h4>
+                            <p class="text-xs text-slate-500 mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                ℹ️ <strong>Solo necesario para Modo Completo</strong>. El certificado es del <strong>gimnasio emisor de facturas</strong> (no del desarrollador). 
+                                En <strong>Modo Local</strong> se genera hash y QR pero no se firma ni envía a AEAT, por lo que no es necesario.
+                            </p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Certificado (.p12 / .pfx)</label>
+                                    <input type="file" name="certificate" accept=".p12,.pfx"
+                                           class="w-full px-4 py-2 border border-slate-200 rounded-xl file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+                                    {% if settings.verifactu_certificate %}
+                                    <p class="mt-1 text-sm text-emerald-600 flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Certificado cargado
+                                    </p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Contraseña del Certificado</label>
+                                    <input type="password" name="certificate_password" placeholder="••••••••"
+                                           class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:border-[var(--brand-color)] focus:ring-1 focus:ring-[var(--brand-color)] outline-none transition-all">
+                                    {% if settings.verifactu_certificate_password %}
+                                    <p class="mt-1 text-sm text-emerald-600 flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Contraseña guardada
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        {% if not settings.verifactu_enrolled_at %}
+                        <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+                            <button type="submit"
+                                class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors">
+                                Guardar Configuración
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="mt-6 bg-blue-50 rounded-xl p-4 text-sm text-blue-800 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                            La configuración está bloqueada porque Verifactu ya está activo.
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel lateral -->
+        <div class="space-y-6">
+            {% if not settings.verifactu_enrolled_at %}
+            <!-- Inscripción -->
+            <div class="bg-white rounded-2xl shadow-sm border-2 border-red-200 overflow-hidden">
+                <div class="bg-red-600 text-white p-4">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        Inscripción en Verifactu
+                    </h3>
+                </div>
+                <div class="p-4">
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                        <h4 class="font-bold text-red-800 mb-2">⚠️ ADVERTENCIA IMPORTANTE</h4>
+                        <p class="text-sm text-red-700">
+                            <strong>Una vez que actives Verifactu, NO PODRÁS DESACTIVARLO.</strong>
+                        </p>
+                        <p class="text-sm text-red-600 mt-2">
+                            Esta inscripción es PERMANENTE e IRREVERSIBLE según el Real Decreto 1007/2023.
+                        </p>
+                    </div>
+
+                    <ul class="text-sm text-slate-600 space-y-1 mb-4">
+                        <li>• Todas las facturas se registrarán con hash SHA-256</li>
+                        <li>• Cada factura tendrá un código QR verificable</li>
+                        <li>• Se creará una cadena de registros enlazados</li>
+                        <li>• No podrás modificar facturas ya registradas</li>
+                    </ul>
+
+                    <label class="flex items-start gap-2 mb-4 cursor-pointer">
+                        <input type="checkbox" id="confirm_understanding" class="mt-1 rounded border-slate-300">
+                        <span class="text-sm text-slate-600">
+                            Entiendo que esta acción es <strong>IRREVERSIBLE</strong> y acepto las condiciones.
+                        </span>
+                    </label>
+
+                    <button type="button" id="btn_enroll" disabled
+                        class="w-full bg-red-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                        </svg>
+                        Inscribirse en Verifactu
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <!-- Estado Activo -->
+            <div class="bg-white rounded-2xl shadow-sm border border-emerald-200 overflow-hidden">
+                <div class="bg-emerald-600 text-white p-4">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Estado de Verifactu
+                    </h3>
+                </div>
+                <div class="p-6 text-center">
+                    <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-bold text-emerald-800 mb-2">Sistema Activo</h4>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Todas las facturas emitidas se registran automáticamente.
+                    </p>
+                    
+                    <div class="text-left text-sm space-y-2 bg-slate-50 rounded-xl p-4">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Modo:</span>
+                            <span class="font-medium">{% if settings.verifactu_mode == 'LOCAL' %}Local{% else %}Completo{% endif %}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Inscrito:</span>
+                            <span class="font-medium">{{ settings.verifactu_enrolled_at|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Software:</span>
+                            <span class="font-medium">{{ settings.verifactu_software_name }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Información -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 bg-slate-50">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        ¿Qué es Verifactu?
+                    </h3>
+                </div>
+                <div class="p-4 text-sm text-slate-600">
+                    <p class="mb-3">
+                        <strong>Verifactu</strong> es el sistema de verificación de facturas de la Agencia Tributaria española, regulado por el <strong>Real Decreto 1007/2023</strong>.
+                    </p>
+                    <p class="mb-3">Garantiza la integridad de las facturas mediante:</p>
+                    <ul class="space-y-1 mb-4">
+                        <li>• Hash SHA-256 encadenado</li>
+                        <li>• Código QR para verificación</li>
+                        <li>• Firma electrónica</li>
+                        <li>• Comunicación con la AEAT</li>
+                    </ul>
+                    <a href="https://sede.agenciatributaria.gob.es/Sede/iva/verifactu.html" 
+                       target="_blank" 
+                       class="block w-full text-center bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors">
+                        Más información en AEAT →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not settings.verifactu_enrolled_at %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('confirm_understanding');
+    const btnEnroll = document.getElementById('btn_enroll');
+    
+    checkbox.addEventListener('change', function() {
+        btnEnroll.disabled = !this.checked;
+    });
+    
+    btnEnroll.addEventListener('click', function() {
+        if (!checkbox.checked) {
+            alert('Debes confirmar que entiendes que esta acción es irreversible.');
+            return;
+        }
+        
+        const confirmed = confirm(
+            '⚠️ ÚLTIMA ADVERTENCIA ⚠️\n\n' +
+            '¿Estás ABSOLUTAMENTE SEGURO de que quieres inscribirte en Verifactu?\n\n' +
+            'Esta acción es PERMANENTE y NO SE PUEDE DESHACER.\n\n' +
+            'Pulsa "Aceptar" para confirmar la inscripción.'
+        );
+        
+        if (!confirmed) return;
+        
+        const finalConfirm = prompt('Para confirmar, escribe exactamente: ACTIVAR VERIFACTU');
+        
+        if (finalConfirm !== 'ACTIVAR VERIFACTU') {
+            alert('Inscripción cancelada. El texto no coincide.');
+            return;
+        }
+        
+        btnEnroll.disabled = true;
+        btnEnroll.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Inscribiendo...';
+        
+        fetch('{% url "verifactu_enroll_api" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ confirm_enrollment: true })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message + '\n\n' + data.warning);
+                window.location.reload();
+            } else {
+                alert('❌ Error: ' + data.error);
+                btnEnroll.disabled = false;
+                btnEnroll.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg> Inscribirse en Verifactu';
+            }
+        })
+        .catch(error => {
+            alert('❌ Error de conexión: ' + error);
+            btnEnroll.disabled = false;
+            btnEnroll.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg> Inscribirse en Verifactu';
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

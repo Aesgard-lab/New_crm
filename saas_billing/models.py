@@ -47,6 +47,7 @@ class SubscriptionPlan(models.Model):
     module_automations = models.BooleanField(default=False, verbose_name=_("Automatizaciones"))
     module_routines = models.BooleanField(default=False, verbose_name=_("Rutinas de Entrenamiento"))
     module_gamification = models.BooleanField(default=False, verbose_name=_("Gamificación"))
+    module_verifactu = models.BooleanField(default=False, verbose_name=_("Verifactu (España)"))
     
     # Limits (null = unlimited)
     max_members = models.PositiveIntegerField(
@@ -156,6 +157,7 @@ class SubscriptionPlan(models.Model):
         if self.module_automations: modules.append("Automatizaciones")
         if self.module_routines: modules.append("Rutinas")
         if self.module_gamification: modules.append("Gamificación")
+        if self.module_verifactu: modules.append("Verifactu")
         return modules
     
     def calculate_transaction_fee(self, amount, source='POS', is_cash=False):
@@ -630,3 +632,87 @@ class AuditLog(models.Model):
     def __str__(self):
         admin_name = self.superadmin.get_full_name() if self.superadmin else "Sistema"
         return f"{self.get_action_display()} - {admin_name} - {self.created_at}"
+
+
+class VerifactuDeveloperConfig(models.Model):
+    """
+    Configuración global del desarrollador del software para Verifactu.
+    Solo debe existir UN registro (Singleton pattern).
+    Estos datos se usan en todos los gimnasios que activen Verifactu.
+    """
+    
+    DEVELOPER_COUNTRY_CHOICES = [
+        ('ES', 'España'),
+        ('EU', 'Unión Europea (otro país)'),
+        ('US', 'Estados Unidos'),
+        ('OTHER', 'Otro país'),
+    ]
+    
+    # Software Info
+    software_name = models.CharField(
+        max_length=100, 
+        default='GymCRM',
+        verbose_name=_("Nombre del Software"),
+        help_text=_("Nombre comercial del software de facturación")
+    )
+    software_version = models.CharField(
+        max_length=20, 
+        default='1.0.0',
+        verbose_name=_("Versión"),
+        help_text=_("Versión actual del software")
+    )
+    
+    # Developer Info
+    developer_country = models.CharField(
+        max_length=10,
+        choices=DEVELOPER_COUNTRY_CHOICES,
+        default='ES',
+        verbose_name=_("País del Desarrollador"),
+        help_text=_("País donde está registrada la empresa desarrolladora")
+    )
+    developer_tax_id = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name=_("NIF/VAT/EIN del Desarrollador"),
+        help_text=_("Identificador fiscal de la empresa desarrolladora del software")
+    )
+    developer_name = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name=_("Nombre/Razón Social del Desarrollador"),
+        help_text=_("Nombre de la empresa desarrolladora")
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _("Configuración Verifactu - Desarrollador")
+        verbose_name_plural = _("Configuración Verifactu - Desarrollador")
+    
+    def __str__(self):
+        return f"{self.software_name} v{self.software_version}"
+    
+    def save(self, *args, **kwargs):
+        # Singleton: solo puede existir un registro
+        if not self.pk and VerifactuDeveloperConfig.objects.exists():
+            existing = VerifactuDeveloperConfig.objects.first()
+            self.pk = existing.pk
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_config(cls):
+        """Obtiene o crea la configuración singleton"""
+        config, created = cls.objects.get_or_create(pk=1)
+        return config
+    
+    def get_tax_id_label(self):
+        """Retorna el label correcto según el país"""
+        labels = {
+            'ES': 'NIF',
+            'EU': 'VAT Number',
+            'US': 'EIN',
+            'OTHER': 'Tax ID',
+        }
+        return labels.get(self.developer_country, 'Tax ID')
