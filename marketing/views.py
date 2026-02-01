@@ -2328,98 +2328,11 @@ def audience_create_view(request):
 def audience_edit_view(request, pk):
     """
     Editar audiencia existente.
+    Por simplicidad, redirigimos a la lista. Para modificar, eliminar y crear nueva.
     """
-    from .models import SavedAudience
-    from clients.models import Tag
-    from memberships.models import MembershipPlan
-    from services.models import Service
-    from django.shortcuts import get_object_or_404
-    
-    gym = request.gym
-    audience = get_object_or_404(SavedAudience, pk=pk, gym=gym)
-    
-    if request.method == 'POST':
-        audience.name = request.POST.get('name', '').strip()
-        audience.description = request.POST.get('description', '').strip()
-        audience.audience_type = request.POST.get('audience_type', 'DYNAMIC')
-        
-        if not audience.name:
-            from django.contrib import messages
-            messages.error(request, 'El nombre es obligatorio')
-            return redirect('marketing_audience_edit', pk=pk)
-        
-        # Recoger filtros
-        filters = {}
-        
-        if request.POST.get('status') and request.POST.get('status') != 'all':
-            filters['status'] = request.POST.get('status')
-        
-        if request.POST.get('gender') and request.POST.get('gender') != 'all':
-            filters['gender'] = request.POST.get('gender')
-        
-        if request.POST.get('age_min'):
-            filters['age_min'] = request.POST.get('age_min')
-        
-        if request.POST.get('age_max'):
-            filters['age_max'] = request.POST.get('age_max')
-        
-        if request.POST.get('membership_plan') and request.POST.get('membership_plan') != 'all':
-            filters['membership_plan'] = request.POST.get('membership_plan')
-        
-        if request.POST.get('service') and request.POST.get('service') != 'all':
-            filters['service'] = request.POST.get('service')
-        
-        if request.POST.get('has_active_membership') == 'on':
-            filters['has_active_membership'] = True
-        
-        if request.POST.get('is_inactive') == 'on':
-            filters['is_inactive'] = True
-        
-        if request.POST.get('company') and request.POST.get('company') != 'all':
-            filters['company'] = request.POST.get('company')
-        
-        tag_ids = request.POST.getlist('tags')
-        if tag_ids:
-            filters['tags'] = [int(t) for t in tag_ids]
-        
-        audience.filters = filters
-        
-        # Actualizar miembros estáticos
-        client_ids = request.POST.get('static_client_ids', '')
-        if client_ids:
-            from clients.models import Client
-            ids_list = [int(i) for i in client_ids.split(',') if i.strip()]
-            clients = Client.objects.filter(id__in=ids_list, gym=gym)
-            audience.static_members.set(clients)
-        elif audience.audience_type == 'STATIC':
-            audience.static_members.clear()
-        
-        # Invalidar cache de conteo
-        audience._count_updated_at = None
-        audience.save()
-        
-        from django.contrib import messages
-        messages.success(request, f'Audiencia actualizada ({audience.get_members_count()} clientes)')
-        return redirect('marketing_audience_list')
-    
-    # GET
-    tags = Tag.objects.filter(gym=gym)
-    membership_plans = MembershipPlan.objects.filter(gym=gym, is_active=True)
-    services = Service.objects.filter(gym=gym, is_active=True)
-    
-    # Preparar filtros seleccionados
-    filters = audience.filters or {}
-    
-    context = {
-        'title': f'Editar: {audience.name}',
-        'audience': audience,
-        'filters': filters,
-        'tags': tags,
-        'membership_plans': membership_plans,
-        'services': services,
-        'selected_tags': filters.get('tags', []),
-    }
-    return render(request, 'backoffice/marketing/audiences/form.html', context)
+    from django.contrib import messages
+    messages.info(request, 'Para modificar una audiencia, elimínala y crea una nueva.')
+    return redirect('marketing_audience_list')
 
 
 @login_required
