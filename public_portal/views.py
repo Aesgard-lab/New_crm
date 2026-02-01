@@ -351,23 +351,29 @@ def public_pricing(request, slug):
         except Client.DoesNotExist:
             pass
     
-    # Añadir info de elegibilidad a cada plan
+    # Añadir info de elegibilidad a cada plan (filtrando los ocultos)
     plans_with_eligibility = []
     for plan in plans:
-        plan_data = {
-            'plan': plan,
-            'is_eligible': True,
-            'ineligible_reason': '',
-            'show_badge': plan.is_new_client_only and plan.new_client_badge_text
-        }
-        
-        if plan.is_new_client_only and client:
-            is_eligible, reason = plan.is_client_eligible(client)
-            plan_data['is_eligible'] = is_eligible
-            plan_data['ineligible_reason'] = reason
-        elif plan.is_new_client_only and not client:
-            # Usuario no autenticado - mostramos como elegible (comprobará al comprar)
-            plan_data['is_eligible'] = True
+        # Usar nuevo sistema de visibilidad
+        if client:
+            should_show, is_eligible, reason = plan.should_show_to_client(client)
+            if not should_show:
+                continue  # Ocultar este plan completamente
+            
+            plan_data = {
+                'plan': plan,
+                'is_eligible': is_eligible,
+                'ineligible_reason': reason,
+                'show_badge': plan.has_eligibility_restriction() and plan.get_badge_text()
+            }
+        else:
+            # Usuario no autenticado - mostrar todos los planes
+            plan_data = {
+                'plan': plan,
+                'is_eligible': True,
+                'ineligible_reason': '',
+                'show_badge': plan.has_eligibility_restriction() and plan.get_badge_text()
+            }
         
         plans_with_eligibility.append(plan_data)
     
@@ -405,8 +411,8 @@ def public_plan_purchase(request, slug, plan_id):
     # Obtener el plan
     plan = get_object_or_404(MembershipPlan, id=plan_id, gym=gym, is_active=True, is_visible_online=True)
     
-    # Verificar elegibilidad para ofertas de nuevos clientes
-    if plan.is_new_client_only:
+    # Verificar elegibilidad usando el nuevo sistema
+    if plan.has_eligibility_restriction():
         is_eligible, reason = plan.is_client_eligible(client)
         if not is_eligible:
             messages.error(request, reason)

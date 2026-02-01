@@ -19,7 +19,7 @@ def find_potential_duplicates(threshold=85):
                 continue
             checked.add(key)
             # Comparar por teléfono exacto
-            if c1.phone and c2.phone and c1.phone == c2.phone:
+            if c1.phone_number and c2.phone_number and c1.phone_number == c2.phone_number:
                 duplicates.append((c1, c2, 100, 'Teléfono igual'))
                 continue
             # Comparar por nombre+apellidos fuzzy

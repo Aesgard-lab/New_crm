@@ -8,6 +8,7 @@ class ProviderForm(forms.ModelForm):
         model = Provider
         fields = [
             "name",
+            "logo",
             "legal_name",
             "tax_id",
             "email",
@@ -27,6 +28,7 @@ class ProviderForm(forms.ModelForm):
         ]
         labels = {
             "name": "Nombre",
+            "logo": "Logo",
             "legal_name": "Razón social",
             "tax_id": "NIF/CIF",
             "email": "Email",

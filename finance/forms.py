@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import TaxRate, PaymentMethod, FinanceSettings, Supplier, ExpenseCategory, Expense
+from providers.models import Provider
 from organizations.models import GymOpeningHours
 import json
 from datetime import time
@@ -82,10 +83,35 @@ class TaxRateForm(forms.ModelForm):
         model = TaxRate
         fields = ['name', 'rate_percent', 'is_active']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500 focus:border-blue-500'}),
-            'rate_percent': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500 focus:border-blue-500', 'step': '0.01'}),
+            'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500 focus:border-blue-500', 'placeholder': 'Ej: IVA 21%'}),
+            'rate_percent': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:ring-blue-500 focus:border-blue-500', 'step': '0.01', 'placeholder': 'Ej: 21.00'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-blue-600 focus:ring-blue-500'}),
         }
+    
+    propagate_to_gyms = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+        label="Propagar a otros gimnasios",
+        help_text="Selecciona los gimnasios donde quieres copiar/actualizar este impuesto."
+    )
+
+    def __init__(self, *args, **kwargs):
+        from organizations.models import Gym
+        gym = kwargs.pop('gym', None)
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Franchise Propagation Logic
+        if gym and user:
+            is_owner = gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
+            
+            if is_owner:
+                self.fields['propagate_to_gyms'].queryset = gym.franchise.gyms.exclude(pk=gym.pk)
+            else:
+                del self.fields['propagate_to_gyms']
+        else:
+            del self.fields['propagate_to_gyms']
 
 class PaymentMethodForm(forms.ModelForm):
     class Meta:
@@ -131,23 +157,6 @@ class AppSettingsForm(forms.ModelForm):
         }
 
 
-class SupplierForm(forms.ModelForm):
-    class Meta:
-        model = Supplier
-        fields = ['name', 'tax_id', 'email', 'phone', 'address', 'bank_account', 'contact_person', 'notes', 'is_active']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'Nombre del proveedor'}),
-            'tax_id': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'CIF/NIF'}),
-            'email': forms.EmailInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'email@proveedor.com'}),
-            'phone': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': '+34 600 000 000'}),
-            'address': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200', 'rows': 3}),
-            'bank_account': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'ES00 0000 0000 0000 0000 0000'}),
-            'contact_person': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'Persona de contacto'}),
-            'notes': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200', 'rows': 3}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5'}),
-        }
-
-
 class ExpenseCategoryForm(forms.ModelForm):
     class Meta:
         model = ExpenseCategory
@@ -165,14 +174,14 @@ class ExpenseForm(forms.ModelForm):
     class Meta:
         model = Expense
         fields = [
-            'supplier', 'category', 'concept', 'reference_number', 'description',
+            'provider', 'category', 'concept', 'reference_number', 'description',
             'base_amount', 'tax_rate', 'issue_date', 'due_date', 'payment_date',
             'status', 'payment_method', 'paid_amount',
             'is_recurring', 'recurrence_frequency', 'recurrence_day', 'is_active_recurrence',
             'attachment', 'related_products', 'notes'
         ]
         widgets = {
-            'supplier': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'provider': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'category': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'concept': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'Ej: Alquiler Enero 2026'}),
             'reference_number': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': 'Nº Factura'}),
@@ -193,11 +202,14 @@ class ExpenseForm(forms.ModelForm):
             'related_products': forms.SelectMultiple(attrs={'class': 'w-full rounded-xl border-slate-200', 'size': '5'}),
             'notes': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200', 'rows': 3}),
         }
+        labels = {
+            'provider': 'Proveedor',
+        }
     
     def __init__(self, *args, gym=None, **kwargs):
         super().__init__(*args, **kwargs)
         if gym:
-            self.fields['supplier'].queryset = Supplier.objects.filter(gym=gym, is_active=True)
+            self.fields['provider'].queryset = Provider.objects.filter(gym=gym, is_active=True)
             self.fields['category'].queryset = ExpenseCategory.objects.filter(gym=gym, is_active=True)
             self.fields['payment_method'].queryset = PaymentMethod.objects.filter(gym=gym, is_active=True)
             self.fields['related_products'].queryset = gym.products.filter(is_active=True)

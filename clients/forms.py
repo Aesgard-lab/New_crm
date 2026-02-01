@@ -1,6 +1,6 @@
 from django import forms
 from django.utils.text import slugify
-from .models import Client, ClientNote, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientTag, DocumentTemplate
+from .models import Client, ClientNote, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientTag, DocumentTemplate, ClientHealthRecord, ClientHealthDocument
 
 
 class DocumentTemplateForm(forms.ModelForm):
@@ -405,4 +405,102 @@ class ClientFieldOptionForm(forms.ModelForm):
                 'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]',
                 'min': '0'
             }),
+        }
+
+
+class ClientHealthRecordForm(forms.ModelForm):
+    """Formulario para datos de salud del cliente"""
+    class Meta:
+        model = ClientHealthRecord
+        fields = [
+            'notes', 'has_medical_clearance', 'medical_clearance_date',
+            'allergies', 'medical_conditions', 'medications',
+            'emergency_contact_name', 'emergency_contact_phone'
+        ]
+        widgets = {
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'rows': 4,
+                'placeholder': 'Notas generales sobre la salud del cliente...'
+            }),
+            'has_medical_clearance': forms.CheckboxInput(attrs={
+                'class': 'w-5 h-5 text-rose-600 bg-slate-100 border-slate-300 rounded focus:ring-rose-500'
+            }),
+            'medical_clearance_date': forms.DateInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500',
+                'type': 'date'
+            }),
+            'allergies': forms.Textarea(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'rows': 2,
+                'placeholder': 'Ej: Alergia a frutos secos, látex...'
+            }),
+            'medical_conditions': forms.Textarea(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'rows': 2,
+                'placeholder': 'Ej: Diabetes tipo 2, hipertensión...'
+            }),
+            'medications': forms.Textarea(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'rows': 2,
+                'placeholder': 'Ej: Metformina 500mg, Losartan 50mg...'
+            }),
+            'emergency_contact_name': forms.TextInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'placeholder': 'Nombre completo del contacto'
+            }),
+            'emergency_contact_phone': forms.TextInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'placeholder': '+34 666 123 456'
+            }),
+        }
+        labels = {
+            'notes': 'Notas de Salud',
+            'has_medical_clearance': 'Tiene autorización médica',
+            'medical_clearance_date': 'Fecha de autorización',
+            'allergies': 'Alergias',
+            'medical_conditions': 'Condiciones médicas',
+            'medications': 'Medicamentos actuales',
+            'emergency_contact_name': 'Contacto de emergencia',
+            'emergency_contact_phone': 'Teléfono de emergencia',
+        }
+
+
+class ClientHealthDocumentForm(forms.ModelForm):
+    """Formulario para subir documentos de salud"""
+    class Meta:
+        model = ClientHealthDocument
+        fields = ['name', 'document_type', 'file', 'notes', 'document_date', 'expires_at']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'placeholder': 'Ej: Certificado médico Dr. García'
+            }),
+            'document_type': forms.Select(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500'
+            }),
+            'file': forms.FileInput(attrs={
+                'class': 'block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 transition-colors'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-slate-400',
+                'rows': 2,
+                'placeholder': 'Notas adicionales sobre el documento...'
+            }),
+            'document_date': forms.DateInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500',
+                'type': 'date'
+            }),
+            'expires_at': forms.DateInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500',
+                'type': 'date'
+            }),
+        }
+        labels = {
+            'name': 'Nombre del documento',
+            'document_type': 'Tipo de documento',
+            'file': 'Archivo',
+            'notes': 'Notas',
+            'document_date': 'Fecha del documento',
+            'expires_at': 'Fecha de caducidad',
         }

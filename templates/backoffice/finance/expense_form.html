@@ -28,10 +28,13 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Proveedor *</label>
-                        {{ form.supplier }}
-                        {% if form.supplier.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.supplier.errors.0 }}</p>
+                        {{ form.provider }}
+                        {% if form.provider.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.provider.errors.0 }}</p>
                         {% endif %}
+                        <p class="mt-1 text-xs text-slate-500">
+                            <a href="{% url 'providers:provider_create' %}" class="text-blue-600 hover:underline">+ Crear nuevo proveedor</a>
+                        </p>
                     </div>
 
                     <div>

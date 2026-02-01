@@ -1,0 +1,330 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="{% url 'marketing_audience_list' %}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+    </a>
+    <div>
+        <div>{{ title }}</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">Define los filtros para segmentar tus clientes</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="audienceBuilder()">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <form method="post" class="p-8">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-3 gap-8">
+                <!-- Left Column: Filters -->
+                <div class="col-span-2 space-y-6">
+                    <!-- Basic Info -->
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Información Básica
+                        </h3>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre de la audiencia *</label>
+                            <input type="text" name="name" required
+                                value="{{ audience.name|default:'' }}"
+                                class="w-full rounded-xl border-slate-200 p-3 focus:ring-2 focus:ring-blue-500"
+                                placeholder="Ej: Hombres activos 25-40 años">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Descripción (opcional)</label>
+                            <textarea name="description" rows="2"
+                                class="w-full rounded-xl border-slate-200 p-3 focus:ring-2 focus:ring-blue-500"
+                                placeholder="Describe brevemente esta audiencia...">{{ audience.description|default:'' }}</textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de audiencia</label>
+                            <select name="audience_type" x-model="audienceType"
+                                class="w-full rounded-xl border-slate-200 p-3 focus:ring-2 focus:ring-blue-500">
+                                <option value="DYNAMIC" {% if audience.audience_type == 'DYNAMIC' %}selected{% endif %}>Dinámica (basada en filtros)</option>
+                                <option value="STATIC" {% if audience.audience_type == 'STATIC' %}selected{% endif %}>Estática (lista fija de clientes)</option>
+                                <option value="MIXED" {% if audience.audience_type == 'MIXED' %}selected{% endif %}>Mixta (filtros + lista manual)</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">
+                                <span x-show="audienceType === 'DYNAMIC'">Los clientes se actualizan automáticamente según los filtros.</span>
+                                <span x-show="audienceType === 'STATIC'" x-cloak>Lista fija de clientes que no cambia automáticamente.</span>
+                                <span x-show="audienceType === 'MIXED'" x-cloak>Combina filtros con una lista manual de clientes adicionales.</span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters Section -->
+                    <div x-show="audienceType !== 'STATIC'" class="space-y-4 pt-6 border-t border-slate-100">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                            </svg>
+                            Filtros de Segmentación
+                        </h3>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Status -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Estado</label>
+                                <select name="status" x-model="filters.status" @change="updatePreview()"
+                                    class="w-full rounded-lg border-slate-200 text-sm">
+                                    <option value="all">Todos</option>
+                                    <option value="ACTIVE" {% if filters.status == 'ACTIVE' %}selected{% endif %}>Activo</option>
+                                    <option value="INACTIVE" {% if filters.status == 'INACTIVE' %}selected{% endif %}>Inactivo</option>
+                                    <option value="LEAD" {% if filters.status == 'LEAD' %}selected{% endif %}>Prospecto</option>
+                                    <option value="PAUSED" {% if filters.status == 'PAUSED' %}selected{% endif %}>Excedencia</option>
+                                    <option value="BLOCKED" {% if filters.status == 'BLOCKED' %}selected{% endif %}>Bloqueado</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Gender -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Género</label>
+                                <select name="gender" x-model="filters.gender" @change="updatePreview()"
+                                    class="w-full rounded-lg border-slate-200 text-sm">
+                                    <option value="all">Todos</option>
+                                    <option value="M" {% if filters.gender == 'M' %}selected{% endif %}>Masculino</option>
+                                    <option value="F" {% if filters.gender == 'F' %}selected{% endif %}>Femenino</option>
+                                    <option value="O" {% if filters.gender == 'O' %}selected{% endif %}>Otro</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Age Range -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Edad mínima</label>
+                                <input type="number" name="age_min" min="0" max="120" x-model="filters.age_min" @change="updatePreview()"
+                                    value="{{ filters.age_min|default:'' }}"
+                                    class="w-full rounded-lg border-slate-200 text-sm" placeholder="Desde">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Edad máxima</label>
+                                <input type="number" name="age_max" min="0" max="120" x-model="filters.age_max" @change="updatePreview()"
+                                    value="{{ filters.age_max|default:'' }}"
+                                    class="w-full rounded-lg border-slate-200 text-sm" placeholder="Hasta">
+                            </div>
+                            
+                            <!-- Membership Plan -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de Cuota</label>
+                                <select name="membership_plan" x-model="filters.membership_plan" @change="updatePreview()"
+                                    class="w-full rounded-lg border-slate-200 text-sm">
+                                    <option value="all">Todas</option>
+                                    {% for plan in membership_plans %}
+                                    <option value="{{ plan.id }}" {% if filters.membership_plan == plan.id|stringformat:'s' %}selected{% endif %}>{{ plan.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- Service -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Servicio Contratado</label>
+                                <select name="service" x-model="filters.service" @change="updatePreview()"
+                                    class="w-full rounded-lg border-slate-200 text-sm">
+                                    <option value="all">Todos</option>
+                                    {% for service in services %}
+                                    <option value="{{ service.id }}" {% if filters.service == service.id|stringformat:'s' %}selected{% endif %}>{{ service.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- Company Type -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de Cliente</label>
+                                <select name="company" x-model="filters.company" @change="updatePreview()"
+                                    class="w-full rounded-lg border-slate-200 text-sm">
+                                    <option value="all">Todos</option>
+                                    <option value="individual" {% if filters.company == 'individual' %}selected{% endif %}>Solo particulares</option>
+                                    <option value="company" {% if filters.company == 'company' %}selected{% endif %}>Solo empresas</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Checkboxes -->
+                        <div class="flex items-center gap-6 pt-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="has_active_membership" x-model="filters.has_active_membership" @change="updatePreview()"
+                                    {% if filters.has_active_membership %}checked{% endif %}
+                                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm text-slate-600">Con cuota activa</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="is_inactive" x-model="filters.is_inactive" @change="updatePreview()"
+                                    {% if filters.is_inactive %}checked{% endif %}
+                                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm text-slate-600">Sin cuota activa</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Tags -->
+                        {% if tags %}
+                        <div class="pt-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Etiquetas</label>
+                            <div class="flex flex-wrap gap-2">
+                                {% for tag in tags %}
+                                <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:bg-slate-50
+                                    {% if tag.id in selected_tags %}bg-blue-50 border-blue-200{% else %}border-slate-200{% endif %}">
+                                    <input type="checkbox" name="tags" value="{{ tag.id }}"
+                                        {% if tag.id in selected_tags %}checked{% endif %}
+                                        @change="updatePreview()"
+                                        class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+                                    <span class="w-2 h-2 rounded-full" style="background-color: {{ tag.color }}"></span>
+                                    <span class="text-sm">{{ tag.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Static Members (for STATIC/MIXED) -->
+                    <div x-show="audienceType === 'STATIC' || audienceType === 'MIXED'" x-cloak class="space-y-4 pt-6 border-t border-slate-100">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            Clientes Específicos
+                        </h3>
+                        <p class="text-sm text-slate-500">
+                            Para añadir clientes manualmente, ve al <a href="{% url 'client_list' %}" class="text-blue-600 hover:underline">listado de clientes</a>, 
+                            selecciónalos y usa la opción "Crear audiencia".
+                        </p>
+                        
+                        {% if audience.static_members.exists %}
+                        <div class="bg-slate-50 rounded-xl p-4">
+                            <p class="text-sm font-medium text-slate-700 mb-2">{{ audience.static_members.count }} clientes en lista fija:</p>
+                            <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                                {% for client in audience.static_members.all|slice:":20" %}
+                                <span class="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs">{{ client.first_name }} {{ client.last_name }}</span>
+                                {% endfor %}
+                                {% if audience.static_members.count > 20 %}
+                                <span class="px-2 py-1 bg-slate-200 rounded-lg text-xs">+{{ audience.static_members.count|add:"-20" }} más</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <input type="hidden" name="static_client_ids" x-model="staticClientIds">
+                    </div>
+                </div>
+                
+                <!-- Right Column: Preview -->
+                <div class="col-span-1">
+                    <div class="sticky top-24">
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                            <h4 class="text-sm font-bold text-slate-700 mb-4">Vista Previa</h4>
+                            
+                            <!-- Count -->
+                            <div class="text-center py-6">
+                                <div class="text-5xl font-bold text-blue-600" x-text="previewCount">
+                                    {% if audience %}{{ audience.get_members_count }}{% else %}0{% endif %}
+                                </div>
+                                <div class="text-sm text-slate-600 mt-1">clientes</div>
+                            </div>
+                            
+                            <!-- Loading indicator -->
+                            <div x-show="loading" class="text-center py-2">
+                                <svg class="animate-spin h-5 w-5 text-blue-500 mx-auto" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                            
+                            <!-- Info -->
+                            <div class="text-xs text-slate-500 text-center mt-4">
+                                El conteo se actualiza en tiempo real según los filtros seleccionados.
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="mt-6 space-y-3">
+                            <button type="submit" class="w-full btn-brand py-3 text-center">
+                                {% if audience %}Guardar Cambios{% else %}Crear Audiencia{% endif %}
+                            </button>
+                            <a href="{% url 'marketing_audience_list' %}" class="block w-full text-center py-3 text-slate-500 hover:text-slate-700 font-medium">
+                                Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('audienceBuilder', () => ({
+        audienceType: '{{ audience.audience_type|default:"DYNAMIC" }}',
+        filters: {
+            status: '{{ filters.status|default:"all" }}',
+            gender: '{{ filters.gender|default:"all" }}',
+            age_min: '{{ filters.age_min|default:"" }}',
+            age_max: '{{ filters.age_max|default:"" }}',
+            membership_plan: '{{ filters.membership_plan|default:"all" }}',
+            service: '{{ filters.service|default:"all" }}',
+            company: '{{ filters.company|default:"all" }}',
+            has_active_membership: {{ filters.has_active_membership|yesno:"true,false" }},
+            is_inactive: {{ filters.is_inactive|yesno:"true,false" }},
+        },
+        staticClientIds: '',
+        previewCount: {% if audience %}{{ audience.get_members_count }}{% else %}0{% endif %},
+        loading: false,
+        debounceTimer: null,
+        
+        updatePreview() {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+                this.fetchPreview();
+            }, 300);
+        },
+        
+        async fetchPreview() {
+            if (this.audienceType === 'STATIC') {
+                return;
+            }
+            
+            this.loading = true;
+            
+            const params = new URLSearchParams();
+            if (this.filters.status !== 'all') params.append('status', this.filters.status);
+            if (this.filters.gender !== 'all') params.append('gender', this.filters.gender);
+            if (this.filters.age_min) params.append('age_min', this.filters.age_min);
+            if (this.filters.age_max) params.append('age_max', this.filters.age_max);
+            if (this.filters.membership_plan !== 'all') params.append('membership_plan', this.filters.membership_plan);
+            if (this.filters.has_active_membership) params.append('has_active_membership', 'true');
+            if (this.filters.is_inactive) params.append('is_inactive', 'true');
+            if (this.filters.company !== 'all') params.append('company', this.filters.company);
+            
+            // Add selected tags
+            document.querySelectorAll('input[name="tags"]:checked').forEach(cb => {
+                params.append('tags', cb.value);
+            });
+            
+            try {
+                const response = await fetch('{% url "marketing_audience_preview" %}?' + params.toString());
+                const data = await response.json();
+                this.previewCount = data.formatted;
+            } catch (error) {
+                console.error('Error fetching preview:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        init() {
+            this.updatePreview();
+        }
+    }));
+});
+</script>
+{% endblock %}

@@ -4,6 +4,257 @@ from organizations.models import Gym
 from django.utils import timezone
 
 
+# =============================================================================
+# SAVED AUDIENCES (Audiencias Guardadas Reutilizables)
+# =============================================================================
+
+class SavedAudience(models.Model):
+    """
+    Audiencias guardadas que pueden reutilizarse en Campañas, Popups, Anuncios.
+    Permite tanto audiencias dinámicas (basadas en filtros) como estáticas (lista de clientes).
+    """
+    
+    class AudienceType(models.TextChoices):
+        DYNAMIC = 'DYNAMIC', _('Dinámica (filtros)')
+        STATIC = 'STATIC', _('Estática (lista fija)')
+        MIXED = 'MIXED', _('Mixta (filtros + exclusiones)')
+    
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='saved_audiences')
+    name = models.CharField(max_length=255, verbose_name=_('Nombre'))
+    description = models.TextField(blank=True, verbose_name=_('Descripción'))
+    
+    audience_type = models.CharField(
+        max_length=20, 
+        choices=AudienceType.choices, 
+        default=AudienceType.DYNAMIC,
+        verbose_name=_('Tipo de audiencia')
+    )
+    
+    # Filtros dinámicos (guardados como JSON)
+    filters = models.JSONField(
+        default=dict, 
+        blank=True,
+        help_text=_('Filtros para audiencia dinámica: {status, gender, age_min, age_max, membership_plan, tags, etc.}')
+    )
+    
+    # Miembros estáticos (para audiencias manuales)
+    static_members = models.ManyToManyField(
+        'clients.Client',
+        blank=True,
+        related_name='static_audiences',
+        verbose_name=_('Miembros estáticos')
+    )
+    
+    # Exclusiones (clientes a excluir siempre)
+    excluded_members = models.ManyToManyField(
+        'clients.Client',
+        blank=True,
+        related_name='excluded_from_audiences',
+        verbose_name=_('Clientes excluidos')
+    )
+    
+    # Metadatos
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='created_audiences'
+    )
+    
+    # Cache del conteo (se actualiza periódicamente)
+    _cached_count = models.IntegerField(default=0, db_column='cached_count')
+    _count_updated_at = models.DateTimeField(null=True, blank=True, db_column='count_updated_at')
+    
+    class Meta:
+        verbose_name = _('Audiencia guardada')
+        verbose_name_plural = _('Audiencias guardadas')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_members_count()} clientes)"
+    
+    def get_members_queryset(self):
+        """
+        Devuelve el QuerySet de clientes que pertenecen a esta audiencia.
+        Soporta filtros múltiples (listas) y filtros simples para compatibilidad.
+        """
+        from clients.models import Client, ClientGroup
+        from django.db.models import Q
+        
+        if self.audience_type == self.AudienceType.STATIC:
+            # Solo miembros estáticos
+            qs = self.static_members.all()
+        else:
+            # Audiencia dinámica basada en filtros
+            qs = Client.objects.filter(gym=self.gym)
+            
+            filters = self.filters or {}
+            
+            # Filtros múltiples (nuevo formato: listas)
+            # Estado (múltiple)
+            if filters.get('statuses'):
+                statuses = filters['statuses'] if isinstance(filters['statuses'], list) else [filters['statuses']]
+                qs = qs.filter(status__in=statuses)
+            # Compatibilidad con formato antiguo (single)
+            elif filters.get('status') and filters['status'] != 'all':
+                qs = qs.filter(status=filters['status'])
+            
+            # Género (múltiple)
+            if filters.get('genders'):
+                genders = filters['genders'] if isinstance(filters['genders'], list) else [filters['genders']]
+                qs = qs.filter(gender__in=genders)
+            elif filters.get('gender') and filters['gender'] != 'all':
+                qs = qs.filter(gender=filters['gender'])
+            
+            # Planes de membresía (múltiple)
+            if filters.get('membership_plans'):
+                plan_ids = filters['membership_plans'] if isinstance(filters['membership_plans'], list) else [filters['membership_plans']]
+                qs = qs.filter(memberships__plan_id__in=plan_ids).distinct()
+            elif filters.get('membership_plan') and filters['membership_plan'] != 'all':
+                qs = qs.filter(
+                    memberships__plan_id=filters['membership_plan'],
+                    memberships__status='ACTIVE'
+                ).distinct()
+            
+            # Servicios (múltiple)
+            if filters.get('services'):
+                from services.models import Service
+                service_ids = filters['services'] if isinstance(filters['services'], list) else [filters['services']]
+                service_names = list(Service.objects.filter(id__in=service_ids).values_list('name', flat=True))
+                q_services = Q()
+                for name in service_names:
+                    q_services |= Q(visits__concept__icontains=name)
+                if q_services:
+                    qs = qs.filter(q_services).distinct()
+            elif filters.get('service') and filters['service'] != 'all':
+                qs = qs.filter(
+                    orders__items__service_id=filters['service']
+                ).distinct()
+            
+            # Productos (múltiple)
+            if filters.get('products'):
+                from products.models import Product
+                product_ids = filters['products'] if isinstance(filters['products'], list) else [filters['products']]
+                product_names = list(Product.objects.filter(id__in=product_ids).values_list('name', flat=True))
+                q_products = Q()
+                for name in product_names:
+                    q_products |= Q(sales__concept__icontains=name)
+                if q_products:
+                    qs = qs.filter(q_products).distinct()
+            
+            # Grupos (múltiple)
+            if filters.get('groups'):
+                group_ids = filters['groups'] if isinstance(filters['groups'], list) else [filters['groups']]
+                qs = qs.filter(groups__id__in=group_ids).distinct()
+            
+            # Tags (múltiple)
+            if filters.get('tags'):
+                tag_ids = filters['tags'] if isinstance(filters['tags'], list) else [filters['tags']]
+                qs = qs.filter(tags__id__in=tag_ids).distinct()
+            
+            # Origen de alta (múltiple)
+            if filters.get('created_from'):
+                created_from = filters['created_from'] if isinstance(filters['created_from'], list) else [filters['created_from']]
+                qs = qs.filter(extra_data__created_from__in=created_from)
+            
+            # Filtros simples (edad)
+            if filters.get('age_min'):
+                from datetime import date
+                from dateutil.relativedelta import relativedelta
+                max_birth = date.today() - relativedelta(years=int(filters['age_min']))
+                qs = qs.filter(birth_date__lte=max_birth)
+            
+            if filters.get('age_max'):
+                from datetime import date
+                from dateutil.relativedelta import relativedelta
+                min_birth = date.today() - relativedelta(years=int(filters['age_max']) + 1)
+                qs = qs.filter(birth_date__gt=min_birth)
+            
+            if filters.get('has_active_membership'):
+                qs = qs.filter(memberships__status='ACTIVE').distinct()
+            
+            if filters.get('is_inactive'):
+                qs = qs.exclude(memberships__status='ACTIVE')
+            
+            if filters.get('company') == 'company':
+                qs = qs.filter(is_company_client=True)
+            elif filters.get('company') == 'individual':
+                qs = qs.filter(is_company_client=False)
+            
+            # Para audiencia mixta, añadir miembros estáticos
+            if self.audience_type == self.AudienceType.MIXED:
+                static_ids = self.static_members.values_list('id', flat=True)
+                qs = qs | Client.objects.filter(id__in=static_ids)
+        
+        # Excluir miembros excluidos
+        excluded_ids = self.excluded_members.values_list('id', flat=True)
+        if excluded_ids:
+            qs = qs.exclude(id__in=excluded_ids)
+        
+        return qs.distinct()
+    
+    def get_members_count(self, use_cache=True):
+        """
+        Devuelve el número de clientes en la audiencia.
+        """
+        # Usar caché si es reciente (menos de 1 hora)
+        if use_cache and self._count_updated_at:
+            from datetime import timedelta
+            if timezone.now() - self._count_updated_at < timedelta(hours=1):
+                return self._cached_count
+        
+        count = self.get_members_queryset().count()
+        
+        # Actualizar caché
+        self._cached_count = count
+        self._count_updated_at = timezone.now()
+        SavedAudience.objects.filter(pk=self.pk).update(
+            _cached_count=count,
+            _count_updated_at=self._count_updated_at
+        )
+        
+        return count
+    
+    def get_filters_display(self):
+        """
+        Devuelve una descripción legible de los filtros aplicados.
+        """
+        if not self.filters:
+            return "Sin filtros"
+        
+        parts = []
+        filters = self.filters
+        
+        if filters.get('status') and filters['status'] != 'all':
+            status_map = {
+                'ACTIVE': 'Activos',
+                'INACTIVE': 'Inactivos', 
+                'LEAD': 'Prospectos',
+                'PAUSED': 'En pausa',
+                'BLOCKED': 'Bloqueados'
+            }
+            parts.append(status_map.get(filters['status'], filters['status']))
+        
+        if filters.get('gender') and filters['gender'] != 'all':
+            gender_map = {'M': 'Hombres', 'F': 'Mujeres', 'O': 'Otro'}
+            parts.append(gender_map.get(filters['gender'], filters['gender']))
+        
+        if filters.get('age_min') or filters.get('age_max'):
+            age_str = f"{filters.get('age_min', '0')}-{filters.get('age_max', '∞')} años"
+            parts.append(age_str)
+        
+        if filters.get('has_active_membership'):
+            parts.append("Con cuota activa")
+        
+        if filters.get('is_inactive'):
+            parts.append("Sin cuota activa")
+        
+        return ", ".join(parts) if parts else "Todos los clientes"
+
+
 class MarketingSettings(models.Model):
     """
     SMTP and general marketing configuration per Gym.
@@ -86,6 +337,7 @@ class Campaign(models.Model):
         INACTIVE = 'INACTIVE', _('Inactivos/Expirados')
         STAFF = 'STAFF', _('Staff')
         CUSTOM_TAG = 'CUSTOM_TAG', _('Etiqueta Personalizada')
+        SAVED_AUDIENCE = 'SAVED_AUDIENCE', _('Audiencia Guardada')
 
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='campaigns')
     name = models.CharField(max_length=255)
@@ -94,6 +346,15 @@ class Campaign(models.Model):
     
     audience_type = models.CharField(max_length=50, choices=AudienceType.choices, default=AudienceType.ALL_ACTIVE)
     audience_filter_value = models.CharField(max_length=255, blank=True, null=True, help_text="Tag name or specific filter ID")
+    
+    # Referencia a audiencia guardada
+    saved_audience = models.ForeignKey(
+        'SavedAudience',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='campaigns',
+        verbose_name=_('Audiencia guardada')
+    )
     
     scheduled_at = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
@@ -106,6 +367,33 @@ class Campaign(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.status})"
+    
+    def get_recipients_queryset(self):
+        """
+        Devuelve el QuerySet de clientes destinatarios de la campaña.
+        """
+        from clients.models import Client
+        
+        # Si usa audiencia guardada
+        if self.audience_type == self.AudienceType.SAVED_AUDIENCE and self.saved_audience:
+            return self.saved_audience.get_members_queryset()
+        
+        # Audiencias predefinidas (legacy)
+        qs = Client.objects.filter(gym=self.gym)
+        
+        if self.audience_type == self.AudienceType.ALL_ACTIVE:
+            qs = qs.filter(memberships__status='ACTIVE').distinct()
+        elif self.audience_type == self.AudienceType.INACTIVE:
+            qs = qs.exclude(memberships__status='ACTIVE')
+        elif self.audience_type == self.AudienceType.CUSTOM_TAG and self.audience_filter_value:
+            qs = qs.filter(tags__name__iexact=self.audience_filter_value).distinct()
+        # ALL_CLIENTS: no filter needed
+        
+        return qs.filter(email__isnull=False).exclude(email='')
+    
+    def get_recipients_count(self):
+        """Devuelve el número de destinatarios."""
+        return self.get_recipients_queryset().count()
 
 class Popup(models.Model):
     """
@@ -115,6 +403,12 @@ class Popup(models.Model):
         CLIENTS = 'CLIENTS', _('Clientes')
         STAFF = 'STAFF', _('Staff')
         ALL = 'ALL', _('Todos')
+    
+    class DisplayFrequency(models.TextChoices):
+        ONCE = 'ONCE', _('Solo una vez (cuando marque Entendido)')
+        EVERY_SESSION = 'EVERY_SESSION', _('Cada vez que abra la app')
+        DAILY = 'DAILY', _('Una vez al día')
+        WEEKLY = 'WEEKLY', _('Una vez por semana')
 
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='popups')
     title = models.CharField(max_length=255)
@@ -129,9 +423,27 @@ class Popup(models.Model):
     ]
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='INFO')
     
+    # Display Frequency
+    display_frequency = models.CharField(
+        max_length=20, 
+        choices=DisplayFrequency.choices, 
+        default=DisplayFrequency.ONCE,
+        verbose_name=_('Frecuencia de visualización'),
+        help_text=_('Controla cuántas veces se muestra el popup a cada usuario')
+    )
+    
     # Matching Campaign Audience
     audience_type = models.CharField(max_length=50, choices=Campaign.AudienceType.choices, default=Campaign.AudienceType.ALL_ACTIVE)
     audience_filter_value = models.CharField(max_length=255, blank=True, null=True, help_text="Tag name or specific filter ID")
+
+    # Referencia a audiencia guardada
+    saved_audience = models.ForeignKey(
+        'SavedAudience',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='popups',
+        verbose_name=_('Audiencia guardada')
+    )
 
     # Direct Individual Targeting
     target_client = models.ForeignKey(
@@ -156,10 +468,13 @@ class Popup(models.Model):
 class PopupRead(models.Model):
     """
     Tracks which users have seen/closed which specific popup.
+    Supports different display frequencies by tracking last seen time.
     """
     popup = models.ForeignKey(Popup, on_delete=models.CASCADE, related_name='reads')
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='read_popups')
     seen_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True, help_text="Updated each time popup is shown again")
+    times_seen = models.PositiveIntegerField(default=1, help_text="How many times user has seen this popup")
 
     class Meta:
         unique_together = ('popup', 'client')
@@ -275,6 +590,15 @@ class Advertisement(models.Model):
         blank=True,
         null=True,
         help_text="Tag o filtro específico según tipo de audiencia"
+    )
+    
+    # Referencia a audiencia guardada
+    saved_audience = models.ForeignKey(
+        'SavedAudience',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='advertisements',
+        verbose_name=_('Audiencia guardada')
     )
     
     # Segmentación por pantallas
@@ -537,6 +861,13 @@ class LeadCard(models.Model):
         REFERRAL = 'REFERRAL', _('Referido')
         SOCIAL = 'SOCIAL', _('Redes Sociales')
         ADS = 'ADS', _('Publicidad')
+        FACEBOOK = 'FACEBOOK', _('Facebook Lead Ads')
+        INSTAGRAM = 'INSTAGRAM', _('Instagram Lead Ads')
+        GOOGLE = 'GOOGLE', _('Google Ads')
+        PHONE = 'PHONE', _('Llamada Telefónica')
+        EMAIL = 'EMAIL', _('Email')
+        EVENT = 'EVENT', _('Evento/Feria')
+        PARTNER = 'PARTNER', _('Partner/Colaborador')
         OTHER = 'OTHER', _('Otro')
 
     client = models.OneToOneField(
@@ -933,4 +1264,344 @@ class RetentionRule(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.days_threshold} días)"
+
+
+# =============================================================================
+# META (FACEBOOK/INSTAGRAM) LEAD ADS INTEGRATION
+# =============================================================================
+
+class MetaLeadIntegration(models.Model):
+    """
+    Configuración de integración con Meta (Facebook/Instagram) Lead Ads.
+    Permite recibir leads automáticamente desde formularios de Facebook e Instagram.
+    """
+    gym = models.OneToOneField(Gym, on_delete=models.CASCADE, related_name='meta_integration')
+    
+    # OAuth Credentials
+    app_id = models.CharField(max_length=100, blank=True, help_text="Meta App ID")
+    app_secret = models.CharField(max_length=255, blank=True, help_text="Meta App Secret (encriptado)")
+    access_token = models.TextField(blank=True, help_text="Page Access Token (long-lived)")
+    token_expires_at = models.DateTimeField(null=True, blank=True)
+    
+    # Page Info
+    page_id = models.CharField(max_length=100, blank=True, help_text="Facebook Page ID")
+    page_name = models.CharField(max_length=255, blank=True)
+    instagram_business_account_id = models.CharField(max_length=100, blank=True)
+    
+    # Configuration
+    is_active = models.BooleanField(default=False)
+    auto_create_lead = models.BooleanField(default=True, help_text="Crear lead automáticamente al recibir")
+    default_stage = models.ForeignKey(
+        LeadStage, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Etapa inicial para leads de Meta"
+    )
+    
+    # Webhook
+    webhook_verify_token = models.CharField(max_length=100, blank=True, help_text="Token de verificación del webhook")
+    webhook_url = models.CharField(max_length=500, blank=True, help_text="URL del webhook (auto-generada)")
+    
+    # Stats
+    leads_received = models.IntegerField(default=0)
+    last_lead_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Meta Lead Integration")
+        verbose_name_plural = _("Meta Lead Integrations")
+
+    def __str__(self):
+        status = "✓ Conectado" if self.is_active and self.access_token else "✗ No conectado"
+        return f"Meta Integration - {self.gym.name} ({status})"
+    
+    def is_connected(self):
+        """Check if the integration is properly connected."""
+        return bool(self.is_active and self.access_token and self.page_id)
+    
+    def save(self, *args, **kwargs):
+        # Generate webhook verify token if not set
+        if not self.webhook_verify_token:
+            import secrets
+            self.webhook_verify_token = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
+
+
+class MetaLeadForm(models.Model):
+    """
+    Formularios de lead ads vinculados desde Meta.
+    Un Page puede tener múltiples formularios.
+    """
+    integration = models.ForeignKey(MetaLeadIntegration, on_delete=models.CASCADE, related_name='lead_forms')
+    form_id = models.CharField(max_length=100, unique=True)
+    form_name = models.CharField(max_length=255)
+    
+    # Configuration específica por formulario
+    is_active = models.BooleanField(default=True)
+    target_stage = models.ForeignKey(
+        LeadStage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Etapa específica para este formulario (override default)"
+    )
+    assign_to = models.ForeignKey(
+        'staff.StaffProfile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Asignar automáticamente a este vendedor"
+    )
+    
+    # Field mapping (JSON)
+    field_mapping = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Mapeo de campos del formulario Meta a campos del lead"
+    )
+    
+    # Stats
+    leads_received = models.IntegerField(default=0)
+    last_lead_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Meta Lead Form")
+        verbose_name_plural = _("Meta Lead Forms")
+
+    def __str__(self):
+        return f"{self.form_name} ({self.form_id})"
+
+
+class MetaLeadEntry(models.Model):
+    """
+    Registro de cada lead recibido desde Meta.
+    Guarda los datos raw y el estado del procesamiento.
+    """
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', _('Pendiente')
+        PROCESSED = 'PROCESSED', _('Procesado')
+        ERROR = 'ERROR', _('Error')
+        DUPLICATE = 'DUPLICATE', _('Duplicado')
+    
+    integration = models.ForeignKey(MetaLeadIntegration, on_delete=models.CASCADE, related_name='lead_entries')
+    form = models.ForeignKey(MetaLeadForm, on_delete=models.SET_NULL, null=True, blank=True, related_name='entries')
+    
+    # Meta Lead Data
+    leadgen_id = models.CharField(max_length=100, unique=True, help_text="Meta Lead ID")
+    ad_id = models.CharField(max_length=100, blank=True)
+    ad_name = models.CharField(max_length=255, blank=True)
+    campaign_id = models.CharField(max_length=100, blank=True)
+    campaign_name = models.CharField(max_length=255, blank=True)
+    
+    # Raw data from webhook
+    raw_data = models.JSONField(default=dict)
+    
+    # Extracted fields
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+    
+    # Processing
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    error_message = models.TextField(blank=True)
+    
+    # Link to created lead
+    lead_card = models.ForeignKey(LeadCard, on_delete=models.SET_NULL, null=True, blank=True, related_name='meta_entries')
+    
+    # Platform info
+    platform = models.CharField(max_length=20, default='facebook', help_text="facebook or instagram")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Meta Lead Entry")
+        verbose_name_plural = _("Meta Lead Entries")
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.email}) - {self.get_status_display()}"
+
+
+# =============================================================================
+# LEAD DISTRIBUTION (Asignación Automática de Leads)
+# =============================================================================
+
+class LeadDistributionRule(models.Model):
+    """
+    Reglas de distribución automática de leads entre vendedores.
+    Soporta Round-Robin, carga balanceada, y asignación por fuente.
+    """
+    class DistributionMethod(models.TextChoices):
+        ROUND_ROBIN = 'ROUND_ROBIN', _('Round Robin (rotación)')
+        LOAD_BALANCED = 'LOAD_BALANCED', _('Balanceado por Carga')
+        RANDOM = 'RANDOM', _('Aleatorio')
+        FIXED = 'FIXED', _('Asignación Fija')
+    
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='lead_distribution_rules')
+    name = models.CharField(max_length=100)
+    
+    # Distribution method
+    method = models.CharField(max_length=20, choices=DistributionMethod.choices, default=DistributionMethod.ROUND_ROBIN)
+    
+    # Source filter (None = all sources)
+    source_filter = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Solo aplicar a leads de esta fuente (vacío = todas)"
+    )
+    
+    # Staff pool
+    staff_members = models.ManyToManyField(
+        'staff.StaffProfile',
+        related_name='distribution_rules',
+        help_text="Vendedores que participan en la distribución"
+    )
+    
+    # For round-robin tracking
+    current_index = models.IntegerField(default=0)
+    
+    # Limits
+    max_leads_per_day = models.IntegerField(default=0, help_text="Máximo leads por vendedor por día (0 = sin límite)")
+    max_active_leads = models.IntegerField(default=0, help_text="Máximo leads activos por vendedor (0 = sin límite)")
+    
+    # Notifications
+    notify_on_assignment = models.BooleanField(default=True)
+    
+    is_active = models.BooleanField(default=True)
+    priority = models.IntegerField(default=0, help_text="Mayor prioridad se evalúa primero")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-priority', '-created_at']
+        verbose_name = _("Lead Distribution Rule")
+        verbose_name_plural = _("Lead Distribution Rules")
+
+    def __str__(self):
+        return f"{self.name} ({self.get_method_display()})"
+    
+    def get_next_assignee(self):
+        """Get the next staff member based on distribution method."""
+        active_staff = list(self.staff_members.filter(is_active=True))
+        
+        if not active_staff:
+            return None
+        
+        if self.method == self.DistributionMethod.ROUND_ROBIN:
+            # Simple round-robin
+            assignee = active_staff[self.current_index % len(active_staff)]
+            self.current_index = (self.current_index + 1) % len(active_staff)
+            self.save(update_fields=['current_index'])
+            return assignee
+        
+        elif self.method == self.DistributionMethod.LOAD_BALANCED:
+            # Assign to staff with fewest active leads
+            from django.db.models import Count
+            staff_with_counts = []
+            for staff in active_staff:
+                active_leads = LeadCard.objects.filter(
+                    assigned_to=staff,
+                    stage__is_won=False,
+                    stage__is_lost=False
+                ).count()
+                staff_with_counts.append((staff, active_leads))
+            
+            # Sort by lead count (ascending)
+            staff_with_counts.sort(key=lambda x: x[1])
+            return staff_with_counts[0][0] if staff_with_counts else None
+        
+        elif self.method == self.DistributionMethod.RANDOM:
+            import random
+            return random.choice(active_staff)
+        
+        elif self.method == self.DistributionMethod.FIXED:
+            # Just return the first active staff
+            return active_staff[0] if active_staff else None
+        
+        return None
+
+
+class LeadAssignmentLog(models.Model):
+    """
+    Log de asignaciones de leads para tracking y auditoría.
+    """
+    lead_card = models.ForeignKey(LeadCard, on_delete=models.CASCADE, related_name='assignment_logs')
+    assigned_to = models.ForeignKey('staff.StaffProfile', on_delete=models.SET_NULL, null=True)
+    assigned_by = models.ForeignKey(
+        'staff.StaffProfile', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='assignments_made'
+    )
+    rule = models.ForeignKey(
+        LeadDistributionRule, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Regla que realizó la asignación automática"
+    )
+    
+    # Assignment details
+    assignment_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('AUTO', 'Automática'),
+            ('MANUAL', 'Manual'),
+            ('REASSIGN', 'Reasignación'),
+        ],
+        default='MANUAL'
+    )
+    notes = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Lead Assignment Log")
+        verbose_name_plural = _("Lead Assignment Logs")
+
+    def __str__(self):
+        return f"{self.lead_card.client} → {self.assigned_to} ({self.assignment_type})"
+
+
+# =============================================================================
+# SALES FUNNEL ANALYTICS (Histórico para reportes)
+# =============================================================================
+
+class LeadStageHistory(models.Model):
+    """
+    Historial de movimientos de leads entre etapas.
+    Permite calcular tiempos de conversión y tasas por etapa.
+    """
+    lead_card = models.ForeignKey(LeadCard, on_delete=models.CASCADE, related_name='stage_history')
+    from_stage = models.ForeignKey(LeadStage, on_delete=models.SET_NULL, null=True, blank=True, related_name='history_from')
+    to_stage = models.ForeignKey(LeadStage, on_delete=models.SET_NULL, null=True, related_name='history_to')
+    
+    # Who/what made the change
+    changed_by = models.ForeignKey('staff.StaffProfile', on_delete=models.SET_NULL, null=True, blank=True)
+    changed_by_automation = models.ForeignKey(LeadStageAutomation, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Time tracking
+    time_in_previous_stage = models.DurationField(null=True, blank=True, help_text="Tiempo que estuvo en la etapa anterior")
+    
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Lead Stage History")
+        verbose_name_plural = _("Lead Stage Histories")
+
+    def __str__(self):
+        from_name = self.from_stage.name if self.from_stage else "Nueva entrada"
+        to_name = self.to_stage.name if self.to_stage else "Eliminado"
+        return f"{self.lead_card.client}: {from_name} → {to_name}"
 

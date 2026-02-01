@@ -13,20 +13,20 @@
               <div>
                 <div class="text-xs text-slate-400">Ficha 1</div>
                 <div class="font-semibold">{{ c1.first_name }} {{ c1.last_name }}</div>
-                <div class="text-xs text-slate-500">Email: {{ c1.email }}<br>Tel: {{ c1.phone }}</div>
+                <div class="text-xs text-slate-500">Email: {{ c1.email }}<br>Tel: {{ c1.phone_number }}</div>
                 <div class="text-xs text-slate-400">ID: {{ c1.id }}</div>
               </div>
               <div>
                 <div class="text-xs text-slate-400">Ficha 2</div>
                 <div class="font-semibold">{{ c2.first_name }} {{ c2.last_name }}</div>
-                <div class="text-xs text-slate-500">Email: {{ c2.email }}<br>Tel: {{ c2.phone }}</div>
+                <div class="text-xs text-slate-500">Email: {{ c2.email }}<br>Tel: {{ c2.phone_number }}</div>
                 <div class="text-xs text-slate-400">ID: {{ c2.id }}</div>
               </div>
             </div>
           </div>
           <div class="mt-4 md:mt-0 md:ml-8 flex flex-col gap-2">
-            <a href="{% url 'admin:clients_client_change' c1.id %}" class="text-xs text-indigo-600 hover:underline">Ver Ficha 1</a>
-            <a href="{% url 'admin:clients_client_change' c2.id %}" class="text-xs text-indigo-600 hover:underline">Ver Ficha 2</a>
+            <a href="{% url 'client_detail' c1.id %}" class="text-xs text-indigo-600 hover:underline">Ver Ficha 1</a>
+            <a href="{% url 'client_detail' c2.id %}" class="text-xs text-indigo-600 hover:underline">Ver Ficha 2</a>
             <a href="{% url 'merge_clients_wizard' c1.id c2.id %}" class="text-xs text-rose-600 font-bold hover:underline">Fusionar</a>
           </div>
         </div>

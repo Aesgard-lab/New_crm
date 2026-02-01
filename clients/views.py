@@ -10,8 +10,8 @@ from django.utils.text import slugify
 
 from accounts.decorators import require_gym_permission
 from organizations.models import Gym
-from .forms import ClientDocumentForm, ClientFieldForm, ClientForm, ClientGroupForm, ClientNoteForm, ClientTagForm
-from .models import Client, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientNote, ClientTag
+from .forms import ClientDocumentForm, ClientFieldForm, ClientForm, ClientGroupForm, ClientNoteForm, ClientTagForm, ClientHealthRecordForm, ClientHealthDocumentForm
+from .models import Client, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientNote, ClientTag, ClientHealthRecord, ClientHealthDocument, DocumentTemplate
 from routines.models import WorkoutRoutine
 from clients.utils.duplicate_detection import find_potential_duplicates
 
@@ -325,6 +325,14 @@ def client_detail(request, client_id):
     except (ImportError, Exception):
         locker_assignments = []
 
+    # Health Record - datos de salud del cliente
+    health_record, _ = ClientHealthRecord.objects.get_or_create(
+        client=client,
+        defaults={'created_by': request.user}
+    )
+    health_form = ClientHealthRecordForm(instance=health_record)
+    health_document_form = ClientHealthDocumentForm()
+
     context = {
         'client': client,
         'title': f'{client.first_name} {client.last_name}',
@@ -348,6 +356,9 @@ def client_detail(request, client_id):
         'access_logs': access_logs,
         'access_credentials': access_credentials,
         'locker_assignments': locker_assignments,
+        'health_record': health_record,
+        'health_form': health_form,
+        'health_document_form': health_document_form,
     }
     return render(request, "backoffice/clients/detail.html", context)
 
@@ -894,6 +905,22 @@ def client_toggle_email_notifications(request, client_id):
 
 from .models import DocumentTemplate
 from .forms import DocumentTemplateForm
+from services.franchise_service import FranchisePropagationService
+
+def get_franchise_gyms_for_user(user, current_gym):
+    """
+    Returns all gyms from the current gym's franchise (excluding current gym).
+    The context is always the current gym's franchise, regardless of user permissions.
+    """
+    from organizations.models import Gym
+    
+    # Only show gyms from the CURRENT gym's franchise
+    if current_gym and current_gym.franchise:
+        gyms = current_gym.franchise.gyms.filter(is_active=True).exclude(id=current_gym.id)
+        return gyms.order_by('name')
+    
+    return Gym.objects.none()
+
 
 @login_required
 @require_gym_permission("clients.change")
@@ -920,6 +947,16 @@ def document_template_create(request):
     if not gym:
         return redirect("home")
     
+    # Get franchise gyms for propagation (using helper function)
+    franchise_gyms = get_franchise_gyms_for_user(request.user, gym)
+    
+    # Group gyms by franchise for better UX
+    from collections import defaultdict
+    gyms_by_franchise = defaultdict(list)
+    for fgym in franchise_gyms:
+        franchise_name = fgym.franchise.name if fgym.franchise else "Sin Franquicia"
+        gyms_by_franchise[franchise_name].append(fgym)
+    
     if request.method == "POST":
         form = DocumentTemplateForm(request.POST)
         if form.is_valid():
@@ -927,7 +964,29 @@ def document_template_create(request):
             template.gym = gym
             template.created_by = request.user
             template.save()
-            messages.success(request, f"✅ Plantilla '{template.name}' creada correctamente.")
+            
+            # Handle franchise propagation
+            propagate_ids = request.POST.getlist('propagate_to_gyms')
+            if propagate_ids:
+                from organizations.models import Gym
+                # Get gyms from the allowed list (security check)
+                allowed_gym_ids = list(franchise_gyms.values_list('id', flat=True))
+                target_gym_ids = [int(gid) for gid in propagate_ids if int(gid) in allowed_gym_ids]
+                target_gyms = Gym.objects.filter(id__in=target_gym_ids)
+                
+                results = FranchisePropagationService.propagate_document_template(
+                    template, target_gyms, request.user
+                )
+                if results['created'] or results['updated']:
+                    messages.success(
+                        request, 
+                        f"✅ Plantilla '{template.name}' creada y propagada a {results['created']} gimnasios."
+                    )
+                else:
+                    messages.success(request, f"✅ Plantilla '{template.name}' creada correctamente.")
+            else:
+                messages.success(request, f"✅ Plantilla '{template.name}' creada correctamente.")
+            
             return redirect("document_template_list")
     else:
         form = DocumentTemplateForm()
@@ -935,6 +994,7 @@ def document_template_create(request):
     context = {
         'form': form,
         'title': 'Nueva Plantilla de Documento',
+        'franchise_gyms': franchise_gyms,
     }
     return render(request, "backoffice/settings/documents/form.html", context)
 
@@ -949,11 +1009,36 @@ def document_template_edit(request, pk):
     
     template = get_object_or_404(DocumentTemplate, id=pk, gym=gym)
     
+    # Get franchise gyms for propagation (only from current gym's franchise)
+    franchise_gyms = get_franchise_gyms_for_user(request.user, gym)
+    
     if request.method == "POST":
         form = DocumentTemplateForm(request.POST, instance=template)
         if form.is_valid():
             form.save()
-            messages.success(request, f"✅ Plantilla '{template.name}' actualizada.")
+            
+            # Handle franchise propagation
+            propagate_ids = request.POST.getlist('propagate_to_gyms')
+            if propagate_ids:
+                from organizations.models import Gym
+                # Get gyms from the allowed list (security check)
+                allowed_gym_ids = list(franchise_gyms.values_list('id', flat=True))
+                target_gym_ids = [int(gid) for gid in propagate_ids if int(gid) in allowed_gym_ids]
+                target_gyms = Gym.objects.filter(id__in=target_gym_ids)
+                
+                results = FranchisePropagationService.propagate_document_template(
+                    template, target_gyms, request.user
+                )
+                if results['created'] or results['updated']:
+                    messages.success(
+                        request, 
+                        f"✅ Plantilla actualizada y propagada a {results['created'] + results['updated']} gimnasios."
+                    )
+                else:
+                    messages.success(request, f"✅ Plantilla '{template.name}' actualizada.")
+            else:
+                messages.success(request, f"✅ Plantilla '{template.name}' actualizada.")
+            
             return redirect("document_template_list")
     else:
         form = DocumentTemplateForm(instance=template)
@@ -962,6 +1047,7 @@ def document_template_edit(request, pk):
         'form': form,
         'template': template,
         'title': f'Editar: {template.name}',
+        'franchise_gyms': franchise_gyms,
     }
     return render(request, "backoffice/settings/documents/form.html", context)
 
@@ -1144,3 +1230,80 @@ def bulk_send_document(request):
         'skipped': skipped_count,
         'message': f'Documento enviado a {created_count} clientes. {skipped_count} omitidos (ya tenían el documento).'
     })
+
+
+# ==================== HEALTH RECORD VIEWS ====================
+
+@login_required
+@require_gym_permission("clients.change")
+@require_POST
+def client_health_record_update(request, client_id):
+    """Actualiza los datos de salud del cliente"""
+    gym = getattr(request, "gym", None)
+    if not gym:
+        return JsonResponse({'error': 'No hay gimnasio seleccionado'}, status=400)
+    
+    client = get_object_or_404(Client, id=client_id, gym=gym)
+    
+    # Obtener o crear el health record
+    health_record, created = ClientHealthRecord.objects.get_or_create(
+        client=client,
+        defaults={'created_by': request.user}
+    )
+    
+    form = ClientHealthRecordForm(request.POST, instance=health_record)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Datos de salud actualizados correctamente")
+        return redirect('client_detail', client_id=client.id)
+    else:
+        messages.error(request, "Error al guardar los datos de salud")
+        return redirect('client_detail', client_id=client.id)
+
+
+@login_required
+@require_gym_permission("clients.change")
+@require_POST
+def client_health_document_upload(request, client_id):
+    """Sube un documento de salud para el cliente"""
+    gym = getattr(request, "gym", None)
+    if not gym:
+        return JsonResponse({'error': 'No hay gimnasio seleccionado'}, status=400)
+    
+    client = get_object_or_404(Client, id=client_id, gym=gym)
+    
+    # Obtener o crear el health record
+    health_record, created = ClientHealthRecord.objects.get_or_create(
+        client=client,
+        defaults={'created_by': request.user}
+    )
+    
+    form = ClientHealthDocumentForm(request.POST, request.FILES)
+    if form.is_valid():
+        doc = form.save(commit=False)
+        doc.health_record = health_record
+        doc.uploaded_by = request.user
+        doc.save()
+        messages.success(request, f"Documento '{doc.name}' subido correctamente")
+    else:
+        messages.error(request, "Error al subir el documento de salud")
+    
+    return redirect('client_detail', client_id=client.id)
+
+
+@login_required
+@require_gym_permission("clients.change")
+@require_POST
+def client_health_document_delete(request, doc_id):
+    """Elimina un documento de salud"""
+    gym = getattr(request, "gym", None)
+    if not gym:
+        return JsonResponse({'error': 'No hay gimnasio seleccionado'}, status=400)
+    
+    doc = get_object_or_404(ClientHealthDocument, id=doc_id, health_record__client__gym=gym)
+    client_id = doc.health_record.client.id
+    doc_name = doc.name
+    doc.delete()
+    
+    messages.success(request, f"Documento '{doc_name}' eliminado")
+    return redirect('client_detail', client_id=client_id)

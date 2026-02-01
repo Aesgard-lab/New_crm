@@ -13,6 +13,8 @@ class MembershipPlanForm(forms.ModelForm):
             'name', 'description', 'image', 'base_price', 'tax_rate', 'price_strategy',
             'is_recurring', 'is_membership', 
             'frequency_amount', 'frequency_unit',
+            # Enrollment fee / Matrícula
+            'has_enrollment_fee', 'enrollment_fee', 'enrollment_fee_tax_rate', 'enrollment_fee_price_strategy', 'enrollment_fee_waivable', 'enrollment_fee_channel',
             'contract_required', 'contract_content', # Contract
             'prorate_first_month',
             # Pause fields
@@ -20,8 +22,8 @@ class MembershipPlanForm(forms.ModelForm):
             'pause_max_per_year', 'pause_advance_notice_days',
             'pause_allows_gym_access', 'pause_allows_booking', 'pause_extends_end_date',
             'is_active', 'is_visible_online',
-            # New client only offers
-            'is_new_client_only', 'new_client_criteria', 'new_client_days_threshold', 'new_client_badge_text',
+            # Eligibility restrictions (nuevo sistema)
+            'eligibility_criteria', 'eligibility_days_threshold', 'visibility_for_ineligible', 'eligibility_badge_text',
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
@@ -35,6 +37,14 @@ class MembershipPlanForm(forms.ModelForm):
             'frequency_unit': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             
             'pack_validity_days': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            
+            # Enrollment Fee / Matrícula
+            'has_enrollment_fee': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500'}),
+            'enrollment_fee': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'step': '0.01', 'placeholder': '0.00'}),
+            'enrollment_fee_tax_rate': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'enrollment_fee_price_strategy': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'enrollment_fee_waivable': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'enrollment_fee_channel': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             
             # Contract
             'contract_content': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'rows': 10}),
@@ -58,11 +68,11 @@ class MembershipPlanForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_visible_online': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             
-            # New client offers
-            'is_new_client_only': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500'}),
-            'new_client_criteria': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
-            'new_client_days_threshold': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
-            'new_client_badge_text': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': '🎁 Oferta Bienvenida'}),
+            # Eligibility restrictions (nuevo sistema)
+            'eligibility_criteria': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'eligibility_days_threshold': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'visibility_for_ineligible': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'eligibility_badge_text': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': '🎁 Solo Nuevos'}),
         }
     
     propagate_to_gyms = forms.ModelMultipleChoiceField(
@@ -79,6 +89,7 @@ class MembershipPlanForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if gym:
             self.fields['tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
+            self.fields['enrollment_fee_tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
 
             # Franchise Propagation Logic
             is_owner = user and gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())

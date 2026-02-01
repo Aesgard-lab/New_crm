@@ -1,16 +1,34 @@
 from django import forms
-from .models import Campaign, EmailTemplate, Popup, MarketingSettings, Advertisement
+from .models import Campaign, EmailTemplate, Popup, MarketingSettings, Advertisement, SavedAudience
 
 class CampaignForm(forms.ModelForm):
+    saved_audience = forms.ModelChoiceField(
+        queryset=SavedAudience.objects.none(),
+        required=False,
+        label='Audiencia Guardada',
+        widget=forms.Select(attrs={
+            'class': 'w-full rounded-xl border-slate-200 p-2.5',
+            'x-show': "audienceType === 'SAVED_AUDIENCE'",
+            'x-cloak': True
+        })
+    )
+    
     class Meta:
         model = Campaign
-        fields = ['name', 'subject', 'audience_type', 'scheduled_at']
+        fields = ['name', 'subject', 'audience_type', 'audience_filter_value', 'saved_audience', 'scheduled_at']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Ej: Promo Verano'}),
             'subject': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Asunto del correo'}),
-            'audience_type': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
+            'audience_type': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'x-model': 'audienceType'}),
+            'audience_filter_value': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Nombre de etiqueta', 'x-show': "audienceType === 'CUSTOM_TAG'", 'x-cloak': True}),
             'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        gym = kwargs.pop('gym', None)
+        super().__init__(*args, **kwargs)
+        if gym:
+            self.fields['saved_audience'].queryset = SavedAudience.objects.filter(gym=gym, is_active=True)
 class MarketingSettingsForm(forms.ModelForm):
     smtp_password = forms.CharField(
         required=False,
@@ -51,15 +69,27 @@ class MarketingSettingsForm(forms.ModelForm):
         return instance
 
 class PopupForm(forms.ModelForm):
+    saved_audience = forms.ModelChoiceField(
+        queryset=SavedAudience.objects.none(),
+        required=False,
+        label='Audiencia Guardada',
+        widget=forms.Select(attrs={
+            'class': 'w-full rounded-xl border-slate-200 p-2.5',
+            'x-show': "audienceType === 'SAVED_AUDIENCE'",
+            'x-cloak': True
+        })
+    )
+    
     class Meta:
         model = Popup
-        fields = ['title', 'content', 'priority', 'audience_type', 'audience_filter_value', 'target_client', 'start_date', 'end_date', 'is_active', 'image']
+        fields = ['title', 'content', 'priority', 'display_frequency', 'audience_type', 'audience_filter_value', 'saved_audience', 'target_client', 'start_date', 'end_date', 'is_active', 'image']
         widgets = {
              'title': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Título'}),
              'content': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'rows': 4, 'placeholder': 'Contenido HTML permitido...'}),
              'priority': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
+             'display_frequency': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
              'audience_type': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'x-model': 'audienceType'}),
-             'audience_filter_value': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Ej: VIP, Crossfit', 'x-show': "audienceType === 'CUSTOM_TAG'", 'x-cloak': True}),
+             'audience_filter_value': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Ej: nombre de etiqueta', 'x-show': "audienceType === 'CUSTOM_TAG'", 'x-cloak': True}),
              'target_client': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'x-show': "audienceType === 'ALL_ACTIVE' || audienceType === 'ALL_CLIENTS'", 'placeholder': 'Seleccionar Cliente (Opcional)'}), 
              'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
              'end_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'w-full rounded-xl border-slate-200 p-2.5'}),
@@ -68,8 +98,11 @@ class PopupForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
+        gym = kwargs.pop('gym', None)
         super().__init__(*args, **kwargs)
         self.fields['start_date'].required = False
+        if gym:
+            self.fields['saved_audience'].queryset = SavedAudience.objects.filter(gym=gym, is_active=True)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -97,13 +130,22 @@ class AdvertisementForm(forms.ModelForm):
         help_text='Dejar vacío para mostrar en todas las pantallas'
     )
     
+    saved_audience = forms.ModelChoiceField(
+        queryset=SavedAudience.objects.none(),
+        required=False,
+        label='Audiencia Guardada',
+        widget=forms.Select(attrs={
+            'class': 'w-full rounded-xl border-slate-200 p-2.5'
+        })
+    )
+    
     class Meta:
         model = Advertisement
         fields = [
             'title', 'position', 'ad_type',
             'image_desktop', 'image_mobile', 'video_url',
             'cta_text', 'cta_action', 'cta_url',
-            'target_gyms', 'audience_type', 'audience_filter_value',
+            'target_gyms', 'audience_type', 'audience_filter_value', 'saved_audience',
             'target_screens', 'start_date', 'end_date',
             'priority', 'duration_seconds', 'is_collapsible', 'is_active'
         ]
@@ -188,10 +230,15 @@ class AdvertisementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # Extraer el usuario del request si se pasa
         self.user = kwargs.pop('user', None)
+        gym = kwargs.pop('gym', None)
         super().__init__(*args, **kwargs)
         # start_date es requerido solo si no se marca "Activar Ahora"
         self.fields['start_date'].required = False
         self.fields['target_gyms'].required = False
+        
+        # Filtrar audiencias guardadas por gimnasio
+        if gym:
+            self.fields['saved_audience'].queryset = SavedAudience.objects.filter(gym=gym, is_active=True)
         
         # Filtrar target_gyms según permisos de franquicia
         if self.user:

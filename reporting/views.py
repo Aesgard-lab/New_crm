@@ -67,30 +67,53 @@ def _get_filtered_clients(request):
     if selected_tags:
         clients = clients.filter(tags__id__in=selected_tags).distinct()
 
-    # Filtro por tipo de cuota
-    plan_id = request.GET.get('membership_plan')
-    if plan_id and plan_id != 'all':
-        clients = clients.filter(memberships__plan_id=plan_id).distinct()
+    # Filtro por tipo de cuota (ahora múltiple)
+    plan_ids = request.GET.getlist('membership_plan')
+    if plan_ids and 'all' not in plan_ids:
+        clients = clients.filter(memberships__plan_id__in=plan_ids).distinct()
 
-    # Filtro por servicio
-    service_id = request.GET.get('service')
-    if service_id and service_id != 'all':
-        clients = clients.filter(visits__concept__icontains=Service.objects.filter(id=service_id).first().name).distinct()
+    # Filtro por servicio (ahora múltiple)
+    service_ids = request.GET.getlist('service')
+    if service_ids and 'all' not in service_ids:
+        service_names = list(Service.objects.filter(id__in=service_ids).values_list('name', flat=True))
+        q_services = Q()
+        for name in service_names:
+            q_services |= Q(visits__concept__icontains=name)
+        clients = clients.filter(q_services).distinct()
 
-    # Filtro por producto
-    product_id = request.GET.get('product')
-    if product_id and product_id != 'all':
-        clients = clients.filter(sales__concept__icontains=Product.objects.filter(id=product_id).first().name).distinct()
+    # Filtro por producto (ahora múltiple)
+    product_ids = request.GET.getlist('product')
+    if product_ids and 'all' not in product_ids:
+        product_names = list(Product.objects.filter(id__in=product_ids).values_list('name', flat=True))
+        q_products = Q()
+        for name in product_names:
+            q_products |= Q(sales__concept__icontains=name)
+        clients = clients.filter(q_products).distinct()
 
-    # Filtro por origen de alta (extra_data.created_from)
-    created_from = request.GET.get('created_from')
-    if created_from and created_from != 'all':
-        clients = clients.filter(extra_data__created_from=created_from)
+    # Filtro por grupos (nuevo - múltiple)
+    group_ids = request.GET.getlist('group')
+    if group_ids and 'all' not in group_ids:
+        clients = clients.filter(groups__id__in=group_ids).distinct()
 
-    # Filtro por género
-    gender = request.GET.get('gender')
-    if gender and gender != 'all':
-        clients = clients.filter(gender=gender)
+    # Filtro por etiquetas/tags (múltiple - ya existía)
+    selected_tags = request.GET.getlist('tags')
+    if selected_tags and 'all' not in selected_tags:
+        clients = clients.filter(tags__id__in=selected_tags).distinct()
+
+    # Filtro por origen de alta (extra_data.created_from) - múltiple
+    created_from_list = request.GET.getlist('created_from')
+    if created_from_list and 'all' not in created_from_list:
+        clients = clients.filter(extra_data__created_from__in=created_from_list)
+
+    # Filtro por género - múltiple
+    genders = request.GET.getlist('gender')
+    if genders and 'all' not in genders:
+        clients = clients.filter(gender__in=genders)
+
+    # Filtro por estado - múltiple
+    statuses = request.GET.getlist('status')
+    if statuses and 'all' not in statuses:
+        clients = clients.filter(status__in=statuses)
 
     # Filtro por edad (rango)
     age_min = request.GET.get('age_min')
@@ -129,40 +152,38 @@ def _get_filtered_clients(request):
 
     # Filtros de Documentos
     document_template_id = request.GET.get('document_template')
-    document_status = request.GET.get('document_status') # signed, pending, not_sent
+    document_status = request.GET.get('document_status')
 
     if document_template_id and document_template_id != 'all':
         if document_status == 'signed':
-            # Clientes que TIENEN este documento FIRMADO
             clients = clients.filter(
                 documents__template_id=document_template_id,
                 documents__status='SIGNED'
             ).distinct()
         elif document_status == 'pending':
-            # Clientes que TIENEN este documento PENDIENTE
             clients = clients.filter(
                 documents__template_id=document_template_id,
                 documents__status='PENDING'
             ).distinct()
         elif document_status == 'not_sent':
-            # Clientes que NO tienen este documento (o no lo tienen en estado PENDING/SIGNED)
-            # Usamos exclude para sacar a los que SI lo tienen
             clients = clients.exclude(
                 documents__template_id=document_template_id
             )
-        else:
-            # Solo filtrar por clientes que tengan el documento asignado (cualquier estado)
-            if document_status == 'sent':
-                clients = clients.filter(documents__template_id=document_template_id).distinct()
+        elif document_status == 'sent':
+            clients = clients.filter(documents__template_id=document_template_id).distinct()
 
-    return clients, gym, custom_fields, custom_field_options, membership_plans, services, products, document_templates
+    # Obtener grupos para el contexto
+    groups = ClientGroup.objects.filter(gym=gym)
+
+    return clients, gym, custom_fields, custom_field_options, membership_plans, services, products, document_templates, groups
+
 
 @login_required
 @require_gym_permission("clients.view")
 def client_explorer(request):
     (
         clients, gym, custom_fields, custom_field_options,
-        membership_plans, services, products, document_templates
+        membership_plans, services, products, document_templates, groups
     ) = _get_filtered_clients(request)
     if clients is None:
         return render(request, "backoffice/error.html", {"message": "No hay gimnasio seleccionado"})
@@ -184,22 +205,21 @@ def client_explorer(request):
                         values[field.slug] = custom_field_options.get(field.slug, {}).get(raw_value, raw_value)
         client.custom_field_values = values
 
-    # Get filter values for context
+    # Get filter values for context (ahora múltiples)
     q = request.GET.get('q')
-    status = request.GET.get('status')
+    selected_statuses = request.GET.getlist('status')
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
     selected_tags = request.GET.getlist('tags')
     company = request.GET.get('company')
-    # Nuevos filtros
-    plan_id = request.GET.get('membership_plan', 'all')
-    service_id = request.GET.get('service', 'all')
-    product_id = request.GET.get('product', 'all')
-    created_from = request.GET.get('created_from', 'all')
-    gender = request.GET.get('gender', 'all')
+    selected_plans = request.GET.getlist('membership_plan')
+    selected_services = request.GET.getlist('service')
+    selected_products = request.GET.getlist('product')
+    selected_groups = request.GET.getlist('group')
+    selected_created_from = request.GET.getlist('created_from')
+    selected_genders = request.GET.getlist('gender')
     age_min = request.GET.get('age_min', '')
     age_max = request.GET.get('age_max', '')
-    # Filtros Documentos
     document_template_id = request.GET.get('document_template', 'all')
     document_status = request.GET.get('document_status', 'all')
 
@@ -208,6 +228,7 @@ def client_explorer(request):
         'total_count': total_count,
         'active_count': active_count,
         'tags': tags,
+        'groups': groups,
         'custom_fields': custom_fields,
         'membership_plans': membership_plans,
         'services': services,
@@ -215,16 +236,17 @@ def client_explorer(request):
         'document_templates': document_templates,
         'filters': {
             'q': q or '',
-            'status': status or 'all',
+            'statuses': selected_statuses if selected_statuses else [],
             'date_start': date_start or '',
             'date_end': date_end or '',
-            'selected_tags': [int(t) for t in selected_tags],
+            'tags': [int(t) for t in selected_tags] if selected_tags else [],
+            'groups': [int(g) for g in selected_groups] if selected_groups else [],
             'company': company or 'all',
-            'membership_plan': plan_id,
-            'service': service_id,
-            'product': product_id,
-            'created_from': created_from,
-            'gender': gender,
+            'membership_plans': [int(p) for p in selected_plans] if selected_plans else [],
+            'services': [int(s) for s in selected_services] if selected_services else [],
+            'products': [int(p) for p in selected_products] if selected_products else [],
+            'created_from': selected_created_from if selected_created_from else [],
+            'genders': selected_genders if selected_genders else [],
             'age_min': age_min,
             'age_max': age_max,
             'document_template': document_template_id,
@@ -238,7 +260,11 @@ def client_explorer(request):
 @require_gym_permission("clients.view")
 def export_clients_csv(request):
     """Export filtered clients to CSV."""
-    clients, gym, custom_fields, custom_field_options = _get_filtered_clients(request)
+    result = _get_filtered_clients(request)
+    clients = result[0]
+    gym = result[1]
+    custom_fields = result[2]
+    custom_field_options = result[3]
     if clients is None:
         return HttpResponse("No gym selected", status=400)
     

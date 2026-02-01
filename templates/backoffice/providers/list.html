@@ -63,7 +63,7 @@
     <table class="min-w-full divide-y divide-slate-200 text-sm">
       <thead class="bg-slate-50">
         <tr>
-          <th class="px-4 py-3 text-left font-semibold text-slate-600">Nombre</th>
+          <th class="px-4 py-3 text-left font-semibold text-slate-600">Proveedor</th>
           <th class="px-4 py-3 text-left font-semibold text-slate-600">Contacto</th>
           <th class="px-4 py-3 text-left font-semibold text-slate-600">Email</th>
           <th class="px-4 py-3 text-left font-semibold text-slate-600">Teléfono</th>
@@ -74,8 +74,18 @@
       <tbody class="divide-y divide-slate-100">
         {% for provider in providers %}
         <tr class="hover:bg-slate-50 cursor-pointer" data-href="{% url 'providers:provider_edit' provider.id %}">
-          <td class="px-4 py-3 font-medium text-slate-900 text-[var(--brand-color)]">
-            {{ provider.name }}
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              {% if provider.logo %}
+              <img src="{{ provider.logo.url }}" alt="{{ provider.name }}" 
+                   class="w-10 h-10 rounded-lg object-cover border border-slate-200 flex-shrink-0">
+              {% else %}
+              <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm font-bold text-slate-500">{{ provider.name|slice:":2"|upper }}</span>
+              </div>
+              {% endif %}
+              <span class="font-medium text-[var(--brand-color)]">{{ provider.name }}</span>
+            </div>
           </td>
           <td class="px-4 py-3 text-slate-700">{{ provider.contacts.first.name|default:"-" }}</td>
           <td class="px-4 py-3 text-slate-700">{{ provider.email|default:"-" }}</td>

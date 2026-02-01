@@ -120,12 +120,16 @@ def campaign_create_view(request):
     """
     Renders the Campaign Wizard.
     """
+    from .models import SavedAudience
+    
     gym = request.gym
     templates = EmailTemplate.objects.filter(gym=gym)
+    saved_audiences = SavedAudience.objects.filter(gym=gym, is_active=True)
     
     # We pass templates to context for selection in the wizard
     context = {
         'templates': templates,
+        'saved_audiences': saved_audiences,
     }
     return render(request, 'backoffice/marketing/campaigns/wizard.html', context)
 
@@ -137,6 +141,7 @@ def campaign_create_api(request):
         
     import json
     from django.utils.dateparse import parse_datetime
+    from .models import SavedAudience
     
     try:
         data = json.loads(request.body)
@@ -147,6 +152,7 @@ def campaign_create_api(request):
         subject = data.get('subject')
         audience_type = data.get('audience_type')
         scheduled_at_str = data.get('scheduled_at')
+        saved_audience_id = data.get('saved_audience_id')
         
         # 2. Template
         template_id = data.get('template_id')
@@ -156,12 +162,18 @@ def campaign_create_api(request):
 
         template = EmailTemplate.objects.get(pk=template_id, gym=gym)
         
+        # Obtener audiencia guardada si aplica
+        saved_audience = None
+        if audience_type == 'SAVED_AUDIENCE' and saved_audience_id:
+            saved_audience = SavedAudience.objects.filter(pk=saved_audience_id, gym=gym).first()
+        
         # Create Campaign
         campaign = Campaign.objects.create(
             gym=gym,
             name=name,
             subject=subject,
             audience_type=audience_type,
+            saved_audience=saved_audience,
             template=template,
             scheduled_at=parse_datetime(scheduled_at_str) if scheduled_at_str else timezone.now(),
             status=Campaign.Status.SCHEDULED if scheduled_at_str else Campaign.Status.DRAFT
@@ -248,7 +260,7 @@ def popup_create_view(request):
     from django.utils import timezone
     
     if request.method == 'POST':
-        form = PopupForm(request.POST, request.FILES)
+        form = PopupForm(request.POST, request.FILES, gym=request.gym)
         if form.is_valid():
             popup = form.save(commit=False)
             popup.gym = request.gym
@@ -262,7 +274,7 @@ def popup_create_view(request):
             messages.success(request, 'Popup creado correctamente.')
             return redirect('marketing_popup_list')
     else:
-        form = PopupForm()
+        form = PopupForm(gym=request.gym)
     return render(request, 'backoffice/marketing/popups/form.html', {'form': form, 'title': 'Nuevo Popup'})
 
 @login_required
@@ -275,7 +287,7 @@ def popup_edit_view(request, pk):
     popup = get_object_or_404(Popup, pk=pk, gym=request.gym)
     
     if request.method == 'POST':
-        form = PopupForm(request.POST, request.FILES, instance=popup)
+        form = PopupForm(request.POST, request.FILES, instance=popup, gym=request.gym)
         if form.is_valid():
             popup_obj = form.save(commit=False)
             
@@ -288,7 +300,7 @@ def popup_edit_view(request, pk):
             messages.success(request, 'Popup actualizado.')
             return redirect('marketing_popup_list')
     else:
-        form = PopupForm(instance=popup)
+        form = PopupForm(instance=popup, gym=request.gym)
     return render(request, 'backoffice/marketing/popups/form.html', {'form': form, 'title': 'Editar Popup'})
 
 @login_required
@@ -345,7 +357,7 @@ def advertisement_create_view(request):
     from django.utils import timezone
     
     if request.method == 'POST':
-        form = AdvertisementForm(request.POST, request.FILES, user=request.user)
+        form = AdvertisementForm(request.POST, request.FILES, user=request.user, gym=request.gym)
         if form.is_valid():
             ad = form.save(commit=False)
             ad.gym = request.gym
@@ -362,7 +374,7 @@ def advertisement_create_view(request):
             messages.success(request, f'Anuncio "{ad.title}" creado correctamente.')
             return redirect('marketing_advertisement_list')
     else:
-        form = AdvertisementForm(user=request.user)
+        form = AdvertisementForm(user=request.user, gym=request.gym)
     
     return render(request, 'backoffice/marketing/advertisements/form.html', {
         'form': form,
@@ -384,7 +396,7 @@ def advertisement_edit_view(request, pk):
     ad = get_object_or_404(Advertisement, pk=pk, gym=request.gym)
     
     if request.method == 'POST':
-        form = AdvertisementForm(request.POST, request.FILES, instance=ad, user=request.user)
+        form = AdvertisementForm(request.POST, request.FILES, instance=ad, user=request.user, gym=request.gym)
         if form.is_valid():
             ad_obj = form.save(commit=False)
             
@@ -400,7 +412,7 @@ def advertisement_edit_view(request, pk):
             messages.success(request, f'Anuncio "{ad_obj.title}" actualizado.')
             return redirect('marketing_advertisement_list')
     else:
-        form = AdvertisementForm(instance=ad, user=request.user)
+        form = AdvertisementForm(instance=ad, user=request.user, gym=request.gym)
     
     return render(request, 'backoffice/marketing/advertisements/form.html', {
         'form': form,
@@ -876,9 +888,11 @@ def lead_automation_delete(request, rule_id):
 def lead_card_move_api(request, card_id):
     """
     API endpoint for drag & drop card movement.
+    Records history for funnel analytics.
     """
     from django.http import JsonResponse
-    from .models import LeadCard, LeadStage
+    from .models import LeadCard, LeadStage, LeadStageHistory
+    from django.utils import timezone
     import json
     
     if request.method != 'POST':
@@ -893,11 +907,34 @@ def lead_card_move_api(request, card_id):
             client__gym=request.gym
         )
         old_stage = card.stage
+        old_stage_updated_at = card.updated_at
         
         new_stage = LeadStage.objects.get(
             id=new_stage_id,
             pipeline__gym=request.gym
         )
+        
+        # Only create history if stage actually changed
+        if old_stage != new_stage:
+            # Calculate time in previous stage
+            time_in_stage = None
+            if old_stage and old_stage_updated_at:
+                time_in_stage = timezone.now() - old_stage_updated_at
+            
+            # Get staff profile for the user making the change
+            staff_profile = None
+            if hasattr(request.user, 'staff_profile'):
+                staff_profile = request.user.staff_profile
+            
+            # Record the movement in history
+            LeadStageHistory.objects.create(
+                lead_card=card,
+                from_stage=old_stage,
+                to_stage=new_stage,
+                changed_by=staff_profile,
+                time_in_previous_stage=time_in_stage,
+                notes=f"Movido manualmente desde {old_stage.name if old_stage else 'N/A'} a {new_stage.name}"
+            )
         
         card.stage = new_stage
         card.save()
@@ -905,6 +942,11 @@ def lead_card_move_api(request, card_id):
         # If moved to "won" stage, convert client to active
         if new_stage.is_won and card.client.status == 'LEAD':
             card.client.status = 'ACTIVE'
+            card.client.save()
+        
+        # If moved to "lost" stage, mark client as inactive
+        if new_stage.is_lost and card.client.status == 'LEAD':
+            card.client.status = 'INACTIVE'
             card.client.save()
         
         return JsonResponse({
@@ -928,7 +970,7 @@ def lead_card_detail_api(request, card_id):
     API endpoint for getting/updating card details.
     """
     from django.http import JsonResponse
-    from .models import LeadCard
+    from .models import LeadCard, LeadStageHistory
     import json
     
     try:
@@ -938,6 +980,25 @@ def lead_card_detail_api(request, card_id):
         )
         
         if request.method == 'GET':
+            # Get stage history
+            stage_history = LeadStageHistory.objects.filter(
+                lead_card=card
+            ).select_related(
+                'from_stage', 'to_stage', 'changed_by', 'changed_by_automation'
+            ).order_by('-changed_at')[:10]
+            
+            history_data = []
+            for h in stage_history:
+                history_data.append({
+                    'date': h.changed_at.isoformat(),
+                    'from_stage': h.from_stage.name if h.from_stage else 'Nuevo',
+                    'to_stage': h.to_stage.name if h.to_stage else '-',
+                    'changed_by': h.changed_by.user.get_full_name() if h.changed_by else None,
+                    'automation': h.changed_by_automation.name if h.changed_by_automation else None,
+                    'time_in_stage': str(h.time_in_previous_stage) if h.time_in_previous_stage else None,
+                    'notes': h.notes,
+                })
+            
             return JsonResponse({
                 'id': card.id,
                 'client': {
@@ -951,6 +1012,7 @@ def lead_card_detail_api(request, card_id):
                 'source': card.source,
                 'notes': card.notes,
                 'next_followup': card.next_followup.isoformat() if card.next_followup else None,
+                'stage_history': history_data,
             })
         
         elif request.method == 'POST':
@@ -1523,3 +1585,1019 @@ def advertisement_export_pdf(request):
     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="anuncios_{gym.name}_{tz_utils.now().strftime("%Y%m%d")}.pdf"'
     return response
+
+
+# =============================================================================
+# META (FACEBOOK/INSTAGRAM) LEAD ADS INTEGRATION
+# =============================================================================
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@csrf_exempt
+def meta_webhook(request, gym_id):
+    """
+    Webhook endpoint for receiving Meta Lead Ads.
+    This endpoint handles both verification (GET) and lead data (POST).
+    
+    URL: /marketing/meta/webhook/{gym_id}/
+    """
+    from .models import MetaLeadIntegration, MetaLeadEntry, MetaLeadForm, LeadCard
+    from clients.models import Client
+    from organizations.models import Gym
+    from django.utils import timezone
+    
+    try:
+        gym = Gym.objects.get(id=gym_id)
+    except Gym.DoesNotExist:
+        logger.error(f"Meta webhook: Gym {gym_id} not found")
+        return HttpResponse("Gym not found", status=404)
+    
+    try:
+        integration = gym.meta_integration
+    except MetaLeadIntegration.DoesNotExist:
+        logger.error(f"Meta webhook: No integration for gym {gym_id}")
+        return HttpResponse("Integration not found", status=404)
+    
+    # GET - Webhook verification
+    if request.method == 'GET':
+        mode = request.GET.get('hub.mode')
+        token = request.GET.get('hub.verify_token')
+        challenge = request.GET.get('hub.challenge')
+        
+        if mode == 'subscribe' and token == integration.webhook_verify_token:
+            logger.info(f"Meta webhook verified for gym {gym_id}")
+            return HttpResponse(challenge, content_type='text/plain')
+        else:
+            logger.warning(f"Meta webhook verification failed for gym {gym_id}")
+            return HttpResponse("Verification failed", status=403)
+    
+    # POST - Receive lead data
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            logger.info(f"Meta webhook received for gym {gym_id}: {json.dumps(data)[:500]}")
+            
+            # Process leadgen entries
+            for entry in data.get('entry', []):
+                for change in entry.get('changes', []):
+                    if change.get('field') == 'leadgen':
+                        lead_data = change.get('value', {})
+                        
+                        # Create MetaLeadEntry
+                        lead_entry = MetaLeadEntry.objects.create(
+                            integration=integration,
+                            leadgen_id=lead_data.get('leadgen_id', ''),
+                            ad_id=lead_data.get('ad_id', ''),
+                            ad_name=lead_data.get('ad_name', ''),
+                            campaign_id=lead_data.get('campaign_id', ''),
+                            campaign_name=lead_data.get('campaign_name', ''),
+                            raw_data=lead_data,
+                            platform='facebook'  # or detect from data
+                        )
+                        
+                        # Try to link to form
+                        form_id = lead_data.get('form_id')
+                        if form_id:
+                            form = MetaLeadForm.objects.filter(
+                                integration=integration,
+                                form_id=form_id
+                            ).first()
+                            if form:
+                                lead_entry.form = form
+                        
+                        # Extract field data
+                        field_data = lead_data.get('field_data', [])
+                        for field in field_data:
+                            name = field.get('name', '').lower()
+                            values = field.get('values', [])
+                            value = values[0] if values else ''
+                            
+                            if 'email' in name:
+                                lead_entry.email = value
+                            elif 'phone' in name or 'tel' in name:
+                                lead_entry.phone = value
+                            elif 'first' in name or 'nombre' in name:
+                                lead_entry.first_name = value
+                            elif 'last' in name or 'apellido' in name:
+                                lead_entry.last_name = value
+                        
+                        lead_entry.save()
+                        
+                        # Auto-create lead if configured
+                        if integration.auto_create_lead:
+                            _process_meta_lead(lead_entry, gym)
+                        
+                        # Update stats
+                        integration.leads_received += 1
+                        integration.last_lead_at = timezone.now()
+                        integration.save(update_fields=['leads_received', 'last_lead_at'])
+                        
+                        if lead_entry.form:
+                            lead_entry.form.leads_received += 1
+                            lead_entry.form.last_lead_at = timezone.now()
+                            lead_entry.form.save(update_fields=['leads_received', 'last_lead_at'])
+            
+            return HttpResponse("OK", status=200)
+            
+        except Exception as e:
+            logger.error(f"Meta webhook error for gym {gym_id}: {str(e)}")
+            return HttpResponse(str(e), status=500)
+    
+    return HttpResponse("Method not allowed", status=405)
+
+
+def _process_meta_lead(lead_entry, gym):
+    """
+    Process a Meta lead entry and create/link a LeadCard.
+    """
+    from .models import MetaLeadEntry, LeadCard, LeadPipeline, LeadDistributionRule
+    from clients.models import Client
+    from django.utils import timezone
+    
+    # Check for duplicate by email
+    existing_client = None
+    if lead_entry.email:
+        existing_client = Client.objects.filter(
+            gym=gym,
+            email__iexact=lead_entry.email
+        ).first()
+    
+    # Check by phone if no email match
+    if not existing_client and lead_entry.phone:
+        existing_client = Client.objects.filter(
+            gym=gym,
+            phone=lead_entry.phone
+        ).first()
+    
+    if existing_client:
+        # Mark as duplicate if client already exists with a lead card
+        if hasattr(existing_client, 'lead_card'):
+            lead_entry.status = MetaLeadEntry.Status.DUPLICATE
+            lead_entry.error_message = f"Cliente existente: {existing_client.id}"
+            lead_entry.lead_card = existing_client.lead_card
+            lead_entry.save()
+            return
+        else:
+            client = existing_client
+    else:
+        # Create new client
+        client = Client.objects.create(
+            gym=gym,
+            email=lead_entry.email or '',
+            phone=lead_entry.phone or '',
+            first_name=lead_entry.first_name or 'Sin nombre',
+            last_name=lead_entry.last_name or '',
+            status='LEAD'
+        )
+    
+    # Get target stage
+    target_stage = None
+    if lead_entry.form and lead_entry.form.target_stage:
+        target_stage = lead_entry.form.target_stage
+    elif lead_entry.integration.default_stage:
+        target_stage = lead_entry.integration.default_stage
+    else:
+        # Get first stage from active pipeline
+        pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+        if pipeline:
+            target_stage = pipeline.stages.order_by('order').first()
+    
+    # Determine source based on platform
+    source = LeadCard.Source.FACEBOOK if lead_entry.platform == 'facebook' else LeadCard.Source.INSTAGRAM
+    
+    # Create lead card
+    lead_card = LeadCard.objects.create(
+        client=client,
+        stage=target_stage,
+        source=source,
+        notes=f"Lead desde Meta Ads\nCampaña: {lead_entry.campaign_name}\nAnuncio: {lead_entry.ad_name}"
+    )
+    
+    # Auto-assign based on form or distribution rules
+    assignee = None
+    if lead_entry.form and lead_entry.form.assign_to:
+        assignee = lead_entry.form.assign_to
+    else:
+        # Try distribution rules
+        rule = LeadDistributionRule.objects.filter(
+            gym=gym,
+            is_active=True,
+            source_filter__in=[source, '']  # Matching source or no filter
+        ).order_by('-priority').first()
+        
+        if rule:
+            assignee = rule.get_next_assignee()
+    
+    if assignee:
+        lead_card.assigned_to = assignee
+        lead_card.save()
+        
+        # Log assignment
+        from .models import LeadAssignmentLog
+        LeadAssignmentLog.objects.create(
+            lead_card=lead_card,
+            assigned_to=assignee,
+            rule=rule if 'rule' in dir() else None,
+            assignment_type='AUTO'
+        )
+    
+    # Update lead entry
+    lead_entry.status = MetaLeadEntry.Status.PROCESSED
+    lead_entry.lead_card = lead_card
+    lead_entry.processed_at = timezone.now()
+    lead_entry.save()
+    
+    # Create stage history
+    from .models import LeadStageHistory
+    LeadStageHistory.objects.create(
+        lead_card=lead_card,
+        from_stage=None,
+        to_stage=target_stage,
+        notes=f"Lead creado desde Meta Ads ({lead_entry.platform})"
+    )
+
+
+@login_required
+def meta_integration_settings(request):
+    """
+    Meta Lead Ads integration settings page.
+    """
+    from .models import MetaLeadIntegration, MetaLeadForm, MetaLeadEntry, LeadStage, LeadPipeline
+    from staff.models import StaffProfile
+    from django.contrib import messages
+    
+    gym = request.gym
+    
+    # Get or create integration
+    integration, created = MetaLeadIntegration.objects.get_or_create(gym=gym)
+    
+    # Generate webhook URL
+    webhook_url = request.build_absolute_uri(f'/marketing/meta/webhook/{gym.id}/')
+    if not integration.webhook_url or integration.webhook_url != webhook_url:
+        integration.webhook_url = webhook_url
+        integration.save(update_fields=['webhook_url'])
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'save_credentials':
+            integration.app_id = request.POST.get('app_id', '')
+            integration.app_secret = request.POST.get('app_secret', '')
+            integration.page_id = request.POST.get('page_id', '')
+            integration.page_name = request.POST.get('page_name', '')
+            integration.is_active = request.POST.get('is_active') == 'on'
+            integration.auto_create_lead = request.POST.get('auto_create_lead') == 'on'
+            
+            default_stage_id = request.POST.get('default_stage')
+            if default_stage_id:
+                integration.default_stage_id = default_stage_id
+            
+            integration.save()
+            messages.success(request, 'Configuración de Meta guardada correctamente.')
+            return redirect('meta_integration_settings')
+        
+        elif action == 'save_access_token':
+            integration.access_token = request.POST.get('access_token', '')
+            integration.save()
+            messages.success(request, 'Token de acceso guardado.')
+            return redirect('meta_integration_settings')
+        
+        elif action == 'disconnect':
+            integration.access_token = ''
+            integration.page_id = ''
+            integration.page_name = ''
+            integration.is_active = False
+            integration.save()
+            messages.info(request, 'Integración desconectada.')
+            return redirect('meta_integration_settings')
+    
+    # Get pipeline stages for dropdown
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    stages = pipeline.stages.all() if pipeline else []
+    
+    # Get staff for assignment
+    staff_list = StaffProfile.objects.filter(gym=gym, is_active=True)
+    
+    # Get lead forms
+    lead_forms = integration.lead_forms.all()
+    
+    # Recent entries
+    recent_entries = MetaLeadEntry.objects.filter(
+        integration=integration
+    ).select_related('form', 'lead_card').order_by('-created_at')[:20]
+    
+    context = {
+        'integration': integration,
+        'stages': stages,
+        'staff_list': staff_list,
+        'lead_forms': lead_forms,
+        'recent_entries': recent_entries,
+    }
+    
+    return render(request, 'backoffice/marketing/leads/meta_integration.html', context)
+
+
+# =============================================================================
+# LEAD DISTRIBUTION (Auto-assignment)
+# =============================================================================
+
+@login_required
+def lead_distribution_settings(request):
+    """
+    Lead distribution rules configuration.
+    """
+    from .models import LeadDistributionRule, LeadCard, LeadAssignmentLog
+    from staff.models import StaffProfile
+    from django.contrib import messages
+    
+    gym = request.gym
+    
+    # Get rules
+    rules = LeadDistributionRule.objects.filter(gym=gym).prefetch_related('staff_members')
+    
+    # Get staff for selection
+    staff_list = StaffProfile.objects.filter(gym=gym, is_active=True)
+    
+    # Source choices
+    source_choices = LeadCard.Source.choices
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_rule':
+            rule = LeadDistributionRule.objects.create(
+                gym=gym,
+                name=request.POST.get('name', 'Nueva Regla'),
+                method=request.POST.get('method', 'ROUND_ROBIN'),
+                source_filter=request.POST.get('source_filter', ''),
+                max_leads_per_day=int(request.POST.get('max_leads_per_day', 0)),
+                max_active_leads=int(request.POST.get('max_active_leads', 0)),
+                notify_on_assignment=request.POST.get('notify_on_assignment') == 'on',
+                priority=int(request.POST.get('priority', 0)),
+            )
+            
+            # Add staff members
+            staff_ids = request.POST.getlist('staff_members')
+            if staff_ids:
+                rule.staff_members.set(staff_ids)
+            
+            messages.success(request, f'Regla "{rule.name}" creada correctamente.')
+            return redirect('lead_distribution_settings')
+        
+        elif action == 'delete_rule':
+            rule_id = request.POST.get('rule_id')
+            try:
+                rule = LeadDistributionRule.objects.get(id=rule_id, gym=gym)
+                rule.delete()
+                messages.success(request, 'Regla eliminada.')
+            except LeadDistributionRule.DoesNotExist:
+                messages.error(request, 'Regla no encontrada.')
+            return redirect('lead_distribution_settings')
+        
+        elif action == 'toggle_rule':
+            rule_id = request.POST.get('rule_id')
+            try:
+                rule = LeadDistributionRule.objects.get(id=rule_id, gym=gym)
+                rule.is_active = not rule.is_active
+                rule.save()
+            except LeadDistributionRule.DoesNotExist:
+                pass
+            return redirect('lead_distribution_settings')
+    
+    # Recent assignments
+    recent_assignments = LeadAssignmentLog.objects.filter(
+        lead_card__client__gym=gym
+    ).select_related('lead_card__client', 'assigned_to', 'rule').order_by('-created_at')[:20]
+    
+    context = {
+        'rules': rules,
+        'staff_list': staff_list,
+        'source_choices': source_choices,
+        'method_choices': LeadDistributionRule.DistributionMethod.choices,
+        'recent_assignments': recent_assignments,
+    }
+    
+    return render(request, 'backoffice/marketing/leads/distribution_settings.html', context)
+
+
+# =============================================================================
+# SALES FUNNEL ANALYTICS
+# =============================================================================
+
+@login_required
+def sales_funnel_analytics(request):
+    """
+    Sales Funnel Analytics dashboard with conversion rates, lead metrics, and stage analysis.
+    """
+    from .models import LeadPipeline, LeadStage, LeadCard, LeadStageHistory
+    from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
+    from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    gym = request.gym
+    
+    # Date filters
+    date_range = request.GET.get('range', '30')  # days
+    try:
+        days = int(date_range)
+    except ValueError:
+        days = 30
+    
+    start_date = timezone.now() - timedelta(days=days)
+    
+    # Get pipeline
+    pipeline = LeadPipeline.objects.filter(gym=gym, is_active=True).first()
+    
+    if not pipeline:
+        return render(request, 'backoffice/marketing/leads/funnel_analytics.html', {
+            'error': 'No hay pipeline activo. Crea uno desde el tablero de leads.'
+        })
+    
+    stages = pipeline.stages.all()
+    
+    # Get all leads in period
+    leads_in_period = LeadCard.objects.filter(
+        client__gym=gym,
+        created_at__gte=start_date
+    )
+    
+    # Total leads
+    total_leads = leads_in_period.count()
+    
+    # Leads by stage (current state)
+    leads_by_stage = []
+    for stage in stages:
+        count = LeadCard.objects.filter(
+            stage=stage,
+            client__gym=gym
+        ).count()
+        
+        created_in_period = leads_in_period.filter(stage=stage).count()
+        
+        # Calculate conversion rate from this stage
+        moved_forward = LeadStageHistory.objects.filter(
+            from_stage=stage,
+            to_stage__order__gt=stage.order,
+            created_at__gte=start_date
+        ).count()
+        
+        total_in_stage = LeadStageHistory.objects.filter(
+            to_stage=stage,
+            created_at__gte=start_date
+        ).count() or 1
+        
+        conversion_rate = (moved_forward / total_in_stage * 100) if total_in_stage > 0 else 0
+        
+        leads_by_stage.append({
+            'stage': stage,
+            'current_count': count,
+            'created_in_period': created_in_period,
+            'conversion_rate': round(conversion_rate, 1),
+            'moved_forward': moved_forward,
+        })
+    
+    # Won/Lost stats
+    won_stage = stages.filter(is_won=True).first()
+    lost_stage = stages.filter(is_lost=True).first()
+    
+    won_count = leads_in_period.filter(stage=won_stage).count() if won_stage else 0
+    lost_count = leads_in_period.filter(stage=lost_stage).count() if lost_stage else 0
+    
+    # Overall conversion rate (leads that reached won stage)
+    overall_conversion_rate = (won_count / total_leads * 100) if total_leads > 0 else 0
+    
+    # Leads by source
+    leads_by_source = leads_in_period.values('source').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Add source labels
+    source_dict = dict(LeadCard.Source.choices)
+    for item in leads_by_source:
+        item['label'] = source_dict.get(item['source'], item['source'])
+    
+    # Average time in each stage
+    avg_time_by_stage = []
+    for stage in stages:
+        history_entries = LeadStageHistory.objects.filter(
+            from_stage=stage,
+            time_in_previous_stage__isnull=False,
+            created_at__gte=start_date
+        )
+        
+        if history_entries.exists():
+            total_duration = sum(
+                (h.time_in_previous_stage.total_seconds() for h in history_entries),
+                0
+            )
+            avg_seconds = total_duration / history_entries.count()
+            avg_days = avg_seconds / 86400  # Convert to days
+        else:
+            avg_days = 0
+        
+        avg_time_by_stage.append({
+            'stage': stage,
+            'avg_days': round(avg_days, 1),
+        })
+    
+    # Trend data (leads created by week)
+    leads_trend = leads_in_period.annotate(
+        week=TruncWeek('created_at')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+    
+    # Conversion trend (won leads by week)
+    if won_stage:
+        conversion_trend = LeadStageHistory.objects.filter(
+            to_stage=won_stage,
+            created_at__gte=start_date
+        ).annotate(
+            week=TruncWeek('created_at')
+        ).values('week').annotate(
+            count=Count('id')
+        ).order_by('week')
+    else:
+        conversion_trend = []
+    
+    # Top performers (staff with most conversions)
+    top_performers = LeadCard.objects.filter(
+        client__gym=gym,
+        stage=won_stage,
+        assigned_to__isnull=False,
+        updated_at__gte=start_date
+    ).values(
+        'assigned_to__user__first_name',
+        'assigned_to__user__last_name',
+        'assigned_to__id'
+    ).annotate(
+        conversions=Count('id')
+    ).order_by('-conversions')[:5] if won_stage else []
+    
+    context = {
+        'pipeline': pipeline,
+        'stages': stages,
+        'total_leads': total_leads,
+        'won_count': won_count,
+        'lost_count': lost_count,
+        'overall_conversion_rate': round(overall_conversion_rate, 1),
+        'leads_by_stage': leads_by_stage,
+        'leads_by_source': leads_by_source,
+        'avg_time_by_stage': avg_time_by_stage,
+        'leads_trend': list(leads_trend),
+        'conversion_trend': list(conversion_trend),
+        'top_performers': top_performers,
+        'date_range': days,
+        'start_date': start_date,
+    }
+    
+    return render(request, 'backoffice/marketing/leads/funnel_analytics.html', context)
+
+
+# =============================================================================
+# SAVED AUDIENCES (Audiencias Guardadas)
+# =============================================================================
+
+@login_required
+def audience_list_view(request):
+    """
+    Lista de audiencias guardadas.
+    """
+    from .models import SavedAudience
+    gym = request.gym
+    
+    audiences = SavedAudience.objects.filter(gym=gym).order_by('-created_at')
+    
+    # Obtener estadísticas de uso
+    for audience in audiences:
+        audience.campaigns_count = audience.campaigns.count()
+        audience.popups_count = audience.popups.count()
+        audience.ads_count = audience.advertisements.count()
+        audience.total_uses = audience.campaigns_count + audience.popups_count + audience.ads_count
+    
+    context = {
+        'audiences': audiences,
+        'title': 'Audiencias Guardadas'
+    }
+    return render(request, 'backoffice/marketing/audiences/list.html', context)
+
+
+@login_required
+def audience_create_view(request):
+    """
+    Crear nueva audiencia.
+    """
+    from .models import SavedAudience
+    from clients.models import ClientTag, ClientGroup
+    from memberships.models import MembershipPlan
+    from services.models import Service
+    from products.models import Product
+    
+    gym = request.gym
+    
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        description = request.POST.get('description', '').strip()
+        audience_type = request.POST.get('audience_type', 'DYNAMIC')
+        redirect_to = request.POST.get('redirect_to', '')
+        
+        if not name:
+            from django.contrib import messages
+            messages.error(request, 'El nombre es obligatorio')
+            return redirect('marketing_audience_create')
+        
+        # Recoger filtros (ahora soportan múltiples valores)
+        filters = {}
+        
+        # Filtros múltiples (listas)
+        statuses = request.POST.getlist('statuses')
+        if statuses:
+            filters['statuses'] = statuses
+        # Compatibilidad con formato antiguo (single status)
+        elif request.POST.get('status') and request.POST.get('status') != 'all':
+            filters['statuses'] = [request.POST.get('status')]
+        
+        genders = request.POST.getlist('genders')
+        if genders:
+            filters['genders'] = genders
+        elif request.POST.get('gender') and request.POST.get('gender') != 'all':
+            filters['genders'] = [request.POST.get('gender')]
+        
+        # Planes de membresía (múltiples)
+        membership_plans = request.POST.getlist('membership_plans')
+        if membership_plans:
+            filters['membership_plans'] = [int(p) for p in membership_plans]
+        elif request.POST.get('membership_plan') and request.POST.get('membership_plan') != 'all':
+            filters['membership_plans'] = [int(request.POST.get('membership_plan'))]
+        
+        # Servicios (múltiples)
+        services = request.POST.getlist('services')
+        if services:
+            filters['services'] = [int(s) for s in services]
+        elif request.POST.get('service') and request.POST.get('service') != 'all':
+            filters['services'] = [int(request.POST.get('service'))]
+        
+        # Productos (múltiples)
+        products = request.POST.getlist('products')
+        if products:
+            filters['products'] = [int(p) for p in products]
+        
+        # Grupos (múltiples)
+        groups = request.POST.getlist('groups')
+        if groups:
+            filters['groups'] = [int(g) for g in groups]
+        
+        # Tags (múltiples)
+        tag_ids = request.POST.getlist('tags')
+        if tag_ids:
+            filters['tags'] = [int(t) for t in tag_ids]
+        
+        # Origen de alta (múltiples)
+        created_from = request.POST.getlist('created_from')
+        if created_from:
+            filters['created_from'] = created_from
+        
+        # Filtros simples
+        if request.POST.get('age_min'):
+            filters['age_min'] = request.POST.get('age_min')
+        
+        if request.POST.get('age_max'):
+            filters['age_max'] = request.POST.get('age_max')
+        
+        if request.POST.get('has_active_membership') == 'on':
+            filters['has_active_membership'] = True
+        
+        if request.POST.get('is_inactive') == 'on':
+            filters['is_inactive'] = True
+        
+        if request.POST.get('company') and request.POST.get('company') != 'all':
+            filters['company'] = request.POST.get('company')
+        
+        # Crear audiencia
+        audience = SavedAudience.objects.create(
+            gym=gym,
+            name=name,
+            description=description,
+            audience_type=audience_type,
+            filters=filters,
+            created_by=request.user
+        )
+        
+        # Si hay clientes seleccionados (para audiencia estática/mixta)
+        client_ids = request.POST.get('static_client_ids', '')
+        if client_ids:
+            from clients.models import Client
+            ids_list = [int(i) for i in client_ids.split(',') if i.strip()]
+            clients = Client.objects.filter(id__in=ids_list, gym=gym)
+            audience.static_members.set(clients)
+        
+        from django.contrib import messages
+        messages.success(request, f'Audiencia "{name}" creada con {audience.get_members_count()} clientes')
+        
+        # Redireccionar según origen
+        if redirect_to == 'explorer':
+            return redirect('client_explorer')
+        return redirect('marketing_audience_list')
+    
+    # GET: mostrar formulario
+    tags = ClientTag.objects.filter(gym=gym)
+    membership_plans = MembershipPlan.objects.filter(gym=gym, is_active=True)
+    services = Service.objects.filter(gym=gym, is_active=True)
+    products = Product.objects.filter(gym=gym, is_active=True)
+    groups = ClientGroup.objects.filter(gym=gym)
+    
+    context = {
+        'title': 'Nueva Audiencia',
+        'tags': tags,
+        'membership_plans': membership_plans,
+        'services': services,
+        'products': products,
+        'groups': groups,
+    }
+    return render(request, 'backoffice/marketing/audiences/form.html', context)
+
+
+@login_required
+def audience_edit_view(request, pk):
+    """
+    Editar audiencia existente.
+    """
+    from .models import SavedAudience
+    from clients.models import Tag
+    from memberships.models import MembershipPlan
+    from services.models import Service
+    from django.shortcuts import get_object_or_404
+    
+    gym = request.gym
+    audience = get_object_or_404(SavedAudience, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        audience.name = request.POST.get('name', '').strip()
+        audience.description = request.POST.get('description', '').strip()
+        audience.audience_type = request.POST.get('audience_type', 'DYNAMIC')
+        
+        if not audience.name:
+            from django.contrib import messages
+            messages.error(request, 'El nombre es obligatorio')
+            return redirect('marketing_audience_edit', pk=pk)
+        
+        # Recoger filtros
+        filters = {}
+        
+        if request.POST.get('status') and request.POST.get('status') != 'all':
+            filters['status'] = request.POST.get('status')
+        
+        if request.POST.get('gender') and request.POST.get('gender') != 'all':
+            filters['gender'] = request.POST.get('gender')
+        
+        if request.POST.get('age_min'):
+            filters['age_min'] = request.POST.get('age_min')
+        
+        if request.POST.get('age_max'):
+            filters['age_max'] = request.POST.get('age_max')
+        
+        if request.POST.get('membership_plan') and request.POST.get('membership_plan') != 'all':
+            filters['membership_plan'] = request.POST.get('membership_plan')
+        
+        if request.POST.get('service') and request.POST.get('service') != 'all':
+            filters['service'] = request.POST.get('service')
+        
+        if request.POST.get('has_active_membership') == 'on':
+            filters['has_active_membership'] = True
+        
+        if request.POST.get('is_inactive') == 'on':
+            filters['is_inactive'] = True
+        
+        if request.POST.get('company') and request.POST.get('company') != 'all':
+            filters['company'] = request.POST.get('company')
+        
+        tag_ids = request.POST.getlist('tags')
+        if tag_ids:
+            filters['tags'] = [int(t) for t in tag_ids]
+        
+        audience.filters = filters
+        
+        # Actualizar miembros estáticos
+        client_ids = request.POST.get('static_client_ids', '')
+        if client_ids:
+            from clients.models import Client
+            ids_list = [int(i) for i in client_ids.split(',') if i.strip()]
+            clients = Client.objects.filter(id__in=ids_list, gym=gym)
+            audience.static_members.set(clients)
+        elif audience.audience_type == 'STATIC':
+            audience.static_members.clear()
+        
+        # Invalidar cache de conteo
+        audience._count_updated_at = None
+        audience.save()
+        
+        from django.contrib import messages
+        messages.success(request, f'Audiencia actualizada ({audience.get_members_count()} clientes)')
+        return redirect('marketing_audience_list')
+    
+    # GET
+    tags = Tag.objects.filter(gym=gym)
+    membership_plans = MembershipPlan.objects.filter(gym=gym, is_active=True)
+    services = Service.objects.filter(gym=gym, is_active=True)
+    
+    # Preparar filtros seleccionados
+    filters = audience.filters or {}
+    
+    context = {
+        'title': f'Editar: {audience.name}',
+        'audience': audience,
+        'filters': filters,
+        'tags': tags,
+        'membership_plans': membership_plans,
+        'services': services,
+        'selected_tags': filters.get('tags', []),
+    }
+    return render(request, 'backoffice/marketing/audiences/form.html', context)
+
+
+@login_required
+def audience_delete_view(request, pk):
+    """
+    Eliminar audiencia.
+    """
+    from .models import SavedAudience
+    from django.shortcuts import get_object_or_404
+    from django.contrib import messages
+    
+    gym = request.gym
+    audience = get_object_or_404(SavedAudience, pk=pk, gym=gym)
+    
+    # Verificar si está en uso
+    uses = audience.campaigns.count() + audience.popups.count() + audience.advertisements.count()
+    
+    if uses > 0 and request.method != 'POST':
+        messages.warning(request, f'Esta audiencia está en uso en {uses} elementos. ¿Seguro que deseas eliminarla?')
+    
+    if request.method == 'POST':
+        name = audience.name
+        audience.delete()
+        messages.success(request, f'Audiencia "{name}" eliminada')
+        return redirect('marketing_audience_list')
+    
+    context = {
+        'audience': audience,
+        'uses': uses,
+    }
+    return render(request, 'backoffice/marketing/audiences/confirm_delete.html', context)
+
+
+@login_required
+def audience_detail_view(request, pk):
+    """
+    Ver detalle de audiencia con previsualización de miembros.
+    """
+    from .models import SavedAudience
+    from django.shortcuts import get_object_or_404
+    from django.core.paginator import Paginator
+    
+    gym = request.gym
+    audience = get_object_or_404(SavedAudience, pk=pk, gym=gym)
+    
+    # Obtener miembros con paginación
+    members_qs = audience.get_members_queryset()
+    paginator = Paginator(members_qs, 50)
+    page = request.GET.get('page', 1)
+    members = paginator.get_page(page)
+    
+    # Estadísticas de uso
+    campaigns_using = audience.campaigns.all()
+    popups_using = audience.popups.all()
+    ads_using = audience.advertisements.all()
+    
+    context = {
+        'audience': audience,
+        'members': members,
+        'total_count': members_qs.count(),
+        'campaigns_using': campaigns_using,
+        'popups_using': popups_using,
+        'ads_using': ads_using,
+    }
+    return render(request, 'backoffice/marketing/audiences/detail.html', context)
+
+
+@login_required
+def audience_preview_count(request):
+    """
+    API para previsualizar el conteo de una audiencia con filtros (AJAX).
+    """
+    from django.http import JsonResponse
+    from clients.models import Client
+    from django.db.models import Q
+    
+    gym = request.gym
+    
+    # Obtener filtros del request
+    qs = Client.objects.filter(gym=gym)
+    
+    status = request.GET.get('status')
+    if status and status != 'all':
+        qs = qs.filter(status=status)
+    
+    gender = request.GET.get('gender')
+    if gender and gender != 'all':
+        qs = qs.filter(gender=gender)
+    
+    age_min = request.GET.get('age_min')
+    if age_min:
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+        max_birth = date.today() - relativedelta(years=int(age_min))
+        qs = qs.filter(birth_date__lte=max_birth)
+    
+    age_max = request.GET.get('age_max')
+    if age_max:
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+        min_birth = date.today() - relativedelta(years=int(age_max) + 1)
+        qs = qs.filter(birth_date__gt=min_birth)
+    
+    membership_plan = request.GET.get('membership_plan')
+    if membership_plan and membership_plan != 'all':
+        qs = qs.filter(memberships__plan_id=membership_plan, memberships__status='ACTIVE').distinct()
+    
+    has_active = request.GET.get('has_active_membership')
+    if has_active == 'true':
+        qs = qs.filter(memberships__status='ACTIVE').distinct()
+    
+    is_inactive = request.GET.get('is_inactive')
+    if is_inactive == 'true':
+        qs = qs.exclude(memberships__status='ACTIVE')
+    
+    company = request.GET.get('company')
+    if company == 'company':
+        qs = qs.filter(is_company_client=True)
+    elif company == 'individual':
+        qs = qs.filter(is_company_client=False)
+    
+    tags = request.GET.getlist('tags')
+    if tags:
+        qs = qs.filter(tags__id__in=tags).distinct()
+    
+    count = qs.distinct().count()
+    
+    return JsonResponse({
+        'count': count,
+        'formatted': f'{count:,}'.replace(',', '.')
+    })
+
+
+@login_required  
+def audience_create_from_selection(request):
+    """
+    Crear audiencia desde una selección de clientes (desde listado de clientes).
+    """
+    from .models import SavedAudience
+    from clients.models import Client
+    from django.http import JsonResponse
+    from django.contrib import messages
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    gym = request.gym
+    
+    import json
+    try:
+        data = json.loads(request.body)
+    except:
+        data = request.POST
+    
+    name = data.get('name', '').strip()
+    client_ids = data.get('client_ids', [])
+    
+    if not name:
+        return JsonResponse({'error': 'El nombre es obligatorio'}, status=400)
+    
+    if not client_ids:
+        return JsonResponse({'error': 'Selecciona al menos un cliente'}, status=400)
+    
+    # Crear audiencia estática
+    audience = SavedAudience.objects.create(
+        gym=gym,
+        name=name,
+        audience_type='STATIC',
+        created_by=request.user
+    )
+    
+    # Añadir miembros
+    clients = Client.objects.filter(id__in=client_ids, gym=gym)
+    audience.static_members.set(clients)
+    
+    return JsonResponse({
+        'success': True,
+        'audience_id': audience.id,
+        'count': clients.count(),
+        'message': f'Audiencia "{name}" creada con {clients.count()} clientes'
+    })

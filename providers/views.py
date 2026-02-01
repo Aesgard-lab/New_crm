@@ -36,7 +36,7 @@ def provider_list(request):
 def provider_create(request):
     gym = request.gym
     if request.method == "POST":
-        form = ProviderForm(request.POST)
+        form = ProviderForm(request.POST, request.FILES)
         if form.is_valid():
             provider = form.save(commit=False)
             provider.gym = gym
@@ -63,8 +63,13 @@ def provider_edit(request, pk):
     provider = get_object_or_404(Provider, pk=pk, gym=gym)
 
     if request.method == "POST":
-        form = ProviderForm(request.POST, instance=provider)
+        form = ProviderForm(request.POST, request.FILES, instance=provider)
         if form.is_valid():
+            # Handle logo clear checkbox
+            if request.POST.get('logo-clear'):
+                if provider.logo:
+                    provider.logo.delete(save=False)
+                provider.logo = None
             form.save()
             messages.success(request, "Proveedor actualizado.")
             return redirect("providers:provider_list")

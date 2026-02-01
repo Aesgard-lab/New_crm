@@ -60,7 +60,8 @@
         </div>
 
         <div
-            class="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-xl items-end">
+            class="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-xl items-end"
+            x-data="priceCalculator()">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Precio Base (€)</label>
                 {{ form.base_price }}
@@ -74,14 +75,26 @@
                 {{ form.price_strategy }}
             </div>
 
-            <div
-                class="bg-slate-900 rounded-xl p-3 flex flex-col justify-center shadow-lg shadow-slate-900/10 text-white h-[42px] relative top-[1px]">
+            <div class="bg-slate-900 rounded-xl p-3 flex flex-col justify-center shadow-lg shadow-slate-900/10 text-white relative">
                 <div class="flex items-baseline justify-between gap-2">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">PVP Final</span>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">PVP Cuota</span>
                     <div class="text-lg font-bold leading-none">
                         <span id="finalPriceDisplay">0.00</span>€
                     </div>
                 </div>
+                <!-- Matrícula y Total (solo si está activada) -->
+                <template x-if="hasEnrollmentFee && enrollmentFee > 0">
+                    <div class="mt-2 pt-2 border-t border-slate-700 space-y-1">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <span class="text-[9px] text-amber-400 uppercase font-bold">+ Matrícula</span>
+                            <span class="text-sm font-bold text-amber-400" x-text="enrollmentFeeDisplay + '€'"></span>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-2 pt-1 border-t border-slate-600">
+                            <span class="text-[9px] text-emerald-400 uppercase font-bold">Total Alta</span>
+                            <span class="text-sm font-bold text-emerald-400" x-text="totalFirstPayment + '€'"></span>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -147,6 +160,78 @@
                             <p class="text-[10px] text-green-600 mt-0.5">Cuenta en estadísticas de miembros</p>
                         </div>
                     </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cuota de Inscripción / Matrícula -->
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-xl border-2 border-amber-200 shadow-sm pt-4 border-t border-slate-100"
+             x-data="enrollmentFeeSection()">
+            <h3 class="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Cuota de Inscripción / Matrícula
+            </h3>
+
+            <!-- Toggle Matrícula -->
+            <div class="bg-white rounded-lg p-4 mb-4 border-2 border-amber-100">
+                <label class="flex items-center justify-between cursor-pointer group">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" name="has_enrollment_fee" id="id_has_enrollment_fee"
+                            x-model="hasEnrollmentFee"
+                            @change="updatePriceCalculator()"
+                            class="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                            {% if form.has_enrollment_fee.value %}checked{% endif %}>
+                        <div>
+                            <span class="font-bold text-slate-800 text-sm group-hover:text-amber-700 transition-colors">
+                                Cobrar Cuota de Inscripción
+                            </span>
+                            <p class="text-xs text-slate-500 mt-0.5">Cargo único al dar de alta al cliente en este plan</p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold">MATRÍCULA</span>
+                </label>
+            </div>
+
+            <!-- Configuración de Matrícula -->
+            <div x-show="hasEnrollmentFee" x-transition class="bg-white rounded-lg p-4 border border-amber-200 space-y-4">
+                <div class="grid grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Importe de Matrícula (€)</label>
+                        {{ form.enrollment_fee }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Impuesto Aplicable</label>
+                        {{ form.enrollment_fee_tax_rate }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Estrategia Impuestos</label>
+                        {{ form.enrollment_fee_price_strategy }}
+                        <p class="text-[10px] text-slate-500 mt-1">Si el importe incluye IVA o no</p>
+                    </div>
+                    <div class="bg-amber-100 rounded-xl p-3 flex flex-col justify-center">
+                        <span class="text-[9px] text-amber-600 uppercase font-bold">PVP Matrícula</span>
+                        <span class="text-lg font-bold text-amber-800" x-text="enrollmentFeeDisplay + '€'">0.00€</span>
+                    </div>
+                </div>
+                
+                <!-- Canal de cobro de matrícula -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Dónde Cobrar Matrícula</label>
+                        {{ form.enrollment_fee_channel }}
+                        <p class="text-[10px] text-slate-500 mt-1">Define si se cobra presencial, online o ambos</p>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-3 border border-amber-200/50 flex items-center">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            {{ form.enrollment_fee_waivable }}
+                            <div>
+                                <span class="text-xs font-medium text-amber-800">Condonable por staff</span>
+                                <p class="text-[10px] text-amber-600 mt-0.5">Permite eximir en casos especiales</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -222,42 +307,48 @@
             </div>
         </div>
 
-        <!-- OFERTAS PARA NUEVOS CLIENTES -->
+        <!-- RESTRICCIONES DE ELEGIBILIDAD -->
         <div class="pt-6 border-t border-slate-100">
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-xl border-2 border-amber-200">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="font-bold text-amber-900 text-sm">Oferta Solo Nuevos Clientes</span>
-                        <span class="text-[10px] bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full">Promocional</span>
-                    </div>
-                    {{ form.is_new_client_only }}
+                <div class="flex items-center gap-2 mb-4">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <span class="font-bold text-amber-900 text-sm">Restricciones de Elegibilidad</span>
+                    <span class="text-[10px] bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full">Ofertas Segmentadas</span>
                 </div>
 
-                <div id="new-client-options" class="space-y-4">
+                <div class="space-y-4">
                     <div class="bg-white rounded-lg p-4 border border-amber-100">
-                        <label class="block text-xs font-bold text-slate-700 mb-3 uppercase tracking-wide">Criterio de "Cliente Nuevo"</label>
-                        {{ form.new_client_criteria }}
-                        <div class="mt-2 text-[10px] text-slate-500 space-y-1">
-                            <p>• <strong>Nunca ha tenido membresía:</strong> Sin historial de compra en este gimnasio</p>
-                            <p>• <strong>Registrado recientemente:</strong> Menos de X días desde su registro</p>
-                            <p>• <strong>Nunca compró este plan:</strong> No ha comprado este plan específico</p>
-                            <p>• <strong>Re-captación:</strong> Sin actividad reciente (volver a captar clientes perdidos)</p>
+                        <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">¿Quién puede comprar este plan?</label>
+                        {{ form.eligibility_criteria }}
+                        <div class="mt-3 text-[10px] text-slate-500 grid grid-cols-2 gap-x-4 gap-y-1">
+                            <p>• <strong>Sin restricción:</strong> Disponible para todos</p>
+                            <p>• <strong>Nunca tuvo membresía:</strong> Nuevos clientes</p>
+                            <p>• <strong>Nunca compró este plan:</strong> Primera compra</p>
+                            <p>• <strong>Ya compró este plan:</strong> Fidelización</p>
+                            <p>• <strong>Sin membresía activa:</strong> Captación</p>
+                            <p>• <strong>Con membresía activa:</strong> Upgrades</p>
+                            <p>• <strong>Registrado recientemente:</strong> Bienvenida</p>
+                            <p>• <strong>Inactivo X meses:</strong> Re-captación</p>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-3 gap-4" id="eligibility-options">
                         <div class="bg-white rounded-lg p-4 border border-amber-100">
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Umbral de Días/Meses</label>
-                            {{ form.new_client_days_threshold }}
-                            <p class="text-[10px] text-amber-700 mt-1">Para "Registrado recientemente" = días. Para "Re-captación" = meses.</p>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Umbral (Días/Meses)</label>
+                            {{ form.eligibility_days_threshold }}
+                            <p class="text-[10px] text-amber-700 mt-1">Solo para criterios con tiempo</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 border border-amber-100">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Si NO es elegible...</label>
+                            {{ form.visibility_for_ineligible }}
+                            <p class="text-[10px] text-amber-700 mt-1">Ocultar = no ve el plan. Bloqueado = ve pero no compra.</p>
                         </div>
                         <div class="bg-white rounded-lg p-4 border border-amber-100">
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Texto del Badge</label>
-                            {{ form.new_client_badge_text }}
-                            <p class="text-[10px] text-amber-700 mt-1">Se muestra en la tienda online (ej: 🎁 Oferta Bienvenida)</p>
+                            {{ form.eligibility_badge_text }}
+                            <p class="text-[10px] text-amber-700 mt-1">Ej: 🎁 Solo Nuevos, ⭐ VIP</p>
                         </div>
                     </div>
                 </div>
@@ -461,6 +552,131 @@
         </tr>
     </tbody>
 </table>
+
+<script>
+    // Alpine.js components for price calculations
+    document.addEventListener('alpine:init', () => {
+        // Global tax rates map
+        window.taxRatesMap = {};
+        const taxSelect = document.querySelector('[name="tax_rate"]');
+        
+        if (taxSelect) {
+            Array.from(taxSelect.options).forEach(opt => {
+                if (opt.value) {
+                    const match = opt.text.match(/(\d+(?:[\.,]\d+)?)%/);
+                    window.taxRatesMap[opt.value] = match ? parseFloat(match[1].replace(',', '.')) / 100 : 0;
+                }
+            });
+        }
+        
+        // Price Calculator component (for top price box)
+        Alpine.data('priceCalculator', () => ({
+            hasEnrollmentFee: {{ form.has_enrollment_fee.value|yesno:'true,false' }},
+            enrollmentFee: {{ form.enrollment_fee.value|default:'0' }},
+            enrollmentFeeDisplay: '0.00',
+            totalFirstPayment: '0.00',
+            
+            init() {
+                this.calculate();
+                
+                // Listen to all relevant changes
+                const enrollmentCheckbox = document.querySelector('[name="has_enrollment_fee"]');
+                const enrollmentInput = document.querySelector('[name="enrollment_fee"]');
+                const enrollmentTaxSelect = document.querySelector('[name="enrollment_fee_tax_rate"]');
+                const enrollmentStrategySelect = document.querySelector('[name="enrollment_fee_price_strategy"]');
+                const basePriceInput = document.querySelector('[name="base_price"]');
+                const taxRateSelect = document.querySelector('[name="tax_rate"]');
+                const strategySelect = document.querySelector('[name="price_strategy"]');
+                
+                // Watch checkbox changes
+                if (enrollmentCheckbox) {
+                    enrollmentCheckbox.addEventListener('change', () => {
+                        this.hasEnrollmentFee = enrollmentCheckbox.checked;
+                        this.calculate();
+                    });
+                }
+                
+                // Watch all inputs
+                [enrollmentInput, enrollmentTaxSelect, enrollmentStrategySelect, basePriceInput, taxRateSelect, strategySelect].forEach(el => {
+                    if (el) {
+                        el.addEventListener('input', () => this.calculate());
+                        el.addEventListener('change', () => this.calculate());
+                    }
+                });
+            },
+            
+            calculate() {
+                const enrollmentInput = document.querySelector('[name="enrollment_fee"]');
+                const enrollmentTaxSelect = document.querySelector('[name="enrollment_fee_tax_rate"]');
+                const enrollmentStrategySelect = document.querySelector('[name="enrollment_fee_price_strategy"]');
+                const finalPriceEl = document.getElementById('finalPriceDisplay');
+                
+                const enrollmentBase = parseFloat(enrollmentInput?.value) || 0;
+                const enrollmentTaxId = enrollmentTaxSelect?.value;
+                const enrollmentStrategy = enrollmentStrategySelect?.value || 'TAX_INCLUDED';
+                const enrollmentTaxRate = window.taxRatesMap[enrollmentTaxId] || 0;
+                
+                // Calculate enrollment fee final price
+                let enrollmentFinal = enrollmentBase;
+                if (enrollmentStrategy === 'TAX_EXCLUDED' && enrollmentTaxRate > 0) {
+                    enrollmentFinal = enrollmentBase * (1 + enrollmentTaxRate);
+                }
+                
+                this.enrollmentFee = enrollmentBase;
+                this.enrollmentFeeDisplay = enrollmentFinal.toFixed(2);
+                
+                // Get cuota final price
+                const cuotaFinal = parseFloat(finalPriceEl?.textContent) || 0;
+                this.totalFirstPayment = (cuotaFinal + enrollmentFinal).toFixed(2);
+            }
+        }));
+        
+        // Enrollment Fee Section component
+        Alpine.data('enrollmentFeeSection', () => ({
+            hasEnrollmentFee: {{ form.has_enrollment_fee.value|yesno:'true,false' }},
+            enrollmentFeeDisplay: '0.00',
+            
+            init() {
+                this.calculate();
+                
+                const enrollmentInput = document.querySelector('[name="enrollment_fee"]');
+                const enrollmentTaxSelect = document.querySelector('[name="enrollment_fee_tax_rate"]');
+                const enrollmentStrategySelect = document.querySelector('[name="enrollment_fee_price_strategy"]');
+                
+                [enrollmentInput, enrollmentTaxSelect, enrollmentStrategySelect].forEach(el => {
+                    if (el) {
+                        el.addEventListener('input', () => this.calculate());
+                        el.addEventListener('change', () => this.calculate());
+                    }
+                });
+            },
+            
+            calculate() {
+                const enrollmentInput = document.querySelector('[name="enrollment_fee"]');
+                const enrollmentTaxSelect = document.querySelector('[name="enrollment_fee_tax_rate"]');
+                const enrollmentStrategySelect = document.querySelector('[name="enrollment_fee_price_strategy"]');
+                
+                const enrollmentBase = parseFloat(enrollmentInput?.value) || 0;
+                const enrollmentTaxId = enrollmentTaxSelect?.value;
+                const enrollmentStrategy = enrollmentStrategySelect?.value || 'TAX_INCLUDED';
+                const enrollmentTaxRate = window.taxRatesMap[enrollmentTaxId] || 0;
+                
+                // Calculate enrollment fee final price
+                let enrollmentFinal = enrollmentBase;
+                if (enrollmentStrategy === 'TAX_EXCLUDED' && enrollmentTaxRate > 0) {
+                    enrollmentFinal = enrollmentBase * (1 + enrollmentTaxRate);
+                }
+                
+                this.enrollmentFeeDisplay = enrollmentFinal.toFixed(2);
+            },
+            
+            updatePriceCalculator() {
+                // Trigger recalculation on the price calculator
+                window.dispatchEvent(new CustomEvent('enrollment-fee-changed'));
+            }
+        }));
+    });
+</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

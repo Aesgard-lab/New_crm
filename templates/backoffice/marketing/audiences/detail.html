@@ -1,0 +1,215 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="{% url 'marketing_audience_list' %}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+    </a>
+    <div>
+        <div>{{ audience.name }}</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">{{ audience.get_audience_type_display }} · {{ total_count }} clientes</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex items-center gap-3">
+    <a href="{% url 'marketing_audience_edit' audience.pk %}" class="px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+        </svg>
+        Editar
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="col-span-2 space-y-6">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+                <div class="text-sm text-slate-500 mb-1">Total Clientes</div>
+                <div class="text-3xl font-bold text-slate-900">{{ total_count }}</div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+                <div class="text-sm text-slate-500 mb-1">Tipo</div>
+                <div class="text-lg font-bold text-slate-900">{{ audience.get_audience_type_display }}</div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+                <div class="text-sm text-slate-500 mb-1">Usos Totales</div>
+                <div class="text-3xl font-bold text-slate-900">{{ campaigns_using.count|add:popups_using.count|add:ads_using.count }}</div>
+            </div>
+        </div>
+        
+        <!-- Filters Applied -->
+        {% if audience.filters %}
+        <div class="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 class="font-bold text-slate-800 mb-4">Filtros Aplicados</h3>
+            <p class="text-slate-600">{{ audience.get_filters_display }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Members Table -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800">Miembros de la Audiencia</h3>
+                <span class="text-sm text-slate-500">Mostrando {{ members|length }} de {{ total_count }}</span>
+            </div>
+            
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Cliente</th>
+                        <th class="px-4 py-3 text-left">Estado</th>
+                        <th class="px-4 py-3 text-left">Email</th>
+                        <th class="px-4 py-3 text-left">Teléfono</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for client in members %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3">
+                            <a href="{% url 'client_detail' client.id %}" class="flex items-center gap-3 hover:text-blue-600">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">
+                                    {{ client.first_name|slice:":1" }}{{ client.last_name|slice:":1" }}
+                                </div>
+                                <span class="font-medium">{{ client.first_name }} {{ client.last_name }}</span>
+                            </a>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                                {% if client.status == 'ACTIVE' %}bg-green-100 text-green-600
+                                {% elif client.status == 'LEAD' %}bg-blue-100 text-blue-600
+                                {% else %}bg-slate-100 text-slate-500{% endif %}">
+                                {{ client.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-slate-500">{{ client.email|default:"-" }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ client.phone|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                            No hay clientes en esta audiencia
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            {% if members.has_other_pages %}
+            <div class="p-4 border-t border-slate-100 flex justify-center gap-2">
+                {% if members.has_previous %}
+                <a href="?page={{ members.previous_page_number }}" class="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm">Anterior</a>
+                {% endif %}
+                
+                <span class="px-3 py-1 text-sm text-slate-500">
+                    Página {{ members.number }} de {{ members.paginator.num_pages }}
+                </span>
+                
+                {% if members.has_next %}
+                <a href="?page={{ members.next_page_number }}" class="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm">Siguiente</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-span-1 space-y-6">
+        <!-- Usage Info -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 class="font-bold text-slate-800 mb-4">Donde se usa</h3>
+            
+            {% if campaigns_using %}
+            <div class="mb-4">
+                <div class="text-xs font-bold text-slate-500 uppercase mb-2">Campañas ({{ campaigns_using.count }})</div>
+                <div class="space-y-2">
+                    {% for campaign in campaigns_using %}
+                    <div class="text-sm text-slate-600 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        {{ campaign.name }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if popups_using %}
+            <div class="mb-4">
+                <div class="text-xs font-bold text-slate-500 uppercase mb-2">Popups ({{ popups_using.count }})</div>
+                <div class="space-y-2">
+                    {% for popup in popups_using %}
+                    <div class="text-sm text-slate-600 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                        </svg>
+                        {{ popup.title }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if ads_using %}
+            <div class="mb-4">
+                <div class="text-xs font-bold text-slate-500 uppercase mb-2">Anuncios ({{ ads_using.count }})</div>
+                <div class="space-y-2">
+                    {% for ad in ads_using %}
+                    <div class="text-sm text-slate-600 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        {{ ad.title }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if not campaigns_using and not popups_using and not ads_using %}
+            <p class="text-sm text-slate-400">Esta audiencia aún no se usa en ningún elemento.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 class="font-bold text-slate-800 mb-4">Acciones Rápidas</h3>
+            <div class="space-y-2">
+                <a href="{% url 'marketing_campaign_wizard' %}?audience={{ audience.pk }}" 
+                   class="block w-full text-center py-2 px-4 rounded-lg bg-blue-50 text-blue-600 text-sm font-medium hover:bg-blue-100">
+                    Crear Campaña con esta audiencia
+                </a>
+                <a href="{% url 'marketing_popup_create' %}?audience={{ audience.pk }}"
+                   class="block w-full text-center py-2 px-4 rounded-lg bg-purple-50 text-purple-600 text-sm font-medium hover:bg-purple-100">
+                    Crear Popup para esta audiencia
+                </a>
+            </div>
+        </div>
+        
+        <!-- Metadata -->
+        <div class="bg-slate-50 rounded-xl p-6 text-sm text-slate-500">
+            <div class="flex justify-between mb-2">
+                <span>Creada:</span>
+                <span>{{ audience.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="flex justify-between mb-2">
+                <span>Actualizada:</span>
+                <span>{{ audience.updated_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% if audience.created_by %}
+            <div class="flex justify-between">
+                <span>Creada por:</span>
+                <span>{{ audience.created_by.get_full_name|default:audience.created_by.email }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

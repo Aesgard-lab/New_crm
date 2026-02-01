@@ -71,18 +71,26 @@ class ShopView(APIView):
                 gym=gym, 
                 is_active=True,
                 is_visible_online=True
-            ).values('id', 'name', 'base_price', 'description', 'frequency_amount', 'frequency_unit')
-            # Map fields to expected names
-            plans = [
-                {
-                    'id': p['id'],
-                    'name': p['name'],
-                    'price': str(p['base_price']),
-                    'description': p['description'] or '',
-                    'duration_days': self._calculate_duration_days(p['frequency_amount'], p['frequency_unit'])
+            )
+            
+            # Filtrar planes según elegibilidad del cliente
+            plans = []
+            for plan in plans_qs:
+                should_show, is_eligible, reason = plan.should_show_to_client(client)
+                if not should_show:
+                    continue  # Ocultar plan
+                
+                plan_data = {
+                    'id': plan.id,
+                    'name': plan.name,
+                    'price': str(plan.base_price),
+                    'description': plan.description or '',
+                    'duration_days': self._calculate_duration_days(plan.frequency_amount, plan.frequency_unit),
+                    'is_eligible': is_eligible,
+                    'ineligible_reason': reason if not is_eligible else '',
+                    'badge_text': plan.get_badge_text() if plan.has_eligibility_restriction() else '',
                 }
-                for p in plans_qs
-            ]
+                plans.append(plan_data)
             
             # Get active products available for online purchase
             from products.models import Product
@@ -109,18 +117,26 @@ class ShopView(APIView):
                 gym=gym,
                 is_active=True,
                 is_visible_online=True
-            ).values('id', 'name', 'base_price', 'description', 'duration')
-            # Map fields to expected names
-            services = [
-                {
-                    'id': s['id'],
-                    'name': s['name'],
-                    'price': str(s['base_price']),
-                    'description': s['description'] or '',
-                    'duration_minutes': s['duration']
+            )
+            
+            # Filtrar servicios según elegibilidad del cliente
+            services = []
+            for service in services_qs:
+                should_show, is_eligible, reason = service.should_show_to_client(client)
+                if not should_show:
+                    continue  # Ocultar servicio
+                
+                service_data = {
+                    'id': service.id,
+                    'name': service.name,
+                    'price': str(service.base_price),
+                    'description': service.description or '',
+                    'duration_minutes': service.duration,
+                    'is_eligible': is_eligible,
+                    'ineligible_reason': reason if not is_eligible else '',
+                    'badge_text': service.get_badge_text() if service.has_eligibility_restriction() else '',
                 }
-                for s in services_qs
-            ]
+                services.append(service_data)
             
             return Response({
                 'success': True,
@@ -237,6 +253,15 @@ class ScheduleMembershipChangeView(APIView):
                     'success': False,
                     'error': 'El plan seleccionado no está disponible.'
                 }, status=http_status.HTTP_404_NOT_FOUND)
+            
+            # Verificar elegibilidad del cliente para este plan
+            if new_plan.has_eligibility_restriction():
+                is_eligible, reason = new_plan.is_client_eligible(client)
+                if not is_eligible:
+                    return Response({
+                        'success': False,
+                        'error': reason
+                    }, status=http_status.HTTP_403_FORBIDDEN)
             
             # Check not same plan
             if current_membership.plan and current_membership.plan.id == new_plan.id:

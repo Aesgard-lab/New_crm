@@ -357,6 +357,133 @@ class ClientDocument(models.Model):
         return f"{self.name} - {self.client.first_name} ({self.get_status_display()})"
 
 
+class ClientHealthRecord(models.Model):
+    """Datos de salud del cliente con notas y documentos médicos"""
+    
+    client = models.OneToOneField(
+        Client, 
+        on_delete=models.CASCADE, 
+        related_name="health_record"
+    )
+    
+    # Notas de salud
+    notes = models.TextField(
+        blank=True, 
+        help_text="Notas generales sobre la salud del cliente (alergias, lesiones, etc.)"
+    )
+    
+    # Campos específicos de salud
+    has_medical_clearance = models.BooleanField(
+        default=False, 
+        help_text="¿Tiene autorización médica para actividad física?"
+    )
+    medical_clearance_date = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Fecha de la última autorización médica"
+    )
+    allergies = models.TextField(
+        blank=True,
+        help_text="Alergias conocidas"
+    )
+    medical_conditions = models.TextField(
+        blank=True,
+        help_text="Condiciones médicas relevantes"
+    )
+    medications = models.TextField(
+        blank=True,
+        help_text="Medicamentos que toma actualmente"
+    )
+    emergency_contact_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Nombre del contacto de emergencia"
+    )
+    emergency_contact_phone = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Teléfono del contacto de emergencia"
+    )
+    
+    # Metadata
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name="created_health_records"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Registro de Salud"
+        verbose_name_plural = "Registros de Salud"
+    
+    def __str__(self):
+        return f"Datos de Salud - {self.client.first_name} {self.client.last_name}"
+
+
+class ClientHealthDocument(models.Model):
+    """Documentos médicos del cliente"""
+    
+    class DocumentType(models.TextChoices):
+        MEDICAL_CERT = "MEDICAL_CERT", "Certificado Médico"
+        FITNESS_TEST = "FITNESS_TEST", "Test de Aptitud Física"
+        LAB_RESULTS = "LAB_RESULTS", "Resultados de Laboratorio"
+        PRESCRIPTION = "PRESCRIPTION", "Prescripción Médica"
+        INJURY_REPORT = "INJURY_REPORT", "Informe de Lesión"
+        REHABILITATION = "REHABILITATION", "Plan de Rehabilitación"
+        OTHER = "OTHER", "Otro Documento"
+    
+    health_record = models.ForeignKey(
+        ClientHealthRecord, 
+        on_delete=models.CASCADE, 
+        related_name="documents"
+    )
+    name = models.CharField(
+        max_length=200, 
+        help_text="Nombre descriptivo del documento"
+    )
+    document_type = models.CharField(
+        max_length=20, 
+        choices=DocumentType.choices, 
+        default=DocumentType.OTHER
+    )
+    file = models.FileField(
+        upload_to="clients/health_documents/"
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Notas sobre el documento"
+    )
+    document_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha del documento"
+    )
+    expires_at = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Fecha de caducidad (si aplica)"
+    )
+    
+    # Metadata
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name="uploaded_health_documents"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Documento de Salud"
+        verbose_name_plural = "Documentos de Salud"
+    
+    def __str__(self):
+        return f"{self.name} - {self.health_record.client.first_name}"
+
 
 class ChatRoom(models.Model):
     """Sala de chat entre un cliente y el gimnasio"""

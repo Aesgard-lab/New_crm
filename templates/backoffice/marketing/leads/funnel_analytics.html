@@ -1,0 +1,292 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Análisis del Embudo de Ventas{% endblock %}
+{% block breadcrumb %}Marketing > Leads > Analytics{% endblock %}
+{% block page_title %}Análisis del Embudo de Ventas{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+    <svg class="w-12 h-12 mx-auto mb-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    </svg>
+    <p class="text-amber-800">{{ error }}</p>
+    <a href="{% url 'lead_board' %}" class="inline-block mt-4 bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-xl font-bold">
+        Ir al Tablero de Leads
+    </a>
+</div>
+{% else %}
+<div class="space-y-6">
+    <!-- Header with Date Filter -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">{{ pipeline.name }}</h1>
+            <p class="text-sm text-slate-500">Análisis de conversión y rendimiento del embudo</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <form method="get" class="flex items-center gap-2">
+                <label class="text-sm text-slate-600">Periodo:</label>
+                <select name="range" onchange="this.form.submit()" 
+                    class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="7" {% if date_range == 7 %}selected{% endif %}>Última semana</option>
+                    <option value="30" {% if date_range == 30 %}selected{% endif %}>Últimos 30 días</option>
+                    <option value="90" {% if date_range == 90 %}selected{% endif %}>Últimos 90 días</option>
+                    <option value="365" {% if date_range == 365 %}selected{% endif %}>Último año</option>
+                </select>
+            </form>
+            <a href="{% url 'lead_board' %}"
+                class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 flex items-center gap-2">
+                ← Tablero
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Total Leads -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500">Total Leads</p>
+                    <p class="text-3xl font-bold text-slate-900">{{ total_leads }}</p>
+                </div>
+                <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Won -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500">Ganados</p>
+                    <p class="text-3xl font-bold text-green-600">{{ won_count }}</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lost -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500">Perdidos</p>
+                    <p class="text-3xl font-bold text-red-600">{{ lost_count }}</p>
+                </div>
+                <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Conversion Rate -->
+        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-indigo-100">Tasa de Conversión</p>
+                    <p class="text-3xl font-bold">{{ overall_conversion_rate }}%</p>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Funnel Visualization -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+        <h2 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            Embudo de Ventas
+        </h2>
+        
+        <div class="space-y-4">
+            {% for item in leads_by_stage %}
+            <div class="relative">
+                <!-- Stage bar -->
+                <div class="flex items-center gap-4">
+                    <div class="w-32 flex-shrink-0">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background-color: {{ item.stage.color }};"></div>
+                            <span class="font-bold text-slate-700 text-sm">{{ item.stage.name }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1">
+                        <!-- Progress bar container -->
+                        <div class="relative h-10 bg-slate-100 rounded-lg overflow-hidden">
+                            {% if total_leads > 0 %}
+                            {% widthratio item.current_count total_leads 100 as bar_width %}
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 style="width: {{ bar_width }}%; background-color: {{ item.stage.color }}; opacity: 0.8;">
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Count inside bar -->
+                            <div class="absolute inset-0 flex items-center px-4">
+                                <span class="font-bold text-slate-700">{{ item.current_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="w-24 text-right flex-shrink-0">
+                        <span class="text-sm font-bold {% if item.conversion_rate >= 50 %}text-green-600{% elif item.conversion_rate >= 25 %}text-amber-600{% else %}text-red-600{% endif %}">
+                            {{ item.conversion_rate }}%
+                        </span>
+                        <p class="text-xs text-slate-500">conversión</p>
+                    </div>
+                </div>
+                
+                <!-- Arrow between stages -->
+                {% if not forloop.last %}
+                <div class="ml-16 h-6 flex items-center">
+                    <div class="w-px h-full bg-slate-200 ml-5"></div>
+                    <svg class="w-4 h-4 text-slate-300 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                    </svg>
+                    <span class="text-xs text-slate-400 ml-2">{{ item.moved_forward }} avanzaron</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid md:grid-cols-2 gap-6">
+        <!-- Leads by Source -->
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+            <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                </svg>
+                Leads por Fuente
+            </h2>
+            
+            {% if leads_by_source %}
+            <div class="space-y-3">
+                {% for item in leads_by_source %}
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-bold text-slate-700">{{ item.label }}</span>
+                            <span class="text-sm text-slate-500">{{ item.count }}</span>
+                        </div>
+                        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            {% if total_leads > 0 %}
+                            {% widthratio item.count total_leads 100 as source_width %}
+                            <div class="h-full bg-blue-500 rounded-full" style="width: {{ source_width }}%;"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-center text-slate-400 py-8">No hay datos de fuentes</p>
+            {% endif %}
+        </div>
+
+        <!-- Average Time by Stage -->
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+            <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Tiempo Promedio por Etapa
+            </h2>
+            
+            <div class="space-y-3">
+                {% for item in avg_time_by_stage %}
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full" style="background-color: {{ item.stage.color }};"></div>
+                        <span class="text-sm font-bold text-slate-700">{{ item.stage.name }}</span>
+                    </div>
+                    <span class="text-sm {% if item.avg_days > 7 %}text-red-600{% elif item.avg_days > 3 %}text-amber-600{% else %}text-green-600{% endif %} font-bold">
+                        {% if item.avg_days == 0 %}
+                        -
+                        {% elif item.avg_days < 1 %}
+                        < 1 día
+                        {% else %}
+                        {{ item.avg_days }} días
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    {% if top_performers %}
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+        <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+            </svg>
+            Top Vendedores (Conversiones)
+        </h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {% for performer in top_performers %}
+            <div class="text-center p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl">
+                <div class="w-12 h-12 mx-auto mb-2 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <span class="text-indigo-600 font-bold text-lg">{{ forloop.counter }}</span>
+                </div>
+                <p class="font-bold text-slate-800 text-sm truncate">
+                    {{ performer.assigned_to__user__first_name }} {{ performer.assigned_to__user__last_name }}
+                </p>
+                <p class="text-2xl font-bold text-green-600">{{ performer.conversions }}</p>
+                <p class="text-xs text-slate-500">conversiones</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="flex flex-wrap gap-3">
+        <a href="{% url 'lead_board' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+            </svg>
+            Ver Tablero Kanban
+        </a>
+        <a href="{% url 'lead_settings' %}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Configuración Pipeline
+        </a>
+        <a href="{% url 'meta_integration_settings' %}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+            Integración Meta
+        </a>
+        <a href="{% url 'lead_distribution_settings' %}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            Distribución de Leads
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

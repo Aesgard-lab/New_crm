@@ -41,6 +41,13 @@
                     <p class="text-xs text-slate-400 mt-1">Puedes usar HTML simple para formatear.</p>
                 </div>
 
+                <!-- Display Frequency -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Frecuencia de Visualización</label>
+                    {{ form.display_frequency }}
+                    <p class="text-xs text-slate-400 mt-1">Controla cuántas veces se muestra el popup a cada usuario.</p>
+                </div>
+
                 <!-- Global Errors -->
                 {% if form.non_field_errors %}
                 <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm">
@@ -74,6 +81,17 @@
                     <p class="text-xs text-slate-400 mt-1">Nombre exacto de la etiqueta (Tag).</p>
                     {% if form.audience_filter_value.errors %}
                     <p class="text-red-500 text-xs mt-1">{{ form.audience_filter_value.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Saved Audience (Conditional) -->
+                <div x-show="audienceType === 'SAVED_AUDIENCE'" x-transition x-cloak
+                    class="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                    <label class="block text-sm font-medium text-purple-900 mb-2">Seleccionar Audiencia Guardada</label>
+                    {{ form.saved_audience }}
+                    <p class="text-xs text-purple-700 mt-1">Las audiencias se crean desde el <a href="{% url 'client_explorer' %}" class="underline font-bold">Explorador de Audiencias</a>.</p>
+                    {% if form.saved_audience.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.saved_audience.errors.0 }}</p>
                     {% endif %}
                 </div>
 

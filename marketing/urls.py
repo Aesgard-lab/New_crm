@@ -50,6 +50,7 @@ urlpatterns = [
     # Lead Management
     path('leads/', views.lead_board_view, name='lead_board'),
     path('leads/settings/', views.lead_settings_view, name='lead_settings'),
+    path('leads/analytics/', views.sales_funnel_analytics, name='sales_funnel_analytics'),
     path('leads/api/card/<int:card_id>/move/', views.lead_card_move_api, name='lead_card_move_api'),
     path('leads/api/card/<int:card_id>/', views.lead_card_detail_api, name='lead_card_detail_api'),
     # Stage management
@@ -57,6 +58,13 @@ urlpatterns = [
     path('leads/api/stage/<int:stage_id>/', views.lead_stage_update, name='lead_stage_update'),
     path('leads/api/stage/<int:stage_id>/delete/', views.lead_stage_delete, name='lead_stage_delete'),
     path('leads/api/stages/reorder/', views.lead_stage_reorder, name='lead_stage_reorder'),
+    
+    # Meta (Facebook/Instagram) Lead Ads Integration
+    path('meta/webhook/<int:gym_id>/', views.meta_webhook, name='meta_webhook'),
+    path('leads/meta/', views.meta_integration_settings, name='meta_integration_settings'),
+    
+    # Lead Distribution (Auto-assignment)
+    path('leads/distribution/', views.lead_distribution_settings, name='lead_distribution_settings'),
     
     # Lead Stage Automation management
     path('leads/automation/create/', views.lead_automation_create, name='lead_automation_create'),
@@ -84,5 +92,14 @@ urlpatterns = [
     # Campaign exports
     path('campaigns/export/excel/', views.campaign_export_excel, name='marketing_campaign_export_excel'),
     path('campaigns/export/pdf/', views.campaign_export_pdf, name='marketing_campaign_export_pdf'),
+    
+    # Saved Audiences (Audiencias Guardadas)
+    path('audiences/', views.audience_list_view, name='marketing_audience_list'),
+    path('audiences/create/', views.audience_create_view, name='marketing_audience_create'),
+    path('audiences/<int:pk>/', views.audience_detail_view, name='marketing_audience_detail'),
+    path('audiences/<int:pk>/edit/', views.audience_edit_view, name='marketing_audience_edit'),
+    path('audiences/<int:pk>/delete/', views.audience_delete_view, name='marketing_audience_delete'),
+    path('audiences/preview-count/', views.audience_preview_count, name='marketing_audience_preview'),
+    path('audiences/create-from-selection/', views.audience_create_from_selection, name='marketing_audience_create_from_selection'),
 ]
 

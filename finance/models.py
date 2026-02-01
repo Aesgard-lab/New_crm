@@ -362,7 +362,10 @@ class Expense(models.Model):
     ]
     
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='expenses')
-    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='expenses')
+    # Proveedor - Ahora usa el modelo Provider de providers app (string reference para evitar circular import)
+    provider = models.ForeignKey('providers.Provider', on_delete=models.PROTECT, related_name='expenses', null=True, blank=True)
+    # Campo antiguo - deprecated, mantener para migración
+    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='expenses', null=True, blank=True)
     category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT, related_name='expenses')
     
     # Basic info

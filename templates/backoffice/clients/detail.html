@@ -30,8 +30,8 @@
 <div x-data="clientDetail">
 
     <!-- Modal de Alertas Emergentes -->
-    <div x-show="showAlerts && alerts.length > 0" x-transition.opacity
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+    <div x-show="showAlerts && alerts.length > 0 && clientReady" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak style="display: none;">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200">
             <!-- Header -->
             <div class="p-6 bg-red-50 border-b border-red-100 flex items-center gap-3">
@@ -467,6 +467,304 @@
                 };
             }
         </script>
+
+        <!-- Datos de Salud -->
+        <section class="bg-white border border-slate-200 rounded-3xl overflow-hidden" x-data="{ showHealthForm: false, showUploadForm: false }">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-rose-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-slate-900">Datos de Salud</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click="showUploadForm = !showUploadForm" 
+                        class="text-xs font-medium text-rose-600 hover:underline flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Subir Documento
+                    </button>
+                    <button @click="showHealthForm = !showHealthForm" 
+                        class="text-xs font-medium text-rose-600 hover:underline flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        <span x-text="showHealthForm ? 'Cancelar' : 'Editar Datos'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulario de subir documento médico -->
+            <div x-show="showUploadForm" x-collapse class="bg-rose-50 p-4 border-b border-rose-100">
+                <form action="{% url 'client_health_document_upload' client.id %}" method="post" enctype="multipart/form-data" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre del Documento</label>
+                            {{ health_document_form.name }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
+                            {{ health_document_form.document_type }}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Archivo</label>
+                            {{ health_document_form.file }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha del Documento</label>
+                            {{ health_document_form.document_date }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Caduca</label>
+                            {{ health_document_form.expires_at }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Notas</label>
+                        {{ health_document_form.notes }}
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors">
+                            Subir Documento
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Formulario de edición de datos de salud -->
+            <div x-show="showHealthForm" x-collapse class="p-6 border-b border-slate-100">
+                <form action="{% url 'client_health_record_update' client.id %}" method="post" class="space-y-4">
+                    {% csrf_token %}
+                    
+                    <!-- Contacto de emergencia -->
+                    <div class="bg-red-50 rounded-xl p-4 border border-red-200">
+                        <h4 class="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            Contacto de Emergencia
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre</label>
+                                {{ health_form.emergency_contact_name }}
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Teléfono</label>
+                                {{ health_form.emergency_contact_phone }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Autorización médica -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
+                            {{ health_form.has_medical_clearance }}
+                            <label class="text-sm text-slate-700">Tiene autorización médica</label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha de autorización</label>
+                            {{ health_form.medical_clearance_date }}
+                        </div>
+                    </div>
+                    
+                    <!-- Condiciones médicas -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alergias</label>
+                            {{ health_form.allergies }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Condiciones Médicas</label>
+                            {{ health_form.medical_conditions }}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Medicamentos</label>
+                        {{ health_form.medications }}
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Notas Generales de Salud</label>
+                        {{ health_form.notes }}
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-rose-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-rose-700 transition-colors">
+                            Guardar Datos de Salud
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Vista resumida de datos de salud -->
+            <div class="p-6" x-show="!showHealthForm">
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- Columna izquierda: Info principal -->
+                    <div class="space-y-4">
+                        <!-- Contacto de emergencia -->
+                        <div class="bg-red-50 rounded-xl p-4 border border-red-100">
+                            <h4 class="text-xs font-bold text-red-700 uppercase mb-2">Contacto de Emergencia</h4>
+                            {% if health_record.emergency_contact_name %}
+                            <p class="text-sm font-medium text-slate-800">{{ health_record.emergency_contact_name }}</p>
+                            <p class="text-sm text-slate-600">{{ health_record.emergency_contact_phone|default:"-" }}</p>
+                            {% else %}
+                            <p class="text-sm text-slate-400 italic">No registrado</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Autorización médica -->
+                        <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
+                            {% if health_record.has_medical_clearance %}
+                            <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-emerald-700">Autorización médica vigente</p>
+                                {% if health_record.medical_clearance_date %}
+                                <p class="text-xs text-slate-500">Desde: {{ health_record.medical_clearance_date|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-amber-700">Sin autorización médica</p>
+                                <p class="text-xs text-slate-500">Pendiente de documentación</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Alergias -->
+                        {% if health_record.allergies %}
+                        <div class="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                            <h4 class="text-xs font-bold text-amber-700 uppercase mb-2 flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Alergias
+                            </h4>
+                            <p class="text-sm text-slate-700">{{ health_record.allergies }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Columna derecha: Condiciones y medicamentos -->
+                    <div class="space-y-4">
+                        {% if health_record.medical_conditions %}
+                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                            <h4 class="text-xs font-bold text-blue-700 uppercase mb-2">Condiciones Médicas</h4>
+                            <p class="text-sm text-slate-700">{{ health_record.medical_conditions }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if health_record.medications %}
+                        <div class="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                            <h4 class="text-xs font-bold text-purple-700 uppercase mb-2">Medicamentos Actuales</h4>
+                            <p class="text-sm text-slate-700">{{ health_record.medications }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if health_record.notes %}
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Notas Generales</h4>
+                            <p class="text-sm text-slate-700">{{ health_record.notes }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not health_record.medical_conditions and not health_record.medications and not health_record.notes and not health_record.allergies %}
+                        <div class="text-center py-6 text-slate-400">
+                            <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-sm">No hay datos de salud registrados</p>
+                            <button @click="showHealthForm = true" class="text-rose-600 text-xs font-medium hover:underline mt-2">
+                                + Añadir información
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documentos de salud -->
+            {% if health_record.documents.exists %}
+            <div class="border-t border-slate-100">
+                <div class="px-6 py-3 bg-slate-50 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <h4 class="text-xs font-bold text-slate-600 uppercase">Documentos Médicos</h4>
+                </div>
+                <table class="w-full text-sm text-left text-slate-500">
+                    <thead class="text-xs text-slate-400 uppercase bg-slate-50/50">
+                        <tr>
+                            <th class="px-6 py-3">Documento</th>
+                            <th class="px-6 py-3">Tipo</th>
+                            <th class="px-6 py-3">Fecha</th>
+                            <th class="px-6 py-3">Caduca</th>
+                            <th class="px-6 py-3 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for doc in health_record.documents.all %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-6 py-3">
+                                <div class="font-medium text-slate-700">{{ doc.name }}</div>
+                                {% if doc.notes %}
+                                <div class="text-xs text-slate-400">{{ doc.notes|truncatewords:10 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3">
+                                <span class="text-xs px-2 py-1 rounded-full bg-rose-100 text-rose-700">{{ doc.get_document_type_display }}</span>
+                            </td>
+                            <td class="px-6 py-3">
+                                {% if doc.document_date %}
+                                <span class="text-xs">{{ doc.document_date|date:"d/m/Y" }}</span>
+                                {% else %}
+                                <span class="text-xs text-slate-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3">
+                                {% if doc.expires_at %}
+                                    {% now "Y-m-d" as today %}
+                                    {% if doc.expires_at|date:"Y-m-d" < today %}
+                                    <span class="text-xs text-red-600 font-medium">{{ doc.expires_at|date:"d/m/Y" }} ⚠️</span>
+                                    {% else %}
+                                    <span class="text-xs text-slate-600">{{ doc.expires_at|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="text-xs text-slate-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ doc.file.url }}" target="_blank" class="text-rose-600 hover:underline text-xs">Ver</a>
+                                    <form action="{% url 'client_health_document_delete' doc.id %}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este documento?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </section>
                 </div>
                 <!-- FIN TAB: General -->
 
@@ -2220,6 +2518,7 @@
             document.addEventListener('alpine:init', () => {
                 Alpine.data('clientDetail', () => ({
                     showAlerts: false,
+                    clientReady: false,
                     clientId: {{ client.id }},
                     emailNotifications: {{ client.email_notifications_enabled|yesno:'true,false' }},
                     alerts: [
@@ -2234,28 +2533,34 @@
                         {% endfor %}
                     ],
                     init() {
+                        // Clear previous alerts state immediately to prevent flash
+                        this.showAlerts = false;
+                        this.clientReady = false;
+                        
                         // Store current client ID in sessionStorage
                         const storedClientId = sessionStorage.getItem('currentClientId');
                         const currentClientId = String(this.clientId);
                         
-                        // If navigating from another client, don't show alerts immediately
-                        if (storedClientId && storedClientId !== currentClientId) {
-                            // Coming from different client - longer delay
-                            sessionStorage.setItem('currentClientId', currentClientId);
-                            if (this.alerts.length > 0) {
-                                setTimeout(() => {
-                                    this.showAlerts = true;
-                                }, 500);
+                        // Always update stored client ID first
+                        sessionStorage.setItem('currentClientId', currentClientId);
+                        
+                        // Use requestAnimationFrame to ensure DOM is fully rendered
+                        requestAnimationFrame(() => {
+                            // Double-check we're still on the same client
+                            if (String(this.clientId) === sessionStorage.getItem('currentClientId')) {
+                                this.clientReady = true;
+                                if (this.alerts.length > 0) {
+                                    // Longer delay for different client, shorter for same
+                                    const delay = (storedClientId && storedClientId !== currentClientId) ? 500 : 300;
+                                    setTimeout(() => {
+                                        // Final check before showing
+                                        if (this.clientReady && String(this.clientId) === sessionStorage.getItem('currentClientId')) {
+                                            this.showAlerts = true;
+                                        }
+                                    }, delay);
+                                }
                             }
-                        } else {
-                            // Same client or first load - show faster
-                            sessionStorage.setItem('currentClientId', currentClientId);
-                            if (this.alerts.length > 0) {
-                                setTimeout(() => {
-                                    this.showAlerts = true;
-                                }, 200);
-                            }
-                        }
+                        });
                         
                         // Hide alerts when clicking any navigation link
                         this.setupNavigationListeners();

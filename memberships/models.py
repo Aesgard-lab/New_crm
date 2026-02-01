@@ -66,37 +66,124 @@ class MembershipPlan(models.Model):
         help_text=_("Si está activado, las cancelaciones fuera de ventana contarán como sesión gastada")
     )
     
-    # === OFERTAS PARA NUEVOS CLIENTES ===
-    NEW_CLIENT_CRITERIA = [
-        ('NEVER_HAD_MEMBERSHIP', _("Nunca ha tenido una membresía")),
-        ('REGISTERED_RECENTLY', _("Registrado recientemente")),
-        ('NEVER_BOUGHT_THIS', _("Nunca ha comprado este plan")),
-        ('INACTIVE_PERIOD', _("Sin actividad en X meses (re-captación)")),
+    # === CUOTA DE INSCRIPCIÓN / MATRÍCULA ===
+    has_enrollment_fee = models.BooleanField(
+        _("Tiene cuota de inscripción"),
+        default=False,
+        help_text=_("Cargo único al dar de alta en este plan (matrícula)")
+    )
+    enrollment_fee = models.DecimalField(
+        _("Cuota de Inscripción"),
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text=_("Importe base de la matrícula")
+    )
+    enrollment_fee_tax_rate = models.ForeignKey(
+        TaxRate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='enrollment_fees',
+        verbose_name=_("Impuesto Inscripción"),
+        help_text=_("Impuesto aplicable a la cuota de inscripción")
+    )
+    enrollment_fee_price_strategy = models.CharField(
+        _("Estrategia Precio Matrícula"),
+        max_length=20,
+        default='TAX_INCLUDED',
+        choices=[
+            ('TAX_INCLUDED', _("Impuestos Incluidos")),
+            ('TAX_EXCLUDED', _("Impuestos Excluidos")),
+        ],
+        help_text=_("Define si el importe incluye o excluye impuestos")
+    )
+    enrollment_fee_waivable = models.BooleanField(
+        _("Matrícula condonable"),
+        default=True,
+        help_text=_("Permite al staff eximir la cuota de inscripción en casos especiales")
+    )
+    
+    # Dónde se cobra la matrícula
+    ENROLLMENT_FEE_CHANNELS = [
+        ('BOTH', _("Presencial y Online")),
+        ('ONSITE', _("Solo Presencial (in-situ)")),
+        ('ONLINE', _("Solo Online")),
+    ]
+    enrollment_fee_channel = models.CharField(
+        _("Dónde cobrar matrícula"),
+        max_length=10,
+        choices=ENROLLMENT_FEE_CHANNELS,
+        default='BOTH',
+        help_text=_("Define en qué canales se cobra la cuota de inscripción")
+    )
+    
+    # === OFERTAS CON RESTRICCIÓN DE ELEGIBILIDAD ===
+    ELIGIBILITY_CRITERIA = [
+        ('NONE', _("Sin restricción (disponible para todos)")),
+        ('NEVER_HAD_MEMBERSHIP', _("Solo clientes que NUNCA han tenido membresía")),
+        ('NEVER_BOUGHT_THIS', _("Solo clientes que NUNCA han comprado este plan")),
+        ('HAS_BOUGHT_THIS', _("Solo clientes que YA han comprado este plan (fidelización)")),
+        ('REGISTERED_RECENTLY', _("Solo registrados recientemente")),
+        ('INACTIVE_PERIOD', _("Solo clientes inactivos (re-captación)")),
+        ('NO_ACTIVE_MEMBERSHIP', _("Solo clientes SIN membresía activa actualmente")),
+        ('HAS_ACTIVE_MEMBERSHIP', _("Solo clientes CON membresía activa (upgrade/complemento)")),
     ]
     
-    is_new_client_only = models.BooleanField(
-        _("Solo para Nuevos Clientes"),
-        default=False,
-        help_text=_("Si se activa, solo los clientes que cumplan el criterio podrán ver/comprar este plan")
-    )
-    new_client_criteria = models.CharField(
-        _("Criterio de Cliente Nuevo"),
+    VISIBILITY_FOR_INELIGIBLE = [
+        ('HIDE', _("Ocultar completamente")),
+        ('SHOW_LOCKED', _("Mostrar bloqueado (genera interés)")),
+    ]
+    
+    eligibility_criteria = models.CharField(
+        _("Criterio de Elegibilidad"),
         max_length=30,
-        choices=NEW_CLIENT_CRITERIA,
-        default='NEVER_HAD_MEMBERSHIP',
-        help_text=_("Define qué se considera 'cliente nuevo' para esta oferta")
+        choices=ELIGIBILITY_CRITERIA,
+        default='NONE',
+        help_text=_("Define quién puede ver/comprar este plan")
     )
-    new_client_days_threshold = models.PositiveIntegerField(
-        _("Umbral de Días"),
+    eligibility_days_threshold = models.PositiveIntegerField(
+        _("Umbral de Días/Meses"),
         default=30,
-        help_text=_("Para 'Registrado recientemente': días desde registro. Para 'Sin actividad': meses sin membresía activa.")
+        help_text=_("Para 'Registrado recientemente': días desde registro. Para 'Inactivos': meses sin membresía.")
     )
-    new_client_badge_text = models.CharField(
+    visibility_for_ineligible = models.CharField(
+        _("Visibilidad para No Elegibles"),
+        max_length=15,
+        choices=VISIBILITY_FOR_INELIGIBLE,
+        default='HIDE',
+        help_text=_("Qué hacer con el plan cuando el cliente no cumple el criterio")
+    )
+    eligibility_badge_text = models.CharField(
         _("Texto del Badge"),
         max_length=30,
-        default="🎁 Oferta Bienvenida",
+        default="",
         blank=True,
-        help_text=_("Texto que se muestra en el badge promocional (ej: '🎁 Solo Nuevos', 'Oferta Bienvenida')")
+        help_text=_("Badge promocional (ej: '🎁 Solo Nuevos', '⭐ VIP', '🔄 Renueva y ahorra')")
+    )
+    
+    # Campos legacy para compatibilidad (migración)
+    is_new_client_only = models.BooleanField(
+        _("Solo para Nuevos Clientes (legacy)"),
+        default=False,
+        help_text=_("[DEPRECATED] Usar eligibility_criteria en su lugar")
+    )
+    new_client_criteria = models.CharField(
+        _("Criterio de Cliente Nuevo (legacy)"),
+        max_length=30,
+        choices=[('NEVER_HAD_MEMBERSHIP', 'Legacy')],
+        default='NEVER_HAD_MEMBERSHIP',
+        blank=True
+    )
+    new_client_days_threshold = models.PositiveIntegerField(
+        _("Umbral de Días (legacy)"),
+        default=30
+    )
+    new_client_badge_text = models.CharField(
+        _("Texto del Badge (legacy)"),
+        max_length=30,
+        default="🎁 Oferta Bienvenida",
+        blank=True
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -112,6 +199,26 @@ class MembershipPlan(models.Model):
         if self.price_strategy == 'TAX_EXCLUDED':
             return self.base_price * (1 + rate)
         return self.base_price
+    
+    @property
+    def final_enrollment_fee(self):
+        """Calcula el precio final de la cuota de inscripción con impuestos"""
+        if not self.has_enrollment_fee or self.enrollment_fee == 0:
+            return 0
+        if not self.enrollment_fee_tax_rate:
+            return self.enrollment_fee
+        rate = self.enrollment_fee_tax_rate.rate_percent / 100
+        # La cuota de inscripción siempre se considera impuestos incluidos por simplicidad
+        return self.enrollment_fee
+    
+    @property
+    def enrollment_fee_tax_amount(self):
+        """Calcula el importe del impuesto sobre la cuota de inscripción"""
+        if not self.has_enrollment_fee or not self.enrollment_fee_tax_rate:
+            return 0
+        rate = self.enrollment_fee_tax_rate.rate_percent / 100
+        # Calcular el impuesto incluido en el precio
+        return self.enrollment_fee - (self.enrollment_fee / (1 + rate))
         
     def get_frequency_display_custom(self):
         unit_label = dict(self.FREQUENCY_UNITS).get(self.frequency_unit, '')
@@ -125,21 +232,27 @@ class MembershipPlan(models.Model):
     
     def is_client_eligible(self, client):
         """
-        Verifica si un cliente es elegible para esta oferta de "nuevo cliente".
+        Verifica si un cliente es elegible para este plan.
         Retorna (is_eligible: bool, reason: str)
         """
-        if not self.is_new_client_only:
-            return True, ""
-        
         from django.utils import timezone
         from clients.models import ClientMembership
         from dateutil.relativedelta import relativedelta
         
-        criteria = self.new_client_criteria
-        threshold = self.new_client_days_threshold
+        # Usar nuevo sistema de criterios si está configurado
+        criteria = self.eligibility_criteria
+        threshold = self.eligibility_days_threshold
+        
+        # Si no hay restricción (NONE) -> elegible para todos
+        if criteria == 'NONE':
+            # Compatibilidad: revisar campo legacy
+            if self.is_new_client_only:
+                criteria = self.new_client_criteria or 'NEVER_HAD_MEMBERSHIP'
+                threshold = self.new_client_days_threshold
+            else:
+                return True, ""
         
         if criteria == 'NEVER_HAD_MEMBERSHIP':
-            # Cliente nunca ha tenido ninguna membresía en este gym
             has_any = ClientMembership.objects.filter(
                 client=client,
                 plan__gym=self.gym
@@ -148,17 +261,7 @@ class MembershipPlan(models.Model):
                 return False, _("Esta oferta es solo para clientes que nunca han tenido membresía")
             return True, ""
         
-        elif criteria == 'REGISTERED_RECENTLY':
-            # Cliente se registró hace menos de X días
-            if client.created_at:
-                days_since = (timezone.now() - client.created_at).days
-                if days_since > threshold:
-                    return False, _("Esta oferta es solo para clientes registrados en los últimos {} días").format(threshold)
-                return True, ""
-            return True, ""
-        
         elif criteria == 'NEVER_BOUGHT_THIS':
-            # Cliente nunca ha comprado este plan específico
             has_bought = ClientMembership.objects.filter(
                 client=client,
                 plan=self
@@ -167,8 +270,24 @@ class MembershipPlan(models.Model):
                 return False, _("Esta oferta es solo para clientes que nunca han comprado este plan")
             return True, ""
         
+        elif criteria == 'HAS_BOUGHT_THIS':
+            # Solo para clientes que YA compraron este plan (fidelización)
+            has_bought = ClientMembership.objects.filter(
+                client=client,
+                plan=self
+            ).exists()
+            if not has_bought:
+                return False, _("Esta oferta es exclusiva para clientes que ya han tenido este plan")
+            return True, ""
+        
+        elif criteria == 'REGISTERED_RECENTLY':
+            if client.created_at:
+                days_since = (timezone.now() - client.created_at).days
+                if days_since > threshold:
+                    return False, _("Esta oferta es solo para clientes registrados en los últimos {} días").format(threshold)
+            return True, ""
+        
         elif criteria == 'INACTIVE_PERIOD':
-            # Cliente sin membresía activa en los últimos X meses
             cutoff = timezone.now() - relativedelta(months=threshold)
             recent_active = ClientMembership.objects.filter(
                 client=client,
@@ -179,7 +298,69 @@ class MembershipPlan(models.Model):
                 return False, _("Esta oferta es para clientes sin actividad en los últimos {} meses").format(threshold)
             return True, ""
         
+        elif criteria == 'NO_ACTIVE_MEMBERSHIP':
+            # Solo clientes sin membresía activa actualmente
+            today = timezone.now().date()
+            has_active = ClientMembership.objects.filter(
+                client=client,
+                plan__gym=self.gym,
+                status='ACTIVE',
+                start_date__lte=today,
+                end_date__gte=today
+            ).exists()
+            if has_active:
+                return False, _("Esta oferta es solo para clientes sin membresía activa")
+            return True, ""
+        
+        elif criteria == 'HAS_ACTIVE_MEMBERSHIP':
+            # Solo clientes con membresía activa (para upgrades/complementos)
+            today = timezone.now().date()
+            has_active = ClientMembership.objects.filter(
+                client=client,
+                plan__gym=self.gym,
+                status='ACTIVE',
+                start_date__lte=today,
+                end_date__gte=today
+            ).exists()
+            if not has_active:
+                return False, _("Esta oferta es exclusiva para socios con membresía activa")
+            return True, ""
+        
         return True, ""
+    
+    def should_show_to_client(self, client):
+        """
+        Determina si el plan debe mostrarse a este cliente.
+        Retorna (should_show: bool, is_eligible: bool, reason: str)
+        """
+        # Si no hay restricción, siempre mostrar
+        if self.eligibility_criteria == 'NONE' and not self.is_new_client_only:
+            return True, True, ""
+        
+        is_eligible, reason = self.is_client_eligible(client)
+        
+        if is_eligible:
+            return True, True, ""
+        
+        # No es elegible - verificar visibilidad configurada
+        visibility = self.visibility_for_ineligible
+        if visibility == 'HIDE':
+            return False, False, reason
+        else:  # SHOW_LOCKED
+            return True, False, reason
+    
+    def get_badge_text(self):
+        """Retorna el texto del badge si aplica"""
+        if self.eligibility_badge_text:
+            return self.eligibility_badge_text
+        # Fallback a campo legacy
+        if self.is_new_client_only and self.new_client_badge_text:
+            return self.new_client_badge_text
+        return ""
+    
+    def has_eligibility_restriction(self):
+        """Indica si este plan tiene alguna restricción de elegibilidad"""
+        return self.eligibility_criteria != 'NONE' or self.is_new_client_only
 
 class PlanAccessRule(models.Model):
     PERIODS = [

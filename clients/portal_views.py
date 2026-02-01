@@ -123,8 +123,9 @@ def portal_home(request):
     # Popups Logic
     from marketing.models import Popup, PopupRead
     from django.db.models import Q
+    from datetime import timedelta
     
-    # Get unread popups active now
+    # Get active popups
     now = timezone.now()
     active_popups = Popup.objects.filter(
         gym=client.gym,
@@ -132,14 +133,32 @@ def portal_home(request):
         start_date__lte=now
     ).exclude(
         end_date__lt=now # Exclude expired if end_date set
-    ).exclude(
-        reads__client=client # Exclude already read
     )
     
     relevant_popups = []
     
     for popup in active_popups:
         is_relevant = False
+        
+        # Check if popup should be shown based on frequency
+        popup_read = PopupRead.objects.filter(popup=popup, client=client).first()
+        
+        if popup_read:
+            # Popup was already seen, check frequency
+            if popup.display_frequency == 'ONCE':
+                # Already seen and marked as "entendido", skip
+                continue
+            elif popup.display_frequency == 'EVERY_SESSION':
+                # Show every time (session handled by frontend localStorage)
+                pass
+            elif popup.display_frequency == 'DAILY':
+                # Show if last seen was more than 24 hours ago
+                if popup_read.last_seen_at and (now - popup_read.last_seen_at) < timedelta(days=1):
+                    continue
+            elif popup.display_frequency == 'WEEKLY':
+                # Show if last seen was more than 7 days ago
+                if popup_read.last_seen_at and (now - popup_read.last_seen_at) < timedelta(days=7):
+                    continue
         
         # 1. Direct Target
         if popup.target_client_id:
@@ -181,19 +200,28 @@ def portal_home(request):
 def portal_mark_popup_read(request, popup_id):
     """
     API to mark popup as read.
+    Supports display frequency by updating last_seen_at and times_seen.
     """
     if request.method != 'POST':
          from django.http import JsonResponse
          return JsonResponse({'error': 'Method not allowed'}, status=405)
          
     from marketing.models import Popup, PopupRead
+    from django.utils import timezone
     client = request.user.client_profile
     
     try:
         popup = Popup.objects.get(id=popup_id, gym=client.gym)
-        PopupRead.objects.get_or_create(popup=popup, client=client)
+        popup_read, created = PopupRead.objects.get_or_create(popup=popup, client=client)
+        
+        if not created:
+            # Update existing record with new timestamp
+            popup_read.last_seen_at = timezone.now()
+            popup_read.times_seen += 1
+            popup_read.save()
+        
         from django.http import JsonResponse
-        return JsonResponse({'status': 'ok'})
+        return JsonResponse({'status': 'ok', 'times_seen': popup_read.times_seen})
     except Popup.DoesNotExist:
          from django.http import JsonResponse
          return JsonResponse({'error': 'Popup not found'}, status=404)

@@ -4,7 +4,13 @@ from .models import (
     LeadPipeline, LeadStage, LeadStageAutomation, LeadCard,
     EmailWorkflow, EmailWorkflowStep, EmailWorkflowExecution, EmailWorkflowStepLog,
     LeadScoringRule, LeadScore, LeadScoreLog, LeadScoringAutomation,
-    RetentionAlert, RetentionRule
+    RetentionAlert, RetentionRule,
+    # Meta Integration
+    MetaLeadIntegration, MetaLeadForm, MetaLeadEntry,
+    # Lead Distribution
+    LeadDistributionRule, LeadAssignmentLog,
+    # Analytics
+    LeadStageHistory
 )
 
 @admin.register(MarketingSettings)
@@ -223,4 +229,68 @@ class RetentionRuleAdmin(admin.ModelAdmin):
     list_display = ('name', 'gym', 'alert_type', 'days_threshold', 'risk_score', 'is_active')
     list_filter = ('alert_type', 'is_active', 'gym')
     search_fields = ('name', 'gym__name')
+
+
+# =============================================================================
+# META (FACEBOOK/INSTAGRAM) INTEGRATION ADMIN
+# =============================================================================
+
+class MetaLeadFormInline(admin.TabularInline):
+    model = MetaLeadForm
+    extra = 0
+    readonly_fields = ('form_id', 'leads_received', 'last_lead_at')
+
+@admin.register(MetaLeadIntegration)
+class MetaLeadIntegrationAdmin(admin.ModelAdmin):
+    list_display = ('gym', 'page_name', 'is_active', 'leads_received', 'last_lead_at')
+    list_filter = ('is_active',)
+    search_fields = ('gym__name', 'page_name')
+    readonly_fields = ('webhook_verify_token', 'leads_received', 'last_lead_at', 'created_at', 'updated_at')
+    inlines = [MetaLeadFormInline]
+
+@admin.register(MetaLeadForm)
+class MetaLeadFormAdmin(admin.ModelAdmin):
+    list_display = ('form_name', 'integration', 'is_active', 'leads_received', 'last_lead_at')
+    list_filter = ('is_active', 'integration__gym')
+    search_fields = ('form_name', 'form_id')
+
+@admin.register(MetaLeadEntry)
+class MetaLeadEntryAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'email', 'platform', 'status', 'created_at')
+    list_filter = ('status', 'platform', 'integration__gym')
+    search_fields = ('email', 'first_name', 'last_name', 'leadgen_id')
+    readonly_fields = ('leadgen_id', 'raw_data', 'created_at', 'processed_at')
+    date_hierarchy = 'created_at'
+
+
+# =============================================================================
+# LEAD DISTRIBUTION ADMIN
+# =============================================================================
+
+@admin.register(LeadDistributionRule)
+class LeadDistributionRuleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'gym', 'method', 'source_filter', 'is_active', 'priority')
+    list_filter = ('method', 'is_active', 'gym')
+    search_fields = ('name', 'gym__name')
+    filter_horizontal = ('staff_members',)
+
+@admin.register(LeadAssignmentLog)
+class LeadAssignmentLogAdmin(admin.ModelAdmin):
+    list_display = ('lead_card', 'assigned_to', 'assignment_type', 'rule', 'created_at')
+    list_filter = ('assignment_type', 'created_at')
+    search_fields = ('lead_card__client__first_name', 'lead_card__client__last_name')
+    date_hierarchy = 'created_at'
+
+
+# =============================================================================
+# SALES FUNNEL ANALYTICS ADMIN
+# =============================================================================
+
+@admin.register(LeadStageHistory)
+class LeadStageHistoryAdmin(admin.ModelAdmin):
+    list_display = ('lead_card', 'from_stage', 'to_stage', 'changed_by', 'time_in_previous_stage', 'created_at')
+    list_filter = ('to_stage', 'created_at')
+    search_fields = ('lead_card__client__first_name', 'lead_card__client__last_name')
+    date_hierarchy = 'created_at'
+    readonly_fields = ('created_at',)
 

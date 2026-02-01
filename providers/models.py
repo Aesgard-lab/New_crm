@@ -6,9 +6,16 @@ from finance.models import TaxRate
 from products.models import Product
 
 
+def provider_logo_path(instance, filename):
+    """Genera la ruta para el logo del proveedor."""
+    ext = filename.split('.')[-1]
+    return f'providers/{instance.gym.id}/{instance.id or "new"}/logo.{ext}'
+
+
 class Provider(models.Model):
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name="providers")
     name = models.CharField(max_length=150)
+    logo = models.ImageField(upload_to=provider_logo_path, blank=True, null=True)
     legal_name = models.CharField(max_length=200, blank=True)
     tax_id = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True)

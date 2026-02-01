@@ -13,7 +13,7 @@ def check_inactive_leads():
     and move them based on automation rules.
     Runs daily via Celery Beat.
     """
-    from .models import LeadCard, LeadStageAutomation
+    from .models import LeadCard, LeadStageAutomation, LeadStageHistory
     
     today = timezone.now()
     
@@ -38,6 +38,19 @@ def check_inactive_leads():
         )
         
         for lead in stale_leads:
+            old_stage = lead.stage
+            time_in_stage = today - lead.updated_at if lead.updated_at else None
+            
+            # Record history
+            LeadStageHistory.objects.create(
+                lead_card=lead,
+                from_stage=old_stage,
+                to_stage=rule.to_stage,
+                changed_by_automation=rule,
+                time_in_previous_stage=time_in_stage,
+                notes=f"Automatización: {rule.get_trigger_type_display()} ({rule.trigger_days} días)"
+            )
+            
             lead.stage = rule.to_stage
             lead.save()
             moved_count += 1
@@ -51,7 +64,7 @@ def process_lead_automation(client_id, trigger_type):
     Process automation rule for a specific lead/client.
     Called from signals when events occur.
     """
-    from .models import LeadCard, LeadStageAutomation
+    from .models import LeadCard, LeadStageAutomation, LeadStageHistory
     from clients.models import Client
     
     try:
@@ -73,13 +86,34 @@ def process_lead_automation(client_id, trigger_type):
         from_stage=lead_card.stage,
         trigger_type=trigger_type,
         is_active=True
-    ).first()
+    ).order_by('-priority').first()
     
-    if rule:
-        old_stage = lead_card.stage.name
+    if rule and rule.to_stage:
+        old_stage = lead_card.stage
+        time_in_stage = timezone.now() - lead_card.updated_at if lead_card.updated_at else None
+        
+        # Record history
+        LeadStageHistory.objects.create(
+            lead_card=lead_card,
+            from_stage=old_stage,
+            to_stage=rule.to_stage,
+            changed_by_automation=rule,
+            time_in_previous_stage=time_in_stage,
+            notes=f"Automatización: {rule.get_trigger_type_display()}"
+        )
+        
         lead_card.stage = rule.to_stage
         lead_card.save()
-        return f"Moved {client} from {old_stage} to {rule.to_stage.name}"
+        
+        # Update client status if needed
+        if rule.to_stage.is_won and client.status == 'LEAD':
+            client.status = 'ACTIVE'
+            client.save()
+        elif rule.to_stage.is_lost and client.status == 'LEAD':
+            client.status = 'INACTIVE'
+            client.save()
+        
+        return f"Moved {client} from {old_stage.name} to {rule.to_stage.name}"
     
     return f"No matching rule for {trigger_type}"
 
@@ -90,7 +124,7 @@ def create_lead_card_for_client(client_id, pipeline_id=None):
     Create a LeadCard for a new client with status=LEAD.
     Places them in the first stage of the active pipeline.
     """
-    from .models import LeadCard, LeadPipeline, LeadStage
+    from .models import LeadCard, LeadPipeline, LeadStage, LeadStageHistory
     from clients.models import Client
     
     try:
@@ -121,6 +155,14 @@ def create_lead_card_for_client(client_id, pipeline_id=None):
     lead_card = LeadCard.objects.create(
         client=client,
         stage=first_stage
+    )
+    
+    # Record initial stage in history
+    LeadStageHistory.objects.create(
+        lead_card=lead_card,
+        from_stage=None,  # New lead, no previous stage
+        to_stage=first_stage,
+        notes="Entrada inicial al pipeline"
     )
     
     return f"Created lead card for {client} in stage {first_stage.name}"

@@ -296,6 +296,47 @@
                             </div>
                         </div>
 
+                        <!-- Stripe Migration Tool -->
+                        <a href="{% url 'stripe_migration' %}" class="block bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-2xl border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="bg-purple-600 p-2 rounded-lg text-white">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-purple-900">Migración desde Stripe</h4>
+                                    <p class="text-xs text-purple-700">Importar clientes con tarjetas de otro software</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-purple-800">
+                                Si vienes de otro software que usa Stripe, puedes importar tus clientes con sus tarjetas tokenizadas.
+                            </p>
+                            <div class="mt-4 flex items-center gap-2 text-purple-600 text-sm font-medium">
+                                <span>Ir a migración</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </div>
+                        </a>
+                                        {{ settings_form.redsys_environment }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Clave Secreta
+                                        (SHA-256)</label>
+                                    {{ settings_form.redsys_secret_key }}
+                                    <p class="text-xs text-slate-400 mt-1">Clave de encriptación del comercio</p>
+                                </div>
+                                {% if settings_form.redsys_secret_key.value %}
+                                <div class="text-right">
+                                    <button type="button" @click="editingRedsys = false"
+                                        class="text-xs text-slate-400 hover:text-slate-600">Cancelar edición</button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         <!-- General Finance -->
                         <div>
                             <h4 class="font-bold text-slate-800 mb-6">Moneda & General</h4>

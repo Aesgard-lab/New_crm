@@ -76,6 +76,57 @@ class SubscriptionPlan(models.Model):
     )
     display_order = models.IntegerField(default=0, help_text=_("Orden de visualización"))
     
+    # Transaction Fees / Comisiones por transacción
+    TRANSACTION_FEE_TYPE_CHOICES = [
+        ('NONE', _('Sin comisión')),
+        ('PERCENT', _('Porcentaje')),
+        ('FIXED', _('Cantidad fija')),
+        ('HYBRID', _('Híbrido (% + fijo)')),
+    ]
+    
+    transaction_fee_type = models.CharField(
+        max_length=10,
+        choices=TRANSACTION_FEE_TYPE_CHOICES,
+        default='NONE',
+        verbose_name=_("Tipo de comisión por transacción")
+    )
+    transaction_fee_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name=_("Porcentaje de comisión"),
+        help_text=_("Ej: 2.50 para 2.5%")
+    )
+    transaction_fee_fixed = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        verbose_name=_("Comisión fija por transacción"),
+        help_text=_("Cantidad fija en EUR por cada transacción")
+    )
+    transaction_fee_apply_to_online = models.BooleanField(
+        default=True,
+        verbose_name=_("Aplicar a pagos online"),
+        help_text=_("Cobrar comisión en ventas del portal público y app")
+    )
+    transaction_fee_apply_to_pos = models.BooleanField(
+        default=True,
+        verbose_name=_("Aplicar a pagos POS"),
+        help_text=_("Cobrar comisión en ventas del backoffice/TPV")
+    )
+    transaction_fee_apply_to_recurring = models.BooleanField(
+        default=True,
+        verbose_name=_("Aplicar a cobros recurrentes"),
+        help_text=_("Cobrar comisión en renovaciones automáticas de membresías")
+    )
+    transaction_fee_exclude_cash = models.BooleanField(
+        default=True,
+        verbose_name=_("Excluir pagos en efectivo"),
+        help_text=_("No cobrar comisión en transacciones en efectivo")
+    )
+    
     # Stripe Integration
     stripe_product_id = models.CharField(max_length=100, blank=True, help_text=_("ID del producto en Stripe"))
     stripe_price_monthly_id = models.CharField(max_length=100, blank=True, help_text=_("ID del precio mensual en Stripe"))
@@ -106,6 +157,58 @@ class SubscriptionPlan(models.Model):
         if self.module_routines: modules.append("Rutinas")
         if self.module_gamification: modules.append("Gamificación")
         return modules
+    
+    def calculate_transaction_fee(self, amount, source='POS', is_cash=False):
+        """
+        Calcula la comisión para una transacción dada.
+        
+        Args:
+            amount: Decimal - Importe de la transacción
+            source: str - 'ONLINE', 'POS', 'RECURRING'
+            is_cash: bool - Si el pago es en efectivo
+            
+        Returns:
+            Decimal - Comisión a cobrar (0 si no aplica)
+        """
+        # Si no hay comisión configurada
+        if self.transaction_fee_type == 'NONE':
+            return Decimal('0.00')
+        
+        # Verificar si aplica según el source
+        if source == 'ONLINE' and not self.transaction_fee_apply_to_online:
+            return Decimal('0.00')
+        if source == 'POS' and not self.transaction_fee_apply_to_pos:
+            return Decimal('0.00')
+        if source == 'RECURRING' and not self.transaction_fee_apply_to_recurring:
+            return Decimal('0.00')
+        
+        # Excluir efectivo si está configurado
+        if is_cash and self.transaction_fee_exclude_cash:
+            return Decimal('0.00')
+        
+        # Calcular según tipo
+        fee = Decimal('0.00')
+        
+        if self.transaction_fee_type == 'PERCENT':
+            fee = amount * (self.transaction_fee_percent / 100)
+        elif self.transaction_fee_type == 'FIXED':
+            fee = self.transaction_fee_fixed
+        elif self.transaction_fee_type == 'HYBRID':
+            fee = (amount * (self.transaction_fee_percent / 100)) + self.transaction_fee_fixed
+        
+        return fee.quantize(Decimal('0.01'))
+    
+    def get_fee_display(self):
+        """Retorna string legible de la comisión configurada"""
+        if self.transaction_fee_type == 'NONE':
+            return "Sin comisión"
+        elif self.transaction_fee_type == 'PERCENT':
+            return f"{self.transaction_fee_percent}%"
+        elif self.transaction_fee_type == 'FIXED':
+            return f"{self.transaction_fee_fixed}€"
+        elif self.transaction_fee_type == 'HYBRID':
+            return f"{self.transaction_fee_percent}% + {self.transaction_fee_fixed}€"
+        return "-"
 
 
 class GymSubscription(models.Model):

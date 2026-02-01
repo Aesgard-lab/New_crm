@@ -28,14 +28,6 @@ urlpatterns = [
     path('expenses/export/excel/', views.expense_export_excel, name='expense_export_excel'),
     path('expenses/export/pdf/', views.expense_export_pdf, name='expense_export_pdf'),
     
-    # Suppliers
-    path('suppliers/', views.supplier_list, name='supplier_list'),
-    path('suppliers/create/', views.supplier_create, name='supplier_create'),
-    path('suppliers/<int:pk>/edit/', views.supplier_edit, name='supplier_edit'),
-    path('suppliers/<int:pk>/delete/', views.supplier_delete, name='supplier_delete'),
-    path('suppliers/export/excel/', views.supplier_export_excel, name='supplier_export_excel'),
-    path('suppliers/export/pdf/', views.supplier_export_pdf, name='supplier_export_pdf'),
-    
     # Categories
     path('categories/', views.category_list, name='category_list'),
     path('categories/create/', views.category_create, name='category_create'),
@@ -47,6 +39,10 @@ urlpatterns = [
     path('redsys/notify/', views_redsys.redsys_notify, name='redsys_notify'),
     path('redsys/ok/', views_redsys.redsys_ok, name='redsys_ok'),
     path('redsys/ko/', views_redsys.redsys_ko, name='redsys_ko'),
+    
+    # Stripe Migration
+    path('stripe/migration/', views.stripe_migration, name='stripe_migration'),
+    path('stripe/migration/template/', views.stripe_migration_template, name='stripe_migration_template'),
     
     # Reports
     path('report/billing/', views.billing_dashboard, name='finance_billing_dashboard'),

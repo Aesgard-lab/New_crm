@@ -138,6 +138,109 @@
             </div>
         </div>
 
+        <!-- Transaction Fees / Comisiones -->
+        <div class="glass-panel p-6 rounded-xl" x-data="{ feeType: '{{ plan.transaction_fee_type|default:'NONE' }}' }">
+            <h3 class="text-lg font-semibold text-white mb-4 border-b border-gray-800 pb-2">
+                💰 Comisiones por Transacción
+            </h3>
+            <p class="text-sm text-gray-500 mb-4">
+                Configura comisiones que se cobrarán al gimnasio por cada transacción que procesen sus clientes.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Tipo de Comisión</label>
+                    <select name="transaction_fee_type" x-model="feeType"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="NONE" {% if plan.transaction_fee_type == 'NONE' or not plan.transaction_fee_type %}selected{% endif %}>Sin comisión</option>
+                        <option value="PERCENT" {% if plan.transaction_fee_type == 'PERCENT' %}selected{% endif %}>Porcentaje (%)</option>
+                        <option value="FIXED" {% if plan.transaction_fee_type == 'FIXED' %}selected{% endif %}>Cantidad Fija (€)</option>
+                        <option value="HYBRID" {% if plan.transaction_fee_type == 'HYBRID' %}selected{% endif %}>Híbrido (% + €)</option>
+                    </select>
+                </div>
+
+                <div x-show="feeType === 'PERCENT' || feeType === 'HYBRID'" x-transition>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Porcentaje (%)</label>
+                    <input type="number" step="0.01" name="transaction_fee_percent"
+                        value="{{ plan.transaction_fee_percent|default:'0.00' }}"
+                        placeholder="Ej: 2.50"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-gray-500 mt-1">Ej: 2.50 para cobrar 2.5%</p>
+                </div>
+
+                <div x-show="feeType === 'FIXED' || feeType === 'HYBRID'" x-transition>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Cantidad Fija (€)</label>
+                    <input type="number" step="0.01" name="transaction_fee_fixed"
+                        value="{{ plan.transaction_fee_fixed|default:'0.00' }}"
+                        placeholder="Ej: 0.30"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-gray-500 mt-1">Cantidad fija por transacción</p>
+                </div>
+            </div>
+
+            <!-- Aplicación de comisiones -->
+            <div x-show="feeType !== 'NONE'" x-transition class="border-t border-gray-800 pt-4">
+                <label class="block text-sm font-medium text-gray-400 mb-3">Aplicar comisión a:</label>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label class="flex items-center space-x-3 p-3 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700">
+                        <input type="checkbox" name="transaction_fee_apply_to_online" 
+                            {% if plan.transaction_fee_apply_to_online or is_create %}checked{% endif %}
+                            class="w-4 h-4 text-indigo-600 bg-gray-800 border-gray-600 rounded">
+                        <div>
+                            <span class="text-sm text-gray-300">Pagos Online</span>
+                            <p class="text-xs text-gray-500">Portal y App</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center space-x-3 p-3 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700">
+                        <input type="checkbox" name="transaction_fee_apply_to_pos" 
+                            {% if plan.transaction_fee_apply_to_pos or is_create %}checked{% endif %}
+                            class="w-4 h-4 text-indigo-600 bg-gray-800 border-gray-600 rounded">
+                        <div>
+                            <span class="text-sm text-gray-300">Pagos POS</span>
+                            <p class="text-xs text-gray-500">Backoffice/TPV</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center space-x-3 p-3 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700">
+                        <input type="checkbox" name="transaction_fee_apply_to_recurring" 
+                            {% if plan.transaction_fee_apply_to_recurring or is_create %}checked{% endif %}
+                            class="w-4 h-4 text-indigo-600 bg-gray-800 border-gray-600 rounded">
+                        <div>
+                            <span class="text-sm text-gray-300">Recurrentes</span>
+                            <p class="text-xs text-gray-500">Renovaciones auto</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center space-x-3 p-3 bg-gray-900/50 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700">
+                        <input type="checkbox" name="transaction_fee_exclude_cash" 
+                            {% if plan.transaction_fee_exclude_cash or is_create %}checked{% endif %}
+                            class="w-4 h-4 text-indigo-600 bg-gray-800 border-gray-600 rounded">
+                        <div>
+                            <span class="text-sm text-gray-300">Excluir Efectivo</span>
+                            <p class="text-xs text-gray-500">No cobrar en cash</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Preview de ejemplo -->
+            <div x-show="feeType !== 'NONE'" x-transition class="mt-4 p-4 bg-indigo-900/20 border border-indigo-800 rounded-lg">
+                <p class="text-sm text-indigo-300">
+                    <strong>💡 Ejemplo:</strong> 
+                    <span x-show="feeType === 'PERCENT'">
+                        En una venta de 100€, se cobrará <strong x-text="(100 * parseFloat(document.querySelector('[name=transaction_fee_percent]')?.value || 0) / 100).toFixed(2) + '€'"></strong> de comisión.
+                    </span>
+                    <span x-show="feeType === 'FIXED'">
+                        En cada transacción se cobrará <strong x-text="parseFloat(document.querySelector('[name=transaction_fee_fixed]')?.value || 0).toFixed(2) + '€'"></strong> fijos.
+                    </span>
+                    <span x-show="feeType === 'HYBRID'">
+                        En una venta de 100€, se cobrará <strong x-text="((100 * parseFloat(document.querySelector('[name=transaction_fee_percent]')?.value || 0) / 100) + parseFloat(document.querySelector('[name=transaction_fee_fixed]')?.value || 0)).toFixed(2) + '€'"></strong> de comisión.
+                    </span>
+                </p>
+            </div>
+        </div>
+
         <!-- Actions -->
         <div class="flex justify-end gap-3 pt-4">
             <a href="{% url 'superadmin:plan_list' %}"

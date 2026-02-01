@@ -12,6 +12,8 @@ from clients.views import (
     document_template_list, document_template_create, document_template_edit, document_template_delete,
     # Document Actions
     client_send_document, client_sign_insitu, bulk_send_document,
+    # Health Records
+    client_health_record_update, client_health_document_upload, client_health_document_delete,
 )
 
 urlpatterns = [
@@ -46,6 +48,11 @@ urlpatterns = [
     path("clients/<int:client_id>/add-document/", client_add_document, name="client_add_document"),
     path("clients/<int:client_id>/send-document/", client_send_document, name="client_send_document"),
     path("clients/<int:client_id>/documents/<int:document_id>/sign/", client_sign_insitu, name="client_sign_insitu"),
+    
+    # Health Records
+    path("clients/<int:client_id>/health/update/", client_health_record_update, name="client_health_record_update"),
+    path("clients/<int:client_id>/health/upload/", client_health_document_upload, name="client_health_document_upload"),
+    path("health-documents/<int:doc_id>/delete/", client_health_document_delete, name="client_health_document_delete"),
     
     # Bulk Actions
     path("api/bulk-send-document/", bulk_send_document, name="bulk_send_document"),

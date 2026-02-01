@@ -7,8 +7,41 @@ from products.models import Product, ProductCategory
 from services.models import Service, ServiceCategory
 from memberships.models import MembershipPlan, PlanAccessRule
 from finance.models import TaxRate
+from clients.models import DocumentTemplate
 
 class FranchisePropagationService:
+    @staticmethod
+    def propagate_tax_rate(source_tax, target_gyms):
+        """
+        Copies or updates a tax rate to the target gyms.
+        """
+        results = {'created': 0, 'updated': 0, 'errors': []}
+
+        for gym in target_gyms:
+            if gym == source_tax.gym:
+                continue
+
+            try:
+                with transaction.atomic():
+                    target_tax, created = TaxRate.objects.update_or_create(
+                        gym=gym,
+                        name=source_tax.name,
+                        defaults={
+                            'rate_percent': source_tax.rate_percent,
+                            'is_active': source_tax.is_active,
+                        }
+                    )
+
+                    if created:
+                        results['created'] += 1
+                    else:
+                        results['updated'] += 1
+                        
+            except Exception as e:
+                results['errors'].append(f"Error propagando a {gym.name}: {str(e)}")
+        
+        return results
+
     @staticmethod
     def propagate_activity(source_activity, target_gyms):
         """
@@ -271,3 +304,38 @@ class FranchisePropagationService:
             defaults={'rate_percent': source_tax.rate_percent}
         )
         return tax
+
+    @staticmethod
+    def propagate_document_template(source_template, target_gyms, user=None):
+        """
+        Copies or updates a document template to the target gyms.
+        """
+        results = {'created': 0, 'updated': 0, 'errors': []}
+
+        for gym in target_gyms:
+            if gym == source_template.gym:
+                continue
+
+            try:
+                with transaction.atomic():
+                    target_template, created = DocumentTemplate.objects.update_or_create(
+                        gym=gym,
+                        name=source_template.name,
+                        defaults={
+                            'document_type': source_template.document_type,
+                            'content': source_template.content,
+                            'requires_signature': source_template.requires_signature,
+                            'is_active': source_template.is_active,
+                            'created_by': user,
+                        }
+                    )
+
+                    if created:
+                        results['created'] += 1
+                    else:
+                        results['updated'] += 1
+                        
+            except Exception as e:
+                results['errors'].append(f"Error propagando a {gym.name}: {str(e)}")
+        
+        return results

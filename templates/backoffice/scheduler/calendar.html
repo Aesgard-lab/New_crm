@@ -402,7 +402,24 @@
         room: '',
         staff: '',
         days: [],
-        end_date: ''
+        end_date: '',
+        start_date: '',
+        start_time: ''
+    },
+    init() {
+        this.$watch('startStr', (value) => {
+            if (value) {
+                const dt = new Date(value);
+                this.formData.start_date = dt.toISOString().split('T')[0];
+                this.formData.start_time = dt.toTimeString().slice(0, 5);
+            }
+        });
+    },
+    getStartDateTime() {
+        if (this.formData.start_date && this.formData.start_time) {
+            return `${this.formData.start_date}T${this.formData.start_time}:00`;
+        }
+        return this.startStr;
     },
     async submitForm() {
         const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -412,7 +429,7 @@
         body.append('activity', this.formData.activity);
         body.append('room', this.formData.room);
         body.append('staff', this.formData.staff);
-        body.append('start_datetime', this.startStr); // Full ISO string
+        body.append('start_datetime', this.getStartDateTime());
         
         // Recurring data
         if (this.type === 'recurring') {
@@ -432,7 +449,8 @@
                 this.open = false;
                 // Refresh calendar
                 window.calendar.refetchEvents();
-                // Reset form (optional)
+                // Reset form
+                this.formData = { activity: '', room: '', staff: '', days: [], end_date: '', start_date: '', start_time: '' };
             } else {
                 alert('Error: ' + json.error);
             }
@@ -450,9 +468,27 @@
     <!-- Modal Panel -->
     <div x-show="open" x-transition.scale class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden" @click.away="open = false">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="text-lg font-bold text-slate-800">Nueva Clase / Sesión</h3>
-                <button @click="open = false" class="text-slate-400 hover:text-slate-600">
+            <!-- Header with Gym Branding -->
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center" 
+                 style="background: linear-gradient(135deg, var(--brand-color, #0f172a) 0%, color-mix(in srgb, var(--brand-color, #0f172a) 80%, black) 100%);">
+                <div class="flex items-center gap-3">
+                    {% if request.gym.logo %}
+                    <img src="{{ request.gym.logo.url }}" alt="{{ request.gym.name }}" 
+                         class="h-10 w-10 rounded-xl object-cover bg-white/20 p-1">
+                    {% else %}
+                    <div class="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Nueva Clase / Sesión</h3>
+                        <p class="text-xs text-white/70">{{ request.gym.name }}</p>
+                    </div>
+                </div>
+                <button @click="open = false" class="text-white/70 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
                         </path>
@@ -536,23 +572,41 @@
                             </div>
                         </div>
 
-                        <!-- Info Display -->
-                        <div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg flex gap-2">
-                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span
-                                x-text="'Inicio: ' + (startStr ? new Date(startStr).toLocaleString() : 'Selecciona en calendario')"></span>
+                        <!-- Info Display - Editable Start Date/Time -->
+                        <div class="bg-gradient-to-r from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-3">
+                                <svg class="w-4 h-4 inline mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Fecha y hora de inicio
+                            </label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">Fecha</label>
+                                    <input type="date" x-model="formData.start_date"
+                                        class="w-full text-sm rounded-lg border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)] bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">Hora</label>
+                                    <input type="time" x-model="formData.start_time"
+                                        class="w-full text-sm rounded-lg border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)] bg-white">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3">
                         <button type="button" @click="open = false"
-                            class="px-4 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
+                            class="px-4 py-2.5 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
                         <button type="submit"
-                            class="px-6 py-2 bg-slate-900 text-white font-bold rounded-lg hover:opacity-90 shadow-lg">Crear
-                            Clase</button>
+                            class="px-6 py-2.5 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center gap-2"
+                            style="background: var(--brand-color, #0f172a);">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Crear Clase
+                        </button>
                     </div>
                 </form>
             </div>

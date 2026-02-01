@@ -117,6 +117,39 @@
                         </div>
                     </div>
                 </div>
+
+                <div @click="form.audience_type = 'SAVED_AUDIENCE'"
+                    class="cursor-pointer p-4 rounded-xl border-2 transition-all hover:bg-slate-50"
+                    :class="form.audience_type === 'SAVED_AUDIENCE' ? 'border-purple-500 bg-purple-50/50' : 'border-slate-100'">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">Audiencia Guardada</div>
+                            <div class="text-xs text-slate-500">Usa una audiencia creada previamente</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Selector de Audiencia Guardada -->
+            <div x-show="form.audience_type === 'SAVED_AUDIENCE'" x-transition x-cloak
+                class="mt-4 p-4 bg-purple-50 rounded-xl border border-purple-200">
+                <label class="block text-sm font-medium text-purple-900 mb-2">Selecciona una Audiencia Guardada</label>
+                <select x-model="form.saved_audience_id" class="w-full rounded-xl border-purple-200 p-3 focus:ring-2 focus:ring-purple-500">
+                    <option value="">-- Seleccionar --</option>
+                    {% for audience in saved_audiences %}
+                    <option value="{{ audience.id }}">{{ audience.name }} ({{ audience.get_members_count }} clientes)</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-purple-700 mt-2">
+                    Crea nuevas audiencias desde el <a href="{% url 'client_explorer' %}" class="underline font-bold">Explorador de Audiencias</a>
+                </p>
             </div>
         </div>
 
@@ -237,6 +270,7 @@
                 name: '',
                 subject: '',
                 audience_type: 'ALL_ACTIVE',
+                saved_audience_id: '',
                 template_id: null,
                 template_name: '',
                 scheduled_at: ''
@@ -245,6 +279,11 @@
             nextStep() {
                 if (this.step === 1) {
                     if (!this.form.name || !this.form.subject) return alert('Completa nombre y asunto');
+                }
+                if (this.step === 2) {
+                    if (this.form.audience_type === 'SAVED_AUDIENCE' && !this.form.saved_audience_id) {
+                        return alert('Selecciona una audiencia guardada');
+                    }
                 }
                 if (this.step === 3) {
                     if (!this.form.template_id) return alert('Selecciona una plantilla');
@@ -261,7 +300,8 @@
                 const map = {
                     'ALL_ACTIVE': 'Socios Activos',
                     'ALL_CLIENTS': 'Todos los Clientes',
-                    'INACTIVE': 'Inactivos / Expirados'
+                    'INACTIVE': 'Inactivos / Expirados',
+                    'SAVED_AUDIENCE': 'Audiencia Guardada'
                 };
                 return map[this.form.audience_type] || this.form.audience_type;
             },

@@ -323,6 +323,15 @@ def plan_create(request):
             max_staff=int(request.POST.get('max_staff')) if request.POST.get('max_staff') else None,
             max_locations=int(request.POST.get('max_locations')) if request.POST.get('max_locations') else None,
             
+            # Transaction Fees
+            transaction_fee_type=request.POST.get('transaction_fee_type', 'NONE'),
+            transaction_fee_percent=Decimal(request.POST.get('transaction_fee_percent', '0') or '0'),
+            transaction_fee_fixed=Decimal(request.POST.get('transaction_fee_fixed', '0') or '0'),
+            transaction_fee_apply_to_online=request.POST.get('transaction_fee_apply_to_online') == 'on',
+            transaction_fee_apply_to_pos=request.POST.get('transaction_fee_apply_to_pos') == 'on',
+            transaction_fee_apply_to_recurring=request.POST.get('transaction_fee_apply_to_recurring') == 'on',
+            transaction_fee_exclude_cash=request.POST.get('transaction_fee_exclude_cash') == 'on',
+            
             # Flags
             is_demo=request.POST.get('is_demo') == 'on',
             is_active=True,
@@ -363,6 +372,15 @@ def plan_edit(request, plan_id):
         plan.max_members = int(request.POST.get('max_members')) if request.POST.get('max_members') else None
         plan.max_staff = int(request.POST.get('max_staff')) if request.POST.get('max_staff') else None
         plan.max_locations = int(request.POST.get('max_locations')) if request.POST.get('max_locations') else None
+        
+        # Transaction Fees
+        plan.transaction_fee_type = request.POST.get('transaction_fee_type', 'NONE')
+        plan.transaction_fee_percent = Decimal(request.POST.get('transaction_fee_percent', '0') or '0')
+        plan.transaction_fee_fixed = Decimal(request.POST.get('transaction_fee_fixed', '0') or '0')
+        plan.transaction_fee_apply_to_online = request.POST.get('transaction_fee_apply_to_online') == 'on'
+        plan.transaction_fee_apply_to_pos = request.POST.get('transaction_fee_apply_to_pos') == 'on'
+        plan.transaction_fee_apply_to_recurring = request.POST.get('transaction_fee_apply_to_recurring') == 'on'
+        plan.transaction_fee_exclude_cash = request.POST.get('transaction_fee_exclude_cash') == 'on'
         
         # Flags
         plan.is_demo = request.POST.get('is_demo') == 'on'

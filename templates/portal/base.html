@@ -44,6 +44,11 @@
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     <style>
+        /* Alpine.js cloak - prevent flash of unstyled content */
+        [x-cloak] {
+            display: none !important;
+        }
+        
         :root {
             --brand-color: {{ client.gym.brand_color|default:'#0f172a' }};
             --brand-rgb: {{ client.gym.brand_color|default:'#0f172a' }};
@@ -226,16 +231,51 @@
     <div x-data="{ 
         show: true,
         popupId: {{ popups.0.id }},
+        displayFrequency: '{{ popups.0.display_frequency|default:"ONCE" }}',
+        init() {
+            // For EVERY_SESSION, check localStorage for this session
+            if (this.displayFrequency === 'EVERY_SESSION') {
+                const sessionKey = 'popup_session_' + this.popupId;
+                const sessionId = sessionStorage.getItem('app_session_id');
+                
+                // Generate session ID if not exists
+                if (!sessionId) {
+                    sessionStorage.setItem('app_session_id', Date.now().toString());
+                }
+                
+                // Check if popup was shown this session
+                const shownInSession = sessionStorage.getItem(sessionKey);
+                if (shownInSession === sessionStorage.getItem('app_session_id')) {
+                    this.show = false;
+                }
+            }
+        },
         markRead() {
             this.show = false;
+            
+            // For EVERY_SESSION, mark as shown for this session only
+            if (this.displayFrequency === 'EVERY_SESSION') {
+                const sessionKey = 'popup_session_' + this.popupId;
+                sessionStorage.setItem(sessionKey, sessionStorage.getItem('app_session_id'));
+            }
+            
             fetch('/app/api/popup/' + this.popupId + '/read/', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}'
                 }
-            });
+            }).catch(err => console.error('Error marking popup as read:', err));
         }
-    }" x-show="show" class="fixed inset-0 z-50 flex items-center justify-center px-4">
+    }" 
+    x-show="show" 
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0">
         <!-- Debug Popups: {{ popups|length }} -->
 
         <!-- Backdrop -->

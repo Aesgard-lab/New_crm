@@ -1,0 +1,350 @@
+{% extends "backoffice/base.html" %}
+{% load i18n %}
+
+{% block title %}Migración desde Stripe{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'finance_settings' %}" class="hover:underline">Finanzas</a> > Migración Stripe
+{% endblock %}
+{% block page_title %}Migración desde Stripe{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Info Card -->
+    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6">
+        <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-indigo-900 text-lg mb-2">¿Qué hace esta herramienta?</h3>
+                <p class="text-indigo-800 text-sm mb-3">
+                    Permite importar clientes desde otro software que ya usa Stripe. Las tarjetas tokenizadas 
+                    se mantienen automáticamente porque están vinculadas a la cuenta de Stripe.
+                </p>
+                <div class="bg-white/60 rounded-lg p-3 border border-indigo-100">
+                    <p class="text-xs text-indigo-700 font-medium mb-2">Requisitos:</p>
+                    <ul class="text-xs text-indigo-600 space-y-1">
+                        <li class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                            Usar las <strong>mismas API Keys de Stripe</strong> que el software anterior
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                            CSV con email y <strong>stripe_customer_id</strong> (cus_...)
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Card -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Estado de Stripe
+        </h3>
+        
+        {% if stripe_configured %}
+        <div class="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="font-semibold text-green-800">Stripe configurado correctamente</p>
+                <p class="text-xs text-green-600">Puedes proceder con la importación</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="font-semibold text-amber-800">Stripe no configurado</p>
+                <p class="text-xs text-amber-600">Configura las API Keys primero en 
+                    <a href="{% url 'finance_settings' %}" class="underline font-medium">Ajustes de Finanzas</a>
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Import Form -->
+    {% if stripe_configured %}
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Importar Clientes
+            </h3>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data" class="p-6">
+            {% csrf_token %}
+            
+            <!-- Download Template -->
+            <div class="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <p class="text-sm text-slate-700 mb-3">
+                    <strong>Paso 1:</strong> Descarga la plantilla CSV y complétala con los datos de tus clientes
+                </p>
+                <a href="{% url 'stripe_migration_template' %}" 
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Descargar Plantilla CSV
+                </a>
+            </div>
+            
+            <!-- File Upload -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <strong>Paso 2:</strong> Sube el archivo CSV completado
+                </label>
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-indigo-400 transition-colors"
+                    x-data="{ fileName: '' }"
+                    @dragover.prevent="$el.classList.add('border-indigo-400', 'bg-indigo-50')"
+                    @dragleave.prevent="$el.classList.remove('border-indigo-400', 'bg-indigo-50')"
+                    @drop.prevent="
+                        $el.classList.remove('border-indigo-400', 'bg-indigo-50');
+                        if ($event.dataTransfer.files.length) {
+                            $refs.fileInput.files = $event.dataTransfer.files;
+                            fileName = $event.dataTransfer.files[0].name;
+                        }
+                    ">
+                    <input type="file" name="csv_file" accept=".csv" 
+                        x-ref="fileInput"
+                        @change="fileName = $event.target.files[0]?.name || ''"
+                        class="hidden" id="csv_file">
+                    <label for="csv_file" class="cursor-pointer">
+                        <svg class="w-10 h-10 text-slate-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-sm text-slate-600" x-show="!fileName">
+                            Arrastra un archivo o <span class="text-indigo-600 font-medium">haz clic para seleccionar</span>
+                        </p>
+                        <p class="text-sm font-medium text-indigo-600" x-show="fileName" x-text="fileName"></p>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Submit -->
+            <div class="flex items-center gap-4">
+                <button type="submit" name="import_csv"
+                    class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors">
+                    Importar Clientes
+                </button>
+                <a href="{% url 'finance_settings' %}"
+                    class="text-slate-500 hover:text-slate-700 text-sm font-medium">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Results -->
+    {% if results %}
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-slate-50">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Resultados de la Importación
+                <span class="ml-auto text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                    Formato: {{ results.format }}
+                </span>
+            </h3>
+        </div>
+        
+        <div class="p-6">
+            <!-- Summary -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="text-center p-4 bg-slate-50 rounded-xl">
+                    <p class="text-2xl font-bold text-slate-800">{{ results.total }}</p>
+                    <p class="text-xs text-slate-500">Total</p>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-xl">
+                    <p class="text-2xl font-bold text-green-600">{{ results.created }}</p>
+                    <p class="text-xs text-green-600">Creados</p>
+                </div>
+                <div class="text-center p-4 bg-blue-50 rounded-xl">
+                    <p class="text-2xl font-bold text-blue-600">{{ results.updated }}</p>
+                    <p class="text-xs text-blue-600">Actualizados</p>
+                </div>
+                <div class="text-center p-4 bg-amber-50 rounded-xl">
+                    <p class="text-2xl font-bold text-amber-600">{{ results.skipped }}</p>
+                    <p class="text-xs text-amber-600">Omitidos</p>
+                </div>
+            </div>
+            
+            <!-- Details -->
+            {% if results.details %}
+            <div class="mb-4">
+                <p class="text-sm font-medium text-slate-700 mb-2">Detalle:</p>
+                <div class="bg-slate-50 rounded-xl p-4 max-h-60 overflow-y-auto">
+                    {% for detail in results.details %}
+                    <p class="text-xs text-slate-600 font-mono">{{ detail }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Errors -->
+            {% if results.errors %}
+            <div>
+                <p class="text-sm font-medium text-red-700 mb-2">Errores:</p>
+                <div class="bg-red-50 rounded-xl p-4 max-h-40 overflow-y-auto border border-red-200">
+                    {% for error in results.errors %}
+                    <p class="text-xs text-red-600 font-mono">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CSV Format Info -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+        <h3 class="font-bold text-slate-800 mb-4">Formatos Aceptados</h3>
+        
+        <!-- Tabs for formats -->
+        <div x-data="{ formatTab: 'stripe' }" class="space-y-4">
+            <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit">
+                <button @click="formatTab = 'stripe'"
+                    :class="{'bg-white text-indigo-600 shadow-sm': formatTab === 'stripe', 'text-slate-500 hover:text-slate-700': formatTab !== 'stripe'}"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                    🔵 Formato Stripe (nativo)
+                </button>
+                <button @click="formatTab = 'custom'"
+                    :class="{'bg-white text-indigo-600 shadow-sm': formatTab === 'custom', 'text-slate-500 hover:text-slate-700': formatTab !== 'custom'}"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                    📋 Formato Personalizado
+                </button>
+            </div>
+            
+            <!-- Stripe Native Format -->
+            <div x-show="formatTab === 'stripe'" class="space-y-4">
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                    <p class="text-sm text-indigo-800 mb-2">
+                        <strong>Exporta directamente desde Stripe Dashboard</strong> → Customers → Export
+                    </p>
+                    <p class="text-xs text-indigo-600">
+                        El sistema detectará automáticamente el formato de Stripe y mapeará las columnas.
+                    </p>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="px-4 py-2 text-left font-semibold text-slate-700">Columna Stripe</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-700">Mapeo</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-700">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-indigo-600">id</td>
+                                <td class="px-4 py-2">→ stripe_customer_id</td>
+                                <td class="px-4 py-2 text-slate-600">ID del cliente en Stripe (cus_...)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-indigo-600">email</td>
+                                <td class="px-4 py-2">→ email</td>
+                                <td class="px-4 py-2 text-slate-600">Email del cliente</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-indigo-600">name</td>
+                                <td class="px-4 py-2">→ nombre + apellidos</td>
+                                <td class="px-4 py-2 text-slate-600">Se separa automáticamente</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-indigo-600">phone</td>
+                                <td class="px-4 py-2">→ teléfono</td>
+                                <td class="px-4 py-2 text-slate-600">Teléfono de contacto</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-slate-500">
+                    <strong>Delimitador:</strong> coma (,) - formato estándar de Stripe
+                </p>
+            </div>
+            
+            <!-- Custom Format -->
+            <div x-show="formatTab === 'custom'" class="space-y-4" style="display: none;">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <p class="text-sm text-amber-800 mb-2">
+                        <strong>Usa nuestra plantilla</strong> si necesitas personalizar los datos antes de importar.
+                    </p>
+                    <a href="{% url 'stripe_migration_template' %}" 
+                        class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Descargar Plantilla
+                    </a>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="px-4 py-2 text-left font-semibold text-slate-700">Columna</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-700">Requerido</th>
+                                <th class="px-4 py-2 text-left font-semibold text-slate-700">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-indigo-600">email</td>
+                                <td class="px-4 py-2"><span class="text-green-600 font-bold">Sí</span></td>
+                                <td class="px-4 py-2 text-slate-600">Email del cliente (identificador único)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-indigo-600">stripe_customer_id</td>
+                                <td class="px-4 py-2"><span class="text-green-600 font-bold">Sí</span></td>
+                                <td class="px-4 py-2 text-slate-600">ID de Stripe (cus_...)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-slate-500">nombre</td>
+                                <td class="px-4 py-2 text-slate-400">No</td>
+                                <td class="px-4 py-2 text-slate-600">Nombre del cliente</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-slate-500">apellidos</td>
+                                <td class="px-4 py-2 text-slate-400">No</td>
+                                <td class="px-4 py-2 text-slate-600">Apellidos del cliente</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-2 font-mono text-slate-500">telefono</td>
+                                <td class="px-4 py-2 text-slate-400">No</td>
+                                <td class="px-4 py-2 text-slate-600">Teléfono de contacto</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-slate-500">
+                    <strong>Delimitador:</strong> punto y coma (;)
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

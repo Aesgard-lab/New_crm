@@ -1,0 +1,360 @@
+{% extends "backoffice/base.html" %}
+
+{% block title %}Integración Meta (Facebook/Instagram) Lead Ads{% endblock %}
+{% block breadcrumb %}Marketing > Leads > Meta Integration{% endblock %}
+{% block page_title %}Integración Meta Lead Ads{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Meta Lead Ads</h1>
+            <p class="text-sm text-slate-500">Conecta Facebook e Instagram para recibir leads automáticamente</p>
+        </div>
+        <a href="{% url 'lead_settings' %}"
+            class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 flex items-center gap-2">
+            ← Volver a Configuración
+        </a>
+    </div>
+
+    <!-- Connection Status Card -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <!-- Meta Logo -->
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="font-bold text-slate-800">Meta Business</h2>
+                    <p class="text-sm text-slate-500">Facebook & Instagram Lead Ads</p>
+                </div>
+            </div>
+            
+            {% if integration.is_connected %}
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-bold">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Conectado
+                </span>
+                <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="disconnect">
+                    <button type="submit" class="text-red-600 hover:text-red-700 text-sm font-bold hover:underline">
+                        Desconectar
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full text-sm font-bold">
+                <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                No conectado
+            </span>
+            {% endif %}
+        </div>
+        
+        <!-- Connection Info -->
+        {% if integration.is_connected %}
+        <div class="p-5 bg-green-50 border-b border-green-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-bold text-green-800">{{ integration.page_name|default:"Página conectada" }}</p>
+                    <p class="text-sm text-green-600">Page ID: {{ integration.page_id }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-2xl font-bold text-green-700">{{ integration.leads_received }}</p>
+                    <p class="text-xs text-green-600">Leads recibidos</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="p-5 space-y-6">
+            <!-- Credentials Form -->
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_credentials">
+                
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                    </svg>
+                    Credenciales de la App
+                </h3>
+                
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">App ID</label>
+                        <input type="text" name="app_id" value="{{ integration.app_id }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                            placeholder="Ej: 1234567890123456">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">App Secret</label>
+                        <input type="password" name="app_secret" value="{{ integration.app_secret }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                            placeholder="••••••••••••••••">
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Page ID</label>
+                        <input type="text" name="page_id" value="{{ integration.page_id }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                            placeholder="Ej: 123456789012345">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Nombre de la Página</label>
+                        <input type="text" name="page_name" value="{{ integration.page_name }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                            placeholder="Nombre de tu página de Facebook">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Etapa Inicial para Leads</label>
+                    <select name="default_stage" class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Seleccionar etapa --</option>
+                        {% for stage in stages %}
+                        <option value="{{ stage.id }}" {% if integration.default_stage_id == stage.id %}selected{% endif %}>
+                            {{ stage.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">Los nuevos leads entrarán directamente en esta etapa</p>
+                </div>
+                
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="is_active" {% if integration.is_active %}checked{% endif %}
+                            class="w-4 h-4 rounded text-blue-600">
+                        <span class="text-sm text-slate-700">Integración activa</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="auto_create_lead" {% if integration.auto_create_lead %}checked{% endif %}
+                            class="w-4 h-4 rounded text-blue-600">
+                        <span class="text-sm text-slate-700">Crear lead automáticamente</span>
+                    </label>
+                </div>
+                
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition-colors">
+                    Guardar Configuración
+                </button>
+            </form>
+            
+            <hr class="border-slate-200">
+            
+            <!-- Access Token -->
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_access_token">
+                
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    Token de Acceso
+                </h3>
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Page Access Token (Long-lived)</label>
+                    <textarea name="access_token" rows="3"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                        placeholder="EAAxxxxxxx...">{{ integration.access_token }}</textarea>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Obtén el token desde 
+                        <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="text-blue-600 hover:underline">Graph API Explorer</a>
+                        con permisos: pages_manage_ads, leads_retrieval, pages_read_engagement
+                    </p>
+                </div>
+                
+                <button type="submit" class="bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-xl font-bold transition-colors">
+                    Guardar Token
+                </button>
+            </form>
+            
+            <hr class="border-slate-200">
+            
+            <!-- Webhook Info -->
+            <div class="bg-slate-50 rounded-xl p-4 space-y-3">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                    Configuración del Webhook
+                </h3>
+                
+                <p class="text-sm text-slate-600">Configura este webhook en tu App de Meta Business:</p>
+                
+                <div class="space-y-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Callback URL</label>
+                        <div class="flex gap-2">
+                            <input type="text" readonly value="{{ integration.webhook_url }}"
+                                class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono">
+                            <button onclick="navigator.clipboard.writeText('{{ integration.webhook_url }}')" 
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold transition-colors">
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Verify Token</label>
+                        <div class="flex gap-2">
+                            <input type="text" readonly value="{{ integration.webhook_verify_token }}"
+                                class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono">
+                            <button onclick="navigator.clipboard.writeText('{{ integration.webhook_verify_token }}')" 
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-sm font-bold transition-colors">
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-slate-500">
+                    Suscríbete a: <code class="bg-slate-200 px-1 rounded">leadgen</code> en los webhooks de tu app.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Forms -->
+    {% if lead_forms %}
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Formularios Vinculados
+            </h2>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for form in lead_forms %}
+            <div class="p-4 flex items-center justify-between">
+                <div>
+                    <p class="font-bold text-slate-800">{{ form.form_name }}</p>
+                    <p class="text-xs text-slate-500">ID: {{ form.form_id }}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-slate-600">{{ form.leads_received }} leads</span>
+                    {% if form.is_active %}
+                    <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Activo</span>
+                    {% else %}
+                    <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-full text-xs font-bold">Inactivo</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Entries -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div class="p-5 border-b border-slate-100">
+            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Leads Recientes desde Meta
+            </h2>
+        </div>
+        
+        {% if recent_entries %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Lead</th>
+                        <th class="px-4 py-3 text-left">Contacto</th>
+                        <th class="px-4 py-3 text-left">Plataforma</th>
+                        <th class="px-4 py-3 text-left">Estado</th>
+                        <th class="px-4 py-3 text-left">Fecha</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for entry in recent_entries %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3">
+                            <p class="font-bold text-slate-800">{{ entry.first_name }} {{ entry.last_name }}</p>
+                            {% if entry.campaign_name %}
+                            <p class="text-xs text-slate-500">{{ entry.campaign_name }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <p class="text-slate-700">{{ entry.email|default:"-" }}</p>
+                            <p class="text-slate-500">{{ entry.phone|default:"-" }}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if entry.platform == 'instagram' %}
+                            <span class="inline-flex items-center gap-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"/>
+                                </svg>
+                                Instagram
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                </svg>
+                                Facebook
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if entry.status == 'PROCESSED' %}
+                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Procesado</span>
+                            {% elif entry.status == 'PENDING' %}
+                            <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">Pendiente</span>
+                            {% elif entry.status == 'ERROR' %}
+                            <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">Error</span>
+                            {% elif entry.status == 'DUPLICATE' %}
+                            <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-full text-xs font-bold">Duplicado</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-500">
+                            {{ entry.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-slate-400">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+            </svg>
+            <p>No hay leads recibidos aún</p>
+            <p class="text-xs mt-1">Cuando conectes tu cuenta y recibas leads, aparecerán aquí</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Setup Instructions -->
+    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+        <h3 class="font-bold text-blue-800 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Cómo Configurar
+        </h3>
+        <ol class="list-decimal list-inside space-y-2 text-sm text-blue-700">
+            <li>Crea una App en <a href="https://developers.facebook.com/" target="_blank" class="underline font-bold">Meta for Developers</a></li>
+            <li>Añade el producto "Facebook Login" y "Webhooks"</li>
+            <li>Configura el webhook con la URL y token de arriba</li>
+            <li>Suscríbete al campo <code class="bg-blue-100 px-1 rounded">leadgen</code></li>
+            <li>Genera un Page Access Token con permisos: pages_manage_ads, leads_retrieval</li>
+            <li>Pega las credenciales y el token en esta página</li>
+            <li>Crea una campaña de Lead Ads en Meta Ads Manager</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

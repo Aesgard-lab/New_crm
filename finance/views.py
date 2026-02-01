@@ -3,13 +3,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from accounts.decorators import require_gym_permission
 from .models import TaxRate, PaymentMethod, FinanceSettings, Supplier, ExpenseCategory, Expense
+from providers.models import Provider
 from .forms import (
     TaxRateForm,
     PaymentMethodForm,
     FinanceSettingsForm,
     GymOpeningHoursForm,
     AppSettingsForm,
-    SupplierForm,
     ExpenseCategoryForm,
     ExpenseForm,
     ExpenseQuickPayForm,
@@ -137,41 +137,79 @@ def client_app_settings(request):
 @require_gym_permission('finance.change_taxrate')
 def tax_create(request):
     gym = request.gym
+    user = request.user
+    
+    # Check if user is franchise owner
+    is_franchise_owner = gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
+    
     if request.method == 'POST':
-        form = TaxRateForm(request.POST)
+        form = TaxRateForm(request.POST, gym=gym, user=user)
         if form.is_valid():
             tax = form.save(commit=False)
             tax.gym = gym
             tax.save()
+            
+            # Handle franchise propagation
+            if is_franchise_owner and 'propagate_to_gyms' in form.cleaned_data:
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                if target_gyms:
+                    from services.franchise_service import FranchisePropagationService
+                    results = FranchisePropagationService.propagate_tax_rate(tax, target_gyms)
+                    if results['created'] or results['updated']:
+                        messages.success(request, f'Impuesto propagado: {results["created"]} creados, {results["updated"]} actualizados.')
+                    if results['errors']:
+                        for error in results['errors']:
+                            messages.warning(request, error)
+            
             messages.success(request, 'Impuesto creado correctamente.')
             return redirect('finance_settings')
     else:
-        form = TaxRateForm()
+        form = TaxRateForm(gym=gym, user=user)
     
-    return render(request, 'backoffice/finance/form.html', {
+    return render(request, 'backoffice/finance/tax_form.html', {
         'title': 'Nuevo Impuesto',
         'form': form,
-        'back_url': 'finance_settings'
+        'back_url': 'finance_settings',
+        'is_franchise_owner': is_franchise_owner,
     })
 
 @login_required
 @require_gym_permission('finance.change_taxrate')
 def tax_edit(request, pk):
     gym = request.gym
+    user = request.user
     tax = get_object_or_404(TaxRate, pk=pk, gym=gym)
+    
+    # Check if user is franchise owner
+    is_franchise_owner = gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
+    
     if request.method == 'POST':
-        form = TaxRateForm(request.POST, instance=tax)
+        form = TaxRateForm(request.POST, instance=tax, gym=gym, user=user)
         if form.is_valid():
             form.save()
+            
+            # Handle franchise propagation
+            if is_franchise_owner and 'propagate_to_gyms' in form.cleaned_data:
+                target_gyms = form.cleaned_data['propagate_to_gyms']
+                if target_gyms:
+                    from services.franchise_service import FranchisePropagationService
+                    results = FranchisePropagationService.propagate_tax_rate(tax, target_gyms)
+                    if results['created'] or results['updated']:
+                        messages.success(request, f'Impuesto propagado: {results["created"]} creados, {results["updated"]} actualizados.')
+                    if results['errors']:
+                        for error in results['errors']:
+                            messages.warning(request, error)
+            
             messages.success(request, 'Impuesto actualizado correctamente.')
             return redirect('finance_settings')
     else:
-        form = TaxRateForm(instance=tax)
+        form = TaxRateForm(instance=tax, gym=gym, user=user)
     
-    return render(request, 'backoffice/finance/form.html', {
+    return render(request, 'backoffice/finance/tax_form.html', {
         'title': f'Editar Impuesto: {tax.name}',
         'form': form,
-        'back_url': 'finance_settings'
+        'back_url': 'finance_settings',
+        'is_franchise_owner': is_franchise_owner,
     })
 
 @login_required
@@ -493,7 +531,7 @@ def gym_opening_hours(request):
 def expense_list(request):
     """Listado de gastos con filtros avanzados"""
     gym = request.gym
-    expenses = Expense.objects.filter(gym=gym).select_related('supplier', 'category', 'payment_method', 'created_by')
+    expenses = Expense.objects.filter(gym=gym).select_related('provider', 'category', 'payment_method', 'created_by')
     
     # Filtros rápidos de fecha
     date_filter = request.GET.get('date_filter')
@@ -532,13 +570,13 @@ def expense_list(request):
             expenses = expenses.filter(issue_date__lte=date_to)
     
     # Otros filtros
-    supplier_id = request.GET.get('supplier')
+    provider_id = request.GET.get('provider')
     category_id = request.GET.get('category')
     status = request.GET.get('status')
     is_recurring = request.GET.get('is_recurring')
     
-    if supplier_id:
-        expenses = expenses.filter(supplier_id=supplier_id)
+    if provider_id:
+        expenses = expenses.filter(provider_id=provider_id)
     if category_id:
         expenses = expenses.filter(category_id=category_id)
     if status:
@@ -559,8 +597,8 @@ def expense_list(request):
     pending_count = expenses.filter(status='PENDING').count()
     overdue_count = expenses.filter(status='OVERDUE').count()
     
-    # Para los filtros
-    suppliers = Supplier.objects.filter(gym=gym, is_active=True)
+    # Para los filtros - usar Provider
+    providers = Provider.objects.filter(gym=gym, is_active=True)
     categories = ExpenseCategory.objects.filter(gym=gym, is_active=True)
     
     context = {
@@ -569,13 +607,13 @@ def expense_list(request):
         'stats': stats,
         'pending_count': pending_count,
         'overdue_count': overdue_count,
-        'suppliers': suppliers,
+        'providers': providers,
         'categories': categories,
         'STATUS_CHOICES': Expense.STATUS_CHOICES,
         # Mantener filtros en el contexto
         'filter_date_from': date_from,
         'filter_date_to': date_to,
-        'filter_supplier': supplier_id,
+        'filter_provider': provider_id,
         'filter_category': category_id,
         'filter_status': status,
         'filter_is_recurring': is_recurring,
@@ -708,90 +746,6 @@ def expense_generate_recurring(request):
         messages.info(request, 'No hay gastos recurrentes pendientes de generar')
     
     return redirect('expense_list')
-
-
-# ==================== SUPPLIER MANAGEMENT ====================
-
-@login_required
-@require_gym_permission('finance.view_finance')
-def supplier_list(request):
-    """Listado de proveedores"""
-    gym = request.gym
-    suppliers = Supplier.objects.filter(gym=gym).order_by('name')
-    
-    context = {
-        'title': 'Proveedores',
-        'suppliers': suppliers,
-    }
-    return render(request, 'backoffice/finance/supplier_list.html', context)
-
-
-@login_required
-@require_gym_permission('finance.view_finance')
-def supplier_create(request):
-    """Crear nuevo proveedor"""
-    gym = request.gym
-    
-    if request.method == 'POST':
-        form = SupplierForm(request.POST)
-        if form.is_valid():
-            supplier = form.save(commit=False)
-            supplier.gym = gym
-            supplier.save()
-            messages.success(request, f'✅ Proveedor "{supplier.name}" creado correctamente')
-            return redirect('supplier_list')
-    else:
-        form = SupplierForm()
-    
-    context = {
-        'title': 'Nuevo Proveedor',
-        'form': form,
-    }
-    return render(request, 'backoffice/finance/supplier_form.html', context)
-
-
-@login_required
-@require_gym_permission('finance.view_finance')
-def supplier_edit(request, pk):
-    """Editar proveedor"""
-    gym = request.gym
-    supplier = get_object_or_404(Supplier, pk=pk, gym=gym)
-    
-    if request.method == 'POST':
-        form = SupplierForm(request.POST, instance=supplier)
-        if form.is_valid():
-            supplier = form.save()
-            messages.success(request, f'✅ Proveedor "{supplier.name}" actualizado correctamente')
-            return redirect('supplier_list')
-    else:
-        form = SupplierForm(instance=supplier)
-    
-    context = {
-        'title': f'Editar: {supplier.name}',
-        'form': form,
-        'supplier': supplier,
-    }
-    return render(request, 'backoffice/finance/supplier_form.html', context)
-
-
-@login_required
-@require_gym_permission('finance.view_finance')
-def supplier_delete(request, pk):
-    """Eliminar proveedor (soft delete)"""
-    gym = request.gym
-    supplier = get_object_or_404(Supplier, pk=pk, gym=gym)
-    
-    if request.method == 'POST':
-        supplier.is_active = False
-        supplier.save()
-        messages.success(request, f'✅ Proveedor "{supplier.name}" desactivado')
-        return redirect('supplier_list')
-    
-    context = {
-        'title': 'Confirmar Desactivación',
-        'supplier': supplier,
-    }
-    return render(request, 'backoffice/finance/supplier_confirm_delete.html', context)
 
 
 # ==================== CATEGORY MANAGEMENT ====================
@@ -989,60 +943,178 @@ def expense_export_pdf(request):
     return response
 
 
+# ============================================
+# STRIPE MIGRATION - Importar clientes con tarjetas
+# ============================================
+
 @login_required
-@require_gym_permission('finance.view_finance')
-def supplier_export_excel(request):
-    """Exporta listado de proveedores a Excel"""
+@require_gym_permission('finance.change_finance')
+def stripe_migration(request):
+    """Vista para migrar clientes desde otro software que usa Stripe"""
     gym = request.gym
-    suppliers = Supplier.objects.filter(gym=gym)
+    finance_settings = FinanceSettings.objects.filter(gym=gym).first()
     
-    config = ExportConfig(
-        title="Listado de Proveedores",
-        headers=['ID', 'Nombre', 'CIF/NIF', 'Email', 'Teléfono', 'Dirección', 'Estado'],
-        data_extractor=lambda s: [
-            s.id,
-            s.name,
-            s.tax_id or '-',
-            s.email or '-',
-            s.phone or '-',
-            s.address or '-',
-            'Activo' if s.is_active else 'Inactivo',
-        ],
-        column_widths=[8, 20, 15, 25, 15, 30, 10]
-    )
+    # Verificar que Stripe está configurado
+    stripe_configured = finance_settings and finance_settings.stripe_secret_key
     
-    excel_file = GenericExportService.export_to_excel(suppliers.order_by('name'), config, gym.name)
+    context = {
+        'title': 'Migración desde Stripe',
+        'stripe_configured': stripe_configured,
+        'results': None,
+    }
     
-    response = HttpResponse(
-        excel_file.read(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = f'attachment; filename="proveedores_{gym.name}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
-    return response
+    if request.method == 'POST' and 'import_csv' in request.POST:
+        if not stripe_configured:
+            messages.error(request, 'Debes configurar las claves de Stripe primero.')
+            return redirect('stripe_migration')
+        
+        csv_file = request.FILES.get('csv_file')
+        if not csv_file:
+            messages.error(request, 'Selecciona un archivo CSV.')
+            return redirect('stripe_migration')
+        
+        import csv
+        import io
+        import stripe
+        
+        # Configurar Stripe
+        stripe.api_key = finance_settings.stripe_secret_key
+        
+        # Leer CSV - detectar delimitador automáticamente
+        try:
+            decoded_file = csv_file.read().decode('utf-8-sig')
+            
+            # Detectar delimitador (Stripe usa coma, nuestro formato usa punto y coma)
+            first_line = decoded_file.split('\n')[0]
+            delimiter = ',' if ',' in first_line and ';' not in first_line else ';'
+            
+            reader = csv.DictReader(io.StringIO(decoded_file), delimiter=delimiter)
+            
+            # Detectar formato: Stripe nativo tiene 'id' como columna, nuestro formato tiene 'stripe_customer_id'
+            fieldnames = reader.fieldnames or []
+            is_stripe_native = 'id' in fieldnames and 'stripe_customer_id' not in fieldnames
+            
+            results = {
+                'total': 0,
+                'created': 0,
+                'updated': 0,
+                'skipped': 0,
+                'errors': [],
+                'details': [],
+                'format': 'Stripe Nativo' if is_stripe_native else 'Personalizado'
+            }
+            
+            from clients.models import Client
+            
+            for row in reader:
+                results['total'] += 1
+                
+                # Mapear campos según el formato detectado
+                if is_stripe_native:
+                    # Formato nativo de Stripe: id, email, name, phone, created, etc.
+                    stripe_customer_id = row.get('id', '').strip()
+                    email = row.get('email', '').strip()
+                    full_name = row.get('name', '').strip()
+                    phone = row.get('phone', '').strip()
+                    
+                    # Separar nombre completo
+                    name_parts = full_name.split() if full_name else []
+                    first_name = name_parts[0] if name_parts else ''
+                    last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+                else:
+                    # Formato personalizado
+                    email = row.get('email', '').strip()
+                    first_name = row.get('nombre', row.get('first_name', '')).strip()
+                    last_name = row.get('apellidos', row.get('last_name', '')).strip()
+                    stripe_customer_id = row.get('stripe_customer_id', row.get('stripe_id', row.get('id', ''))).strip()
+                    phone = row.get('telefono', row.get('phone', '')).strip()
+                
+                if not email:
+                    results['errors'].append(f"Fila {results['total']}: Email vacío")
+                    results['skipped'] += 1
+                    continue
+                
+                if not stripe_customer_id:
+                    results['errors'].append(f"Fila {results['total']} ({email}): stripe_customer_id vacío")
+                    results['skipped'] += 1
+                    continue
+                
+                # Validar que el customer existe en Stripe
+                try:
+                    stripe_customer = stripe.Customer.retrieve(stripe_customer_id)
+                    if stripe_customer.get('deleted'):
+                        results['errors'].append(f"{email}: Cliente eliminado en Stripe")
+                        results['skipped'] += 1
+                        continue
+                except stripe.error.InvalidRequestError:
+                    results['errors'].append(f"{email}: stripe_customer_id '{stripe_customer_id}' no existe en Stripe")
+                    results['skipped'] += 1
+                    continue
+                except Exception as e:
+                    results['errors'].append(f"{email}: Error validando Stripe - {str(e)}")
+                    results['skipped'] += 1
+                    continue
+                
+                # Buscar o crear cliente
+                client, created = Client.objects.get_or_create(
+                    gym=gym,
+                    email=email,
+                    defaults={
+                        'first_name': first_name or stripe_customer.get('name', '').split()[0] if stripe_customer.get('name') else 'Sin nombre',
+                        'last_name': last_name or ' '.join(stripe_customer.get('name', '').split()[1:]) if stripe_customer.get('name') else '',
+                        'phone': phone or stripe_customer.get('phone', ''),
+                        'stripe_customer_id': stripe_customer_id,
+                        'preferred_gateway': 'STRIPE',
+                        'status': Client.Status.ACTIVE,
+                    }
+                )
+                
+                if created:
+                    results['created'] += 1
+                    results['details'].append(f"✅ Creado: {email} → {stripe_customer_id}")
+                else:
+                    # Actualizar stripe_customer_id si no lo tiene
+                    if not client.stripe_customer_id:
+                        client.stripe_customer_id = stripe_customer_id
+                        client.preferred_gateway = 'STRIPE'
+                        client.save()
+                        results['updated'] += 1
+                        results['details'].append(f"🔄 Actualizado: {email} → {stripe_customer_id}")
+                    elif client.stripe_customer_id == stripe_customer_id:
+                        results['details'].append(f"⏭️ Ya existe: {email}")
+                        results['skipped'] += 1
+                    else:
+                        results['errors'].append(f"{email}: Ya tiene otro stripe_customer_id ({client.stripe_customer_id})")
+                        results['skipped'] += 1
+            
+            context['results'] = results
+            
+            if results['created'] > 0 or results['updated'] > 0:
+                messages.success(request, f"Importación completada: {results['created']} creados, {results['updated']} actualizados.")
+            else:
+                messages.info(request, "No se realizaron cambios.")
+                
+        except Exception as e:
+            messages.error(request, f'Error procesando CSV: {str(e)}')
+    
+    return render(request, 'backoffice/finance/stripe_migration.html', context)
 
 
 @login_required
 @require_gym_permission('finance.view_finance')
-def supplier_export_pdf(request):
-    """Exporta listado de proveedores a PDF"""
-    gym = request.gym
-    suppliers = Supplier.objects.filter(gym=gym)
+def stripe_migration_template(request):
+    """Descarga plantilla CSV para migración de Stripe"""
+    import csv
+    from django.http import HttpResponse
     
-    config = ExportConfig(
-        title="Listado de Proveedores",
-        headers=['Nombre', 'CIF/NIF', 'Email', 'Teléfono', 'Estado'],
-        data_extractor=lambda s: [
-            s.name,
-            s.tax_id or '-',
-            s.email or '-',
-            s.phone or '-',
-            'Activo' if s.is_active else 'Inactivo',
-        ],
-        column_widths=[25, 15, 25, 15, 10]
-    )
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    response['Content-Disposition'] = 'attachment; filename="plantilla_migracion_stripe.csv"'
+    response.write('\ufeff')  # BOM for Excel
     
-    pdf_file = GenericExportService.export_to_pdf(suppliers.order_by('name'), config, gym.name)
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['email', 'nombre', 'apellidos', 'telefono', 'stripe_customer_id'])
+    writer.writerow(['cliente@ejemplo.com', 'Juan', 'García López', '612345678', 'cus_ABC123xyz'])
+    writer.writerow(['otro@ejemplo.com', 'María', 'Pérez', '698765432', 'cus_DEF456abc'])
     
-    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="proveedores_{gym.name}_{timezone.now().strftime("%Y%m%d")}.pdf"'
     return response
+
