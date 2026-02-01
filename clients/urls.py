@@ -76,6 +76,8 @@ urlpatterns = [
     
     # Shop / Tienda
     path('shop/', portal_views.portal_shop, name='portal_shop'),
+    path('shop/schedule-change/', portal_views.portal_schedule_membership_change, name='portal_schedule_membership_change'),
+    path('shop/cancel-change/<int:change_id>/', portal_views.portal_cancel_scheduled_change, name='portal_cancel_scheduled_change'),
     
     # Notifications
     path('notifications/', portal_views.portal_notifications, name='portal_notifications'),

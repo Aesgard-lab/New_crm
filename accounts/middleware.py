@@ -45,12 +45,13 @@ class CurrentGymMiddleware:
         try:
             request.gym = Gym.objects.get(pk=current_gym_id)
             
-            # Activar el idioma del gimnasio si no está ya activo
-            if hasattr(request.gym, 'language'):
-                language_session = request.session.get(LANGUAGE_SESSION_KEY)
-                if language_session != request.gym.language:
-                    translation.activate(request.gym.language)
-                    request.session[LANGUAGE_SESSION_KEY] = request.gym.language
+            # Siempre sincronizar el idioma del gimnasio con la sesión
+            if hasattr(request.gym, 'language') and request.gym.language:
+                gym_language = request.gym.language
+                # Activar el idioma del gimnasio
+                translation.activate(gym_language)
+                request.session[LANGUAGE_SESSION_KEY] = gym_language
+                request.LANGUAGE_CODE = gym_language
         except Gym.DoesNotExist:
             request.gym = None
 

@@ -108,7 +108,7 @@
                         class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="all" {% if filters.membership_plan=='all' %}selected{% endif %}>Todas</option>
                         {% for plan in membership_plans %}
-                        <option value="{{ plan.id }}" {% if filters.membership_plan==plan.id|stringformat:'s'
+                        <option value="{{ plan.id }}" {% if filters.membership_plan == plan.id|stringformat:'s'
                             %}selected{% endif %}>{{ plan.name }}</option>
                         {% endfor %}
                     </select>
@@ -120,7 +120,7 @@
                         class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="all" {% if filters.service=='all' %}selected{% endif %}>Todos</option>
                         {% for service in services %}
-                        <option value="{{ service.id }}" {% if filters.service==service.id|stringformat:'s' %}selected{%
+                        <option value="{{ service.id }}" {% if filters.service == service.id|stringformat:'s' %}selected{%
                             endif %}>{{ service.name }}</option>
                         {% endfor %}
                     </select>
@@ -132,7 +132,7 @@
                         class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="all" {% if filters.product=='all' %}selected{% endif %}>Todos</option>
                         {% for product in products %}
-                        <option value="{{ product.id }}" {% if filters.product==product.id|stringformat:'s' %}selected{%
+                        <option value="{{ product.id }}" {% if filters.product == product.id|stringformat:'s' %}selected{%
                             endif %}>{{ product.name }}</option>
                         {% endfor %}
                     </select>
@@ -165,7 +165,7 @@
                                 <option value="all" {% if filters.document_template=='all' %}selected{% endif %}>
                                     Cualquier plantilla</option>
                                 {% for tmpl in document_templates %}
-                                <option value="{{ tmpl.id }}" {% if filters.document_template==tmpl.id|stringformat:'s'
+                                <option value="{{ tmpl.id }}" {% if filters.document_template == tmpl.id|stringformat:'s'
                                     %}selected{% endif %}>{{ tmpl.name }}</option>
                                 {% endfor %}
                             </select>

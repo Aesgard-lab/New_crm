@@ -1,0 +1,1190 @@
+# English translations for New CRM
+# Copyright (C) 2024
+# This file is distributed under the same license as the New CRM package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: New CRM 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# ==========================================
+# DISCOUNTS MODULE
+# ==========================================
+
+msgid "Descuentos y Promociones"
+msgstr "Discounts and Promotions"
+
+msgid "Gestiona códigos promocionales y ofertas especiales"
+msgstr "Manage promotional codes and special offers"
+
+msgid "Exportar"
+msgstr "Export"
+
+msgid "Crear Descuento"
+msgstr "Create Discount"
+
+msgid "Total Descuentos"
+msgstr "Total Discounts"
+
+msgid "Activos"
+msgstr "Active"
+
+msgid "Expiran Pronto"
+msgstr "Expiring Soon"
+
+msgid "Usos Este Mes"
+msgstr "Uses This Month"
+
+msgid "Búsqueda"
+msgstr "Search"
+
+msgid "Nombre o código..."
+msgstr "Name or code..."
+
+msgid "Estado"
+msgstr "Status"
+
+msgid "Todos"
+msgstr "All"
+
+msgid "Activo"
+msgstr "Active"
+
+msgid "Inactivo"
+msgstr "Inactive"
+
+msgid "Programado"
+msgstr "Scheduled"
+
+msgid "Expirado"
+msgstr "Expired"
+
+msgid "Agotado"
+msgstr "Depleted"
+
+msgid "Tipo"
+msgstr "Type"
+
+msgid "Porcentaje"
+msgstr "Percentage"
+
+msgid "Cantidad Fija"
+msgstr "Fixed Amount"
+
+msgid "Precio Fijo"
+msgstr "Fixed Price"
+
+msgid "Filtrar"
+msgstr "Filter"
+
+msgid "Limpiar"
+msgstr "Clear"
+
+msgid "Descuento"
+msgstr "Discount"
+
+msgid "Código"
+msgstr "Code"
+
+msgid "Valor"
+msgstr "Value"
+
+msgid "Validez"
+msgstr "Validity"
+
+msgid "Usos"
+msgstr "Uses"
+
+msgid "Acciones"
+msgstr "Actions"
+
+msgid "hasta"
+msgstr "until"
+
+msgid "de"
+msgstr "of"
+
+msgid "Ilimitado"
+msgstr "Unlimited"
+
+msgid "Ver"
+msgstr "View"
+
+msgid "Editar"
+msgstr "Edit"
+
+msgid "Eliminar"
+msgstr "Delete"
+
+msgid "No hay descuentos creados aún."
+msgstr "No discounts created yet."
+
+msgid "Crear tu primer descuento"
+msgstr "Create your first discount"
+
+# ==========================================
+# COMMON / SHARED
+# ==========================================
+
+msgid "Guardar"
+msgstr "Save"
+
+msgid "Cancelar"
+msgstr "Cancel"
+
+msgid "Volver"
+msgstr "Back"
+
+msgid "Cerrar"
+msgstr "Close"
+
+msgid "Confirmar"
+msgstr "Confirm"
+
+msgid "Sí"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
+
+msgid "Buscar..."
+msgstr "Search..."
+
+msgid "Cargando..."
+msgstr "Loading..."
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Éxito"
+msgstr "Success"
+
+msgid "Advertencia"
+msgstr "Warning"
+
+msgid "Información"
+msgstr "Information"
+
+msgid "Sin resultados"
+msgstr "No results"
+
+msgid "Añadir"
+msgstr "Add"
+
+msgid "Nuevo"
+msgstr "New"
+
+msgid "Duplicar"
+msgstr "Duplicate"
+
+msgid "Anterior"
+msgstr "Previous"
+
+msgid "Siguiente"
+msgstr "Next"
+
+# ==========================================
+# CLIENTS MODULE
+# ==========================================
+
+msgid "Clientes"
+msgstr "Clients"
+
+msgid "Lista de Clientes"
+msgstr "Client List"
+
+msgid "Nuevo Cliente"
+msgstr "New Client"
+
+msgid "Nombre"
+msgstr "Name"
+
+msgid "Apellidos"
+msgstr "Last Name"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Teléfono"
+msgstr "Phone"
+
+msgid "Fecha de Alta"
+msgstr "Registration Date"
+
+msgid "Membresía"
+msgstr "Membership"
+
+msgid "Sin membresía"
+msgstr "No membership"
+
+# ==========================================
+# MEMBERSHIPS MODULE
+# ==========================================
+
+msgid "Cuotas"
+msgstr "Memberships"
+
+msgid "Servicios"
+msgstr "Services"
+
+msgid "Productos"
+msgstr "Products"
+
+msgid "Precio"
+msgstr "Price"
+
+msgid "Duración"
+msgstr "Duration"
+
+msgid "días"
+msgstr "days"
+
+msgid "meses"
+msgstr "months"
+
+msgid "año"
+msgstr "year"
+
+msgid "años"
+msgstr "years"
+
+# ==========================================
+# ACTIVITIES MODULE
+# ==========================================
+
+msgid "Actividades"
+msgstr "Activities"
+
+msgid "Calendario"
+msgstr "Calendar"
+
+msgid "Clases"
+msgstr "Classes"
+
+msgid "Reservas"
+msgstr "Bookings"
+
+msgid "Capacidad"
+msgstr "Capacity"
+
+msgid "Instructor"
+msgstr "Instructor"
+
+msgid "Horario"
+msgstr "Schedule"
+
+# ==========================================
+# FINANCE MODULE
+# ==========================================
+
+msgid "Finanzas"
+msgstr "Finances"
+
+msgid "Facturación"
+msgstr "Billing"
+
+msgid "Gastos"
+msgstr "Expenses"
+
+msgid "Ingresos"
+msgstr "Revenue"
+
+msgid "Balance"
+msgstr "Balance"
+
+msgid "Proveedores"
+msgstr "Suppliers"
+
+# ==========================================
+# STAFF MODULE
+# ==========================================
+
+msgid "Equipo"
+msgstr "Team"
+
+msgid "Empleados"
+msgstr "Employees"
+
+msgid "Lista de Empleados"
+msgstr "Employee List"
+
+msgid "Roles y Permisos"
+msgstr "Roles and Permissions"
+
+msgid "Comisiones"
+msgstr "Commissions"
+
+msgid "Mis Comisiones"
+msgstr "My Commissions"
+
+msgid "Vacaciones"
+msgstr "Vacations"
+
+msgid "Fichajes"
+msgstr "Time Clock"
+
+msgid "Rendimiento"
+msgstr "Performance"
+
+# ==========================================
+# MARKETING MODULE
+# ==========================================
+
+msgid "Marketing"
+msgstr "Marketing"
+
+msgid "Campañas"
+msgstr "Campaigns"
+
+msgid "Campañas Email"
+msgstr "Email Campaigns"
+
+msgid "Plantillas Email"
+msgstr "Email Templates"
+
+msgid "Automatizaciones"
+msgstr "Automations"
+
+msgid "Leads"
+msgstr "Leads"
+
+msgid "Tablero Leads"
+msgstr "Leads Board"
+
+msgid "Chat"
+msgstr "Chat"
+
+# ==========================================
+# SETTINGS
+# ==========================================
+
+msgid "Configuración"
+msgstr "Settings"
+
+msgid "Ajustes"
+msgstr "Settings"
+
+msgid "Configuración del Gimnasio"
+msgstr "Gym Settings"
+
+msgid "Idioma"
+msgstr "Language"
+
+msgid "Español"
+msgstr "Spanish"
+
+msgid "Inglés"
+msgstr "English"
+
+# ==========================================
+# DASHBOARD
+# ==========================================
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Resumen"
+msgstr "Summary"
+
+msgid "Hoy"
+msgstr "Today"
+
+msgid "Esta Semana"
+msgstr "This Week"
+
+msgid "Este Mes"
+msgstr "This Month"
+
+msgid "Este Año"
+msgstr "This Year"
+
+msgid "Socios Activos"
+msgstr "Active Members"
+
+msgid "Nuevos Socios"
+msgstr "New Members"
+
+msgid "Facturación Mensual"
+msgstr "Monthly Billing"
+
+# ==========================================
+# FORMS & VALIDATION
+# ==========================================
+
+msgid "Este campo es obligatorio"
+msgstr "This field is required"
+
+msgid "Introduce un email válido"
+msgstr "Enter a valid email"
+
+msgid "Introduce un número válido"
+msgstr "Enter a valid number"
+
+msgid "La contraseña es demasiado corta"
+msgstr "Password is too short"
+
+msgid "Las contraseñas no coinciden"
+msgstr "Passwords do not match"
+
+# ==========================================
+# NOTIFICATIONS & MESSAGES
+# ==========================================
+
+msgid "Cambios guardados correctamente"
+msgstr "Changes saved successfully"
+
+msgid "Error al guardar los cambios"
+msgstr "Error saving changes"
+
+msgid "Registro creado correctamente"
+msgstr "Record created successfully"
+
+msgid "Registro eliminado correctamente"
+msgstr "Record deleted successfully"
+
+msgid "¿Estás seguro de que deseas eliminar este registro?"
+msgstr "Are you sure you want to delete this record?"
+
+msgid "Esta acción no se puede deshacer"
+msgstr "This action cannot be undone"
+
+# ==========================================
+# DATES & TIME
+# ==========================================
+
+msgid "Fecha"
+msgstr "Date"
+
+msgid "Hora"
+msgstr "Time"
+
+msgid "Desde"
+msgstr "From"
+
+msgid "Hasta"
+msgstr "Until"
+
+msgid "Inicio"
+msgstr "Start"
+
+msgid "Fin"
+msgstr "End"
+
+msgid "Horas"
+msgstr "Hours"
+
+msgid "Minutos"
+msgstr "Minutes"
+
+# ==========================================
+# DASHBOARD - EXTENDED
+# ==========================================
+
+msgid "Socios"
+msgstr "Members"
+
+msgid "Facturación"
+msgstr "Billing"
+
+msgid "Ver todos los objetivos"
+msgstr "View all goals"
+
+msgid "Acción en"
+msgstr "Action in"
+
+msgid "días"
+msgstr "days"
+
+msgid "No hay clientes en riesgo detectados."
+msgstr "No at-risk clients detected."
+
+msgid "Top Clientes (LTV)"
+msgstr "Top Clients (LTV)"
+
+msgid "No hay datos aún."
+msgstr "No data yet."
+
+msgid "Evolución de Ingresos (30 días)"
+msgstr "Revenue Evolution (30 days)"
+
+msgid "Actualizado hoy"
+msgstr "Updated today"
+
+msgid "Previsión Trimestral"
+msgstr "Quarterly Forecast"
+
+msgid "Basado en"
+msgstr "Based on"
+
+msgid "meses"
+msgstr "months"
+
+msgid "Total Proyectado (3 meses)"
+msgstr "Total Projected (3 months)"
+
+msgid "Promedio"
+msgstr "Average"
+
+msgid "mes"
+msgstr "month"
+
+msgid "TENDENCIA"
+msgstr "TREND"
+
+msgid "HISTÓRICO"
+msgstr "HISTORICAL"
+
+msgid "Desglose Mensual"
+msgstr "Monthly Breakdown"
+
+msgid "Confianza"
+msgstr "Confidence"
+
+# ==========================================
+# CLIENTS LIST
+# ==========================================
+
+msgid "Clientes"
+msgstr "Clients"
+
+msgid "Listado de Clientes"
+msgstr "Client List"
+
+msgid "Gestiona los socios de este gimnasio"
+msgstr "Manage this gym's members"
+
+msgid "Importar CSV"
+msgstr "Import CSV"
+
+msgid "Descargar"
+msgstr "Download"
+
+msgid "Descargar Excel"
+msgstr "Download Excel"
+
+msgid "Descargar PDF"
+msgstr "Download PDF"
+
+msgid "Nuevo Cliente"
+msgstr "New Client"
+
+msgid "Buscar"
+msgstr "Search"
+
+msgid "Nombre, email, teléfono"
+msgstr "Name, email, phone"
+
+msgid "Todos"
+msgstr "All"
+
+msgid "Todas"
+msgstr "All"
+
+msgid "Activo"
+msgstr "Active"
+
+msgid "Inactivo"
+msgstr "Inactive"
+
+msgid "Excedencia"
+msgstr "Leave"
+
+msgid "Bloqueado"
+msgstr "Blocked"
+
+msgid "Tipo de cliente"
+msgstr "Client type"
+
+msgid "Solo empresas"
+msgstr "Companies only"
+
+msgid "Solo particulares"
+msgstr "Individuals only"
+
+msgid "Tipo de cuota"
+msgstr "Membership type"
+
+msgid "Servicio"
+msgstr "Service"
+
+msgid "Producto"
+msgstr "Product"
+
+msgid "Origen de alta"
+msgstr "Registration source"
+
+msgid "Pasarela Pago"
+msgstr "Payment Gateway"
+
+msgid "Género"
+msgstr "Gender"
+
+msgid "Masculino"
+msgstr "Male"
+
+msgid "Femenino"
+msgstr "Female"
+
+msgid "Otro"
+msgstr "Other"
+
+msgid "No especificado"
+msgstr "Not specified"
+
+msgid "Edad"
+msgstr "Age"
+
+msgid "Desde"
+msgstr "From"
+
+msgid "Hasta"
+msgstr "To"
+
+msgid "Etiquetas"
+msgstr "Tags"
+
+msgid "Sin etiquetas configuradas"
+msgstr "No tags configured"
+
+msgid "Limpiar"
+msgstr "Clear"
+
+msgid "Aplicar filtros"
+msgstr "Apply filters"
+
+msgid "Cliente"
+msgstr "Client"
+
+msgid "Estado"
+msgstr "Status"
+
+msgid "Pasarela"
+msgstr "Gateway"
+
+msgid "Campos"
+msgstr "Fields"
+
+msgid "Email / Tlf"
+msgstr "Email / Phone"
+
+msgid "Cliente sin nombre"
+msgstr "Unnamed client"
+
+msgid "Empresa"
+msgstr "Company"
+
+msgid "Prospecto"
+msgstr "Prospect"
+
+msgid "Mostrando"
+msgstr "Showing"
+
+msgid "de"
+msgstr "of"
+
+msgid "clientes"
+msgstr "clients"
+
+msgid "Anterior"
+msgstr "Previous"
+
+msgid "Siguiente"
+msgstr "Next"
+
+msgid "No hay clientes aún"
+msgstr "No clients yet"
+
+msgid "Empieza registrando un nuevo socio o prospecto."
+msgstr "Start by registering a new member or prospect."
+
+msgid "Crear primer cliente"
+msgstr "Create first client"
+
+# ==========================================
+# MEMBERSHIPS
+# ==========================================
+
+msgid "Cuotas y Suscripciones"
+msgstr "Memberships and Subscriptions"
+
+msgid "Gestión de planes de acceso"
+msgstr "Access plan management"
+
+msgid "Nueva Cuota"
+msgstr "New Membership"
+
+msgid "Recurrente"
+msgstr "Recurring"
+
+msgid "Bono / Pack"
+msgstr "Bonus / Pack"
+
+msgid "Pago Único"
+msgstr "One-Time Payment"
+
+msgid "Incluye"
+msgstr "Includes"
+
+msgid "Sin reglas definidas"
+msgstr "No rules defined"
+
+msgid "más"
+msgstr "more"
+
+msgid "No hay planes"
+msgstr "No plans"
+
+msgid "Crea tu primera cuota mensual o bono de sesiones."
+msgstr "Create your first monthly membership or session pack."
+
+# ==========================================
+# STAFF
+# ==========================================
+
+msgid "Equipo"
+msgstr "Team"
+
+msgid "Gestión de empleados y colaboradores"
+msgstr "Employee and collaborator management"
+
+msgid "Empleados"
+msgstr "Employees"
+
+msgid "Nuevo Empleado"
+msgstr "New Employee"
+
+msgid "Empleado"
+msgstr "Employee"
+
+msgid "Rol"
+msgstr "Role"
+
+msgid "Fichaje"
+msgstr "Time Clock"
+
+msgid "Acciones"
+msgstr "Actions"
+
+msgid "Ver Ficha"
+msgstr "View Profile"
+
+msgid "No hay empleados registrados."
+msgstr "No employees registered."
+
+# ==========================================
+# ACTIVITIES
+# ==========================================
+
+msgid "Actividades"
+msgstr "Activities"
+
+msgid "Gestión de clases y servicios grupales"
+msgstr "Group classes and services management"
+
+msgid "Exportar"
+msgstr "Export"
+
+msgid "Nueva Clase"
+msgstr "New Class"
+
+msgid "No hay clases definidas."
+msgstr "No classes defined."
+
+# ==========================================
+# FINANCE / EXPENSES
+# ==========================================
+
+msgid "Gestión de Gastos"
+msgstr "Expense Management"
+
+msgid "Control total de gastos y proveedores"
+msgstr "Complete expense and supplier control"
+
+msgid "Generar Recurrentes"
+msgstr "Generate Recurring"
+
+msgid "Nuevo Gasto"
+msgstr "New Expense"
+
+msgid "gastos registrados"
+msgstr "registered expenses"
+
+msgid "Base"
+msgstr "Base"
+
+msgid "sin impuestos"
+msgstr "without taxes"
+
+msgid "IVA"
+msgstr "VAT"
+
+msgid "impuestos"
+msgstr "taxes"
+
+msgid "con IVA"
+msgstr "with VAT"
+
+msgid "Pagado"
+msgstr "Paid"
+
+msgid "abonado"
+msgstr "paid"
+
+msgid "Tienes"
+msgstr "You have"
+
+msgid "gasto(s) pendiente(s) de pago"
+msgstr "pending expense(s)"
+
+msgid "gasto(s) vencido(s)"
+msgstr "overdue expense(s)"
+
+msgid "Período"
+msgstr "Period"
+
+msgid "Hoy"
+msgstr "Today"
+
+msgid "Esta Semana"
+msgstr "This Week"
+
+msgid "Este Mes"
+msgstr "This Month"
+
+msgid "Trimestre"
+msgstr "Quarter"
+
+msgid "Proveedores"
+msgstr "Suppliers"
+
+msgid "Categorías"
+msgstr "Categories"
+
+msgid "Proveedor"
+msgstr "Supplier"
+
+msgid "Categoría"
+msgstr "Category"
+
+msgid "Sí"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
+
+msgid "Filtrar"
+msgstr "Filter"
+
+msgid "Fecha"
+msgstr "Date"
+
+msgid "Concepto"
+msgstr "Concept"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Vence"
+msgstr "Due"
+
+msgid "Sin proveedor"
+msgstr "No supplier"
+
+msgid "Sin categoría"
+msgstr "No category"
+
+msgid "Vencido"
+msgstr "Overdue"
+
+msgid "Parcial"
+msgstr "Partial"
+
+msgid "Pendiente"
+msgstr "Pending"
+
+msgid "No hay gastos registrados"
+msgstr "No expenses registered"
+
+msgid "Empieza creando tu primer gasto"
+msgstr "Start by creating your first expense"
+
+msgid "Crear Primer Gasto"
+msgstr "Create First Expense"
+
+# ==========================================
+# SALES / POS
+# ==========================================
+
+msgid "Punto de Venta"
+msgstr "Point of Sale"
+
+msgid "Buscar productos, servicios o cuotas..."
+msgstr "Search products, services or memberships..."
+
+msgid "No se encontraron resultados."
+msgstr "No results found."
+
+msgid "Cliente"
+msgstr "Client"
+
+msgid "Buscar cliente..."
+msgstr "Search client..."
+
+msgid "Anónimo"
+msgstr "Anonymous"
+
+msgid "Opciones de Venta (Fecha / Staff)"
+msgstr "Sale Options (Date / Staff)"
+
+msgid "Hora"
+msgstr "Time"
+
+msgid "Cobrado por"
+msgstr "Charged by"
+
+msgid "El carrito está vacío"
+msgstr "Cart is empty"
+
+msgid "Subtotal"
+msgstr "Subtotal"
+
+msgid "Descuento"
+msgstr "Discount"
+
+msgid "Cobrar"
+msgstr "Charge"
+
+msgid "Diferir Cobro"
+msgstr "Defer Payment"
+
+msgid "Total a Diferir"
+msgstr "Total to Defer"
+
+msgid "Fecha de Cobro Programada"
+msgstr "Scheduled Payment Date"
+
+msgid "El cobro se realizará en esta fecha"
+msgstr "Payment will be processed on this date"
+
+msgid "Cobro Automático"
+msgstr "Automatic Payment"
+
+msgid "Si el cliente tiene tarjeta guardada, se cobrará automáticamente en la fecha indicada"
+msgstr "If the client has a saved card, payment will be automatically processed on the scheduled date"
+
+msgid "Notas (opcional)"
+msgstr "Notes (optional)"
+
+msgid "Ej: Cliente paga en su próxima visita, pidió esperar a final de mes..."
+msgstr "E.g.: Client pays on next visit, asked to wait until end of month..."
+
+msgid "Confirmar Venta Diferida"
+msgstr "Confirm Deferred Sale"
+
+msgid "La venta quedará guardada y aparecerá en 'Cobros Futuros'"
+msgstr "The sale will be saved and appear in 'Future Payments'"
+
+msgid "¡Venta Diferida Guardada!"
+msgstr "Deferred Sale Saved!"
+
+msgid "Fecha de cobro:"
+msgstr "Payment date:"
+
+msgid "Importe:"
+msgstr "Amount:"
+
+msgid "Cobro automático:"
+msgstr "Automatic payment:"
+
+msgid "Activado"
+msgstr "Enabled"
+
+msgid "Puedes ver y gestionar esta venta en"
+msgstr "You can view and manage this sale in"
+
+msgid "Facturación → Cobros Futuros"
+msgstr "Billing → Future Payments"
+
+msgid "Aceptar"
+msgstr "Accept"
+
+msgid "Finalizar Cobro"
+msgstr "Complete Payment"
+
+msgid "Total a Cobrar"
+msgstr "Total to Charge"
+
+msgid "Métodos de Pago"
+msgstr "Payment Methods"
+
+msgid "+ Agregar Otro Pago"
+msgstr "+ Add Another Payment"
+
+msgid "Acción Post-Venta"
+msgstr "Post-Sale Action"
+
+msgid "Solo Guardar"
+msgstr "Save Only"
+
+msgid "Enviar Ticket (Email)"
+msgstr "Send Receipt (Email)"
+
+msgid "Generar Factura y Enviar"
+msgstr "Generate Invoice and Send"
+
+# ==========================================
+# SETTINGS DASHBOARD
+# ==========================================
+
+msgid "Hub de Ajustes"
+msgstr "Settings Hub"
+
+msgid "Empresa"
+msgstr "Company"
+
+msgid "Datos, branding y ubicación"
+msgstr "Data, branding and location"
+
+msgid "Perfil del Centro"
+msgstr "Center Profile"
+
+msgid "Horarios de Apertura"
+msgstr "Opening Hours"
+
+msgid "Portal Público"
+msgstr "Public Portal"
+
+msgid "Widgets embebibles y códigos"
+msgstr "Embeddable widgets and codes"
+
+msgid "Código Widget Horarios & Precios"
+msgstr "Schedule & Pricing Widget Code"
+
+msgid "Equipo"
+msgstr "Team"
+
+msgid "Usuarios, roles y permisos"
+msgstr "Users, roles and permissions"
+
+msgid "Ver Usuarios"
+msgstr "View Users"
+
+msgid "Roles y Permisos"
+msgstr "Roles and Permissions"
+
+msgid "Configurar Incentivos"
+msgstr "Configure Incentives"
+
+msgid "Servicios"
+msgstr "Services"
+
+msgid "Actividades, cuotas y productos"
+msgstr "Activities, memberships and products"
+
+msgid "Servicios y Categorías"
+msgstr "Services and Categories"
+
+msgid "Actividades Grupales"
+msgstr "Group Activities"
+
+msgid "Planes de Membresía"
+msgstr "Membership Plans"
+
+msgid "Productos y Tienda"
+msgstr "Products and Store"
+
+msgid "Configuración de Horarios"
+msgstr "Schedule Settings"
+
+msgid "Validaciones, reservas y restricciones"
+msgstr "Validations, bookings and restrictions"
+
+msgid "Configurar Sistema de Horarios"
+msgstr "Configure Schedule System"
+
+msgid "Asistencias"
+msgstr "Attendance"
+
+msgid "Check-in QR y control de acceso"
+msgstr "QR Check-in and access control"
+
+msgid "Configuración Check-in"
+msgstr "Check-in Settings"
+
+msgid "Proyectar QR de Clases"
+msgstr "Project Class QR"
+
+msgid "Valoraciones de Clases"
+msgstr "Class Reviews"
+
+msgid "Catálogo, precios y órdenes"
+msgstr "Catalog, prices and orders"
+
+msgid "Listado de Proveedores"
+msgstr "Suppliers List"
+
+msgid "Órdenes de Compra"
+msgstr "Purchase Orders"
+
+msgid "Finanzas"
+msgstr "Finance"
+
+msgid "Impuestos y pasarelas de pago"
+msgstr "Taxes and payment gateways"
+
+msgid "Impuestos y Métodos de Pago"
+msgstr "Taxes and Payment Methods"
+
+msgid "App del Cliente"
+msgstr "Client App"
+
+msgid "Portal y acciones del cliente"
+msgstr "Portal and client actions"
+
+msgid "Permisos de App"
+msgstr "App Permissions"
+
+msgid "Clientes"
+msgstr "Clients"
+
+msgid "Campos, reservas y duplicados"
+msgstr "Fields, bookings and duplicates"
+
+msgid "Campos personalizados y flags"
+msgstr "Custom fields and flags"
+
+msgid "Configuración de reservas"
+msgstr "Booking settings"
+
+msgid "Gestión de duplicados"
+msgstr "Duplicates management"
+
+msgid "Leads, email y campañas"
+msgstr "Leads, email and campaigns"
+
+msgid "Pipeline de Leads"
+msgstr "Leads Pipeline"
+
+msgid "Configuración Email (SMTP)"
+msgstr "Email Settings (SMTP)"
+
+msgid "Sistema"
+msgstr "System"
+
+msgid "Integraciones y avanzado"
+msgstr "Integrations and advanced"
+
+msgid "Logs de Auditoría"
+msgstr "Audit Logs"
+
+msgid "Hardware TPV (Terminales)"
+msgstr "POS Hardware (Terminals)"

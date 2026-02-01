@@ -372,6 +372,24 @@ class PublicPortalSettings(models.Model):
         help_text="Requiere método de pago vinculado para reservar"
     )
     
+    # ===== COMPRA DE CUOTAS =====
+    allow_duplicate_membership_purchase = models.BooleanField(
+        default=True,
+        verbose_name="Permitir Compra de Cuota Duplicada",
+        help_text="Si está desactivado, los clientes con cuota activa no podrán comprar otra"
+    )
+    duplicate_membership_message = models.CharField(
+        max_length=255,
+        blank=True,
+        default="Ya tienes una cuota activa. Si deseas renovarla, ve a 'Mi Cuota' y selecciona 'Renovar'.",
+        help_text="Mensaje que se muestra al cliente cuando intenta comprar otra cuota"
+    )
+    allow_membership_change_at_renewal = models.BooleanField(
+        default=False,
+        verbose_name="Permitir Cambio de Plan al Renovar",
+        help_text="Permite a los clientes programar un cambio de cuota para cuando finalice la actual"
+    )
+    
     # ===== PERSONALIZACIÓN =====
     meta_title = models.CharField(
         max_length=60,

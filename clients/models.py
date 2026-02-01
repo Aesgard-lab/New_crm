@@ -592,3 +592,63 @@ class ClientPaymentMethod(models.Model):
                 is_default=True
             ).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+
+
+class ScheduledMembershipChange(models.Model):
+    """
+    Permite programar un cambio de plan para cuando finalice la membresía actual.
+    Similar a como lo hacen Mindbody, PushPress y otros software punteros.
+    """
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pendiente"
+        APPLIED = "APPLIED", "Aplicado"
+        CANCELLED = "CANCELLED", "Cancelado"
+    
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="scheduled_membership_changes")
+    gym = models.ForeignKey('organizations.Gym', on_delete=models.CASCADE, related_name="scheduled_membership_changes")
+    
+    # Membresía actual
+    current_membership = models.ForeignKey(
+        ClientMembership, 
+        on_delete=models.CASCADE, 
+        related_name="scheduled_changes",
+        help_text="La membresía activa que se desactivará"
+    )
+    
+    # Nuevo plan
+    new_plan = models.ForeignKey(
+        'memberships.MembershipPlan',
+        on_delete=models.CASCADE,
+        related_name="scheduled_upgrades",
+        help_text="El nuevo plan que se activará"
+    )
+    
+    # Programación
+    scheduled_date = models.DateField(
+        help_text="Fecha en que se aplicará el cambio (normalmente el end_date de la membresía actual)"
+    )
+    
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    
+    # Resultado
+    new_membership = models.ForeignKey(
+        ClientMembership,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_from_scheduled_change",
+        help_text="La nueva membresía creada cuando se aplicó el cambio"
+    )
+    
+    class Meta:
+        verbose_name = "Cambio Programado de Plan"
+        verbose_name_plural = "Cambios Programados de Plan"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.client} - {self.current_membership.name} → {self.new_plan.name} ({self.scheduled_date})"

@@ -44,7 +44,11 @@
                         </div>
                         <div>
                             <div class="font-bold text-slate-900">
-                                {{ entry.client.first_name }} {{ entry.client.last_name|slice:":1" }}.
+                                {% if gamification_settings.hide_leaderboard_names and entry.client.id != client.id %}
+                                    {{ entry.client.first_name|slice:":1" }}.{{ entry.client.last_name|slice:":1" }}.
+                                {% else %}
+                                    {{ entry.client.first_name }} {{ entry.client.last_name|slice:":1" }}.
+                                {% endif %}
                                 {% if entry.client.id == client.id %}
                                 <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2">Tú</span>
                                 {% endif %}

@@ -1,8 +1,9 @@
 {% extends "backoffice/base.html" %}
+{% load i18n %}
 
 {% block page_title %}
-<div>Actividades</div>
-<div class="text-sm font-normal text-slate-500 mt-1">Gestión de clases y servicios grupales</div>
+<div>{% trans "Actividades" %}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">{% trans "Gestión de clases y servicios grupales" %}</div>
 {% endblock %}
 
 {% block content %}
@@ -18,7 +19,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
-                Exportar
+                {% trans "Exportar" %}
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
@@ -51,7 +52,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        Nueva Clase
+        {% trans "Nueva Clase" %}
     </a>
     {% endif %}
 </div>
@@ -126,7 +127,7 @@
                     d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
         </div>
-        <p>No hay clases definidas.</p>
+        <p>{% trans "No hay clases definidas." %}</p>
     </div>
     {% endfor %}
 </div>

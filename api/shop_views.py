@@ -5,6 +5,7 @@ Allows clients to browse products and request info
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
 
 from clients.models import Client
@@ -32,6 +33,37 @@ class ShopView(APIView):
         try:
             client = get_object_or_404(Client, user=request.user)
             gym = client.gym
+            
+            # Get portal settings for membership purchase rules
+            from organizations.models import PublicPortalSettings
+            portal_settings, _ = PublicPortalSettings.objects.get_or_create(
+                gym=gym,
+                defaults={'public_slug': gym.name.lower().replace(' ', '-')[:50]}
+            )
+            
+            # Check if client has active membership
+            has_active_membership = client.memberships.filter(
+                status__in=['ACTIVE', 'PENDING']
+            ).exists()
+            
+            # Check if client has payment method
+            has_payment_method = client.payment_methods.exists()
+            
+            # Check for scheduled changes
+            from clients.models import ScheduledMembershipChange
+            scheduled_change = ScheduledMembershipChange.objects.filter(
+                client=client,
+                status='PENDING'
+            ).select_related('new_plan', 'current_membership').first()
+            
+            scheduled_change_data = None
+            if scheduled_change:
+                scheduled_change_data = {
+                    'id': scheduled_change.id,
+                    'new_plan_name': scheduled_change.new_plan.name,
+                    'new_plan_id': scheduled_change.new_plan.id,
+                    'scheduled_date': scheduled_change.scheduled_date.isoformat(),
+                }
             
             # Get active membership plans available for online purchase
             from memberships.models import MembershipPlan
@@ -94,7 +126,16 @@ class ShopView(APIView):
                 'success': True,
                 'membership_plans': plans,
                 'products': products,
-                'services': services
+                'services': services,
+                # Membership purchase rules
+                'membership_purchase_rules': {
+                    'has_active_membership': has_active_membership,
+                    'allow_duplicate_purchase': portal_settings.allow_duplicate_membership_purchase,
+                    'duplicate_message': portal_settings.duplicate_membership_message,
+                    'allow_change_at_renewal': portal_settings.allow_membership_change_at_renewal,
+                    'has_payment_method': has_payment_method,
+                    'scheduled_change': scheduled_change_data,
+                }
             })
             
         except Client.DoesNotExist:
@@ -135,3 +176,139 @@ class RequestInfoView(APIView):
             return Response({'error': 'Cliente no encontrado'}, status=404)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
+
+class ScheduleMembershipChangeView(APIView):
+    """
+    POST: Schedule a membership plan change for when the current one ends
+    DELETE: Cancel a scheduled membership change
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Schedule a membership change"""
+        try:
+            client = get_object_or_404(Client, user=request.user)
+            gym = client.gym
+            
+            from organizations.models import PublicPortalSettings
+            from memberships.models import MembershipPlan
+            from clients.models import ScheduledMembershipChange
+            from django.utils import timezone
+            
+            # Check settings
+            portal_settings, _ = PublicPortalSettings.objects.get_or_create(
+                gym=gym,
+                defaults={'public_slug': gym.name.lower().replace(' ', '-')[:50]}
+            )
+            
+            if not portal_settings.allow_membership_change_at_renewal:
+                return Response({
+                    'success': False,
+                    'error': 'Esta función no está disponible.'
+                }, status=http_status.HTTP_403_FORBIDDEN)
+            
+            # Check payment method
+            if not client.payment_methods.exists():
+                return Response({
+                    'success': False,
+                    'error': 'Necesitas tener una tarjeta de pago guardada.'
+                }, status=http_status.HTTP_400_BAD_REQUEST)
+            
+            # Get current membership
+            current_membership = client.memberships.filter(status='ACTIVE').first()
+            if not current_membership:
+                return Response({
+                    'success': False,
+                    'error': 'No tienes una cuota activa.'
+                }, status=http_status.HTTP_400_BAD_REQUEST)
+            
+            # Get new plan
+            plan_id = request.data.get('plan_id')
+            try:
+                new_plan = MembershipPlan.objects.get(
+                    id=plan_id, 
+                    gym=gym, 
+                    is_active=True, 
+                    is_visible_online=True
+                )
+            except MembershipPlan.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'El plan seleccionado no está disponible.'
+                }, status=http_status.HTTP_404_NOT_FOUND)
+            
+            # Check not same plan
+            if current_membership.plan and current_membership.plan.id == new_plan.id:
+                return Response({
+                    'success': False,
+                    'error': 'Ya tienes este plan activo.'
+                }, status=http_status.HTTP_400_BAD_REQUEST)
+            
+            # Cancel previous scheduled changes
+            ScheduledMembershipChange.objects.filter(
+                client=client,
+                status='PENDING'
+            ).update(status='CANCELLED')
+            
+            # Create new scheduled change
+            scheduled_date = (
+                current_membership.end_date or 
+                current_membership.current_period_end or 
+                timezone.now().date()
+            )
+            
+            scheduled_change = ScheduledMembershipChange.objects.create(
+                client=client,
+                gym=gym,
+                current_membership=current_membership,
+                new_plan=new_plan,
+                scheduled_date=scheduled_date
+            )
+            
+            return Response({
+                'success': True,
+                'message': f'Cambio programado: Tu plan cambiará a "{new_plan.name}" el {scheduled_date.strftime("%d/%m/%Y")}',
+                'scheduled_change': {
+                    'id': scheduled_change.id,
+                    'new_plan_name': new_plan.name,
+                    'new_plan_id': new_plan.id,
+                    'scheduled_date': scheduled_date.isoformat(),
+                }
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def delete(self, request):
+        """Cancel a scheduled membership change"""
+        try:
+            client = get_object_or_404(Client, user=request.user)
+            
+            from clients.models import ScheduledMembershipChange
+            from django.utils import timezone
+            
+            change_id = request.data.get('change_id') or request.query_params.get('change_id')
+            
+            try:
+                scheduled_change = ScheduledMembershipChange.objects.get(
+                    id=change_id,
+                    client=client,
+                    status='PENDING'
+                )
+                scheduled_change.status = 'CANCELLED'
+                scheduled_change.cancelled_at = timezone.now()
+                scheduled_change.save()
+                
+                return Response({
+                    'success': True,
+                    'message': 'Cambio de plan cancelado correctamente.'
+                })
+            except ScheduledMembershipChange.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'No se encontró el cambio programado.'
+                }, status=http_status.HTTP_404_NOT_FOUND)
+                
+        except Exception as e:
+            return Response({'error': str(e)}, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)

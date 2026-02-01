@@ -74,16 +74,15 @@ def client_app_settings(request):
         defaults={'public_slug': gym.name.lower().replace(' ', '-')[:50]}
     )
     
+    # Obtener o crear GamificationSettings
+    from gamification.models import GamificationSettings
+    gamification_settings, _ = GamificationSettings.objects.get_or_create(gym=gym)
+    
     # Obtener campos personalizados del cliente
     from clients.models import ClientField
     client_fields = ClientField.objects.filter(gym=gym, is_active=True).order_by('display_order', 'name')
 
     if request.method == 'POST':
-        # Guardar configuración de pasarela y permisos
-        form = AppSettingsForm(request.POST, instance=finance_settings)
-        if form.is_valid():
-            form.save()
-        
         # Guardar configuración de registro
         if 'save_registration_settings' in request.POST:
             portal_settings.allow_self_registration = request.POST.get('allow_self_registration') == 'on'
@@ -98,7 +97,24 @@ def client_app_settings(request):
                 field.save()
             
             messages.success(request, 'Configuración de registro actualizada.')
-        else:
+        
+        # Guardar configuración de pasarela, permisos y gamificación
+        elif 'save_app_settings' in request.POST:
+            form = AppSettingsForm(request.POST, instance=finance_settings)
+            if form.is_valid():
+                form.save()
+            
+            # Guardar configuración de gamificación (tabla de clasificación)
+            gamification_settings.hide_leaderboard_names = request.POST.get('hide_leaderboard_names') == 'on'
+            gamification_settings.save()
+            
+            # Guardar configuración de gestión de cuotas
+            # Nota: block_duplicate_membership es lo opuesto a allow_duplicate_membership_purchase
+            portal_settings.allow_duplicate_membership_purchase = request.POST.get('block_duplicate_membership') != 'on'
+            portal_settings.duplicate_membership_message = request.POST.get('duplicate_membership_message', '').strip()
+            portal_settings.allow_membership_change_at_renewal = request.POST.get('allow_membership_change_at_renewal') == 'on'
+            portal_settings.save()
+            
             messages.success(request, 'Ajustes de la app del cliente actualizados.')
         
         return redirect('client_app_settings')
@@ -110,6 +126,7 @@ def client_app_settings(request):
         'form': form,
         'finance_settings': finance_settings,
         'portal_settings': portal_settings,
+        'gamification_settings': gamification_settings,
         'client_fields': client_fields,
     }
     return render(request, 'backoffice/app/settings.html', context)

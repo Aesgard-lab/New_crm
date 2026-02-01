@@ -1,0 +1,1190 @@
+# Spanish translations for New CRM
+# Copyright (C) 2024
+# This file is distributed under the same license as the New CRM package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: New CRM 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# ==========================================
+# DISCOUNTS MODULE
+# ==========================================
+
+msgid "Descuentos y Promociones"
+msgstr "Descuentos y Promociones"
+
+msgid "Gestiona códigos promocionales y ofertas especiales"
+msgstr "Gestiona códigos promocionales y ofertas especiales"
+
+msgid "Exportar"
+msgstr "Exportar"
+
+msgid "Crear Descuento"
+msgstr "Crear Descuento"
+
+msgid "Total Descuentos"
+msgstr "Total Descuentos"
+
+msgid "Activos"
+msgstr "Activos"
+
+msgid "Expiran Pronto"
+msgstr "Expiran Pronto"
+
+msgid "Usos Este Mes"
+msgstr "Usos Este Mes"
+
+msgid "Búsqueda"
+msgstr "Búsqueda"
+
+msgid "Nombre o código..."
+msgstr "Nombre o código..."
+
+msgid "Estado"
+msgstr "Estado"
+
+msgid "Todos"
+msgstr "Todos"
+
+msgid "Activo"
+msgstr "Activo"
+
+msgid "Inactivo"
+msgstr "Inactivo"
+
+msgid "Programado"
+msgstr "Programado"
+
+msgid "Expirado"
+msgstr "Expirado"
+
+msgid "Agotado"
+msgstr "Agotado"
+
+msgid "Tipo"
+msgstr "Tipo"
+
+msgid "Porcentaje"
+msgstr "Porcentaje"
+
+msgid "Cantidad Fija"
+msgstr "Cantidad Fija"
+
+msgid "Precio Fijo"
+msgstr "Precio Fijo"
+
+msgid "Filtrar"
+msgstr "Filtrar"
+
+msgid "Limpiar"
+msgstr "Limpiar"
+
+msgid "Descuento"
+msgstr "Descuento"
+
+msgid "Código"
+msgstr "Código"
+
+msgid "Valor"
+msgstr "Valor"
+
+msgid "Validez"
+msgstr "Validez"
+
+msgid "Usos"
+msgstr "Usos"
+
+msgid "Acciones"
+msgstr "Acciones"
+
+msgid "hasta"
+msgstr "hasta"
+
+msgid "de"
+msgstr "de"
+
+msgid "Ilimitado"
+msgstr "Ilimitado"
+
+msgid "Ver"
+msgstr "Ver"
+
+msgid "Editar"
+msgstr "Editar"
+
+msgid "Eliminar"
+msgstr "Eliminar"
+
+msgid "No hay descuentos creados aún."
+msgstr "No hay descuentos creados aún."
+
+msgid "Crear tu primer descuento"
+msgstr "Crear tu primer descuento"
+
+# ==========================================
+# COMMON / SHARED
+# ==========================================
+
+msgid "Guardar"
+msgstr "Guardar"
+
+msgid "Cancelar"
+msgstr "Cancelar"
+
+msgid "Volver"
+msgstr "Volver"
+
+msgid "Cerrar"
+msgstr "Cerrar"
+
+msgid "Confirmar"
+msgstr "Confirmar"
+
+msgid "Sí"
+msgstr "Sí"
+
+msgid "No"
+msgstr "No"
+
+msgid "Buscar..."
+msgstr "Buscar..."
+
+msgid "Cargando..."
+msgstr "Cargando..."
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Éxito"
+msgstr "Éxito"
+
+msgid "Advertencia"
+msgstr "Advertencia"
+
+msgid "Información"
+msgstr "Información"
+
+msgid "Sin resultados"
+msgstr "Sin resultados"
+
+msgid "Añadir"
+msgstr "Añadir"
+
+msgid "Nuevo"
+msgstr "Nuevo"
+
+msgid "Duplicar"
+msgstr "Duplicar"
+
+msgid "Anterior"
+msgstr "Anterior"
+
+msgid "Siguiente"
+msgstr "Siguiente"
+
+# ==========================================
+# CLIENTS MODULE
+# ==========================================
+
+msgid "Clientes"
+msgstr "Clientes"
+
+msgid "Lista de Clientes"
+msgstr "Lista de Clientes"
+
+msgid "Nuevo Cliente"
+msgstr "Nuevo Cliente"
+
+msgid "Nombre"
+msgstr "Nombre"
+
+msgid "Apellidos"
+msgstr "Apellidos"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Teléfono"
+msgstr "Teléfono"
+
+msgid "Fecha de Alta"
+msgstr "Fecha de Alta"
+
+msgid "Membresía"
+msgstr "Membresía"
+
+msgid "Sin membresía"
+msgstr "Sin membresía"
+
+# ==========================================
+# MEMBERSHIPS MODULE
+# ==========================================
+
+msgid "Cuotas"
+msgstr "Cuotas"
+
+msgid "Servicios"
+msgstr "Servicios"
+
+msgid "Productos"
+msgstr "Productos"
+
+msgid "Precio"
+msgstr "Precio"
+
+msgid "Duración"
+msgstr "Duración"
+
+msgid "días"
+msgstr "días"
+
+msgid "meses"
+msgstr "meses"
+
+msgid "año"
+msgstr "año"
+
+msgid "años"
+msgstr "años"
+
+# ==========================================
+# ACTIVITIES MODULE
+# ==========================================
+
+msgid "Actividades"
+msgstr "Actividades"
+
+msgid "Calendario"
+msgstr "Calendario"
+
+msgid "Clases"
+msgstr "Clases"
+
+msgid "Reservas"
+msgstr "Reservas"
+
+msgid "Capacidad"
+msgstr "Capacidad"
+
+msgid "Instructor"
+msgstr "Instructor"
+
+msgid "Horario"
+msgstr "Horario"
+
+# ==========================================
+# FINANCE MODULE
+# ==========================================
+
+msgid "Finanzas"
+msgstr "Finanzas"
+
+msgid "Facturación"
+msgstr "Facturación"
+
+msgid "Gastos"
+msgstr "Gastos"
+
+msgid "Ingresos"
+msgstr "Ingresos"
+
+msgid "Balance"
+msgstr "Balance"
+
+msgid "Proveedores"
+msgstr "Proveedores"
+
+# ==========================================
+# STAFF MODULE
+# ==========================================
+
+msgid "Equipo"
+msgstr "Equipo"
+
+msgid "Empleados"
+msgstr "Empleados"
+
+msgid "Lista de Empleados"
+msgstr "Lista de Empleados"
+
+msgid "Roles y Permisos"
+msgstr "Roles y Permisos"
+
+msgid "Comisiones"
+msgstr "Comisiones"
+
+msgid "Mis Comisiones"
+msgstr "Mis Comisiones"
+
+msgid "Vacaciones"
+msgstr "Vacaciones"
+
+msgid "Fichajes"
+msgstr "Fichajes"
+
+msgid "Rendimiento"
+msgstr "Rendimiento"
+
+# ==========================================
+# MARKETING MODULE
+# ==========================================
+
+msgid "Marketing"
+msgstr "Marketing"
+
+msgid "Campañas"
+msgstr "Campañas"
+
+msgid "Campañas Email"
+msgstr "Campañas Email"
+
+msgid "Plantillas Email"
+msgstr "Plantillas Email"
+
+msgid "Automatizaciones"
+msgstr "Automatizaciones"
+
+msgid "Leads"
+msgstr "Leads"
+
+msgid "Tablero Leads"
+msgstr "Tablero Leads"
+
+msgid "Chat"
+msgstr "Chat"
+
+# ==========================================
+# SETTINGS
+# ==========================================
+
+msgid "Configuración"
+msgstr "Configuración"
+
+msgid "Ajustes"
+msgstr "Ajustes"
+
+msgid "Configuración del Gimnasio"
+msgstr "Configuración del Gimnasio"
+
+msgid "Idioma"
+msgstr "Idioma"
+
+msgid "Español"
+msgstr "Español"
+
+msgid "Inglés"
+msgstr "Inglés"
+
+# ==========================================
+# DASHBOARD
+# ==========================================
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Resumen"
+msgstr "Resumen"
+
+msgid "Hoy"
+msgstr "Hoy"
+
+msgid "Esta Semana"
+msgstr "Esta Semana"
+
+msgid "Este Mes"
+msgstr "Este Mes"
+
+msgid "Este Año"
+msgstr "Este Año"
+
+msgid "Socios Activos"
+msgstr "Socios Activos"
+
+msgid "Nuevos Socios"
+msgstr "Nuevos Socios"
+
+msgid "Facturación Mensual"
+msgstr "Facturación Mensual"
+
+# ==========================================
+# FORMS & VALIDATION
+# ==========================================
+
+msgid "Este campo es obligatorio"
+msgstr "Este campo es obligatorio"
+
+msgid "Introduce un email válido"
+msgstr "Introduce un email válido"
+
+msgid "Introduce un número válido"
+msgstr "Introduce un número válido"
+
+msgid "La contraseña es demasiado corta"
+msgstr "La contraseña es demasiado corta"
+
+msgid "Las contraseñas no coinciden"
+msgstr "Las contraseñas no coinciden"
+
+# ==========================================
+# NOTIFICATIONS & MESSAGES
+# ==========================================
+
+msgid "Cambios guardados correctamente"
+msgstr "Cambios guardados correctamente"
+
+msgid "Error al guardar los cambios"
+msgstr "Error al guardar los cambios"
+
+msgid "Registro creado correctamente"
+msgstr "Registro creado correctamente"
+
+msgid "Registro eliminado correctamente"
+msgstr "Registro eliminado correctamente"
+
+msgid "¿Estás seguro de que deseas eliminar este registro?"
+msgstr "¿Estás seguro de que deseas eliminar este registro?"
+
+msgid "Esta acción no se puede deshacer"
+msgstr "Esta acción no se puede deshacer"
+
+# ==========================================
+# DATES & TIME
+# ==========================================
+
+msgid "Fecha"
+msgstr "Fecha"
+
+msgid "Hora"
+msgstr "Hora"
+
+msgid "Desde"
+msgstr "Desde"
+
+msgid "Hasta"
+msgstr "Hasta"
+
+msgid "Inicio"
+msgstr "Inicio"
+
+msgid "Fin"
+msgstr "Fin"
+
+msgid "Horas"
+msgstr "Horas"
+
+msgid "Minutos"
+msgstr "Minutos"
+
+# ==========================================
+# DASHBOARD - EXTENDED
+# ==========================================
+
+msgid "Socios"
+msgstr "Socios"
+
+msgid "Facturación"
+msgstr "Facturación"
+
+msgid "Ver todos los objetivos"
+msgstr "Ver todos los objetivos"
+
+msgid "Acción en"
+msgstr "Acción en"
+
+msgid "días"
+msgstr "días"
+
+msgid "No hay clientes en riesgo detectados."
+msgstr "No hay clientes en riesgo detectados."
+
+msgid "Top Clientes (LTV)"
+msgstr "Top Clientes (LTV)"
+
+msgid "No hay datos aún."
+msgstr "No hay datos aún."
+
+msgid "Evolución de Ingresos (30 días)"
+msgstr "Evolución de Ingresos (30 días)"
+
+msgid "Actualizado hoy"
+msgstr "Actualizado hoy"
+
+msgid "Previsión Trimestral"
+msgstr "Previsión Trimestral"
+
+msgid "Basado en"
+msgstr "Basado en"
+
+msgid "meses"
+msgstr "meses"
+
+msgid "Total Proyectado (3 meses)"
+msgstr "Total Proyectado (3 meses)"
+
+msgid "Promedio"
+msgstr "Promedio"
+
+msgid "mes"
+msgstr "mes"
+
+msgid "TENDENCIA"
+msgstr "TENDENCIA"
+
+msgid "HISTÓRICO"
+msgstr "HISTÓRICO"
+
+msgid "Desglose Mensual"
+msgstr "Desglose Mensual"
+
+msgid "Confianza"
+msgstr "Confianza"
+
+# ==========================================
+# CLIENTS LIST
+# ==========================================
+
+msgid "Clientes"
+msgstr "Clientes"
+
+msgid "Listado de Clientes"
+msgstr "Listado de Clientes"
+
+msgid "Gestiona los socios de este gimnasio"
+msgstr "Gestiona los socios de este gimnasio"
+
+msgid "Importar CSV"
+msgstr "Importar CSV"
+
+msgid "Descargar"
+msgstr "Descargar"
+
+msgid "Descargar Excel"
+msgstr "Descargar Excel"
+
+msgid "Descargar PDF"
+msgstr "Descargar PDF"
+
+msgid "Nuevo Cliente"
+msgstr "Nuevo Cliente"
+
+msgid "Buscar"
+msgstr "Buscar"
+
+msgid "Nombre, email, teléfono"
+msgstr "Nombre, email, teléfono"
+
+msgid "Todos"
+msgstr "Todos"
+
+msgid "Todas"
+msgstr "Todas"
+
+msgid "Activo"
+msgstr "Activo"
+
+msgid "Inactivo"
+msgstr "Inactivo"
+
+msgid "Excedencia"
+msgstr "Excedencia"
+
+msgid "Bloqueado"
+msgstr "Bloqueado"
+
+msgid "Tipo de cliente"
+msgstr "Tipo de cliente"
+
+msgid "Solo empresas"
+msgstr "Solo empresas"
+
+msgid "Solo particulares"
+msgstr "Solo particulares"
+
+msgid "Tipo de cuota"
+msgstr "Tipo de cuota"
+
+msgid "Servicio"
+msgstr "Servicio"
+
+msgid "Producto"
+msgstr "Producto"
+
+msgid "Origen de alta"
+msgstr "Origen de alta"
+
+msgid "Pasarela Pago"
+msgstr "Pasarela Pago"
+
+msgid "Género"
+msgstr "Género"
+
+msgid "Masculino"
+msgstr "Masculino"
+
+msgid "Femenino"
+msgstr "Femenino"
+
+msgid "Otro"
+msgstr "Otro"
+
+msgid "No especificado"
+msgstr "No especificado"
+
+msgid "Edad"
+msgstr "Edad"
+
+msgid "Desde"
+msgstr "Desde"
+
+msgid "Hasta"
+msgstr "Hasta"
+
+msgid "Etiquetas"
+msgstr "Etiquetas"
+
+msgid "Sin etiquetas configuradas"
+msgstr "Sin etiquetas configuradas"
+
+msgid "Limpiar"
+msgstr "Limpiar"
+
+msgid "Aplicar filtros"
+msgstr "Aplicar filtros"
+
+msgid "Cliente"
+msgstr "Cliente"
+
+msgid "Estado"
+msgstr "Estado"
+
+msgid "Pasarela"
+msgstr "Pasarela"
+
+msgid "Campos"
+msgstr "Campos"
+
+msgid "Email / Tlf"
+msgstr "Email / Tlf"
+
+msgid "Cliente sin nombre"
+msgstr "Cliente sin nombre"
+
+msgid "Empresa"
+msgstr "Empresa"
+
+msgid "Prospecto"
+msgstr "Prospecto"
+
+msgid "Mostrando"
+msgstr "Mostrando"
+
+msgid "de"
+msgstr "de"
+
+msgid "clientes"
+msgstr "clientes"
+
+msgid "Anterior"
+msgstr "Anterior"
+
+msgid "Siguiente"
+msgstr "Siguiente"
+
+msgid "No hay clientes aún"
+msgstr "No hay clientes aún"
+
+msgid "Empieza registrando un nuevo socio o prospecto."
+msgstr "Empieza registrando un nuevo socio o prospecto."
+
+msgid "Crear primer cliente"
+msgstr "Crear primer cliente"
+
+# ==========================================
+# MEMBERSHIPS
+# ==========================================
+
+msgid "Cuotas y Suscripciones"
+msgstr "Cuotas y Suscripciones"
+
+msgid "Gestión de planes de acceso"
+msgstr "Gestión de planes de acceso"
+
+msgid "Nueva Cuota"
+msgstr "Nueva Cuota"
+
+msgid "Recurrente"
+msgstr "Recurrente"
+
+msgid "Bono / Pack"
+msgstr "Bono / Pack"
+
+msgid "Pago Único"
+msgstr "Pago Único"
+
+msgid "Incluye"
+msgstr "Incluye"
+
+msgid "Sin reglas definidas"
+msgstr "Sin reglas definidas"
+
+msgid "más"
+msgstr "más"
+
+msgid "No hay planes"
+msgstr "No hay planes"
+
+msgid "Crea tu primera cuota mensual o bono de sesiones."
+msgstr "Crea tu primera cuota mensual o bono de sesiones."
+
+# ==========================================
+# STAFF
+# ==========================================
+
+msgid "Equipo"
+msgstr "Equipo"
+
+msgid "Gestión de empleados y colaboradores"
+msgstr "Gestión de empleados y colaboradores"
+
+msgid "Empleados"
+msgstr "Empleados"
+
+msgid "Nuevo Empleado"
+msgstr "Nuevo Empleado"
+
+msgid "Empleado"
+msgstr "Empleado"
+
+msgid "Rol"
+msgstr "Rol"
+
+msgid "Fichaje"
+msgstr "Fichaje"
+
+msgid "Acciones"
+msgstr "Acciones"
+
+msgid "Ver Ficha"
+msgstr "Ver Ficha"
+
+msgid "No hay empleados registrados."
+msgstr "No hay empleados registrados."
+
+# ==========================================
+# ACTIVITIES
+# ==========================================
+
+msgid "Actividades"
+msgstr "Actividades"
+
+msgid "Gestión de clases y servicios grupales"
+msgstr "Gestión de clases y servicios grupales"
+
+msgid "Exportar"
+msgstr "Exportar"
+
+msgid "Nueva Clase"
+msgstr "Nueva Clase"
+
+msgid "No hay clases definidas."
+msgstr "No hay clases definidas."
+
+# ==========================================
+# FINANCE / EXPENSES
+# ==========================================
+
+msgid "Gestión de Gastos"
+msgstr "Gestión de Gastos"
+
+msgid "Control total de gastos y proveedores"
+msgstr "Control total de gastos y proveedores"
+
+msgid "Generar Recurrentes"
+msgstr "Generar Recurrentes"
+
+msgid "Nuevo Gasto"
+msgstr "Nuevo Gasto"
+
+msgid "gastos registrados"
+msgstr "gastos registrados"
+
+msgid "Base"
+msgstr "Base"
+
+msgid "sin impuestos"
+msgstr "sin impuestos"
+
+msgid "IVA"
+msgstr "IVA"
+
+msgid "impuestos"
+msgstr "impuestos"
+
+msgid "con IVA"
+msgstr "con IVA"
+
+msgid "Pagado"
+msgstr "Pagado"
+
+msgid "abonado"
+msgstr "abonado"
+
+msgid "Tienes"
+msgstr "Tienes"
+
+msgid "gasto(s) pendiente(s) de pago"
+msgstr "gasto(s) pendiente(s) de pago"
+
+msgid "gasto(s) vencido(s)"
+msgstr "gasto(s) vencido(s)"
+
+msgid "Período"
+msgstr "Período"
+
+msgid "Hoy"
+msgstr "Hoy"
+
+msgid "Esta Semana"
+msgstr "Esta Semana"
+
+msgid "Este Mes"
+msgstr "Este Mes"
+
+msgid "Trimestre"
+msgstr "Trimestre"
+
+msgid "Proveedores"
+msgstr "Proveedores"
+
+msgid "Categorías"
+msgstr "Categorías"
+
+msgid "Proveedor"
+msgstr "Proveedor"
+
+msgid "Categoría"
+msgstr "Categoría"
+
+msgid "Sí"
+msgstr "Sí"
+
+msgid "No"
+msgstr "No"
+
+msgid "Filtrar"
+msgstr "Filtrar"
+
+msgid "Fecha"
+msgstr "Fecha"
+
+msgid "Concepto"
+msgstr "Concepto"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Vence"
+msgstr "Vence"
+
+msgid "Sin proveedor"
+msgstr "Sin proveedor"
+
+msgid "Sin categoría"
+msgstr "Sin categoría"
+
+msgid "Vencido"
+msgstr "Vencido"
+
+msgid "Parcial"
+msgstr "Parcial"
+
+msgid "Pendiente"
+msgstr "Pendiente"
+
+msgid "No hay gastos registrados"
+msgstr "No hay gastos registrados"
+
+msgid "Empieza creando tu primer gasto"
+msgstr "Empieza creando tu primer gasto"
+
+msgid "Crear Primer Gasto"
+msgstr "Crear Primer Gasto"
+
+# ==========================================
+# SALES / POS
+# ==========================================
+
+msgid "Punto de Venta"
+msgstr "Punto de Venta"
+
+msgid "Buscar productos, servicios o cuotas..."
+msgstr "Buscar productos, servicios o cuotas..."
+
+msgid "No se encontraron resultados."
+msgstr "No se encontraron resultados."
+
+msgid "Cliente"
+msgstr "Cliente"
+
+msgid "Buscar cliente..."
+msgstr "Buscar cliente..."
+
+msgid "Anónimo"
+msgstr "Anónimo"
+
+msgid "Opciones de Venta (Fecha / Staff)"
+msgstr "Opciones de Venta (Fecha / Staff)"
+
+msgid "Hora"
+msgstr "Hora"
+
+msgid "Cobrado por"
+msgstr "Cobrado por"
+
+msgid "El carrito está vacío"
+msgstr "El carrito está vacío"
+
+msgid "Subtotal"
+msgstr "Subtotal"
+
+msgid "Descuento"
+msgstr "Descuento"
+
+msgid "Cobrar"
+msgstr "Cobrar"
+
+msgid "Diferir Cobro"
+msgstr "Diferir Cobro"
+
+msgid "Total a Diferir"
+msgstr "Total a Diferir"
+
+msgid "Fecha de Cobro Programada"
+msgstr "Fecha de Cobro Programada"
+
+msgid "El cobro se realizará en esta fecha"
+msgstr "El cobro se realizará en esta fecha"
+
+msgid "Cobro Automático"
+msgstr "Cobro Automático"
+
+msgid "Si el cliente tiene tarjeta guardada, se cobrará automáticamente en la fecha indicada"
+msgstr "Si el cliente tiene tarjeta guardada, se cobrará automáticamente en la fecha indicada"
+
+msgid "Notas (opcional)"
+msgstr "Notas (opcional)"
+
+msgid "Ej: Cliente paga en su próxima visita, pidió esperar a final de mes..."
+msgstr "Ej: Cliente paga en su próxima visita, pidió esperar a final de mes..."
+
+msgid "Confirmar Venta Diferida"
+msgstr "Confirmar Venta Diferida"
+
+msgid "La venta quedará guardada y aparecerá en 'Cobros Futuros'"
+msgstr "La venta quedará guardada y aparecerá en 'Cobros Futuros'"
+
+msgid "¡Venta Diferida Guardada!"
+msgstr "¡Venta Diferida Guardada!"
+
+msgid "Fecha de cobro:"
+msgstr "Fecha de cobro:"
+
+msgid "Importe:"
+msgstr "Importe:"
+
+msgid "Cobro automático:"
+msgstr "Cobro automático:"
+
+msgid "Activado"
+msgstr "Activado"
+
+msgid "Puedes ver y gestionar esta venta en"
+msgstr "Puedes ver y gestionar esta venta en"
+
+msgid "Facturación → Cobros Futuros"
+msgstr "Facturación → Cobros Futuros"
+
+msgid "Aceptar"
+msgstr "Aceptar"
+
+msgid "Finalizar Cobro"
+msgstr "Finalizar Cobro"
+
+msgid "Total a Cobrar"
+msgstr "Total a Cobrar"
+
+msgid "Métodos de Pago"
+msgstr "Métodos de Pago"
+
+msgid "+ Agregar Otro Pago"
+msgstr "+ Agregar Otro Pago"
+
+msgid "Acción Post-Venta"
+msgstr "Acción Post-Venta"
+
+msgid "Solo Guardar"
+msgstr "Solo Guardar"
+
+msgid "Enviar Ticket (Email)"
+msgstr "Enviar Ticket (Email)"
+
+msgid "Generar Factura y Enviar"
+msgstr "Generar Factura y Enviar"
+
+# ==========================================
+# SETTINGS DASHBOARD
+# ==========================================
+
+msgid "Hub de Ajustes"
+msgstr "Hub de Ajustes"
+
+msgid "Empresa"
+msgstr "Empresa"
+
+msgid "Datos, branding y ubicación"
+msgstr "Datos, branding y ubicación"
+
+msgid "Perfil del Centro"
+msgstr "Perfil del Centro"
+
+msgid "Horarios de Apertura"
+msgstr "Horarios de Apertura"
+
+msgid "Portal Público"
+msgstr "Portal Público"
+
+msgid "Widgets embebibles y códigos"
+msgstr "Widgets embebibles y códigos"
+
+msgid "Código Widget Horarios & Precios"
+msgstr "Código Widget Horarios & Precios"
+
+msgid "Equipo"
+msgstr "Equipo"
+
+msgid "Usuarios, roles y permisos"
+msgstr "Usuarios, roles y permisos"
+
+msgid "Ver Usuarios"
+msgstr "Ver Usuarios"
+
+msgid "Roles y Permisos"
+msgstr "Roles y Permisos"
+
+msgid "Configurar Incentivos"
+msgstr "Configurar Incentivos"
+
+msgid "Servicios"
+msgstr "Servicios"
+
+msgid "Actividades, cuotas y productos"
+msgstr "Actividades, cuotas y productos"
+
+msgid "Servicios y Categorías"
+msgstr "Servicios y Categorías"
+
+msgid "Actividades Grupales"
+msgstr "Actividades Grupales"
+
+msgid "Planes de Membresía"
+msgstr "Planes de Membresía"
+
+msgid "Productos y Tienda"
+msgstr "Productos y Tienda"
+
+msgid "Configuración de Horarios"
+msgstr "Configuración de Horarios"
+
+msgid "Validaciones, reservas y restricciones"
+msgstr "Validaciones, reservas y restricciones"
+
+msgid "Configurar Sistema de Horarios"
+msgstr "Configurar Sistema de Horarios"
+
+msgid "Asistencias"
+msgstr "Asistencias"
+
+msgid "Check-in QR y control de acceso"
+msgstr "Check-in QR y control de acceso"
+
+msgid "Configuración Check-in"
+msgstr "Configuración Check-in"
+
+msgid "Proyectar QR de Clases"
+msgstr "Proyectar QR de Clases"
+
+msgid "Valoraciones de Clases"
+msgstr "Valoraciones de Clases"
+
+msgid "Catálogo, precios y órdenes"
+msgstr "Catálogo, precios y órdenes"
+
+msgid "Listado de Proveedores"
+msgstr "Listado de Proveedores"
+
+msgid "Órdenes de Compra"
+msgstr "Órdenes de Compra"
+
+msgid "Finanzas"
+msgstr "Finanzas"
+
+msgid "Impuestos y pasarelas de pago"
+msgstr "Impuestos y pasarelas de pago"
+
+msgid "Impuestos y Métodos de Pago"
+msgstr "Impuestos y Métodos de Pago"
+
+msgid "App del Cliente"
+msgstr "App del Cliente"
+
+msgid "Portal y acciones del cliente"
+msgstr "Portal y acciones del cliente"
+
+msgid "Permisos de App"
+msgstr "Permisos de App"
+
+msgid "Clientes"
+msgstr "Clientes"
+
+msgid "Campos, reservas y duplicados"
+msgstr "Campos, reservas y duplicados"
+
+msgid "Campos personalizados y flags"
+msgstr "Campos personalizados y flags"
+
+msgid "Configuración de reservas"
+msgstr "Configuración de reservas"
+
+msgid "Gestión de duplicados"
+msgstr "Gestión de duplicados"
+
+msgid "Leads, email y campañas"
+msgstr "Leads, email y campañas"
+
+msgid "Pipeline de Leads"
+msgstr "Pipeline de Leads"
+
+msgid "Configuración Email (SMTP)"
+msgstr "Configuración Email (SMTP)"
+
+msgid "Sistema"
+msgstr "Sistema"
+
+msgid "Integraciones y avanzado"
+msgstr "Integraciones y avanzado"
+
+msgid "Logs de Auditoría"
+msgstr "Logs de Auditoría"
+
+msgid "Hardware TPV (Terminales)"
+msgstr "Hardware TPV (Terminales)"

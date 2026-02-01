@@ -28,9 +28,58 @@
                 <h2 class="text-xl font-bold text-slate-800">Planes y Cuotas</h2>
             </div>
             
+            <!-- Alerta si tiene cuota activa y está bloqueada la compra duplicada -->
+            {% if has_active_membership and not portal_settings.allow_duplicate_membership_purchase %}
+            <div class="mb-6 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-amber-800 mb-1">Ya tienes una cuota activa</h4>
+                        <p class="text-sm text-amber-700">{{ portal_settings.duplicate_membership_message|default:"Ya tienes una cuota activa. Si deseas renovarla, ve a 'Mi Cuota' y selecciona 'Renovar'." }}</p>
+                        <a href="{% url 'portal_membership' %}" class="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-amber-700 hover:text-amber-900">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                            </svg>
+                            Ver mi cuota actual
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Banner de cambio programado -->
+            {% if scheduled_change %}
+            <div class="mb-6 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-emerald-800 mb-1">Cambio de plan programado</h4>
+                        <p class="text-sm text-emerald-700">
+                            Tu plan cambiará a <strong>{{ scheduled_change.new_plan.name }}</strong> el 
+                            <strong>{{ scheduled_change.scheduled_date|date:"d/m/Y" }}</strong>
+                        </p>
+                        <form method="post" action="{% url 'portal_cancel_scheduled_change' scheduled_change.id %}" class="mt-2">
+                            {% csrf_token %}
+                            <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-800 underline">
+                                Cancelar cambio programado
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {% for plan in membership_plans %}
-                <div class="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow border-2 border-slate-100 overflow-hidden">
+                <div class="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow border-2 border-slate-100 overflow-hidden {% if has_active_membership and not portal_settings.allow_duplicate_membership_purchase %}opacity-60{% endif %}">
                     {% if plan.image %}
                     <img src="{{ plan.image.url }}" alt="{{ plan.name }}" class="w-full h-40 object-cover">
                     {% else %}
@@ -55,9 +104,29 @@
                             {% endif %}
                         </div>
                         
-                        <button onclick="contactGym('{{ plan.name }}')" class="w-full bg-[var(--brand-color)] hover:bg-[var(--brand-color-hover)] text-white font-semibold py-3 rounded-xl transition-colors">
-                            Solicitar Información
-                        </button>
+                        {% if has_active_membership and not portal_settings.allow_duplicate_membership_purchase %}
+                            <!-- Botón bloqueado -->
+                            <button disabled class="w-full bg-slate-300 text-slate-500 font-semibold py-3 rounded-xl cursor-not-allowed">
+                                <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                                No disponible
+                            </button>
+                        {% elif has_active_membership and portal_settings.allow_membership_change_at_renewal and has_payment_method %}
+                            <!-- Botón de programar cambio -->
+                            <button onclick="scheduleChange('{{ plan.id }}', '{{ plan.name }}', '{{ plan.final_price }}')" 
+                                class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                                </svg>
+                                Cambiar a este plan
+                            </button>
+                        {% else %}
+                            <!-- Botón normal -->
+                            <button onclick="contactGym('{{ plan.name }}')" class="w-full bg-[var(--brand-color)] hover:bg-[var(--brand-color-hover)] text-white font-semibold py-3 rounded-xl transition-colors">
+                                Solicitar Información
+                            </button>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -192,10 +261,87 @@
     </div>
 </div>
 
+<!-- Modal de cambio de plan -->
+<div id="scheduleChangeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white">
+            <h3 class="font-bold text-lg flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                </svg>
+                Programar Cambio de Plan
+            </h3>
+        </div>
+        
+        <form id="scheduleChangeForm" method="post" action="{% url 'portal_schedule_membership_change' %}">
+            {% csrf_token %}
+            <input type="hidden" name="plan_id" id="newPlanId">
+            
+            <div class="p-6 space-y-4">
+                <div class="p-4 bg-slate-50 rounded-xl">
+                    <p class="text-sm text-slate-600 mb-2">Tu nuevo plan será:</p>
+                    <p class="font-bold text-lg text-slate-900" id="newPlanName"></p>
+                    <p class="text-[var(--brand-color)] font-semibold" id="newPlanPrice"></p>
+                </div>
+                
+                <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-xl">
+                    <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="text-sm text-blue-700">
+                        <p>El cambio se aplicará automáticamente cuando finalice tu cuota actual. Se desactivará la cuota anterior y se activará la nueva.</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start gap-3 p-4 bg-amber-50 rounded-xl">
+                    <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <div class="text-sm text-amber-700">
+                        <p>El cobro se realizará con la tarjeta que tienes guardada.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+                <button type="button" onclick="closeScheduleModal()" class="flex-1 py-3 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" class="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors">
+                    Confirmar Cambio
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function contactGym(itemName) {
     // Redirigir al chat con mensaje pre-cargado
     window.location.href = "{% url 'portal_chat' %}?item=" + encodeURIComponent(itemName);
 }
+
+function scheduleChange(planId, planName, planPrice) {
+    document.getElementById('newPlanId').value = planId;
+    document.getElementById('newPlanName').textContent = planName;
+    document.getElementById('newPlanPrice').textContent = planPrice + '€';
+    
+    const modal = document.getElementById('scheduleChangeModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeScheduleModal() {
+    const modal = document.getElementById('scheduleChangeModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('scheduleChangeModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeScheduleModal();
+    }
+});
 </script>
 {% endblock %}

@@ -41,7 +41,8 @@ from .profile_views import (
 )
 from .shop_views import (
     ShopView,
-    RequestInfoView
+    RequestInfoView,
+    ScheduleMembershipChangeView
 )
 from .document_views import (
     DocumentListView,
@@ -125,6 +126,7 @@ urlpatterns = [
     # Shop (Mobile App)
     path('shop/', ShopView.as_view(), name='api_shop'),
     path('shop/request-info/', RequestInfoView.as_view(), name='api_shop_request_info'),
+    path('shop/schedule-change/', ScheduleMembershipChangeView.as_view(), name='api_shop_schedule_change'),
     
     # Documents (Mobile App)
     path('documents/', DocumentListView.as_view(), name='api_documents_list'),

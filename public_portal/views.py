@@ -343,10 +343,39 @@ def public_pricing(request, slug):
         is_visible_online=True
     ).order_by('display_order', 'base_price')
     
+    # Verificar elegibilidad de ofertas para nuevos clientes
+    client = None
+    if request.user.is_authenticated:
+        try:
+            client = Client.objects.get(user=request.user, gym=gym)
+        except Client.DoesNotExist:
+            pass
+    
+    # Añadir info de elegibilidad a cada plan
+    plans_with_eligibility = []
+    for plan in plans:
+        plan_data = {
+            'plan': plan,
+            'is_eligible': True,
+            'ineligible_reason': '',
+            'show_badge': plan.is_new_client_only and plan.new_client_badge_text
+        }
+        
+        if plan.is_new_client_only and client:
+            is_eligible, reason = plan.is_client_eligible(client)
+            plan_data['is_eligible'] = is_eligible
+            plan_data['ineligible_reason'] = reason
+        elif plan.is_new_client_only and not client:
+            # Usuario no autenticado - mostramos como elegible (comprobará al comprar)
+            plan_data['is_eligible'] = True
+        
+        plans_with_eligibility.append(plan_data)
+    
     context = {
         'gym': gym,
         'settings': settings,
-        'plans': plans,
+        'plans': plans_with_eligibility,
+        'client': client,
     }
     
     return render(request, 'public_portal/pricing.html', context)
@@ -375,6 +404,13 @@ def public_plan_purchase(request, slug, plan_id):
     
     # Obtener el plan
     plan = get_object_or_404(MembershipPlan, id=plan_id, gym=gym, is_active=True, is_visible_online=True)
+    
+    # Verificar elegibilidad para ofertas de nuevos clientes
+    if plan.is_new_client_only:
+        is_eligible, reason = plan.is_client_eligible(client)
+        if not is_eligible:
+            messages.error(request, reason)
+            return redirect('public_pricing', slug=slug)
     
     # Obtener métodos de pago disponibles
     from finance.models import PaymentMethod
@@ -638,7 +674,7 @@ def public_client_profile(request, slug):
         active_membership.sessions_percentage = int(
             (active_membership.sessions_used or 0) / active_membership.sessions_total * 100
         )
-        active_membership.sessions_remaining = active_membership.sessions_total - (active_membership.sessions_used or 0)
+        # sessions_remaining ya es una propiedad calculada del modelo
     
     # Estadísticas del cliente
     from activities.models import ActivitySessionBooking
@@ -770,6 +806,7 @@ def public_leaderboard(request, slug):
         'top_clients': top_clients,
         'my_progress': my_progress,
         'my_rank': my_rank,
+        'gamification_settings': gamification_settings,
     }
     
     return render(request, 'public_portal/leaderboard.html', context)

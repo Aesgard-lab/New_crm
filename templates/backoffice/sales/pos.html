@@ -1,10 +1,11 @@
 {% extends "backoffice/base.html" %}
+{% load i18n %}
 
 {% block page_title %}
 <div class="flex items-center gap-4">
     <div>
         <div class="font-bold text-xl">{{ title }}</div>
-        <div class="text-sm font-normal text-slate-500 mt-1">Punto de Venta</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">{% trans "Punto de Venta" %}</div>
     </div>
 </div>
 {% endblock %}
@@ -24,7 +25,7 @@
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
                 <input type="text" x-model="searchQuery" @input.debounce.300ms="searchProducts()"
-                    placeholder="Buscar productos, servicios o cuotas..."
+                    placeholder="{% trans 'Buscar productos, servicios o cuotas...' %}"
                     class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]">
             </div>
         </div>
@@ -73,7 +74,7 @@
 
             <template x-if="products.length === 0 && !isLoadingProducts">
                 <div class="text-center py-10 text-slate-400">
-                    <p>No se encontraron resultados.</p>
+                    <p>{% trans "No se encontraron resultados." %}</p>
                 </div>
             </template>
         </div>
@@ -83,7 +84,7 @@
     <div class="w-full lg:w-96 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <!-- Client Selector -->
         <div class="p-4 border-b border-slate-200 bg-slate-50">
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Cliente</label>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% trans "Cliente" %}</label>
             <div class="relative">
                 <div @click="showClientSearch = !showClientSearch; if (showClientSearch) searchClients();"
                     class="flex items-center justify-between w-full px-3 py-2 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300">
@@ -100,11 +101,11 @@
                     <div class="p-2 border-b border-slate-100">
                         <input x-model="clientQuery" @input.debounce.300ms="searchClients()" type="text"
                             class="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none"
-                            placeholder="Buscar cliente...">
+                            placeholder="{% trans 'Buscar cliente...' %}">
                     </div>
                     <div class="max-h-48 overflow-y-auto">
                         <div @click="selectClient(null)"
-                            class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-600 italic">Anónimo
+                            class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-600 italic">{% trans "Anónimo" %}
                         </div>
                         <template x-for="client in clientResults" :key="client.id">
                             <div @click="selectClient(client)"
@@ -122,7 +123,7 @@
         <div class="p-4 border-b border-slate-200 bg-white" x-data="{ showOptions: false }">
             <button @click="showOptions = !showOptions"
                 class="text-xs font-medium text-slate-500 hover:text-[var(--brand-color)] flex items-center gap-1 w-full justify-between">
-                <span>Opciones de Venta (Fecha / Staff)</span>
+                <span>{% trans "Opciones de Venta (Fecha / Staff)" %}</span>
                 <svg class="w-4 h-4 transition-transform" :class="{'rotate-180': showOptions}" fill="none"
                     stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -132,18 +133,18 @@
             <div x-show="showOptions" class="mt-3 space-y-3" x-transition>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fecha</label>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{% trans "Fecha" %}</label>
                         <input type="date" x-model="customDate"
                             class="w-full text-sm px-2 py-1 border border-slate-200 rounded-lg">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hora</label>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{% trans "Hora" %}</label>
                         <input type="time" x-model="customTime"
                             class="w-full text-sm px-2 py-1 border border-slate-200 rounded-lg">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cobrado por</label>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{% trans "Cobrado por" %}</label>
                     <select x-model="customStaffId"
                         class="w-full text-sm px-2 py-1 border border-slate-200 rounded-lg bg-white">
                         <option value="">Yo ({{ request.user.first_name }} {{ request.user.last_name }})</option>
@@ -212,7 +213,7 @@
                             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
                         </path>
                     </svg>
-                    <p class="text-sm font-medium">El carrito está vacío</p>
+                    <p class="text-sm font-medium">{% trans "El carrito está vacío" %}</p>
                 </div>
             </template>
         </div>
@@ -220,12 +221,12 @@
         <!-- Totals & Actions -->
         <div class="p-4 bg-white border-t border-slate-200 z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
             <div class="flex justify-between items-center mb-1 text-sm text-slate-500">
-                <span>Subtotal</span>
+                <span>{% trans "Subtotal" %}</span>
                 <span x-text="formatPrice(cartTotal)"></span>
             </div>
             <div class="flex justify-between items-center mb-4 text-sm text-[var(--brand-color)] font-medium"
                 x-show="totalDiscount > 0">
-                <span>Descuento</span>
+                <span>{% trans "Descuento" %}</span>
                 <span>- <span x-text="formatPrice(totalDiscount)"></span></span>
             </div>
             <div class="flex justify-between items-end mb-4 pt-2 border-t border-slate-100">
@@ -233,19 +234,21 @@
                 <span class="text-3xl font-bold text-slate-900" x-text="formatPrice(finalTotal)"></span>
             </div>
 
-            <button @click="openPaymentModal()" :disabled="cart.length === 0" style="background-color: #0f172a;"
-                class="w-full py-4 bg-[var(--brand-color)] hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 transition-all flex justify-between px-6 items-center">
-                <span>Cobrar</span>
+            <button @click="openPaymentModal()" :disabled="cart.length === 0"
+                class="w-full py-4 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-lg transition-all flex justify-between px-6 items-center hover:opacity-90"
+                style="background-color: var(--brand-color); box-shadow: 0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent);">
+                <span>{% trans "Cobrar" %}</span>
                 <span x-text="formatPrice(finalTotal)"></span>
             </button>
             
             <!-- Deferred Payment Button -->
             <button @click="openDeferredModal()" :disabled="cart.length === 0 || !selectedClient"
-                class="w-full mt-2 py-3 bg-slate-600 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2">
+                class="w-full mt-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 hover:opacity-90"
+                style="background-color: color-mix(in srgb, var(--brand-color) 70%, #334155);">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
-                <span>📅 Diferir Cobro</span>
+                <span>📅 {% trans "Diferir Cobro" %}</span>
             </button>
         </div>
     </div>
@@ -261,7 +264,7 @@
                     <svg class="w-5 h-5 text-[var(--brand-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    Diferir Cobro
+                    {% trans "Diferir Cobro" %}
                 </h3>
                 <button @click="isDeferredModalOpen = false" class="text-slate-400 hover:text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +277,7 @@
                 <!-- Order Summary -->
                 <div class="flex justify-between items-center mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <div>
-                        <div class="text-sm text-slate-500 font-medium">Total a Diferir</div>
+                        <div class="text-sm text-slate-500 font-medium">{% trans "Total a Diferir" %}</div>
                         <div class="text-xs text-slate-400" x-text="cart.length + ' artículo(s)'"></div>
                     </div>
                     <div class="text-2xl font-bold text-[var(--brand-color)]" x-text="formatPrice(finalTotal)"></div>
@@ -282,11 +285,11 @@
 
                 <!-- Scheduled Date -->
                 <div class="mb-4">
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Fecha de Cobro Programada</label>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{% trans "Fecha de Cobro Programada" %}</label>
                     <input type="date" x-model="deferredDate" 
                         :min="minDeferredDate"
                         class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]">
-                    <p class="text-xs text-slate-400 mt-1">El cobro se realizará en esta fecha</p>
+                    <p class="text-xs text-slate-400 mt-1">{% trans "El cobro se realizará en esta fecha" %}</p>
                 </div>
 
                 <!-- Auto Charge Option -->
@@ -295,17 +298,17 @@
                         <input type="checkbox" x-model="deferredAutoCharge"
                             class="w-5 h-5 mt-0.5 text-[var(--brand-color)] border-slate-300 rounded focus:ring-[var(--brand-color)]">
                         <div>
-                            <span class="font-medium text-slate-700">Cobro Automático</span>
-                            <p class="text-xs text-slate-500 mt-1">Si el cliente tiene tarjeta guardada, se cobrará automáticamente en la fecha indicada</p>
+                            <span class="font-medium text-slate-700">{% trans "Cobro Automático" %}</span>
+                            <p class="text-xs text-slate-500 mt-1">{% trans "Si el cliente tiene tarjeta guardada, se cobrará automáticamente en la fecha indicada" %}</p>
                         </div>
                     </label>
                 </div>
 
                 <!-- Notes -->
                 <div class="mb-6">
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Notas (opcional)</label>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{% trans "Notas (opcional)" %}</label>
                     <textarea x-model="deferredNotes" rows="2"
-                        placeholder="Ej: Cliente paga en su próxima visita, pidió esperar a final de mes..."
+                        placeholder="{% trans 'Ej: Cliente paga en su próxima visita, pidió esperar a final de mes...' %}"
                         class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)] resize-none"></textarea>
                 </div>
 
@@ -315,11 +318,11 @@
                     class="w-full py-4 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 text-lg">
                     <span x-show="processingDeferred"
                         class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
-                    <span x-show="!processingDeferred">Confirmar Venta Diferida</span>
+                    <span x-show="!processingDeferred">{% trans "Confirmar Venta Diferida" %}</span>
                 </button>
 
                 <p class="text-xs text-center text-slate-400 mt-4">
-                    La venta quedará guardada y aparecerá en "Cobros Futuros"
+                    {% trans "La venta quedará guardada y aparecerá en 'Cobros Futuros'" %}
                 </p>
             </div>
         </div>
@@ -338,32 +341,32 @@
                     </svg>
                 </div>
                 
-                <h3 class="text-xl font-bold text-slate-800 mb-2">¡Venta Diferida Guardada!</h3>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">{% trans "¡Venta Diferida Guardada!" %}</h3>
                 
                 <div class="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-2">
                     <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">Fecha de cobro:</span>
+                        <span class="text-slate-500">{% trans "Fecha de cobro:" %}</span>
                         <span class="font-bold text-slate-800" x-text="deferredSuccessModal.date"></span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">Importe:</span>
+                        <span class="text-slate-500">{% trans "Importe:" %}</span>
                         <span class="font-bold text-[var(--brand-color)]" x-text="deferredSuccessModal.amount"></span>
                     </div>
                     <div class="flex justify-between text-sm" x-show="deferredSuccessModal.autoCharge">
-                        <span class="text-slate-500">Cobro automático:</span>
-                        <span class="font-bold text-emerald-600">Activado</span>
+                        <span class="text-slate-500">{% trans "Cobro automático:" %}</span>
+                        <span class="font-bold text-emerald-600">{% trans "Activado" %}</span>
                     </div>
                 </div>
                 
                 <p class="text-sm text-slate-500 mb-6">
-                    Puedes ver y gestionar esta venta en<br>
-                    <strong class="text-slate-700">Facturación → Cobros Futuros</strong>
+                    {% trans "Puedes ver y gestionar esta venta en" %}<br>
+                    <strong class="text-slate-700">{% trans "Facturación → Cobros Futuros" %}</strong>
                 </p>
                 
                 <button @click="closeDeferredSuccessModal()"
                     style="background-color: var(--brand-color);"
                     class="w-full py-3 text-white rounded-xl font-bold hover:opacity-90 transition-all">
-                    Aceptar
+                    {% trans "Aceptar" %}
                 </button>
             </div>
         </div>
@@ -376,7 +379,7 @@
         <div @click.away="isPaymentModalOpen = false"
             class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 class="font-bold text-lg text-slate-800">Finalizar Cobro</h3>
+                <h3 class="font-bold text-lg text-slate-800">{% trans "Finalizar Cobro" %}</h3>
                 <button @click="isPaymentModalOpen = false" class="text-slate-400 hover:text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
@@ -388,17 +391,16 @@
             <div class="p-6">
                 <!-- Recap -->
                 <div class="flex justify-between items-center mb-6 p-5 bg-slate-50 rounded-xl border border-slate-200">
-                    <div class="text-sm text-slate-500 font-medium">Total a Cobrar</div>
+                    <div class="text-sm text-slate-500 font-medium">{% trans "Total a Cobrar" %}</div>
                     <div class="text-3xl font-bold text-[var(--brand-color)]" x-text="formatPrice(finalTotal)"></div>
                 </div>
 
                 <!-- Payment Method (Split Payment) -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-3">
-                        <label class="block text-sm font-semibold text-slate-700">Métodos de Pago</label>
+                        <label class="block text-sm font-semibold text-slate-700">{% trans "Métodos de Pago" %}</label>
                         <button @click="addPaymentLine()" x-show="remainingAmount > 0"
-                            class="text-xs font-bold text-[var(--brand-color)] hover:underline">+ Agregar Otro
-                            Pago</button>
+                            class="text-xs font-bold text-[var(--brand-color)] hover:underline">{% trans "+ Agregar Otro Pago" %}</button>
                     </div>
 
                     <div class="space-y-2">
@@ -434,34 +436,33 @@
 
                 <!-- Action Selection -->
                 <div class="mb-8">
-                    <label class="block text-sm font-semibold text-slate-700 mb-3">Acción Post-Venta</label>
+                    <label class="block text-sm font-semibold text-slate-700 mb-3">{% trans "Acción Post-Venta" %}</label>
                     <div class="space-y-2">
                         <label
                             class="flex items-center p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="radio" value="NONE" x-model="postAction"
                                 class="w-5 h-5 text-[var(--brand-color)] border-gray-300 focus:ring-[var(--brand-color)]">
-                            <span class="ml-3 text-sm font-medium text-slate-700">Solo Guardar</span>
+                            <span class="ml-3 text-sm font-medium text-slate-700">{% trans "Solo Guardar" %}</span>
                         </label>
                         <label
                             class="flex items-center p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="radio" value="TICKET" x-model="postAction"
                                 class="w-5 h-5 text-[var(--brand-color)] border-gray-300 focus:ring-[var(--brand-color)]">
-                            <span class="ml-3 text-sm font-medium text-slate-700">Enviar Ticket (Email)</span>
+                            <span class="ml-3 text-sm font-medium text-slate-700">{% trans "Enviar Ticket (Email)" %}</span>
                         </label>
                         <label
                             class="flex items-center p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="radio" value="INVOICE" x-model="postAction"
                                 class="w-5 h-5 text-[var(--brand-color)] border-gray-300 focus:ring-[var(--brand-color)]">
-                            <span class="ml-3 text-sm font-medium text-slate-700">Generar Factura y Enviar</span>
+                            <span class="ml-3 text-sm font-medium text-slate-700">{% trans "Generar Factura y Enviar" %}</span>
                         </label>
                     </div>
                 </div>
 
                 <!-- Confirm Button -->
-                <!-- Fixed bg-blue-600 fallback and ensured text-white for visibility -->
                 <button @click="processPayment()" :disabled="processing || remainingAmount > 0.01"
-                    style="background-color: #2563EB !important; color: white !important;"
-                    class="w-full py-4 bg-blue-600 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xl shadow-blue-500/10 transition-all flex items-center justify-center gap-2 text-lg">
+                    class="w-full py-4 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 text-lg hover:opacity-90"
+                    style="background-color: var(--brand-color); box-shadow: 0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent);">
                     <span x-show="processing"
                         class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
                     <span x-show="!processing" x-text="buttonText">

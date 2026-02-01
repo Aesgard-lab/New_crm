@@ -1,14 +1,15 @@
 {% extends "backoffice/base.html" %}
 {% load gym_tags %}
+{% load i18n %}
 
-{% block page_title %}Clientes{% endblock %}
+{% block page_title %}{% trans "Clientes" %}{% endblock %}
 
 {% block content %}
 <div class="bg-white border border-slate-200 rounded-3xl p-6">
   <div class="flex items-center justify-between mb-6">
     <div>
-      <h2 class="text-lg font-semibold">Listado de Clientes</h2>
-      <div class="text-sm text-slate-500">Gestiona los socios de este gimnasio</div>
+      <h2 class="text-lg font-semibold">{% trans "Listado de Clientes" %}</h2>
+      <div class="text-sm text-slate-500">{% trans "Gestiona los socios de este gimnasio" %}</div>
     </div>
 
     <div class="flex gap-2">
@@ -20,7 +21,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
           </svg>
-          Importar CSV
+          {% trans "Importar CSV" %}
         </a>
         
         <!-- Dropdown Exportar -->
@@ -29,7 +30,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12"></path>
             </svg>
-            Descargar
+            {% trans "Descargar" %}
             <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
             </svg>
@@ -40,20 +41,20 @@
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 4a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V4zm11-1a1 1 0 11-2 0 1 1 0 012 0z"/>
               </svg>
-              Descargar Excel
+              {% trans "Descargar Excel" %}
             </a>
             <a href="{% url 'client_export_pdf' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 last:rounded-b-xl flex items-center gap-2 border-t border-slate-100">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 10-2 0v2a1 1 0 01-1 1H6a1 1 0 110-2V4zm2 3a1 1 0 000 2h4a1 1 0 000-2H6z"/>
               </svg>
-              Descargar PDF
+              {% trans "Descargar PDF" %}
             </a>
           </div>
         </div>
         
         <a href="{% url 'client_create' %}"
           class="bg-white text-slate-500 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors">
-          + Nuevo Cliente
+          + {% trans "Nuevo Cliente" %}
         </a>
       </div>
       {% endif %}
@@ -63,98 +64,98 @@
   <form method="get" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Buscar</label>
-        <input type="text" name="q" value="{{ filters.q }}" placeholder="Nombre, email, teléfono"
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Buscar" %}</label>
+        <input type="text" name="q" value="{{ filters.q }}" placeholder="{% trans "Nombre, email, teléfono" %}"
           class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Estado</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Estado" %}</label>
         <select name="status"
           class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.status == 'all' %}selected{% endif %}>Todos</option>
-          <option value="ACTIVE" {% if filters.status == 'ACTIVE' %}selected{% endif %}>Activo</option>
+          <option value="all" {% if filters.status == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
+          <option value="ACTIVE" {% if filters.status == 'ACTIVE' %}selected{% endif %}>{% trans "Activo" %}</option>
           <option value="LEAD" {% if filters.status == 'LEAD' %}selected{% endif %}>Lead</option>
-          <option value="INACTIVE" {% if filters.status == 'INACTIVE' %}selected{% endif %}>Inactivo</option>
-          <option value="PAUSED" {% if filters.status == 'PAUSED' %}selected{% endif %}>Excedencia</option>
-          <option value="BLOCKED" {% if filters.status == 'BLOCKED' %}selected{% endif %}>Bloqueado</option>
+          <option value="INACTIVE" {% if filters.status == 'INACTIVE' %}selected{% endif %}>{% trans "Inactivo" %}</option>
+          <option value="PAUSED" {% if filters.status == 'PAUSED' %}selected{% endif %}>{% trans "Excedencia" %}</option>
+          <option value="BLOCKED" {% if filters.status == 'BLOCKED' %}selected{% endif %}>{% trans "Bloqueado" %}</option>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Tipo de cliente</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Tipo de cliente" %}</label>
         <select name="company"
           class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.company == 'all' %}selected{% endif %}>Todos</option>
-          <option value="company" {% if filters.company == 'company' %}selected{% endif %}>Solo empresas</option>
-          <option value="individual" {% if filters.company == 'individual' %}selected{% endif %}>Solo particulares</option>
+          <option value="all" {% if filters.company == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
+          <option value="company" {% if filters.company == 'company' %}selected{% endif %}>{% trans "Solo empresas" %}</option>
+          <option value="individual" {% if filters.company == 'individual' %}selected{% endif %}>{% trans "Solo particulares" %}</option>
         </select>
       </div>
 
       <!-- Filtros avanzados -->
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Tipo de cuota</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Tipo de cuota" %}</label>
         <select name="membership_plan" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.membership_plan == 'all' %}selected{% endif %}>Todas</option>
+          <option value="all" {% if filters.membership_plan == 'all' %}selected{% endif %}>{% trans "Todas" %}</option>
           {% for plan in membership_plans %}
           <option value="{{ plan.id }}" {% if filters.membership_plan == plan.id|stringformat:'s' %}selected{% endif %}>{{ plan.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Servicio</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Servicio" %}</label>
         <select name="service" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.service == 'all' %}selected{% endif %}>Todos</option>
+          <option value="all" {% if filters.service == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
           {% for service in services %}
           <option value="{{ service.id }}" {% if filters.service == service.id|stringformat:'s' %}selected{% endif %}>{{ service.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Producto</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Producto" %}</label>
         <select name="product" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.product == 'all' %}selected{% endif %}>Todos</option>
+          <option value="all" {% if filters.product == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
           {% for product in products %}
           <option value="{{ product.id }}" {% if filters.product == product.id|stringformat:'s' %}selected{% endif %}>{{ product.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Origen de alta</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Origen de alta" %}</label>
         <select name="created_from" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.created_from == 'all' %}selected{% endif %}>Todos</option>
+          <option value="all" {% if filters.created_from == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
           <option value="app" {% if filters.created_from == 'app' %}selected{% endif %}>App</option>
           <option value="backoffice" {% if filters.created_from == 'backoffice' %}selected{% endif %}>Backoffice</option>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Pasarela Pago</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Pasarela Pago" %}</label>
         <select name="gateway" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.gateway == 'all' %}selected{% endif %}>Todas</option>
+          <option value="all" {% if filters.gateway == 'all' %}selected{% endif %}>{% trans "Todas" %}</option>
           <option value="stripe" {% if filters.gateway == 'stripe' %}selected{% endif %}>Stripe</option>
           <option value="redsys" {% if filters.gateway == 'redsys' %}selected{% endif %}>Redsys</option>
           <option value="auto" {% if filters.gateway == 'auto' %}selected{% endif %}>Auto (sin preferencia)</option>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Género</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Género" %}</label>
         <select name="gender" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>Todos</option>
-          <option value="M" {% if filters.gender == 'M' %}selected{% endif %}>Masculino</option>
-          <option value="F" {% if filters.gender == 'F' %}selected{% endif %}>Femenino</option>
-          <option value="O" {% if filters.gender == 'O' %}selected{% endif %}>Otro</option>
-          <option value="X" {% if filters.gender == 'X' %}selected{% endif %}>No especificado</option>
+          <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
+          <option value="M" {% if filters.gender == 'M' %}selected{% endif %}>{% trans "Masculino" %}</option>
+          <option value="F" {% if filters.gender == 'F' %}selected{% endif %}>{% trans "Femenino" %}</option>
+          <option value="O" {% if filters.gender == 'O' %}selected{% endif %}>{% trans "Otro" %}</option>
+          <option value="X" {% if filters.gender == 'X' %}selected{% endif %}>{% trans "No especificado" %}</option>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-2">Edad</label>
+        <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Edad" %}</label>
         <div class="grid grid-cols-2 gap-2">
-          <input type="number" name="age_min" min="0" max="120" value="{{ filters.age_min }}" placeholder="Desde" class="w-full rounded-xl border-slate-200 text-xs" />
-          <input type="number" name="age_max" min="0" max="120" value="{{ filters.age_max }}" placeholder="Hasta" class="w-full rounded-xl border-slate-200 text-xs" />
+          <input type="number" name="age_min" min="0" max="120" value="{{ filters.age_min }}" placeholder="{% trans "Desde" %}" class="w-full rounded-xl border-slate-200 text-xs" />
+          <input type="number" name="age_max" min="0" max="120" value="{{ filters.age_max }}" placeholder="{% trans "Hasta" %}" class="w-full rounded-xl border-slate-200 text-xs" />
         </div>
       </div>
     </div>
 
     <div class="mt-4">
-      <label class="block text-xs font-bold text-slate-600 mb-2">Etiquetas</label>
+      <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Etiquetas" %}</label>
       <div class="flex flex-wrap gap-2">
         {% for tag in tags %}
         <label
@@ -165,7 +166,7 @@
           <span class="font-medium text-slate-700">{{ tag.name }}</span>
         </label>
         {% empty %}
-        <p class="text-sm text-slate-400">Sin etiquetas configuradas</p>
+        <p class="text-sm text-slate-400">{% trans "Sin etiquetas configuradas" %}</p>
         {% endfor %}
       </div>
     </div>
@@ -199,11 +200,11 @@
     <div class="flex justify-end gap-2 mt-4 border-t border-slate-100 pt-4">
       <a href="{% url 'clients' %}"
         class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
-        Limpiar
+        {% trans "Limpiar" %}
       </a>
       <button type="submit"
         class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-sm hover:bg-indigo-700 transition-colors">
-        Aplicar filtros
+        {% trans "Aplicar filtros" %}
       </button>
     </div>
   </form>
@@ -213,12 +214,12 @@
     <table class="w-full text-left text-sm text-slate-500">
       <thead class="text-xs uppercase bg-slate-50 text-slate-700">
         <tr>
-          <th scope="col" class="px-6 py-3 rounded-l-xl">Cliente</th>
-          <th scope="col" class="px-6 py-3">Estado</th>
-          <th scope="col" class="px-6 py-3">Pasarela</th>
-          <th scope="col" class="px-6 py-3">Etiquetas</th>
-          <th scope="col" class="px-6 py-3">Campos</th>
-          <th scope="col" class="px-6 py-3 rounded-r-xl">Email / Tlf</th>
+          <th scope="col" class="px-6 py-3 rounded-l-xl">{% trans "Cliente" %}</th>
+          <th scope="col" class="px-6 py-3">{% trans "Estado" %}</th>
+          <th scope="col" class="px-6 py-3">{% trans "Pasarela" %}</th>
+          <th scope="col" class="px-6 py-3">{% trans "Etiquetas" %}</th>
+          <th scope="col" class="px-6 py-3">{% trans "Campos" %}</th>
+          <th scope="col" class="px-6 py-3 rounded-r-xl">{% trans "Email / Tlf" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -248,7 +249,7 @@
                   {% if fn or ln %}
                     {{ fn }}{% if fn and ln %} {% endif %}{{ ln }}
                   {% else %}
-                    Cliente sin nombre
+                    {% trans "Cliente sin nombre" %}
                   {% endif %}
                 {% endwith %}
               </a>
@@ -268,7 +269,7 @@
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9-4 9 4-9 4-9-4zm0 6l9 4 9-4" />
                 </svg>
-                Empresa
+                {% trans "Empresa" %}
               </div>
               {% endif %}
             </div>
@@ -278,19 +279,19 @@
           <td class="px-6 py-4">
             {% if client.status == 'ACTIVE' %}
             <span
-              class="bg-emerald-100 text-emerald-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-emerald-200">Activo</span>
+              class="bg-emerald-100 text-emerald-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-emerald-200">{% trans "Activo" %}</span>
             {% elif client.status == 'LEAD' %}
             <span
-              class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-blue-200">Prospecto</span>
+              class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-blue-200">{% trans "Prospecto" %}</span>
             {% elif client.status == 'INACTIVE' %}
             <span
-              class="bg-slate-100 text-slate-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-slate-200">Inactivo</span>
+              class="bg-slate-100 text-slate-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-slate-200">{% trans "Inactivo" %}</span>
             {% elif client.status == 'BLOCKED' %}
             <span
-              class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-red-200">Bloqueado</span>
+              class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-red-200">{% trans "Bloqueado" %}</span>
             {% elif client.status == 'PAUSED' %}
             <span
-              class="bg-amber-100 text-amber-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-amber-200">Excedencia</span>
+              class="bg-amber-100 text-amber-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full border border-amber-200">{% trans "Excedencia" %}</span>
             {% endif %}
           </td>
 
@@ -366,13 +367,13 @@
   {% if page_obj.has_other_pages %}
   <div class="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200 rounded-b-2xl">
     <div class="text-sm text-slate-600">
-      Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ paginator.count }} clientes
+      {% trans "Mostrando" %} {{ page_obj.start_index }} - {{ page_obj.end_index }} {% trans "de" %} {{ paginator.count }} {% trans "clientes" %}
     </div>
     <div class="flex gap-1">
       {% if page_obj.has_previous %}
       <a href="?{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
          class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-        &laquo; Anterior
+        &laquo; {% trans "Anterior" %}
       </a>
       {% endif %}
       
@@ -388,7 +389,7 @@
       {% if page_obj.has_next %}
       <a href="?{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
          class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-        Siguiente &raquo;
+        {% trans "Siguiente" %} &raquo;
       </a>
       {% endif %}
     </div>
@@ -402,14 +403,14 @@
         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
       </path>
     </svg>
-    <h3 class="text-lg font-medium text-slate-900">No hay clientes aún</h3>
-    <p class="mt-1 text-sm text-slate-500">Empieza registrando un nuevo socio o prospecto.</p>
+    <h3 class="text-lg font-medium text-slate-900">{% trans "No hay clientes aún" %}</h3>
+    <p class="mt-1 text-sm text-slate-500">{% trans "Empieza registrando un nuevo socio o prospecto." %}</p>
 
     {% if can_create %}
     <div class="mt-6">
       <a href="{% url 'client_create' %}"
         class="bg-white text-slate-500 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium hover:text-[var(--brand-color)] hover:border-[var(--brand-color)] transition-colors shadow-sm inline-block">
-        Crear primer cliente
+        {% trans "Crear primer cliente" %}
       </a>
     </div>
     {% endif %}

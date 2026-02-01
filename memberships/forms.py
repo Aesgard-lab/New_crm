@@ -19,7 +19,9 @@ class MembershipPlanForm(forms.ModelForm):
             'allow_pause', 'pause_fee', 'pause_min_days', 'pause_max_days', 
             'pause_max_per_year', 'pause_advance_notice_days',
             'pause_allows_gym_access', 'pause_allows_booking', 'pause_extends_end_date',
-            'is_active', 'is_visible_online'
+            'is_active', 'is_visible_online',
+            # New client only offers
+            'is_new_client_only', 'new_client_criteria', 'new_client_days_threshold', 'new_client_badge_text',
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
@@ -55,6 +57,12 @@ class MembershipPlanForm(forms.ModelForm):
             'prorate_first_month': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_visible_online': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            
+            # New client offers
+            'is_new_client_only': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500'}),
+            'new_client_criteria': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'new_client_days_threshold': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'new_client_badge_text': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': '🎁 Oferta Bienvenida'}),
         }
     
     propagate_to_gyms = forms.ModelMultipleChoiceField(

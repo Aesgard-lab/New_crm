@@ -62,7 +62,13 @@
             <div class="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center mb-2 border-4 border-slate-300">
                 <span class="text-xl font-bold text-slate-600">2</span>
             </div>
-            <p class="font-medium text-slate-800 text-sm truncate">{{ leaderboard.1.client.first_name }}</p>
+            <p class="font-medium text-slate-800 text-sm truncate">
+                {% if gamification_settings.hide_leaderboard_names and not leaderboard.1.is_current %}
+                    {{ leaderboard.1.client.first_name|slice:":1" }}.{{ leaderboard.1.client.last_name|slice:":1" }}.
+                {% else %}
+                    {{ leaderboard.1.client.first_name }}
+                {% endif %}
+            </p>
             <p class="text-xs text-slate-500">{{ leaderboard.1.xp|floatformat:0 }} XP</p>
             <div class="h-20 bg-slate-200 rounded-t-xl mt-2"></div>
         </div>
@@ -73,7 +79,13 @@
             <div class="w-20 h-20 mx-auto bg-amber-400 rounded-full flex items-center justify-center mb-2 border-4 border-amber-500 shadow-lg">
                 <span class="text-2xl font-bold text-white">1</span>
             </div>
-            <p class="font-bold text-slate-800 text-sm truncate">{{ leaderboard.0.client.first_name }}</p>
+            <p class="font-bold text-slate-800 text-sm truncate">
+                {% if gamification_settings.hide_leaderboard_names and not leaderboard.0.is_current %}
+                    {{ leaderboard.0.client.first_name|slice:":1" }}.{{ leaderboard.0.client.last_name|slice:":1" }}.
+                {% else %}
+                    {{ leaderboard.0.client.first_name }}
+                {% endif %}
+            </p>
             <p class="text-xs text-amber-600 font-medium">{{ leaderboard.0.xp|floatformat:0 }} XP</p>
             <div class="h-28 bg-amber-400 rounded-t-xl mt-2"></div>
         </div>
@@ -83,7 +95,13 @@
             <div class="w-16 h-16 mx-auto bg-orange-200 rounded-full flex items-center justify-center mb-2 border-4 border-orange-300">
                 <span class="text-xl font-bold text-orange-600">3</span>
             </div>
-            <p class="font-medium text-slate-800 text-sm truncate">{{ leaderboard.2.client.first_name }}</p>
+            <p class="font-medium text-slate-800 text-sm truncate">
+                {% if gamification_settings.hide_leaderboard_names and not leaderboard.2.is_current %}
+                    {{ leaderboard.2.client.first_name|slice:":1" }}.{{ leaderboard.2.client.last_name|slice:":1" }}.
+                {% else %}
+                    {{ leaderboard.2.client.first_name }}
+                {% endif %}
+            </p>
             <p class="text-xs text-slate-500">{{ leaderboard.2.xp|floatformat:0 }} XP</p>
             <div class="h-16 bg-orange-200 rounded-t-xl mt-2"></div>
         </div>
@@ -101,7 +119,11 @@
                 </div>
                 <div class="flex-1">
                     <p class="font-medium text-slate-800 {% if item.is_current %}text-indigo-600{% endif %}">
-                        {{ item.client.first_name }} {{ item.client.last_name|slice:":1" }}.
+                        {% if gamification_settings.hide_leaderboard_names and not item.is_current %}
+                            {{ item.client.first_name|slice:":1" }}.{{ item.client.last_name|slice:":1" }}.
+                        {% else %}
+                            {{ item.client.first_name }} {{ item.client.last_name|slice:":1" }}.
+                        {% endif %}
                         {% if item.is_current %}<span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">Tú</span>{% endif %}
                     </p>
                     <p class="text-xs text-slate-500">Nivel {{ item.level }}</p>

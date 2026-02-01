@@ -1,10 +1,11 @@
 {% extends "backoffice/base.html" %}
+{% load i18n %}
 
-{% block title %}Equipo - {{ request.gym.name }}{% endblock %}
+{% block title %}{% trans "Equipo" %} - {{ request.gym.name }}{% endblock %}
 
 {% block page_title %}
-<div>Equipo</div>
-<div class="text-sm font-normal text-slate-500 mt-1">Gestión de empleados y colaboradores</div>
+<div>{% trans "Equipo" %}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">{% trans "Gestión de empleados y colaboradores" %}</div>
 {% endblock %}
 
 {% block content %}
@@ -12,7 +13,7 @@
 <div class="mb-6 flex justify-between items-center">
   <div class="flex gap-2">
     <div class="text-xs text-slate-400 mr-2 border border-blue-200 bg-blue-50 px-2 py-1 rounded text-blue-700">
-      Gym {{ request.gym.id }} ({{ request.gym.name }}) | Empleados: {{ staff_members.count }}</div>
+      Gym {{ request.gym.id }} ({{ request.gym.name }}) | {% trans "Empleados" %}: {{ staff_members.count }}</div>
     <!-- Filtros podrían ir aquí -->
   </div>
   <div class="flex gap-2">
@@ -22,7 +23,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12"></path>
         </svg>
-        Descargar
+        {% trans "Descargar" %}
         <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
         </svg>
@@ -33,13 +34,13 @@
           <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
-          Descargar Excel
+          {% trans "Descargar Excel" %}
         </a>
         <a href="{% url 'staff_export_pdf' %}" class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 last:rounded-b-xl flex items-center gap-2 border-t border-slate-100">
           <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
           </svg>
-          Descargar PDF
+          {% trans "Descargar PDF" %}
         </a>
       </div>
     </div>
@@ -52,7 +53,7 @@
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
       </svg>
-      Nuevo Empleado
+      {% trans "Nuevo Empleado" %}
     </a>
     {% endif %}
   </div>
@@ -62,11 +63,11 @@
   <table class="w-full text-left text-sm text-slate-500">
     <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
       <tr>
-        <th class="px-6 py-4">Empleado</th>
-        <th class="px-6 py-4">Rol</th>
-        <th class="px-6 py-4">Estado</th>
-        <th class="px-6 py-4 text-center">Fichaje</th>
-        <th class="px-6 py-4 text-right">Acciones</th>
+        <th class="px-6 py-4">{% trans "Empleado" %}</th>
+        <th class="px-6 py-4">{% trans "Rol" %}</th>
+        <th class="px-6 py-4">{% trans "Estado" %}</th>
+        <th class="px-6 py-4 text-center">{% trans "Fichaje" %}</th>
+        <th class="px-6 py-4 text-right">{% trans "Acciones" %}</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
@@ -100,9 +101,9 @@
         </td>
         <td class="px-6 py-4">
           {% if member.is_active %}
-          <span class="text-emerald-600 text-xs font-medium bg-emerald-50 px-2 py-1 rounded-lg">Activo</span>
+          <span class="text-emerald-600 text-xs font-medium bg-emerald-50 px-2 py-1 rounded-lg">{% trans "Activo" %}</span>
           {% else %}
-          <span class="text-slate-400 text-xs font-medium bg-slate-50 px-2 py-1 rounded-lg">Inactivo</span>
+          <span class="text-slate-400 text-xs font-medium bg-slate-50 px-2 py-1 rounded-lg">{% trans "Inactivo" %}</span>
           {% endif %}
         </td>
         <td class="px-6 py-4 text-center">
@@ -118,7 +119,7 @@
         </td>
         <td class="px-6 py-4 text-right">
           <a href="{% url 'staff_detail' member.pk %}"
-            class="text-slate-400 hover:text-[var(--brand-color)] font-medium transition-colors">Ver Ficha</a>
+            class="text-slate-400 hover:text-[var(--brand-color)] font-medium transition-colors">{% trans "Ver Ficha" %}</a>
         </td>
       </tr>
       {% empty %}
@@ -131,7 +132,7 @@
               </path>
             </svg>
           </div>
-          <p>No hay empleados registrados.</p>
+          <p>{% trans "No hay empleados registrados." %}</p>
         </td>
       </tr>
       {% endfor %}

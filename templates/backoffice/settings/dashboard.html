@@ -1,8 +1,9 @@
 {% extends "backoffice/base.html" %}
+{% load i18n %}
 
-{% block title %}Configuración{% endblock %}
-{% block breadcrumb %}Configuración{% endblock %}
-{% block page_title %}Hub de Ajustes{% endblock %}
+{% block title %}{% trans "Configuración" %}{% endblock %}
+{% block breadcrumb %}{% trans "Configuración" %}{% endblock %}
+{% block page_title %}{% trans "Hub de Ajustes" %}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -21,18 +22,18 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Empresa</h3>
-                    <p class="text-sm text-slate-500">Datos, branding y ubicación</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Empresa" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Datos, branding y ubicación" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                    <span>Perfil del Centro</span>
+                    <span>{% trans "Perfil del Centro" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                    <span>Horarios de Apertura</span>
+                    <span>{% trans "Horarios de Apertura" %}</span>
                 </li>
             </ul>
         </a>
@@ -48,14 +49,14 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Portal Público</h3>
-                    <p class="text-sm text-slate-500">Widgets embebibles y códigos</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Portal Público" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Widgets embebibles y códigos" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                    <span>Código Widget Horarios & Precios</span>
+                    <span>{% trans "Código Widget Horarios & Precios" %}</span>
                 </li>
             </ul>
         </a>
@@ -71,22 +72,22 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Equipo</h3>
-                    <p class="text-sm text-slate-500">Usuarios, roles y permisos</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Equipo" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Usuarios, roles y permisos" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    <span>Ver Usuarios</span>
+                    <span>{% trans "Ver Usuarios" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    <span>Roles y Permisos</span>
+                    <span>{% trans "Roles y Permisos" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    <span>Configurar Incentivos</span>
+                    <span>{% trans "Configurar Incentivos" %}</span>
                 </li>
             </ul>
         </a>
@@ -102,26 +103,26 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Servicios</h3>
-                    <p class="text-sm text-slate-500">Actividades, cuotas y productos</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Servicios" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Actividades, cuotas y productos" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    <span>Servicios y Categorías</span>
+                    <span>{% trans "Servicios y Categorías" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    <span>Actividades Grupales</span>
+                    <span>{% trans "Actividades Grupales" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    <span>Planes de Membresía</span>
+                    <span>{% trans "Planes de Membresía" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    <span>Productos y Tienda</span>
+                    <span>{% trans "Productos y Tienda" %}</span>
                 </li>
             </ul>
         </a>
@@ -136,14 +137,14 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Configuración de Horarios</h3>
-                    <p class="text-sm text-slate-500">Validaciones, reservas y restricciones</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Configuración de Horarios" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Validaciones, reservas y restricciones" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                    <span>Configurar Sistema de Horarios</span>
+                    <span>{% trans "Configurar Sistema de Horarios" %}</span>
                 </li>
             </ul>
         </a>
@@ -157,22 +158,22 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Asistencias</h3>
-                    <p class="text-sm text-slate-500">Check-in QR y control de acceso</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Asistencias" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Check-in QR y control de acceso" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                    <span>Configuración Check-in</span>
+                    <span>{% trans "Configuración Check-in" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                    <span>Proyectar QR de Clases</span>
+                    <span>{% trans "Proyectar QR de Clases" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                    <span>Valoraciones de Clases</span>
+                    <span>{% trans "Valoraciones de Clases" %}</span>
                 </li>
             </ul>
         </a>
@@ -187,19 +188,19 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Proveedores</h3>
-                    <p class="text-sm text-slate-500">Catálogo, precios y órdenes</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Proveedores" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Catálogo, precios y órdenes" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    <span>Listado de Proveedores</span>
+                    <span>{% trans "Listado de Proveedores" %}</span>
                 </li>
                 {% if can_view_purchase_orders %}
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    <span>Órdenes de Compra</span>
+                    <span>{% trans "Órdenes de Compra" %}</span>
                 </li>
                 {% endif %}
             </ul>
@@ -217,14 +218,14 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Finanzas</h3>
-                    <p class="text-sm text-slate-500">Impuestos y pasarelas de pago</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Finanzas" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Impuestos y pasarelas de pago" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>Impuestos y Métodos de Pago</span>
+                    <span>{% trans "Impuestos y Métodos de Pago" %}</span>
                 </li>
             </ul>
         </a>
@@ -238,14 +239,14 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">App del Cliente</h3>
-                    <p class="text-sm text-slate-500">Portal y acciones del cliente</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "App del Cliente" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Portal y acciones del cliente" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                    <span>Permisos de App</span>
+                    <span>{% trans "Permisos de App" %}</span>
                 </li>
             </ul>
         </a>
@@ -259,22 +260,22 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Clientes</h3>
-                    <p class="text-sm text-slate-500">Campos, reservas y duplicados</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Clientes" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Campos, reservas y duplicados" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    <span>Campos personalizados y flags</span>
+                    <span>{% trans "Campos personalizados y flags" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    <span>Configuración de reservas</span>
+                    <span>{% trans "Configuración de reservas" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    <span>Gestión de duplicados</span>
+                    <span>{% trans "Gestión de duplicados" %}</span>
                 </li>
             </ul>
         </a>
@@ -290,18 +291,18 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Marketing</h3>
-                    <p class="text-sm text-slate-500">Leads, email y campañas</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Marketing" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Leads, email y campañas" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-pink-400"></span>
-                    <span>Pipeline de Leads</span>
+                    <span>{% trans "Pipeline de Leads" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-pink-400"></span>
-                    <span>Configuración Email (SMTP)</span>
+                    <span>{% trans "Configuración Email (SMTP)" %}</span>
                 </li>
             </ul>
         </a>
@@ -319,18 +320,18 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Sistema</h3>
-                    <p class="text-sm text-slate-500">Integraciones y avanzado</p>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Sistema" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Integraciones y avanzado" %}</p>
                 </div>
             </div>
             <ul class="space-y-2 text-sm text-slate-600">
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
-                    <span>Logs de Auditoría</span>
+                    <span>{% trans "Logs de Auditoría" %}</span>
                 </li>
                 <li class="flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
-                    <span>Hardware TPV (Terminales)</span>
+                    <span>{% trans "Hardware TPV (Terminales)" %}</span>
                 </li>
             </ul>
         </a>

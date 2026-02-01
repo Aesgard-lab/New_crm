@@ -15,6 +15,9 @@ urlpatterns = [
     # Health Check endpoints (para Docker, Kubernetes, Load Balancers)
     path("health/", include("core.urls", namespace="health")),
     
+    # Internationalization (i18n) - Language selector
+    path("i18n/", include("django.conf.urls.i18n")),
+    
     # Calendar Feed (público, para suscripción desde apps de calendario)
     path("calendar/feed/<str:token>.ics", calendar_feed, name="calendar_feed"),
     

@@ -10,10 +10,21 @@
 
 {% if plans %}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-    {% for plan in plans %}
-    <div class="bg-white rounded-2xl border-2 {% if plan.is_recurring %}border-[var(--brand-color)]{% else %}border-slate-200{% endif %} shadow-lg hover:shadow-xl transition-shadow">
+    {% for item in plans %}
+    {% with plan=item.plan is_eligible=item.is_eligible show_badge=item.show_badge ineligible_reason=item.ineligible_reason %}
+    <div class="bg-white rounded-2xl border-2 {% if plan.is_recurring %}border-[var(--brand-color)]{% else %}border-slate-200{% endif %} shadow-lg hover:shadow-xl transition-shadow relative {% if not is_eligible %}opacity-75{% endif %}">
+        
+        <!-- Badge de Oferta Solo Nuevos -->
+        {% if show_badge %}
+        <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+            <span class="inline-block bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                {{ plan.new_client_badge_text }}
+            </span>
+        </div>
+        {% endif %}
+        
         <!-- Header -->
-        <div class="p-6 {% if plan.is_recurring %}brand-bg text-white{% else %}bg-slate-50{% endif %}">
+        <div class="p-6 {% if plan.is_recurring %}brand-bg text-white{% else %}bg-slate-50{% endif %} {% if show_badge %}pt-8{% endif %}">
             {% if plan.image %}
             <img src="{{ plan.image.url }}" alt="{{ plan.name }}" class="w-full h-32 object-cover rounded-xl mb-4">
             {% endif %}
@@ -93,7 +104,18 @@
             </div>
             
             <!-- Botón de Compra -->
-            {% if user.is_authenticated %}
+            {% if not is_eligible %}
+            <!-- No elegible para esta oferta -->
+            <div class="text-center">
+                <button disabled class="block w-full bg-slate-300 text-slate-500 font-bold py-3 rounded-xl cursor-not-allowed">
+                    <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    No Disponible
+                </button>
+                <p class="text-xs text-amber-600 mt-2 font-medium">{{ ineligible_reason }}</p>
+            </div>
+            {% elif user.is_authenticated %}
             <a href="{% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}" 
                class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
                 Comprar Plan
@@ -112,6 +134,7 @@
             {% endif %}
         </div>
     </div>
+    {% endwith %}
     {% endfor %}
 </div>
 {% else %}

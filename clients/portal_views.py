@@ -1699,6 +1699,7 @@ def portal_shop(request):
     from services.models import Service
     from products.models import Product
     from memberships.models import MembershipPlan
+    from organizations.models import PublicPortalSettings
     
     services = Service.objects.filter(
         gym=gym,
@@ -1718,11 +1719,36 @@ def portal_shop(request):
         is_visible_online=True
     ).select_related('tax_rate')
     
+    # Obtener configuración del portal
+    portal_settings, _ = PublicPortalSettings.objects.get_or_create(
+        gym=gym,
+        defaults={'public_slug': gym.name.lower().replace(' ', '-')[:50]}
+    )
+    
+    # Verificar si el cliente tiene una cuota activa (para bloquear duplicadas)
+    has_active_membership = client.memberships.filter(
+        status__in=['ACTIVE', 'PENDING']
+    ).exists()
+    
+    # Verificar si el cliente tiene tarjeta vinculada (para cambio de plan)
+    has_payment_method = client.payment_methods.exists()
+    
+    # Verificar cambios programados
+    from .models import ScheduledMembershipChange
+    scheduled_change = ScheduledMembershipChange.objects.filter(
+        client=client,
+        status='PENDING'
+    ).select_related('new_plan', 'current_membership').first()
+    
     context = {
         'client': client,
         'services': services,
         'products': products,
         'membership_plans': membership_plans,
+        'portal_settings': portal_settings,
+        'has_active_membership': has_active_membership,
+        'has_payment_method': has_payment_method,
+        'scheduled_change': scheduled_change,
     }
     
     return render(request, 'portal/shop/shop.html', context)
@@ -2171,7 +2197,7 @@ def portal_leaderboard(request):
     
     try:
         gamification_settings = GamificationSettings.objects.get(gym=client.gym)
-        if not gamification_settings.leaderboard_enabled:
+        if not gamification_settings.show_leaderboard:
             messages.info(request, 'El ranking no está habilitado.')
             return redirect('portal_gamification')
     except GamificationSettings.DoesNotExist:
@@ -2306,3 +2332,116 @@ def portal_join_challenge(request, challenge_id):
             
     except Challenge.DoesNotExist:
         return JsonResponse({'error': 'Reto no encontrado'}, status=404)
+
+
+@login_required
+def portal_schedule_membership_change(request):
+    """
+    Programa un cambio de plan para cuando finalice la membresía actual.
+    Requiere: cuota activa + tarjeta vinculada + opción habilitada en settings
+    """
+    if request.method != 'POST':
+        messages.error(request, 'Método no permitido.')
+        return redirect('portal_shop')
+    
+    if not hasattr(request.user, 'client_profile'):
+        return redirect('portal_login')
+    
+    client = request.user.client_profile
+    gym = client.gym
+    
+    from organizations.models import PublicPortalSettings
+    from memberships.models import MembershipPlan
+    from .models import ScheduledMembershipChange, ClientMembership
+    
+    # Verificar que la opción está habilitada
+    portal_settings, _ = PublicPortalSettings.objects.get_or_create(
+        gym=gym,
+        defaults={'public_slug': gym.name.lower().replace(' ', '-')[:50]}
+    )
+    
+    if not portal_settings.allow_membership_change_at_renewal:
+        messages.error(request, 'Esta función no está disponible.')
+        return redirect('portal_shop')
+    
+    # Verificar que tiene tarjeta
+    if not client.payment_methods.exists():
+        messages.error(request, 'Necesitas tener una tarjeta de pago guardada para programar un cambio de plan.')
+        return redirect('portal_profile')
+    
+    # Obtener membresía activa
+    current_membership = client.memberships.filter(status='ACTIVE').first()
+    if not current_membership:
+        messages.error(request, 'No tienes una cuota activa.')
+        return redirect('portal_shop')
+    
+    # Obtener el nuevo plan
+    plan_id = request.POST.get('plan_id')
+    try:
+        new_plan = MembershipPlan.objects.get(id=plan_id, gym=gym, is_active=True, is_visible_online=True)
+    except MembershipPlan.DoesNotExist:
+        messages.error(request, 'El plan seleccionado no está disponible.')
+        return redirect('portal_shop')
+    
+    # Verificar que no es el mismo plan
+    if current_membership.plan and current_membership.plan.id == new_plan.id:
+        messages.warning(request, 'Ya tienes este plan activo.')
+        return redirect('portal_shop')
+    
+    # Cancelar cambios programados anteriores
+    ScheduledMembershipChange.objects.filter(
+        client=client,
+        status='PENDING'
+    ).update(status='CANCELLED')
+    
+    # Crear nuevo cambio programado
+    from django.utils import timezone
+    scheduled_date = current_membership.end_date or current_membership.current_period_end or (timezone.now().date())
+    
+    ScheduledMembershipChange.objects.create(
+        client=client,
+        gym=gym,
+        current_membership=current_membership,
+        new_plan=new_plan,
+        scheduled_date=scheduled_date
+    )
+    
+    messages.success(
+        request,
+        f'✅ Cambio programado: Tu plan cambiará a "{new_plan.name}" el {scheduled_date.strftime("%d/%m/%Y")}'
+    )
+    return redirect('portal_shop')
+
+
+@login_required
+def portal_cancel_scheduled_change(request, change_id):
+    """
+    Cancela un cambio de plan programado.
+    """
+    if request.method != 'POST':
+        messages.error(request, 'Método no permitido.')
+        return redirect('portal_shop')
+    
+    if not hasattr(request.user, 'client_profile'):
+        return redirect('portal_login')
+    
+    client = request.user.client_profile
+    
+    from .models import ScheduledMembershipChange
+    from django.utils import timezone
+    
+    try:
+        scheduled_change = ScheduledMembershipChange.objects.get(
+            id=change_id,
+            client=client,
+            status='PENDING'
+        )
+        scheduled_change.status = 'CANCELLED'
+        scheduled_change.cancelled_at = timezone.now()
+        scheduled_change.save()
+        
+        messages.success(request, '✅ Cambio de plan cancelado correctamente.')
+    except ScheduledMembershipChange.DoesNotExist:
+        messages.error(request, 'No se encontró el cambio programado.')
+    
+    return redirect('portal_shop')

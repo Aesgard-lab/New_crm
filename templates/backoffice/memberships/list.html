@@ -1,8 +1,9 @@
 {% extends "backoffice/base.html" %}
+{% load i18n %}
 
 {% block page_title %}
-<div>Cuotas y Suscripciones</div>
-<div class="text-sm font-normal text-slate-500 mt-1">Gestión de planes de acceso</div>
+<div>{% trans "Cuotas y Suscripciones" %}</div>
+<div class="text-sm font-normal text-slate-500 mt-1">{% trans "Gestión de planes de acceso" %}</div>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +18,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12"></path>
                 </svg>
-                Descargar
+                {% trans "Descargar" %}
                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                 </svg>
@@ -27,13 +28,13 @@
                     <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    Descargar Excel
+                    {% trans "Descargar Excel" %}
                 </a>
                 <a href="{% url 'membership_plan_export_pdf' %}" class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 last:rounded-b-xl flex items-center gap-2 border-t border-slate-100">
                     <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                     </svg>
-                    Descargar PDF
+                    {% trans "Descargar PDF" %}
                 </a>
             </div>
         </div>
@@ -46,7 +47,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
-            Nueva Cuota
+            {% trans "Nueva Cuota" %}
         </a>
         {% endif %}
     </div>
@@ -85,9 +86,9 @@
                     <h3 class="font-bold text-slate-900 text-lg">{{ plan.name }}</h3>
                     <div class="text-xs text-slate-500">
                         {% if plan.is_recurring %}
-                        <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Recurrente</span>
+                        <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{% trans "Recurrente" %}</span>
                         {% else %}
-                        <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Bono / Pack</span>
+                        <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">{% trans "Bono / Pack" %}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -99,14 +100,14 @@
                     {% if plan.is_recurring %}
                     / {{ plan.get_frequency_display_custom }}
                     {% else %}
-                    / Pago Único
+                    / {% trans "Pago Único" %}
                     {% endif %}
                 </span>
             </div>
 
             <!-- Access Rules Summary -->
             <div class="mt-auto border-t border-slate-50 pt-4 text-sm text-slate-600 space-y-2">
-                <p class="text-xs font-bold text-slate-400 uppercase">Incluye:</p>
+                <p class="text-xs font-bold text-slate-400 uppercase">{% trans "Incluye" %}:</p>
                 {% for rule in plan.access_rules.all|slice:":3" %}
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,10 +116,10 @@
                     <span>{{ rule }}</span>
                 </div>
                 {% empty %}
-                <span class="text-slate-400 italic font-mono text-xs">Sin reglas definidas</span>
+                <span class="text-slate-400 italic font-mono text-xs">{% trans "Sin reglas definidas" %}</span>
                 {% endfor %}
                 {% if plan.access_rules.count > 3 %}
-                <div class="text-xs text-slate-400 pl-6">+{{ plan.access_rules.count|add:"-3" }} más...</div>
+                <div class="text-xs text-slate-400 pl-6">+{{ plan.access_rules.count|add:"-3" }} {% trans "más" %}...</div>
                 {% endif %}
             </div>
         </div>
@@ -132,8 +133,8 @@
                 </path>
             </svg>
         </div>
-        <h3 class="text-slate-900 font-medium">No hay planes</h3>
-        <p class="text-slate-500 text-sm mt-1">Crea tu primera cuota mensual o bono de sesiones.</p>
+        <h3 class="text-slate-900 font-medium">{% trans "No hay planes" %}</h3>
+        <p class="text-slate-500 text-sm mt-1">{% trans "Crea tu primera cuota mensual o bono de sesiones." %}</p>
     </div>
     {% endfor %}
 </div>

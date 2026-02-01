@@ -136,16 +136,28 @@ class LeaderboardView(views.APIView):
         leaderboard = []
         for idx, progress in enumerate(top_clients, 1):
             rank_badge = progress.get_rank_badge()
+            is_me = progress.client.id == client.id
+            
+            # Determinar nombre a mostrar según configuración de privacidad
+            if settings.hide_leaderboard_names and not is_me:
+                # Solo iniciales para otros clientes
+                display_name = f"{progress.client.first_name[:1]}."
+                display_initial = progress.client.last_name[:1] if progress.client.last_name else ''
+            else:
+                # Nombre completo
+                display_name = progress.client.first_name
+                display_initial = progress.client.last_name[:1] if progress.client.last_name else ''
+            
             leaderboard.append({
                 'rank': idx,
                 'client_id': progress.client.id,
-                'name': progress.client.first_name,
-                'initial': progress.client.last_name[:1] if progress.client.last_name else '',
+                'name': display_name,
+                'initial': display_initial,
                 'level': progress.current_level,
                 'total_xp': progress.total_xp,
                 'badge_icon': rank_badge['icon'],
                 'badge_name': rank_badge['name'],
-                'is_me': progress.client.id == client.id,
+                'is_me': is_me,
             })
         
         return Response({
@@ -153,6 +165,7 @@ class LeaderboardView(views.APIView):
             'my_rank': my_rank,
             'my_xp': my_progress.total_xp,
             'my_level': my_progress.current_level,
+            'hide_names': settings.hide_leaderboard_names,
         })
 
 

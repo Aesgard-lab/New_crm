@@ -1,5 +1,5 @@
 {% extends "backoffice/base.html" %}
-{% load gym_tags %}
+{% load gym_tags i18n %}
 
 {% block title %}Dashboard · New CRM{% endblock %}
 {% block breadcrumb %}Backoffice{% endblock %}
@@ -11,14 +11,13 @@
   <select name="gym_id" class="text-sm rounded-2xl border border-slate-300 px-3 py-2 bg-white">
     {% for m in request.user.gym_memberships.all %}
     <option value="{{ m.gym_id }}" {% if m.gym_id == request.session.current_gym_id %}selected{% endif %}>
-
       {{ m.gym.name }}
     </option>
     {% endfor %}
   </select>
 
   <button class="text-sm rounded-2xl border border-slate-300 px-3 py-2 hover:bg-slate-50">
-    Cambiar
+    {{ t.change }}
   </button>
 </form>
 {% endblock %}
@@ -29,7 +28,7 @@
   <div class="flex justify-between items-center">
     <div>
       <h1 class="text-2xl font-bold title-brand">Dashboard</h1>
-      <p class="text-slate-500">Resumen de rendimiento de {{ gym.name }}</p>
+      <p class="text-slate-500">{{ t.performance_summary_of }} {{ gym.name }}</p>
     </div>
     <div class="flex gap-2">
       <span class="text-sm font-medium text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
@@ -46,7 +45,7 @@
         class="absolute right-0 top-0 w-24 h-24 bg-[var(--brand-color)] opacity-5 rounded-bl-full group-hover:scale-110 transition-transform">
       </div>
       <div class="relative z-10">
-        <div class="text-sm font-medium text-slate-500 mb-1">Facturación (Mes)</div>
+        <div class="text-sm font-medium text-slate-500 mb-1">{{ t.monthly_billing }}</div>
         <div class="text-3xl font-bold kpi-brand">{{ stats.revenue_current }} €</div>
         <div class="flex items-center gap-1 mt-2 text-sm">
           {% if stats.revenue_growth >= 0 %}
@@ -66,10 +65,10 @@
             {{ stats.revenue_growth }}%
           </span>
           {% endif %}
-          <span class="text-slate-400">vs mes anterior</span>
+          <span class="text-slate-400">{{ t.vs_previous_month }}</span>
         </div>
         <div class="mt-3 pt-3 border-t border-slate-200">
-          <div class="text-[11px] text-slate-400">Sin impuestos:</div>
+          <div class="text-[11px] text-slate-400">{{ t.without_taxes }}</div>
           <div class="text-sm font-bold text-slate-600">{{ stats.revenue_net }} €</div>
         </div>
       </div>
@@ -77,17 +76,17 @@
 
     <!-- Taxes (Stimulated) - Movido junto a Facturación -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-      <div class="text-sm font-medium text-slate-500 mb-1">Impuestos Estimados</div>
+      <div class="text-sm font-medium text-slate-500 mb-1">{{ t.estimated_taxes }}</div>
       <div class="text-3xl font-bold kpi-brand">{{ stats.taxes_current }} €</div>
-      <div class="text-sm text-slate-400 mt-2">IVA Recaudado</div>
+      <div class="text-sm text-slate-400 mt-2">{{ t.vat_collected }}</div>
     </div>
 
     <!-- Members -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-      <div class="text-sm font-medium text-slate-500 mb-1">Socios Activos</div>
+      <div class="text-sm font-medium text-slate-500 mb-1">{{ t.active_members }}</div>
       <div class="text-3xl font-bold kpi-brand">{{ stats.active_members }}</div>
       <div class="text-sm text-slate-400 mt-2">
-        <span class="text-emerald-600 font-medium">+{{ stats.new_members }}</span> nuevos este mes
+        <span class="text-emerald-600 font-medium">+{{ stats.new_members }}</span> {{ t.new_this_month }}
       </div>
     </div>
 
@@ -98,7 +97,7 @@
         class="absolute right-0 top-0 w-24 h-24 bg-indigo-300 opacity-10 rounded-bl-full group-hover:scale-110 transition-transform">
       </div>
       <div class="relative z-10">
-        <div class="text-sm font-medium text-slate-600 mb-1">📊 Próx. Mes (Predicción)</div>
+        <div class="text-sm font-medium text-slate-600 mb-1">📊 {{ t.next_month_prediction }}</div>
         <div class="text-3xl font-bold text-indigo-900">
           {% if forecast.forecast %}
           {{ forecast.forecast.0.predicted }} €
@@ -109,11 +108,11 @@
         <div class="flex items-center justify-between mt-3">
           <div class="flex items-center gap-1 text-xs">
             {% if forecast.trend == 'CRECIENTE' %}
-            <span class="text-emerald-600 font-bold">{{ forecast.trend_icon }} Crecimiento</span>
+            <span class="text-emerald-600 font-bold">{{ forecast.trend_icon }} {{ t.growth }}</span>
             {% elif forecast.trend == 'DECRECIENTE' %}
-            <span class="text-red-600 font-bold">{{ forecast.trend_icon }} Decrecimiento</span>
+            <span class="text-red-600 font-bold">{{ forecast.trend_icon }} {{ t.decline }}</span>
             {% else %}
-            <span class="text-slate-500 font-bold">{{ forecast.trend_icon }} Estable</span>
+            <span class="text-slate-500 font-bold">{{ forecast.trend_icon }} {{ t.stable }}</span>
             {% endif %}
           </div>
           <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
@@ -128,83 +127,93 @@
     </div>
 
     <!-- NUEVO: Break-Even (Punto de Equilibrio) -->
-    <div class="bg-white p-6 rounded-2xl border-2 
+    <div
+      class="bg-white p-6 rounded-2xl border-2 
     {% if breakeven.status == 'POSITIVO' %}border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50{% elif breakeven.status == 'EN CAMINO' %}border-yellow-300 bg-gradient-to-br from-yellow-50 to-amber-50{% elif breakeven.status == 'LARGO PLAZO' %}border-orange-300 bg-gradient-to-br from-orange-50 to-red-50{% elif breakeven.status == 'CRÍTICO' %}border-red-400 bg-gradient-to-br from-red-50 to-pink-50{% else %}border-slate-200{% endif %} shadow-sm relative overflow-hidden group">
-      
-      <div class="absolute right-0 top-0 w-24 h-24 
-      {% if breakeven.status == 'POSITIVO' %}bg-emerald-300{% elif breakeven.status == 'EN CAMINO' %}bg-yellow-300{% elif breakeven.status == 'LARGO PLAZO' %}bg-orange-300{% elif breakeven.status == 'CRÍTICO' %}bg-red-300{% else %}bg-slate-300{% endif %} opacity-10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
-      
+
+      <div
+        class="absolute right-0 top-0 w-24 h-24 
+      {% if breakeven.status == 'POSITIVO' %}bg-emerald-300{% elif breakeven.status == 'EN CAMINO' %}bg-yellow-300{% elif breakeven.status == 'LARGO PLAZO' %}bg-orange-300{% elif breakeven.status == 'CRÍTICO' %}bg-red-300{% else %}bg-slate-300{% endif %} opacity-10 rounded-bl-full group-hover:scale-110 transition-transform">
+      </div>
+
       <div class="relative z-10">
-        <div class="text-sm font-medium 
+        <div
+          class="text-sm font-medium 
         {% if breakeven.status == 'POSITIVO' %}text-emerald-700{% elif breakeven.status == 'EN CAMINO' %}text-yellow-700{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-700{% elif breakeven.status == 'CRÍTICO' %}text-red-700{% else %}text-slate-600{% endif %} mb-1 flex items-center gap-2">
-          <span class="text-lg">{{ breakeven.status_icon }}</span> Punto de Equilibrio
+          <span class="text-lg">{{ breakeven.status_icon }}</span> {{ t.breakeven_point }}
         </div>
-        
+
         <div class="text-3xl font-bold 
         {% if breakeven.accumulated_balance >= 0 %}text-emerald-900{% else %}text-red-900{% endif %}">
           {{ breakeven.accumulated_balance|floatformat:0 }} €
         </div>
-        
-        <div class="text-xs text-slate-500 mt-1">Balance Acumulado</div>
-        
+
+        <div class="text-xs text-slate-500 mt-1">{{ t.accumulated_balance }}</div>
+
         <div class="mt-3 pt-3 border-t border-slate-200/50 space-y-1 text-xs">
           <div class="flex justify-between">
-            <span class="text-slate-600">Ingresos mes:</span>
+            <span class="text-slate-600">{% trans "Ingresos mes:" %}</span>
             <span class="font-bold text-emerald-700">+{{ breakeven.current_month_revenue|floatformat:0 }} €</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-600">Gastos mes:</span>
+            <span class="text-slate-600">{% trans "Gastos mes:" %}</span>
             <span class="font-bold text-red-700">-{{ breakeven.current_month_expenses|floatformat:0 }} €</span>
           </div>
           <div class="flex justify-between font-bold">
-            <span class="text-slate-900">Balance mes:</span>
+            <span class="text-slate-900">{% trans "Balance mes:" %}</span>
             <span class="{% if breakeven.current_balance >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">
               {{ breakeven.current_balance|floatformat:0 }} €
             </span>
           </div>
         </div>
-        
+
         {% if breakeven.has_data %}
-          {% if breakeven.months_to_breakeven and breakeven.months_to_breakeven > 0 %}
-          <div class="mt-3 pt-3 border-t border-slate-200/50">
-            <div class="text-xs 
+        {% if breakeven.months_to_breakeven and breakeven.months_to_breakeven > 0 %}
+        <div class="mt-3 pt-3 border-t border-slate-200/50">
+          <div
+            class="text-xs 
             {% if breakeven.status == 'EN CAMINO' %}text-yellow-700{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-700{% else %}text-slate-600{% endif %} font-medium">
-              Equilibrio estimado en:
-            </div>
-            <div class="text-lg font-bold 
+            {% trans "Equilibrio estimado en:" %}
+          </div>
+          <div
+            class="text-lg font-bold 
             {% if breakeven.status == 'EN CAMINO' %}text-yellow-900{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-900{% else %}text-slate-900{% endif %} mt-1">
-              {{ breakeven.months_to_breakeven }} meses
-            </div>
-            <div class="text-[10px] text-slate-500">{{ breakeven.breakeven_date }}</div>
+            {{ breakeven.months_to_breakeven }} {% trans "meses" %}
           </div>
-          {% elif breakeven.months_to_breakeven == 0 %}
-          <div class="mt-3 pt-3 border-t border-emerald-200/50">
-            <div class="text-xs text-emerald-700 font-bold flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-4v16M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              ¡Ya estás en equilibrio positivo!
-            </div>
+          <div class="text-[10px] text-slate-500">{{ breakeven.breakeven_date }}</div>
+        </div>
+        {% elif breakeven.months_to_breakeven == 0 %}
+        <div class="mt-3 pt-3 border-t border-emerald-200/50">
+          <div class="text-xs text-emerald-700 font-bold flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6-4v16M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            {% trans "¡Ya estás en equilibrio positivo!" %}
           </div>
-          {% else %}
-          <div class="mt-3 pt-3 border-t border-red-200/50">
-            <div class="text-xs text-red-700 font-bold flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
-              Revisar costos y crecimiento
-            </div>
-          </div>
-          {% endif %}
+        </div>
         {% else %}
-        <div class="mt-3 pt-3 border-t border-slate-200/50 text-xs text-slate-500 italic">
-          Necesitas al menos 3 meses de datos
+        <div class="mt-3 pt-3 border-t border-red-200/50">
+          <div class="text-xs text-red-700 font-bold flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+              </path>
+            </svg>
+            {% trans "Revisar costos y crecimiento" %}
+          </div>
         </div>
         {% endif %}
-        
-        <a href="{% url 'expense_list' %}" class="text-xs 
+        {% else %}
+        <div class="mt-3 pt-3 border-t border-slate-200/50 text-xs text-slate-500 italic">
+          {% trans "Necesitas al menos 3 meses de datos" %}
+        </div>
+        {% endif %}
+
+        <a href="{% url 'expense_list' %}"
+          class="text-xs 
         {% if breakeven.status == 'POSITIVO' %}text-emerald-700 hover:text-emerald-800{% elif breakeven.status == 'EN CAMINO' %}text-yellow-700 hover:text-yellow-800{% elif breakeven.status == 'LARGO PLAZO' %}text-orange-700 hover:text-orange-800{% elif breakeven.status == 'CRÍTICO' %}text-red-700 hover:text-red-800{% else %}text-slate-600 hover:text-slate-700{% endif %} font-medium mt-3 inline-block">
-          Ver finanzas →
+          {% trans "Ver finanzas →" %}
         </a>
       </div>
     </div>
@@ -222,19 +231,19 @@
               d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z">
             </path>
           </svg>
-          Membresías Activas
+          {{ t.active_memberships }}
         </div>
         <div class="text-3xl font-bold text-emerald-900">{{ membership_stats.active }}</div>
         <div class="flex items-center gap-3 mt-3 text-xs">
           <div class="flex items-center gap-1">
             <span class="w-2 h-2 bg-amber-500 rounded-full"></span>
             <span class="text-slate-600">
-              <span class="font-bold text-amber-600">{{ membership_stats.expiring_soon }}</span> expiran pronto
+              <span class="font-bold text-amber-600">{{ membership_stats.expiring_soon }}</span> {% trans "expiran pronto" %}
             </span>
           </div>
         </div>
         <a href="/memberships/" class="text-xs text-emerald-700 hover:text-emerald-800 font-medium mt-2 inline-block">
-          Ver todas →
+          {% trans "Ver todas →" %}
         </a>
       </div>
     </div>
@@ -243,7 +252,7 @@
     {% if goals %}
     <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-2xl border border-purple-200 shadow-sm">
       <div class="text-sm font-medium text-purple-700 mb-3 flex items-center gap-2">
-        <span class="text-lg">🎯</span> Objetivos del Mes
+        <span class="text-lg">🎯</span> {{ t.month_goals }}
       </div>
 
       {% for goal_data in goals %}
@@ -251,7 +260,7 @@
         {% if goal_data.progress_members is not None %}
         <div>
           <div class="flex items-center justify-between mb-1">
-            <span class="text-xs text-slate-700 font-medium">👥 Socios</span>
+            <span class="text-xs text-slate-700 font-medium">👥 {% trans "Socios" %}</span>
             <span
               class="text-xs font-bold {% if goal_data.progress_members >= 100 %}text-emerald-600{% elif goal_data.progress_members >= 80 %}text-green-600{% elif goal_data.progress_members >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
               {{ goal_data.progress_members|floatformat:1 }}%
@@ -270,7 +279,7 @@
         {% if goal_data.progress_revenue is not None %}
         <div>
           <div class="flex items-center justify-between mb-1">
-            <span class="text-xs text-slate-700 font-medium">💰 Facturación</span>
+            <span class="text-xs text-slate-700 font-medium">💰 {% trans "Facturación" %}</span>
             <span
               class="text-xs font-bold {% if goal_data.progress_revenue >= 100 %}text-emerald-600{% elif goal_data.progress_revenue >= 80 %}text-green-600{% elif goal_data.progress_revenue >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">
               {{ goal_data.progress_revenue|floatformat:1 }}%
@@ -291,14 +300,14 @@
 
       <a href="{% url 'gym_goals_list' %}"
         class="text-xs text-purple-700 hover:text-purple-900 font-medium mt-3 inline-block">
-        Ver todos los objetivos →
+        {% trans "Ver todos los objetivos" %} →
       </a>
     </div>
     {% endif %}
 
     <!-- Quick Actions (Minimal) -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-      <div class="text-sm font-medium text-slate-500 mb-4">Accesos Rápidos</div>
+      <div class="text-sm font-medium text-slate-500 mb-4">{{ t.quick_access }}</div>
       <div class="grid grid-cols-2 gap-3">
         <a href="{% url 'pos_home' %}"
           class="flex flex-col items-center justify-center p-3 rounded-xl border border-[var(--brand-color)]/20 bg-[var(--brand-color)]/5 text-[var(--brand-color)] hover:bg-[var(--brand-color)]/10 hover:border-[var(--brand-color)]/30 transition-all group">
@@ -310,7 +319,7 @@
               </path>
             </svg>
           </div>
-          <span class="text-xs font-bold">Ir al TPV</span>
+          <span class="text-xs font-bold">{{ t.go_to_pos }}</span>
         </a>
 
         <a href="{% url 'client_create' %}"
@@ -322,7 +331,7 @@
                 d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
             </svg>
           </div>
-          <span class="text-xs font-bold">Nuevo Socio</span>
+          <span class="text-xs font-bold">{{ t.new_member }}</span>
         </a>
       </div>
     </div>
@@ -330,8 +339,11 @@
     <!-- Staff Kiosk Access -->
     {% has_gym_perm 'staff.view_staffprofile' as can_view_staff %}
     {% if can_view_staff %}
-    <div class="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-      <div class="absolute right-0 top-0 w-32 h-32 bg-emerald-300 opacity-10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
+    <div
+      class="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+      <div
+        class="absolute right-0 top-0 w-32 h-32 bg-emerald-300 opacity-10 rounded-bl-full group-hover:scale-110 transition-transform">
+      </div>
       <div class="relative z-10">
         <div class="flex items-center gap-2 mb-3">
           <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -342,14 +354,14 @@
             </svg>
           </div>
           <div>
-            <div class="text-sm font-bold text-emerald-900">Kiosco de Fichaje</div>
-            <div class="text-xs text-emerald-600">Control de Personal</div>
+            <div class="text-sm font-bold text-emerald-900">{{ t.time_clock }}</div>
+            <div class="text-xs text-emerald-600">{{ t.staff_control }}</div>
           </div>
         </div>
-        
+
         <div class="space-y-2 mb-4">
           <div class="flex items-center justify-between text-sm">
-            <span class="text-slate-600">Online ahora:</span>
+            <span class="text-slate-600">{{ t.online_now }}</span>
             <span class="font-bold text-emerald-700">{{ staff_online_count|default:0 }}</span>
           </div>
         </div>
@@ -357,20 +369,27 @@
         <a href="{% url 'staff_kiosk' %}" target="_blank"
           class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md hover:shadow-lg group">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
+            </path>
           </svg>
-          Abrir Kiosco
-          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          {{ t.open_kiosk }}
+          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
           </svg>
         </a>
-        
+
         <div class="mt-3 pt-3 border-t border-emerald-100">
-          <a href="{% url 'staff_list' %}" class="text-xs text-emerald-700 hover:text-emerald-800 font-medium flex items-center justify-center gap-1 transition-colors">
+          <a href="{% url 'staff_list' %}"
+            class="text-xs text-emerald-700 hover:text-emerald-800 font-medium flex items-center justify-center gap-1 transition-colors">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+              </path>
             </svg>
-            Ver todos los empleados
+            {{ t.view_all_employees }}
           </a>
         </div>
       </div>
@@ -384,12 +403,12 @@
     <div class="flex items-center justify-between mb-6">
       <div>
         <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <span class="text-2xl">🎯</span> Objetivos Actuales
+          <span class="text-2xl">🎯</span> {{ t.current_goals }}
         </h3>
-        <p class="text-sm text-slate-600 mt-1">Seguimiento de rendimiento del período</p>
+        <p class="text-sm text-slate-600 mt-1">{{ t.period_performance }}</p>
       </div>
       <a href="{% url 'gym_goals_list' %}" class="text-sm font-medium text-[var(--brand-color)] hover-brand transition">
-        Ver Todos →
+        {{ t.view_all }} →
       </a>
     </div>
 
@@ -403,7 +422,7 @@
         {% if goal_data.goal.target_members and goal_data.progress_members is not None %}
         <div class="mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-slate-700">👥 Socios</span>
+            <span class="text-sm font-medium text-slate-700">👥 {{ t.members_goal }}</span>
             <span class="text-sm font-bold text-slate-900">
               {{ goal_data.progress_members|floatformat:0 }}%
             </span>
@@ -413,7 +432,7 @@
               style="width: {{ goal_data.progress_members|floatformat:0 }}%"></div>
           </div>
           <div class="text-xs text-slate-500 mt-1">
-            Meta: {{ goal_data.goal.target_members }}
+            {{ t.goal }} {{ goal_data.goal.target_members }}
           </div>
         </div>
         {% endif %}
@@ -421,7 +440,7 @@
         {% if goal_data.goal.target_revenue and goal_data.progress_revenue is not None %}
         <div>
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-slate-700">💰 Facturación</span>
+            <span class="text-sm font-medium text-slate-700">💰 {{ t.revenue_goal }}</span>
             <span class="text-sm font-bold text-slate-900">
               {{ goal_data.progress_revenue|floatformat:0 }}%
             </span>
@@ -431,7 +450,7 @@
               style="width: {{ goal_data.progress_revenue|floatformat:0 }}%"></div>
           </div>
           <div class="text-xs text-slate-500 mt-1">
-            Meta: {{ goal_data.goal.target_revenue|floatformat:0 }}€
+            {{ t.goal }} {{ goal_data.goal.target_revenue|floatformat:0 }}€
           </div>
         </div>
         {% endif %}
@@ -447,10 +466,10 @@
     <!-- Risk Table - IMPROVED -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-        <h3 class="font-bold text-slate-800">⚠️ Clientes en Riesgo (Scoring)</h3>
+        <h3 class="font-bold text-slate-800">⚠️ {{ t.risk_clients }}</h3>
         <span class="text-xs font-medium bg-red-100 text-red-600 px-2 py-1 rounded-full">
           {% if risk_clients_enhanced %}{{ risk_clients_enhanced|length }}{% else %}0{% endif %}
-          Detectados
+          {{ t.detected }}
         </span>
       </div>
       <div class="flex-1 overflow-y-auto max-h-[500px]">
@@ -496,7 +515,7 @@
 
             <!-- Action Urgency -->
             <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-              <span class="text-[10px] text-slate-500 font-medium">Acción en {{ client.days_to_action }} días</span>
+              <span class="text-[10px] text-slate-500 font-medium">{% trans "Acción en" %} {{ client.days_to_action }} {% trans "días" %}</span>
               <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
               </svg>
@@ -510,7 +529,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          No hay clientes en riesgo detectados.
+          {% trans "No hay clientes en riesgo detectados." %}
         </div>
         {% endif %}
       </div>
@@ -519,7 +538,7 @@
     <!-- Top Clients -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       <div class="p-5 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800">⭐ Top Clientes (LTV)</h3>
+        <h3 class="font-bold text-slate-800">⭐ {% trans "Top Clientes (LTV)" %}</h3>
       </div>
       <div class="flex-1 overflow-y-auto max-h-[400px]">
         {% if top_clients %}
@@ -542,7 +561,7 @@
           {% endfor %}
         </div>
         {% else %}
-        <div class="p-8 text-center text-slate-400 text-sm">No hay datos aún.</div>
+        <div class="p-8 text-center text-slate-400 text-sm">{% trans "No hay datos aún." %}</div>
         {% endif %}
       </div>
     </div>
@@ -550,8 +569,8 @@
     <!-- Revenue Chart -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-        <h3 class="font-bold text-slate-800">📈 Evolución de Ingresos (30 días)</h3>
-        <span class="text-xs font-medium text-slate-400">Actualizado hoy</span>
+        <h3 class="font-bold text-slate-800">📈 {% trans "Evolución de Ingresos (30 días)" %}</h3>
+        <span class="text-xs font-medium text-slate-400">{% trans "Actualizado hoy" %}</span>
       </div>
       <div class="p-4 flex-1">
         <canvas id="revenueChart" height="200"></canvas>
@@ -562,9 +581,9 @@
     <div
       class="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       <div class="p-5 border-b border-purple-200 flex justify-between items-center">
-        <h3 class="font-bold text-slate-800">🔮 Previsión Trimestral</h3>
+        <h3 class="font-bold text-slate-800">🔮 {% trans "Previsión Trimestral" %}</h3>
         <span class="text-[10px] px-2 py-1 rounded-full font-bold bg-purple-100 text-purple-700">
-          Basado en {{ forecast.historical_data_points }} meses
+          {% trans "Basado en" %} {{ forecast.historical_data_points }} {% trans "meses" %}
         </span>
       </div>
       <div class="p-5 flex-1 flex flex-col justify-between">
@@ -572,15 +591,15 @@
         <div class="space-y-4 mb-5">
           <!-- Total Trimestral -->
           <div class="bg-white bg-opacity-50 rounded-lg p-4">
-            <div class="text-xs text-slate-600 font-medium mb-1">Total Proyectado (3 meses)</div>
+            <div class="text-xs text-slate-600 font-medium mb-1">{% trans "Total Proyectado (3 meses)" %}</div>
             <div class="text-3xl font-bold text-purple-900">{{ forecast.total_quarterly }} €</div>
-            <div class="text-xs text-slate-500 mt-1">Promedio: {{ forecast.monthly_avg }} €/mes</div>
+            <div class="text-xs text-slate-500 mt-1">{% trans "Promedio" %}: {{ forecast.monthly_avg }} €/{% trans "mes" %}</div>
           </div>
 
           <!-- Trend Indicator -->
           <div class="grid grid-cols-2 gap-3">
             <div class="bg-white bg-opacity-50 rounded-lg p-3">
-              <div class="text-[10px] text-slate-600 font-bold mb-1">TENDENCIA</div>
+              <div class="text-[10px] text-slate-600 font-bold mb-1">{% trans "TENDENCIA" %}</div>
               <div
                 class="text-sm font-bold 
                 {% if forecast.trend == 'CRECIENTE' %}text-emerald-700{% elif forecast.trend == 'DECRECIENTE' %}text-red-700{% else %}text-slate-600{% endif %}">
@@ -588,7 +607,7 @@
               </div>
             </div>
             <div class="bg-white bg-opacity-50 rounded-lg p-3">
-              <div class="text-[10px] text-slate-600 font-bold mb-1">HISTÓRICO</div>
+              <div class="text-[10px] text-slate-600 font-bold mb-1">{% trans "HISTÓRICO" %}</div>
               <div class="text-sm font-bold text-slate-900">{{ forecast.historical_avg }} €</div>
             </div>
           </div>
@@ -596,7 +615,7 @@
 
         <!-- Monthly Forecast Bar -->
         <div class="space-y-2">
-          <div class="text-xs font-bold text-slate-700 mb-3">Desglose Mensual</div>
+          <div class="text-xs font-bold text-slate-700 mb-3">{% trans "Desglose Mensual" %}</div>
           {% for month_forecast in forecast.forecast %}
           <div class="space-y-1">
             <div class="flex justify-between items-center text-xs">
@@ -608,7 +627,7 @@
                 style="width: {% widthratio month_forecast.predicted forecast.total_quarterly 100 %}%"></div>
             </div>
             <div class="flex justify-between">
-              <span class="text-[9px] text-slate-400">Confianza: {{ month_forecast.confidence_pct }}%</span>
+              <span class="text-[9px] text-slate-400">{% trans "Confianza" %}: {{ month_forecast.confidence_pct }}%</span>
               <span class="text-[9px] font-bold text-slate-500">{{ month_forecast.confidence }}</span>
             </div>
           </div>

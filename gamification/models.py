@@ -25,6 +25,7 @@ class GamificationSettings(models.Model):
     show_leaderboard = models.BooleanField(default=True, help_text="Mostrar tabla de clasificación")
     show_on_portal = models.BooleanField(default=True, help_text="Mostrar en portal del cliente")
     show_on_app = models.BooleanField(default=True, help_text="Mostrar en app móvil")
+    hide_leaderboard_names = models.BooleanField(default=False, help_text="Ocultar nombres de otros clientes en el ranking (solo mostrar iniciales)")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
