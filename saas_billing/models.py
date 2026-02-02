@@ -488,9 +488,30 @@ class BillingConfig(models.Model):
     Stores company info and encrypted Stripe keys.
     """
     
+    class CompanyCountry(models.TextChoices):
+        SPAIN = 'ES', _('España')
+        USA = 'US', _('Estados Unidos (LLC)')
+        OTHER = 'OTHER', _('Otro')
+    
     # Company Info (for invoices)
+    company_country = models.CharField(
+        max_length=10,
+        choices=CompanyCountry.choices,
+        default=CompanyCountry.SPAIN,
+        help_text=_("País de la empresa")
+    )
     company_name = models.CharField(max_length=200, help_text=_("Razón social de tu empresa"))
-    company_tax_id = models.CharField(max_length=50, help_text=_("CIF/NIF"))
+    company_tax_id = models.CharField(max_length=50, help_text=_("CIF/NIF o EIN/Tax ID"))
+    company_tax_id_label = models.CharField(
+        max_length=50,
+        default='CIF/NIF',
+        help_text=_("Etiqueta para el identificador fiscal (CIF/NIF, EIN, Tax ID, etc.)")
+    )
+    company_state = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text=_("Estado (para LLC de EEUU, ej: Delaware, Wyoming)")
+    )
     company_address = models.TextField(help_text=_("Dirección fiscal completa"))
     company_email = models.EmailField(help_text=_("Email de soporte"))
     company_phone = models.CharField(max_length=20, blank=True)

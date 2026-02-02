@@ -5,6 +5,7 @@ class Gym {
   final String address;
   final String brandColor;
   final String logoUrl;
+  final bool allowSelfRegistration;
 
   Gym({
     required this.id,
@@ -13,6 +14,7 @@ class Gym {
     required this.address,
     required this.brandColor,
     this.logoUrl = '',
+    this.allowSelfRegistration = false,
   });
 
   factory Gym.fromJson(Map<String, dynamic> json) {
@@ -21,9 +23,9 @@ class Gym {
       name: json['name'],
       city: json['city'] ?? '',
       address: json['address'] ?? '',
-
       brandColor: json['brand_color'] ?? '#000000',
       logoUrl: json['logo'] ?? '',
+      allowSelfRegistration: json['allow_self_registration'] ?? false,
     );
   }
 }
@@ -82,7 +84,6 @@ class Client {
       nextBookings: json['next_bookings'],
     );
   }
-  
+
   String get fullName => '$firstName $lastName';
 }
-

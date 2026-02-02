@@ -82,9 +82,9 @@ class GenerateQRTokenView(views.APIView):
                 'name': plan.name if plan else 'Membresía Activa',
                 'status': active_membership.status,
                 'end_date': active_membership.end_date.isoformat() if active_membership.end_date else None,
-                'is_unlimited': plan.duration_type == 'UNLIMITED' if plan else False,
+                'is_unlimited': not active_membership.end_date,  # No end date = unlimited
                 'sessions_remaining': active_membership.sessions_remaining if hasattr(active_membership, 'sessions_remaining') else None,
-                'sessions_total': plan.sessions_included if plan and hasattr(plan, 'sessions_included') else None,
+                'sessions_total': getattr(plan, 'sessions_included', None) if plan else None,
             }
         
         return Response({

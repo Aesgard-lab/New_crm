@@ -4,11 +4,11 @@ import '../api/api_service.dart';
 import '../models/models.dart';
 import 'gym_search_screen.dart'; // For HexColor
 import 'forgot_password_screen.dart';
-
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final Gym? selectedGym;
-  
+
   const LoginScreen({super.key, this.selectedGym});
 
   @override
@@ -33,23 +33,39 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailCtrl.text,
       _passwordCtrl.text,
       gymId: widget.selectedGym?.id,
-      gym: widget.selectedGym, // Pasar el gym completo para guardar el brand color
+      gym: widget
+          .selectedGym, // Pasar el gym completo para guardar el brand color
     );
 
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/home', (route) => false);
       } else {
-        setState(() => _error = 'Credenciales inválidas o no perteneces a este centro.');
+        setState(() =>
+            _error = 'Credenciales inválidas o no perteneces a este centro.');
       }
+    }
+  }
+
+  void _goToRegister() {
+    if (widget.selectedGym != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RegisterScreen(gym: widget.selectedGym!),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final gym = widget.selectedGym; // If null, generic login (optional)
-    final brandColor = gym != null ? HexColor(gym.brandColor) : const Color(0xFF0F172A);
+    final brandColor =
+        gym != null ? HexColor(gym.brandColor) : const Color(0xFF0F172A);
+    final canRegister = gym?.allowSelfRegistration ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -61,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -88,13 +104,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(20),
                       child: gym.logoUrl.isNotEmpty
                           ? Image.network(
-                              gym.logoUrl.startsWith('http') 
-                                  ? gym.logoUrl 
+                              gym.logoUrl.startsWith('http')
+                                  ? gym.logoUrl
                                   : 'http://localhost:8000${gym.logoUrl}', // Fix for relative paths in local dev
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => Icon(Icons.fitness_center, size: 50, color: brandColor),
+                              errorBuilder: (_, __, ___) => Icon(
+                                  Icons.fitness_center,
+                                  size: 50,
+                                  color: brandColor),
                             )
-                          : Icon(Icons.fitness_center, size: 50, color: brandColor),
+                          : Icon(Icons.fitness_center,
+                              size: 50, color: brandColor),
                     ),
                   ),
                 ),
@@ -102,7 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   gym.name,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -111,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(color: Colors.grey[600]),
                 ),
               ] else ...[
-                 const Text(
+                const Text(
                   'Iniciar Sesión',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
@@ -125,7 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: 'Email',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12))),
                 ),
               ),
               const SizedBox(height: 16),
@@ -134,10 +156,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                  border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12))),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.grey,
                     ),
                     onPressed: () {
@@ -148,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              
+
               // Forgot Password
               Align(
                 alignment: Alignment.centerRight,
@@ -157,13 +182,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ForgotPasswordScreen(brandColor: brandColor),
+                        builder: (context) =>
+                            ForgotPasswordScreen(brandColor: brandColor),
                       ),
                     );
                   },
                   child: Text(
                     '¿Olvidaste tu contraseña?',
-                    style: TextStyle(color: brandColor, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        color: brandColor, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -192,12 +219,37 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        height: 20, 
-                        width: 20, 
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                      )
-                    : const Text('Entrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Text('Entrar',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
               ),
+
+              // Register button - only shown if gym allows self registration
+              if (canRegister) ...[
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: _goToRegister,
+                  child: Text.rich(
+                    TextSpan(
+                      text: '¿No tienes cuenta? ',
+                      style: TextStyle(color: Colors.grey[600]),
+                      children: [
+                        TextSpan(
+                          text: 'Regístrate',
+                          style: TextStyle(
+                            color: brandColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -1,12 +1,22 @@
 from rest_framework import serializers
-from organizations.models import Gym
+from organizations.models import Gym, PublicPortalSettings
 from accounts.models import User
 from clients.models import Client, ClientMembership
 
 class GymSerializer(serializers.ModelSerializer):
+    allow_self_registration = serializers.SerializerMethodField()
+    
     class Meta:
         model = Gym
-        fields = ['id', 'name', 'city', 'address', 'brand_color', 'phone', 'logo']
+        fields = ['id', 'name', 'city', 'address', 'brand_color', 'phone', 'logo', 'allow_self_registration']
+    
+    def get_allow_self_registration(self, obj):
+        """Check if gym allows client self-registration"""
+        try:
+            settings = PublicPortalSettings.objects.get(gym=obj)
+            return settings.allow_self_registration
+        except PublicPortalSettings.DoesNotExist:
+            return False
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -67,21 +77,19 @@ class ClientProfileSerializer(serializers.ModelSerializer):
             now = timezone.now()
             bookings = ActivitySessionBooking.objects.filter(
                 client=obj,
-                status='CONFIRMED'
-            ).select_related('session', 'session__activity', 'session__staff__user').order_by('session__date', 'session__start_time')[:10]
-            
-            # Filter by date in Python since session is ActivitySession
-            future_bookings = [b for b in bookings if b.session and b.session.date >= now.date()][:3]
+                status='CONFIRMED',
+                session__start_datetime__gte=now
+            ).select_related('session', 'session__activity', 'session__staff__user').order_by('session__start_datetime')[:3]
             
             result = []
-            for booking in future_bookings:
+            for booking in bookings:
                 session = booking.session
                 if session and session.activity:
                     result.append({
                         'id': booking.id,
                         'activity_name': session.activity.name,
-                        'date': session.date.strftime('%d/%m/%Y'),
-                        'time': session.start_time.strftime('%H:%M') if session.start_time else '',
+                        'date': session.start_datetime.strftime('%d/%m/%Y'),
+                        'time': session.start_datetime.strftime('%H:%M'),
                         'instructor': session.staff.user.first_name if session.staff and session.staff.user else 'Sin instructor'
                     })
             return result

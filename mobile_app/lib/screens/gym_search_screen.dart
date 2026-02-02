@@ -17,6 +17,25 @@ class _GymSearchScreenState extends State<GymSearchScreen> {
   Timer? _debounce;
   List<Gym> _gyms = [];
   bool _isLoading = false;
+  String _systemName = 'Gym Portal';
+  String? _systemLogo;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSystemConfig();
+  }
+
+  Future<void> _loadSystemConfig() async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    final config = await api.getSystemConfig();
+    if (mounted) {
+      setState(() {
+        _systemName = config['system_name'] ?? 'Gym Portal';
+        _systemLogo = config['system_logo'];
+      });
+    }
+  }
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -51,7 +70,32 @@ class _GymSearchScreenState extends State<GymSearchScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+              // System Logo/Name
+              Center(
+                child: _systemLogo != null
+                    ? Image.network(
+                        _systemLogo!,
+                        height: 60,
+                        errorBuilder: (_, __, ___) => Text(
+                          _systemName,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        _systemName,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 32),
               Text(
                 'Encuentra tu gimnasio',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(

@@ -117,16 +117,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildActiveWorkoutCard() {
     final routineName = _activeWorkout?['routine_name'] ?? 'Entrenamiento';
     final dayName = _activeWorkout?['day_name'] ?? '';
-    final workoutLogId = _activeWorkout?['workout_log_id'];
+    final workoutId = _activeWorkout?['workout_id'];
     
     return GestureDetector(
       onTap: () {
-        if (workoutLogId != null) {
+        if (workoutId != null) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => WorkoutTrackingScreen(
-                workoutId: workoutLogId,
+                workoutId: workoutId,
                 routineName: routineName,
                 dayName: dayName,
               ),
@@ -384,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     // Active Workout Card
-                    if (_activeWorkout != null) ...[
+                    if (_activeWorkout != null && _activeWorkout!['has_active_workout'] == true) ...[
                       const SizedBox(height: 24),
                       _buildActiveWorkoutCard(),
                     ],

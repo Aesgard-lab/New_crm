@@ -3,6 +3,46 @@
 {% block title %}{{ routine.name }} - {{ gym.name }}{% endblock %}
 
 {% block extra_css %}
+<script>
+// Función para convertir URL de YouTube a formato embed
+function getYoutubeEmbedUrl(url) {
+    if (!url) return '';
+    
+    // YouTube URLs
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        let videoId = '';
+        
+        // Format: youtube.com/watch?v=VIDEO_ID
+        const watchMatch = url.match(/[?&]v=([^&]+)/);
+        if (watchMatch) {
+            videoId = watchMatch[1];
+        }
+        // Format: youtu.be/VIDEO_ID
+        else if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1].split('?')[0].split('&')[0];
+        }
+        // Format: youtube.com/embed/VIDEO_ID
+        else if (url.includes('/embed/')) {
+            videoId = url.split('/embed/')[1].split('?')[0].split('&')[0];
+        }
+        
+        if (videoId) {
+            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
+        }
+    }
+    
+    // Vimeo URLs
+    if (url.includes('vimeo.com')) {
+        const match = url.match(/vimeo\.com\/(\d+)/);
+        if (match) {
+            return `https://player.vimeo.com/video/${match[1]}`;
+        }
+    }
+    
+    // Return original URL for other video services
+    return url;
+}
+</script>
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 {% endblock %}
@@ -106,18 +146,18 @@
                     <div x-show="open" x-collapse class="border-t border-slate-100">
                         <!-- Video Preview -->
                         {% if re.exercise.video_url %}
-                        <div class="aspect-video bg-slate-900">
-                            {% if 'youtube.com' in re.exercise.video_url or 'youtu.be' in re.exercise.video_url %}
+                        <div class="aspect-video bg-slate-900"
+                             x-data="{ embedUrl: '' }"
+                             x-init="embedUrl = getYoutubeEmbedUrl('{{ re.exercise.video_url|escapejs }}')">
                             <iframe 
-                                src="https://www.youtube.com/embed/{{ re.exercise.video_url|cut:'https://www.youtube.com/watch?v='|cut:'https://youtu.be/' }}" 
+                                :src="embedUrl"
                                 class="w-full h-full" 
                                 frameborder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowfullscreen>
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                loading="lazy">
                             </iframe>
-                            {% else %}
-                            <iframe src="{{ re.exercise.video_url }}" class="w-full h-full" frameborder="0" allowfullscreen></iframe>
-                            {% endif %}
                         </div>
                         {% endif %}
                         

@@ -1911,7 +1911,6 @@ def public_checkout_membership(request, slug, membership_id):
 # ===========================
 
 @login_required
-@login_required
 def public_routines(request, slug):
     """Lista de rutinas asignadas al cliente"""
     gym, settings = get_gym_by_slug(slug)

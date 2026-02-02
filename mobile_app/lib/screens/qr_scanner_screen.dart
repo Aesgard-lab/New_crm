@@ -20,6 +20,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   String? _resultMessage;
   bool _isSuccess = false;
   Map<String, dynamic>? _sessionInfo;
+  bool _torchEnabled = false;
 
   @override
   void initState() {
@@ -54,9 +55,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     setState(() {
       _isProcessing = false;
       _isSuccess = result['success'] == true;
-      _resultMessage = result['message'] ?? 
-          (result['success'] == true 
-              ? '¡Asistencia registrada!' 
+      _resultMessage = result['message'] ??
+          (result['success'] == true
+              ? '¡Asistencia registrada!'
               : 'Error al procesar el check-in');
       _sessionInfo = result['success'] == true
           ? {
@@ -104,7 +105,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Título
             Text(
               _isSuccess ? '¡Check-in realizado!' : 'Error',
@@ -115,7 +116,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Mensaje
             Text(
               _resultMessage ?? '',
@@ -125,7 +126,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 color: Color(0xFF64748B),
               ),
             ),
-            
+
             // Info de la sesión
             if (_sessionInfo != null) ...[
               const SizedBox(height: 16),
@@ -167,9 +168,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 24),
-            
+
             // Botón
             SizedBox(
               width: double.infinity,
@@ -227,16 +228,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         actions: [
           // Botón de flash
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: _scannerController!.torchState,
-              builder: (context, state, child) {
-                return Icon(
-                  state == TorchState.on ? Icons.flash_on : Icons.flash_off,
-                  color: state == TorchState.on ? Colors.yellow : Colors.white,
-                );
-              },
+            icon: Icon(
+              _torchEnabled ? Icons.flash_on : Icons.flash_off,
+              color: _torchEnabled ? Colors.yellow : Colors.white,
             ),
-            onPressed: () => _scannerController?.toggleTorch(),
+            onPressed: () async {
+              await _scannerController?.toggleTorch();
+              setState(() {
+                _torchEnabled = !_torchEnabled;
+              });
+            },
           ),
           // Botón de cambiar cámara
           IconButton(
@@ -260,7 +261,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               }
             },
           ),
-          
+
           // Overlay con marco de escaneo
           CustomPaint(
             size: Size.infinite,
@@ -268,7 +269,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               borderColor: Theme.of(context).primaryColor,
             ),
           ),
-          
+
           // Instrucciones en la parte inferior
           Positioned(
             left: 0,
@@ -313,7 +314,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               ),
             ),
           ),
-          
+
           // Indicador de procesamiento
           if (_isProcessing)
             Container(
@@ -369,7 +370,7 @@ class ScannerOverlayPainter extends CustomPainter {
     // Fondo oscuro con hueco central
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    
+
     final cutoutPath = Path()
       ..addRRect(RRect.fromRectAndRadius(
         Rect.fromLTRB(left, top, right, bottom),

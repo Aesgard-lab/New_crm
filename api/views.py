@@ -7,6 +7,30 @@ from django.db.models import Q
 from organizations.models import Gym
 from .serializers import GymSerializer, ClientProfileSerializer
 
+
+class SystemConfigView(views.APIView):
+    """
+    Public endpoint to get system branding (name, logo).
+    For white-label login screens.
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        from saas_billing.models import BillingConfig
+        
+        try:
+            config = BillingConfig.get_config()
+            return Response({
+                'system_name': config.system_name or 'Gym Portal',
+                'system_logo': request.build_absolute_uri(config.system_logo.url) if config.system_logo else None,
+            })
+        except Exception:
+            return Response({
+                'system_name': 'Gym Portal',
+                'system_logo': None,
+            })
+
+
 class GymSearchView(generics.ListAPIView):
     """
     Public endpoint to search gyms by name.

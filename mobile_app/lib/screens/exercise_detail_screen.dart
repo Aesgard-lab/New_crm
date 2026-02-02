@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/routine.dart';
+import '../widgets/youtube_player_web.dart';
 
 class ExerciseDetailScreen extends StatefulWidget {
   final RoutineExercise exercise;
@@ -11,6 +12,13 @@ class ExerciseDetailScreen extends StatefulWidget {
 }
 
 class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
+  String? _embedUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _embedUrl = getEmbedUrl(widget.exercise.videoUrl);
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,12 +147,61 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       // Play Video Button
       floatingActionButton: widget.exercise.videoUrl != null
           ? FloatingActionButton.extended(
-              onPressed: () => _openVideoUrl(),
+              onPressed: () => _showVideoDialog(),
               backgroundColor: const Color(0xFF6366F1),
               icon: const Icon(Icons.play_arrow),
               label: const Text('Ver Video'),
             )
           : null,
+    );
+  }
+
+  void _showVideoDialog() {
+    if (_embedUrl == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with close button
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.exercise.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            // Video player
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: YoutubePlayerWeb(embedUrl: _embedUrl!),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -357,21 +414,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _openVideoUrl() {
-    // For now show a snackbar, later integrate youtube_player
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Video: ${widget.exercise.videoUrl}'),
-        action: SnackBarAction(
-          label: 'Abrir',
-          onPressed: () {
-            // TODO: Use url_launcher to open in browser or embed player
-          },
-        ),
       ),
     );
   }

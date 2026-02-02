@@ -47,13 +47,43 @@
             <h3 class="text-lg font-semibold text-white mb-4 border-b border-gray-800 pb-2">Informacion Fiscal (Emisor)</h3>
             <p class="text-sm text-gray-400 mb-6">Estos datos apareceran en las facturas generadas para los gimnasios.</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- País de la empresa -->
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Pais de la Empresa</label>
+                    <select name="company_country" id="company_country" onchange="updateCountryFields()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="ES" {% if config.company_country == 'ES' %}selected{% endif %}>🇪🇸 España</option>
+                        <option value="US" {% if config.company_country == 'US' %}selected{% endif %}>🇺🇸 Estados Unidos (LLC)</option>
+                        <option value="OTHER" {% if config.company_country == 'OTHER' %}selected{% endif %}>🌍 Otro</option>
+                    </select>
+                </div>
+                
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-400 mb-2">Razon Social / Nombre Empresa</label>
                     <input type="text" name="company_name" value="{{ config.company_name }}" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-gray-500 mt-1" id="company_name_hint">Para LLC: "Nombre LLC" (ej: MyCompany LLC)</p>
                 </div>
+                
+                <!-- Estado (solo para EEUU) -->
+                <div id="state_field" class="{% if config.company_country != 'US' %}hidden{% endif %}">
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Estado de Registro</label>
+                    <select name="company_state" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">Seleccionar estado...</option>
+                        <option value="Delaware" {% if config.company_state == 'Delaware' %}selected{% endif %}>Delaware</option>
+                        <option value="Wyoming" {% if config.company_state == 'Wyoming' %}selected{% endif %}>Wyoming</option>
+                        <option value="Nevada" {% if config.company_state == 'Nevada' %}selected{% endif %}>Nevada</option>
+                        <option value="Florida" {% if config.company_state == 'Florida' %}selected{% endif %}>Florida</option>
+                        <option value="Texas" {% if config.company_state == 'Texas' %}selected{% endif %}>Texas</option>
+                        <option value="California" {% if config.company_state == 'California' %}selected{% endif %}>California</option>
+                        <option value="New York" {% if config.company_state == 'New York' %}selected{% endif %}>New York</option>
+                        <option value="Other" {% if config.company_state == 'Other' %}selected{% endif %}>Otro</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Estado donde está registrada la LLC</p>
+                </div>
+                
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-2">CIF / NIF</label>
-                    <input type="text" name="company_tax_id" value="{{ config.company_tax_id }}" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                    <label class="block text-sm font-medium text-gray-400 mb-2" id="tax_id_label">CIF / NIF</label>
+                    <input type="text" name="company_tax_id" value="{{ config.company_tax_id }}" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500" id="tax_id_input" placeholder="B12345678">
+                    <p class="text-xs text-gray-500 mt-1" id="tax_id_hint">Identificador fiscal de la empresa</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-2">Email Soporte / Facturacion</label>
@@ -61,7 +91,8 @@
                 </div>
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-400 mb-2">Direccion Fiscal Completa</label>
-                    <textarea name="company_address" rows="3" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500">{{ config.company_address }}</textarea>
+                    <textarea name="company_address" rows="3" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-indigo-500 focus:border-indigo-500" id="address_input" placeholder="Calle, Número, Ciudad, CP, País">{{ config.company_address }}</textarea>
+                    <p class="text-xs text-gray-500 mt-1" id="address_hint">Incluye calle, ciudad, codigo postal y pais</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-2">Telefono (Opcional)</label>
@@ -69,6 +100,48 @@
                 </div>
             </div>
         </div>
+
+        <script>
+        function updateCountryFields() {
+            const country = document.getElementById('company_country').value;
+            const stateField = document.getElementById('state_field');
+            const taxIdLabel = document.getElementById('tax_id_label');
+            const taxIdInput = document.getElementById('tax_id_input');
+            const taxIdHint = document.getElementById('tax_id_hint');
+            const companyNameHint = document.getElementById('company_name_hint');
+            const addressHint = document.getElementById('address_hint');
+            const addressInput = document.getElementById('address_input');
+            
+            if (country === 'US') {
+                stateField.classList.remove('hidden');
+                taxIdLabel.textContent = 'EIN (Employer Identification Number)';
+                taxIdInput.placeholder = 'XX-XXXXXXX';
+                taxIdHint.textContent = 'Formato: XX-XXXXXXX (9 dígitos)';
+                companyNameHint.textContent = 'Para LLC: "Nombre LLC" (ej: MyCompany LLC)';
+                addressHint.textContent = 'Incluye: Street, City, State ZIP, USA';
+                addressInput.placeholder = '123 Main Street, Suite 100\nCity, State 12345\nUnited States';
+            } else if (country === 'ES') {
+                stateField.classList.add('hidden');
+                taxIdLabel.textContent = 'CIF / NIF';
+                taxIdInput.placeholder = 'B12345678';
+                taxIdHint.textContent = 'CIF para empresas o NIF para autónomos';
+                companyNameHint.textContent = 'Razón social tal como aparece en Hacienda';
+                addressHint.textContent = 'Incluye calle, ciudad, código postal y país';
+                addressInput.placeholder = 'Calle Ejemplo, 123\n28001 Madrid\nEspaña';
+            } else {
+                stateField.classList.add('hidden');
+                taxIdLabel.textContent = 'Tax ID / VAT Number';
+                taxIdInput.placeholder = 'Identificador fiscal';
+                taxIdHint.textContent = 'Identificador fiscal de tu país';
+                companyNameHint.textContent = 'Nombre legal de la empresa';
+                addressHint.textContent = 'Dirección fiscal completa';
+                addressInput.placeholder = 'Dirección completa';
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', updateCountryFields);
+        </script>
 
         <!-- Stripe Configuration -->
         <div class="glass-panel p-6 rounded-xl border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]">

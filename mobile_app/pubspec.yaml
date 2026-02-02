@@ -27,6 +27,12 @@ dependencies:
   signature: ^5.4.0
   flutter_widget_from_html_core: 0.10.0
   qr_flutter: ^4.1.0
+  
+  # QR Scanner
+  mobile_scanner: ^5.1.1
+  
+  # Video Player
+  url_launcher: ^6.2.0
 
 dev_dependencies:
   flutter_test:

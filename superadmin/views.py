@@ -406,11 +406,24 @@ def billing_config(request):
     config = BillingConfig.get_config()
     
     if request.method == 'POST':
+        # Company country and related fields
+        config.company_country = request.POST.get('company_country', 'ES')
+        config.company_state = request.POST.get('company_state', '')
+        
         config.company_name = request.POST.get('company_name')
         config.company_tax_id = request.POST.get('company_tax_id')
         config.company_address = request.POST.get('company_address')
         config.company_email = request.POST.get('company_email')
         config.company_phone = request.POST.get('company_phone', '')
+        
+        # Update tax_id_label based on country
+        country = config.company_country
+        if country == 'US':
+            config.company_tax_id_label = 'EIN'
+        elif country == 'ES':
+            config.company_tax_id_label = 'CIF/NIF'
+        else:
+            config.company_tax_id_label = 'Tax ID'
         
         # System branding (white label)
         config.system_name = request.POST.get('system_name', 'New CRM')

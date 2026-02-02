@@ -404,7 +404,7 @@ class ActiveWorkoutView(views.APIView):
         active_workout = WorkoutLog.objects.filter(
             client=client,
             date=today,
-            completed=False
+            completed_at__isnull=True
         ).select_related('routine', 'routine_day').first()
         
         if not active_workout:

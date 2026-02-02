@@ -23,15 +23,36 @@ class FranchiseDashboardView(LoginRequiredMixin, IsFranchiseOwner, TemplateView)
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
-        # Determine Franchise(s)
+        # Determine available Franchise(s)
         if user.is_superuser:
-            franchises = Franchise.objects.all()
+            available_franchises = Franchise.objects.all()
         else:
-            franchises = user.franchises_owned.all()
-            
-        # For simplicity, focus on the first franchise if multiple, or aggregate all 
-        # (This MVP assumes owner usually has one Franchise Group)
-        gyms = Gym.objects.filter(franchise__in=franchises)
+            available_franchises = user.franchises_owned.all()
+        
+        # Get selected franchise from query param (for superadmin switching)
+        selected_franchise_id = self.request.GET.get('franchise')
+        
+        if selected_franchise_id:
+            try:
+                selected_franchise = available_franchises.get(id=selected_franchise_id)
+            except Franchise.DoesNotExist:
+                selected_franchise = available_franchises.first()
+        else:
+            selected_franchise = available_franchises.first()
+        
+        # Filter gyms by the SELECTED franchise only
+        if selected_franchise:
+            gyms = Gym.objects.filter(franchise=selected_franchise, is_active=True)
+            franchise_name = selected_franchise.name
+        else:
+            gyms = Gym.objects.none()
+            franchise_name = "Sin Franquicia"
+        
+        # Add franchise selector data for superadmins
+        context['available_franchises'] = available_franchises
+        context['selected_franchise'] = selected_franchise
+        context['is_superuser'] = user.is_superuser
+        context['show_franchise_selector'] = available_franchises.count() > 1
         
         # --- Time Ranges ---
         today = timezone.now()
@@ -145,6 +166,6 @@ class FranchiseDashboardView(LoginRequiredMixin, IsFranchiseOwner, TemplateView)
                 'data': revenue_data
             }),
             'gyms_performance': gyms_performance,
-            'franchise_name': franchises.first().name if franchises.exists() else "Franquicia"
+            'franchise_name': franchise_name
         })
         return context

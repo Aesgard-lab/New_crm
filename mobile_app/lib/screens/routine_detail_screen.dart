@@ -16,7 +16,7 @@ class RoutineDetailScreen extends StatefulWidget {
 }
 
 class _RoutineDetailScreenState extends State<RoutineDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   Routine? _routine;
   bool _isLoading = true;
   String? _errorMessage;

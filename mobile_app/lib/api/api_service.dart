@@ -53,6 +53,20 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Get system config (branding)
+  Future<Map<String, dynamic>> getSystemConfig() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/system/config/'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'system_name': 'Gym Portal', 'system_logo': null};
+    } catch (e) {
+      print('Error getting system config: $e');
+      return {'system_name': 'Gym Portal', 'system_logo': null};
+    }
+  }
+
   Future<List<Gym>> searchGyms(String query) async {
     if (query.length < 2) return [];
 
@@ -115,6 +129,53 @@ class ApiService extends ChangeNotifier {
     } catch (e) {
       print('Login error: $e');
       return false;
+    }
+  }
+
+  /// Register a new client account
+  Future<Map<String, dynamic>> registerClient({
+    required int gymId,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    String? phoneNumber,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/registration/register/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'gym_id': gymId,
+          'first_name': firstName,
+          'last_name': lastName,
+          'email': email,
+          'password': password,
+          if (phoneNumber != null && phoneNumber.isNotEmpty) 'phone_number': phoneNumber,
+        }),
+      );
+
+      final data = json.decode(response.body);
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Registro completado correctamente',
+          'requires_verification': data['requires_verification'] ?? false,
+          'requires_approval': data['requires_approval'] ?? false,
+        };
+      } else {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Error al registrar',
+        };
+      }
+    } catch (e) {
+      print('Registration error: $e');
+      return {
+        'success': false,
+        'error': 'Error de conexión',
+      };
     }
   }
 
@@ -837,6 +898,41 @@ class ApiService extends ChangeNotifier {
     }
   }
 
+  /// QR Check-in: Escanea el QR de una sesión para registrar asistencia
+  Future<Map<String, dynamic>> qrCheckin(String qrContent) async {
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/checkin/qr/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'qr_content': qrContent}),
+      );
+
+      final data = json.decode(response.body);
+      
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? '¡Check-in realizado!',
+          'session_name': data['session_name'],
+          'session_time': data['session_time'],
+          'room': data['room'],
+        };
+      }
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Error al procesar el check-in',
+      };
+    } catch (e) {
+      print('Error QR checkin: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
   // Get Document Detail
   Future<Map<String, dynamic>> getDocumentDetail(int documentId) async {
     if (_token == null) return {};
@@ -972,7 +1068,7 @@ class ApiService extends ChangeNotifier {
 
   // Get Routine Detail
   Future<Map<String, dynamic>> getRoutineDetail(int routineId) async {
-    if (_token == null) return {};
+    if (_token == null) return {'success': false, 'message': 'No autenticado'};
 
     try {
       final response = await http.get(
@@ -984,12 +1080,13 @@ class ApiService extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+        return {'success': true, 'routine': data};
       }
-      return {};
+      return {'success': false, 'message': 'Error al cargar rutina'};
     } catch (e) {
       print('Error getting routine detail: $e');
-      return {};
+      return {'success': false, 'message': 'Error de conexión'};
     }
   }
 
@@ -1008,7 +1105,9 @@ class ApiService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {'success': true, 'routines': data is List ? data : []};
+        // Backend returns {'count': X, 'routines': [...]}
+        final routines = data is Map ? (data['routines'] ?? []) : (data is List ? data : []);
+        return {'success': true, 'routines': routines};
       }
       return {'success': false, 'message': 'Error al cargar rutinas'};
     } catch (e) {

@@ -77,6 +77,9 @@ from .calendar_views import (
 )
 
 urlpatterns = [
+    # System Config
+    path('system/config/', views.SystemConfigView.as_view(), name='api_system_config'),
+    
     # Authentication & Registration
     path('gyms/search/', views.GymSearchView.as_view(), name='api_gym_search'),
     path('auth/login/', views.LoginView.as_view(), name='api_login'),

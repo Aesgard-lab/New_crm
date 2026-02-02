@@ -9,7 +9,7 @@ class FranchiseForm(forms.ModelForm):
     owners = forms.ModelMultipleChoiceField(
         queryset=User.objects.all(),
         required=False,
-        widget=forms.SelectMultiple(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5 bg-white'}),
+        widget=forms.SelectMultiple(attrs={'class': 'w-full rounded-xl border-gray-700 bg-gray-800 p-2.5 text-white focus:ring-purple-500 focus:border-purple-500'}),
         help_text="Selecciona los usuarios propietarios de esta franquicia"
     )
 
@@ -17,8 +17,8 @@ class FranchiseForm(forms.ModelForm):
         model = Franchise
         fields = ['name', 'owners', 'allow_cross_booking']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 p-2.5', 'placeholder': 'Ej: FitLife España'}),
-            'allow_cross_booking': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500'}),
+            'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-700 bg-gray-800 p-2.5 text-white placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500', 'placeholder': 'Ej: FitLife España'}),
+            'allow_cross_booking': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500'}),
         }
         labels = {
             'name': 'Nombre de la Franquicia',
