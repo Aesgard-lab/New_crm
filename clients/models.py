@@ -832,3 +832,133 @@ class ScheduledMembershipChange(models.Model):
     
     def __str__(self):
         return f"{self.client} - {self.current_membership.name} → {self.new_plan.name} ({self.scheduled_date})"
+
+
+class ClientPenalty(models.Model):
+    """
+    Registro de penalizaciones aplicadas a clientes.
+    Se usa para:
+    - Cancelaciones tardías
+    - No-shows
+    - Otras infracciones
+    """
+    class PenaltyType(models.TextChoices):
+        STRIKE = "STRIKE", "Strike (Falta)"
+        FEE = "FEE", "Cobro Monetario"
+        FORFEIT = "FORFEIT", "Pérdida de Crédito"
+        SUSPENSION = "SUSPENSION", "Suspensión Temporal"
+    
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pendiente"
+        APPLIED = "APPLIED", "Aplicada"
+        WAIVED = "WAIVED", "Perdonada"
+        PAID = "PAID", "Pagada"  # Solo para FEE
+    
+    client = models.ForeignKey(
+        Client, 
+        on_delete=models.CASCADE, 
+        related_name="penalties"
+    )
+    gym = models.ForeignKey(
+        'organizations.Gym', 
+        on_delete=models.CASCADE, 
+        related_name="client_penalties"
+    )
+    
+    penalty_type = models.CharField(
+        max_length=20, 
+        choices=PenaltyType.choices,
+        verbose_name="Tipo de Penalización"
+    )
+    
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.APPLIED,
+        verbose_name="Estado"
+    )
+    
+    # Monto (solo para FEE)
+    amount = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+        verbose_name="Monto"
+    )
+    
+    reason = models.CharField(
+        max_length=255,
+        verbose_name="Motivo"
+    )
+    
+    # Referencia opcional a la sesión que causó la penalización
+    session = models.ForeignKey(
+        'activities.ActivitySession',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="penalties"
+    )
+    
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="penalties_created"
+    )
+    
+    waived_at = models.DateTimeField(null=True, blank=True)
+    waived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="penalties_waived"
+    )
+    waived_reason = models.CharField(max_length=255, blank=True)
+    
+    class Meta:
+        verbose_name = "Penalización"
+        verbose_name_plural = "Penalizaciones"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.get_penalty_type_display()} - {self.client} ({self.created_at.strftime('%d/%m/%Y')})"
+    
+    def waive(self, user, reason=""):
+        """Perdonar la penalización"""
+        from django.utils import timezone
+        self.status = self.Status.WAIVED
+        self.waived_at = timezone.now()
+        self.waived_by = user
+        self.waived_reason = reason
+        self.save()
+    
+    @classmethod
+    def get_strike_count(cls, client, days=90):
+        """Obtener cantidad de strikes en los últimos X días"""
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(days=days)
+        return cls.objects.filter(
+            client=client,
+            penalty_type=cls.PenaltyType.STRIKE,
+            status__in=[cls.Status.PENDING, cls.Status.APPLIED],
+            created_at__gte=cutoff
+        ).count()
+    
+    @classmethod
+    def get_pending_fees(cls, client):
+        """Obtener multas pendientes de pago"""
+        return cls.objects.filter(
+            client=client,
+            penalty_type=cls.PenaltyType.FEE,
+            status=cls.Status.PENDING
+        ).aggregate(
+            total=models.Sum('amount'),
+            count=models.Count('id')
+        )

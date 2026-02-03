@@ -102,7 +102,11 @@ class ActivityPolicy(models.Model):
     booking_time_release = models.TimeField(_("Hora de Apertura"), null=True, blank=True, help_text=_("Solo si el modo es Hora Fija (ej: 00:00)"))
 
     # Cancellation Configuration
-    cancellation_window_hours = models.PositiveIntegerField(_("Ventana de Cancelación (Horas)"), help_text=_("Horas antes de la clase para cancelar sin penalización"))
+    cancellation_window_hours = models.PositiveIntegerField(
+        _("Ventana de Cancelación (Horas)"), 
+        default=2,
+        help_text=_("Horas antes de la clase para cancelar sin penalización")
+    )
     penalty_type = models.CharField(_("Tipo de Penalización"), max_length=20, choices=PENALTY_CHOICES, default='FORFEIT')
     fee_amount = models.DecimalField(_("Monto de Multa"), max_digits=6, decimal_places=2, null=True, blank=True, help_text=_("Solo si el tipo es Cobro Monetario"))
 

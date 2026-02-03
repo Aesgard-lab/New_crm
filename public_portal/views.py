@@ -957,44 +957,39 @@ def api_book_session(request, slug):
     import json
     data = json.loads(request.body)
     session_id = data.get('session_id')
+    join_waitlist = data.get('join_waitlist', False)
     
     if not session_id:
         return JsonResponse({'success': False, 'error': 'Session ID required'}, status=400)
     
     # Obtener la sesión
     try:
-        session = ActivitySession.objects.select_related('activity').get(
+        session = ActivitySession.objects.select_related('activity', 'activity__policy').get(
             id=session_id,
             gym=gym
         )
     except ActivitySession.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
     
-    # Verificar que la sesión está en el futuro
-    if session.start_datetime < timezone.now():
-        return JsonResponse({'success': False, 'error': 'No se pueden reservar clases pasadas'}, status=400)
+    # Usar el servicio de políticas para validar
+    from activities.policy_service import BookingPolicyService, WaitlistPolicyService
     
-    # Verificar disponibilidad
-    from activities.models import ActivitySessionBooking
-    current_bookings = ActivitySessionBooking.objects.filter(
-        session=session,
-        status='CONFIRMED'
-    ).count()
+    validation = BookingPolicyService.can_book(session, client)
     
-    if session.capacity and current_bookings >= session.capacity:
-        return JsonResponse({'success': False, 'error': 'Clase completa'}, status=400)
+    if not validation.success:
+        # Si la clase está llena pero hay waitlist disponible y el usuario quiere unirse
+        if validation.data.get('waitlist_available') and join_waitlist:
+            waitlist_result = WaitlistPolicyService.join_waitlist(session, client)
+            return JsonResponse(waitlist_result.to_dict(), status=200 if waitlist_result.success else 400)
+        
+        return JsonResponse({
+            'success': False, 
+            'error': validation.message,
+            **validation.data
+        }, status=400)
     
-    # Verificar que no tenga ya una reserva
-    existing_booking = ActivitySessionBooking.objects.filter(
-        session=session,
-        client=client,
-        status='CONFIRMED'
-    ).exists()
-    
-    if existing_booking:
-        return JsonResponse({'success': False, 'error': 'Ya tienes una reserva para esta clase'}, status=400)
-    
-    # Verificar que tenga membresía activa con acceso a esta actividad
+    # Verificar que tenga membresía activa (opcional según config)
+    from clients.models import ClientMembership as Membership
     active_membership = Membership.objects.filter(
         client=client,
         gym=gym,
@@ -1006,19 +1001,18 @@ def api_book_session(request, slug):
         return JsonResponse({'success': False, 'error': 'Necesitas una membresía activa'}, status=400)
     
     # Crear la reserva
+    from activities.models import ActivitySessionBooking
     booking = ActivitySessionBooking.objects.create(
         session=session,
         client=client,
-        gym=gym,
-        status='CONFIRMED',
-        membership=active_membership,
-        created_by=request.user
+        status='CONFIRMED'
     )
     
     return JsonResponse({
         'success': True,
         'booking_id': booking.id,
-        'message': 'Reserva confirmada'
+        'message': 'Reserva confirmada',
+        'spots_available': validation.data.get('spots_available')
     })
 
 
@@ -1041,25 +1035,55 @@ def api_cancel_booking(request, slug, booking_id):
     # Obtener la reserva
     from activities.models import ActivitySessionBooking
     try:
-        booking = ActivitySessionBooking.objects.select_related('session').get(
+        booking = ActivitySessionBooking.objects.select_related(
+            'session', 'session__activity', 'session__activity__policy'
+        ).get(
             id=booking_id,
-            client=client,
-            gym=gym
+            client=client
         )
     except ActivitySessionBooking.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Booking not found'}, status=404)
     
-    # Verificar que la sesión no haya pasado
-    if booking.session.start_datetime < timezone.now():
-        return JsonResponse({'success': False, 'error': 'No se pueden cancelar clases pasadas'}, status=400)
+    # Usar el servicio de políticas para validar y ejecutar
+    from activities.policy_service import CancellationPolicyService
     
-    # Cancelar la reserva
-    booking.status = 'CANCELLED'
-    booking.save()
+    # Primero verificar si puede cancelar
+    validation = CancellationPolicyService.can_cancel(booking)
+    
+    if not validation.success:
+        return JsonResponse({
+            'success': False,
+            'error': validation.message
+        }, status=400)
+    
+    # Si tiene penalización, verificar si el usuario confirmó
+    import json
+    data = json.loads(request.body) if request.body else {}
+    confirmed = data.get('confirmed', False)
+    
+    if validation.data.get('has_penalty') and not confirmed:
+        # Devolver información de penalización para que el frontend confirme
+        return JsonResponse({
+            'success': False,
+            'requires_confirmation': True,
+            'penalty_info': {
+                'type': validation.data.get('penalty_type'),
+                'description': validation.data.get('penalty_description'),
+                'amount': validation.data.get('penalty_amount'),
+                'hours_until_class': validation.data.get('hours_until_class'),
+                'window_hours': validation.data.get('window_hours')
+            },
+            'message': validation.message
+        }, status=200)
+    
+    # Ejecutar la cancelación
+    result = CancellationPolicyService.execute_cancellation(booking, cancelled_by=request.user)
     
     return JsonResponse({
-        'success': True,
-        'message': 'Reserva cancelada'
+        'success': result.success,
+        'message': result.message,
+        'penalty_applied': result.data.get('penalty_applied', False),
+        'penalty_type': result.data.get('penalty_type')
     })
 
 
