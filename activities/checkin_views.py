@@ -23,6 +23,8 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django_ratelimit.decorators import ratelimit
 
+from core.ratelimit import get_client_ip
+
 from organizations.models import Gym
 from clients.models import Client
 from .models import ActivitySession, AttendanceSettings, SessionCheckin
@@ -295,16 +297,6 @@ def qr_checkin(request, token):
             'success': False,
             'error': str(e)
         }, status=500)
-
-
-def get_client_ip(request):
-    """Obtiene la IP del cliente"""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
 
 
 @login_required

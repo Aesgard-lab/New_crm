@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from .services import FaceRecognitionService, check_face_recognition_available
 from .models import ClientFaceEncoding, FaceRecognitionSettings
+from core.ratelimit import get_client_ip
 
 
 @api_view(['GET'])
@@ -304,12 +305,6 @@ def face_recognition_stats(request):
 import logging
 security_logger = logging.getLogger('django.security')
 
-def get_client_ip(request):
-    """Obtiene la IP real del cliente, considerando proxies"""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        return x_forwarded_for.split(',')[0].strip()
-    return request.META.get('REMOTE_ADDR', 'unknown')
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])

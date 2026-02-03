@@ -4,7 +4,7 @@ Decorador para logging de auditoría de acciones críticas
 from functools import wraps
 from django.utils import timezone
 import json
-
+from core.ratelimit import get_client_ip
 
 def log_action(action, module):
     """
@@ -53,15 +53,3 @@ def log_action(action, module):
             return response
         return wrapper
     return decorator
-
-
-def get_client_ip(request):
-    """
-    Obtiene la IP real del cliente (considerando proxies)
-    """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip

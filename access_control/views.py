@@ -23,6 +23,7 @@ import hashlib
 import logging
 
 from .models import AccessDevice, AccessZone, AccessLog, AccessAlert, ClientAccessCredential
+from core.ratelimit import get_client_ip
 from .services import AccessControlService
 
 # Security logger
@@ -86,14 +87,6 @@ def require_device_api_key(view_func):
         return view_func(request, *args, **kwargs)
     
     return wrapper
-
-
-def get_client_ip(request):
-    """Extract client IP from request, handling proxies."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        return x_forwarded_for.split(',')[0].strip()
-    return request.META.get('REMOTE_ADDR', 'unknown')
 
 
 # ===========================================

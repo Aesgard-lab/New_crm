@@ -6,6 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import redirect
 
+from core.ratelimit import get_client_ip
+
 
 def superuser_required(view_func):
     """
@@ -51,13 +53,3 @@ def log_superadmin_action(action_type, description):
             return response
         return wrapper
     return decorator
-
-
-def get_client_ip(request):
-    """Get the client's IP address from the request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip

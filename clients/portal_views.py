@@ -10,6 +10,7 @@ from django.db.models import Sum
 import datetime
 from .models import Client, ClientMembership
 from finance.stripe_utils import list_payment_methods, create_setup_intent, detach_payment_method
+from core.ratelimit import get_client_ip
 
 
 def _get_pwa_redirect_url(client):
@@ -1514,16 +1515,6 @@ def portal_checkin_process(request):
         'checked_in_at': checkin.checked_in_at.strftime('%H:%M'),
         'client_name': client.first_name,
     })
-
-
-def get_client_ip(request):
-    """Obtiene la IP del cliente"""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
 
 
 @login_required
