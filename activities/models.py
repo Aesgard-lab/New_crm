@@ -564,43 +564,8 @@ class ScheduleSettings(models.Model):
         help_text=_("Número máximo de clases seguidas que puede impartir un instructor (0 = sin límite)")
     )
     
-    # === RESTRICCIONES DE RESERVAS ===
-    max_advance_booking_days = models.IntegerField(
-        default=30,
-        verbose_name=_("Días máximos de antelación para reservar"),
-        help_text=_("Cuántos días de antelación pueden reservar los clientes (0 = sin límite)")
-    )
-    
-    min_advance_booking_hours = models.IntegerField(
-        default=0,
-        verbose_name=_("Horas mínimas de antelación para reservar"),
-        help_text=_("Mínimo de horas de antelación para hacer una reserva")
-    )
-    
-    allow_cancellation = models.BooleanField(
-        default=True,
-        verbose_name=_("Permitir cancelación de reservas"),
-        help_text=_("Los clientes pueden cancelar sus reservas")
-    )
-    
-    cancellation_deadline_hours = models.IntegerField(
-        default=2,
-        verbose_name=_("Plazo para cancelar (horas)"),
-        help_text=_("Horas mínimas de antelación para cancelar sin penalización")
-    )
-    
-    # === LISTAS DE ESPERA ===
-    enable_waitlist = models.BooleanField(
-        default=True,
-        verbose_name=_("Habilitar lista de espera"),
-        help_text=_("Permitir lista de espera cuando una clase está llena")
-    )
-    
-    auto_assign_from_waitlist = models.BooleanField(
-        default=True,
-        verbose_name=_("Asignar automáticamente desde lista de espera"),
-        help_text=_("Asignar plaza automáticamente cuando alguien cancela")
-    )
+    # === NOTA: Las políticas de reservas, cancelaciones y listas de espera ===
+    # === se gestionan por actividad a través del modelo ActivityPolicy ===
     
     # === NOTIFICACIONES ===
     notify_class_changes = models.BooleanField(
