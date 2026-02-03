@@ -1,5 +1,5 @@
 {% extends "backoffice/base.html" %}
-{% load dict_extras %}
+{% load dict_extras sanitize_tags %}
 
 {% block page_title %}Informes de Facturación{% endblock %}
 
@@ -749,10 +749,10 @@ document.addEventListener('alpine:init', () => {
                 new Chart(revenueCtx, {
                     type: 'line',
                     data: {
-                        labels: {{ chart.labels|safe }},
+                        labels: {{ chart.labels|safe_json }},
                         datasets: [{
                             label: 'Ingresos',
-                            data: {{ chart.values|safe }},
+                            data: {{ chart.values|safe_json }},
                             borderColor: 'rgb(99, 102, 241)',
                             backgroundColor: 'rgba(99, 102, 241, 0.1)',
                             fill: true,

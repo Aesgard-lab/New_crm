@@ -56,7 +56,8 @@
                 <!-- Content -->
                 {% if document.content %}
                 <div class="prose prose-slate max-w-none">
-                    {{ document.content|safe }}
+                    {% load sanitize_tags %}
+                    {{ document.content|sanitize_html }}
                 </div>
                 {% endif %}
 

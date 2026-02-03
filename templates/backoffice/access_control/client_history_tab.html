@@ -247,7 +247,8 @@
     </div>
     
     <script>
-    const visitData = {{ visit_chart_data|safe }};
+    {% load sanitize_tags %}
+    const visitData = {{ visit_chart_data|safe_json }};
     const ctx = document.getElementById('clientAccessChart').getContext('2d');
     new Chart(ctx, {
         type: 'bar',

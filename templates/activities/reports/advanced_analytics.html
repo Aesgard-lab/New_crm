@@ -508,12 +508,13 @@
 {% endblock %}
 
 {% block extra_js %}
+{% load sanitize_tags %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     // Gráfica de Patrones Estacionales
     {% if seasonal_patterns %}
     const seasonalCtx = document.getElementById('seasonalChart').getContext('2d');
-    const seasonalData = {{ seasonal_patterns|safe }};
+    const seasonalData = {{ seasonal_patterns|safe_json }};
     const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     
     new Chart(seasonalCtx, {
@@ -552,7 +553,7 @@
     // Gráfica de Retención
     {% if member_retention %}
     const retentionCtx = document.getElementById('retentionChart').getContext('2d');
-    const retentionData = {{ member_retention|safe }};
+    const retentionData = {{ member_retention|safe_json }};
     
     new Chart(retentionCtx, {
         type: 'bar',

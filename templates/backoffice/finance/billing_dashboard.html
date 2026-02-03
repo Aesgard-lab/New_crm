@@ -1,5 +1,5 @@
 {% extends "backoffice/base.html" %}
-{% load dict_extras %}
+{% load dict_extras sanitize_tags %}
 
 {% block page_title %}Facturación{% endblock %}
 
@@ -606,7 +606,7 @@
 
     <!-- Hidden Data for Chart -->
     <script type="application/json" id="chart-values-data">
-        {{ chart_values|safe }}
+        {{ chart_values|safe_json }}
     </script>
 
     <!-- Edit Order Modal -->

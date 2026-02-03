@@ -39,7 +39,8 @@
 
         <!-- Document Content -->
         <div class="p-6 prose prose-sm max-w-none max-h-[400px] overflow-y-auto border-b border-slate-100">
-            {{ document.content|safe }}
+            {% load sanitize_tags %}
+            {{ document.content|sanitize_html }}
         </div>
     </div>
 

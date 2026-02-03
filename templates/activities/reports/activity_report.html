@@ -403,11 +403,12 @@
 {% endblock %}
 
 {% block extra_js %}
+{% load sanitize_tags %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     // Gráfica de comparativa de actividades
     const activitiesCtx = document.getElementById('activitiesComparisonChart').getContext('2d');
-    const activitiesData = {{ popular_activities|safe|default:"[]" }};
+    const activitiesData = {{ popular_activities|safe_json }};
     
     new Chart(activitiesCtx, {
         type: 'bar',
@@ -467,7 +468,7 @@
     // Gráfica de tendencia (si existe)
     {% if activity_trends %}
     const trendCtx = document.getElementById('activityTrendChart').getContext('2d');
-    const trendData = {{ activity_trends|safe }};
+    const trendData = {{ activity_trends|safe_json }};
     
     new Chart(trendCtx, {
         type: 'line',

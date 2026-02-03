@@ -50,7 +50,8 @@
             <h2 class="font-semibold text-slate-800">Contenido del documento</h2>
         </div>
         <div class="p-6 prose prose-slate max-w-none text-sm leading-relaxed">
-            {{ document.rendered_content|safe|default:document.template.content|safe }}
+            {% load sanitize_tags %}
+            {{ document.rendered_content|sanitize_html|default:document.template.content|sanitize_html }}
         </div>
     </div>
     

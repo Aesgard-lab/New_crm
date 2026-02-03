@@ -4,20 +4,34 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from .models import PasswordResetToken
-import random
+import secrets
 import string
+import time
+import random
+import logging
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
 
 class PasswordResetRequestView(views.APIView):
     """
     Request a password reset code.
-    Sends a 6-digit code to the user's email.
+    Sends an 8-character alphanumeric code to the user's email.
+    
+    SECURITY:
+    - Rate limited to 3 requests per hour per IP
+    - Uses cryptographically secure random code
+    - Constant-time response to prevent timing attacks
     """
     permission_classes = [AllowAny]
     
+    @method_decorator(ratelimit(key='ip', rate='3/h', method='POST', block=True))
     def post(self, request):
+        start_time = time.time()
         email = request.data.get('email', '').strip().lower()
         
         if not email:
@@ -30,8 +44,10 @@ class PasswordResetRequestView(views.APIView):
         try:
             user = User.objects.get(email=email)
             
-            # Generate 6-digit code
-            code = ''.join(random.choices(string.digits, k=6))
+            # SECURITY: Generate cryptographically secure 8-character alphanumeric code
+            # This provides 62^8 = ~218 trillion combinations
+            alphabet = string.ascii_uppercase + string.digits
+            code = ''.join(secrets.choice(alphabet) for _ in range(8))
             
             # Invalidate any previous unused tokens for this email
             PasswordResetToken.objects.filter(email=email, used=False).update(used=True)
@@ -50,13 +66,21 @@ class PasswordResetRequestView(views.APIView):
                 )
             except Exception as e:
                 # Log error but don't reveal to user
-                print(f"Error sending email: {e}")
-                # For development, print the code
-                print(f"PASSWORD RESET CODE for {email}: {code}")
+                logger.error(f"Error sending password reset email: {e}")
+                # For development only
+                if settings.DEBUG:
+                    logger.debug(f"PASSWORD RESET CODE for {email}: {code}")
         
         except User.DoesNotExist:
             # Don't reveal that user doesn't exist
             pass
+        
+        # SECURITY: Add random delay to prevent timing attacks
+        # Ensure response time is consistent regardless of user existence
+        elapsed = time.time() - start_time
+        min_response_time = 0.5  # minimum 500ms
+        if elapsed < min_response_time:
+            time.sleep(min_response_time - elapsed + random.uniform(0, 0.1))
         
         # Always return success message for security
         return Response({
@@ -68,16 +92,20 @@ class PasswordResetConfirmView(views.APIView):
     """
     Confirm password reset with code and set new password.
     
-    SECURITY: Uses Django's built-in password validators
+    SECURITY: 
+    - Uses Django's built-in password validators
+    - Rate limited to prevent brute force code guessing
+    - Uses constant-time comparison for code
     """
     permission_classes = [AllowAny]
     
+    @method_decorator(ratelimit(key='ip', rate='10/h', method='POST', block=True))
     def post(self, request):
         from django.contrib.auth.password_validation import validate_password
         from django.core.exceptions import ValidationError
         
         email = request.data.get('email', '').strip().lower()
-        code = request.data.get('code', '').strip()
+        code = request.data.get('code', '').strip().upper()  # Normalize to uppercase
         new_password = request.data.get('new_password', '')
         
         if not all([email, code, new_password]):

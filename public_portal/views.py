@@ -954,8 +954,13 @@ def api_book_session(request, slug):
     except Client.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Not a client'}, status=403)
     
+    # SECURITY: Validar JSON de forma segura
     import json
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    
     session_id = data.get('session_id')
     join_waitlist = data.get('join_waitlist', False)
     
@@ -1065,8 +1070,12 @@ def api_cancel_booking(request, slug, booking_id):
         }, status=400)
     
     # Si tiene penalización, verificar si el usuario confirmó
+    # SECURITY: Validar JSON de forma segura
     import json
-    data = json.loads(request.body) if request.body else {}
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except (json.JSONDecodeError, ValueError):
+        data = {}
     confirmed = data.get('confirmed', False)
     
     if validation.data.get('has_penalty') and not confirmed:
@@ -1338,11 +1347,16 @@ def public_login(request, slug):
                 client = Client.objects.get(user=user, gym=gym)
                 auth_login(request, user)
                 
-                # Redirigir a donde venía o al horario
-                next_url = request.GET.get('next', 'public_schedule')
-                if next_url.startswith('/'):
+                # SECURITY: Validar URL de redirección para prevenir Open Redirect
+                from django.utils.http import url_has_allowed_host_and_scheme
+                next_url = request.GET.get('next', '')
+                if next_url and url_has_allowed_host_and_scheme(
+                    next_url, 
+                    allowed_hosts={request.get_host()},
+                    require_https=request.is_secure()
+                ):
                     return redirect(next_url)
-                return redirect(next_url, slug=slug)
+                return redirect('public_schedule', slug=slug)
                 
             except Client.DoesNotExist:
                 messages.error(request, 'No tienes acceso a este gimnasio')
@@ -1725,8 +1739,12 @@ def public_chat_send_message(request, slug):
         defaults={'gym': gym}
     )
     
-    # Crear mensaje
-    data = json.loads(request.body)
+    # SECURITY: Validar JSON de forma segura
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    
     message_text = data.get('message', '').strip()
     
     if not message_text:
@@ -2128,8 +2146,8 @@ def public_checkin_process(request, slug):
     try:
         data = json.loads(request.body)
         qr_token = data.get('token', '')
-    except:
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
     
     # Verificar el token QR de la sesión
     from activities.checkin_views import verify_qr_token
@@ -2252,8 +2270,8 @@ def public_document_sign(request, slug, document_id):
     try:
         data = json.loads(request.body)
         signature_data = data.get('signature', '')
-    except:
-        return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
     
     if not signature_data:
         return JsonResponse({'error': 'Firma requerida'}, status=400)

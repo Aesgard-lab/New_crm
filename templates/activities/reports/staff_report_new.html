@@ -450,11 +450,12 @@
 {% endblock %}
 
 {% block extra_js %}
+{% load sanitize_tags %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     // Gráfica comparativa
     const comparisonCtx = document.getElementById('instructorComparisonChart').getContext('2d');
-    const instructorData = {{ top_by_attendance|safe|default:"[]" }};
+    const instructorData = {{ top_by_attendance|safe_json }};
     
     new Chart(comparisonCtx, {
         type: 'bar',

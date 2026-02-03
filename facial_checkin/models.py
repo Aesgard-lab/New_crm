@@ -158,6 +158,18 @@ class FaceRecognitionSettings(models.Model):
         default="Bienvenido, mira a la cámara",
         blank=True
     )
+    # SECURITY: Token de autenticación para kioskos
+    kiosk_token = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text="Token secreto para autenticar kioskos (dejar vacío para generar)"
+    )
+    kiosk_allowed_ips = models.TextField(
+        blank=True,
+        default='',
+        help_text="IPs permitidas para el kiosko (una por línea). Vacío = permitir todas"
+    )
     
     # Auto-apertura de torno
     auto_open_turnstile = models.BooleanField(

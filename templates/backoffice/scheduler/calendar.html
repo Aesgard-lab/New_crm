@@ -2346,7 +2346,8 @@
     });
 
     // Initialize staff data from Django backend
-    const staffListFromBackend = {{ staff_list_json|safe }};
+    {% load sanitize_tags %}
+    const staffListFromBackend = {{ staff_list_json|safe_json }};
     
     // Global staff data with counts
     window.staffData = [];

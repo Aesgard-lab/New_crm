@@ -272,6 +272,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% load sanitize_tags %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     // Obtener color de marca desde CSS variable
@@ -279,7 +280,7 @@
     
     // Gráfica de Horarios Pico
     const peakHoursCtx = document.getElementById('peakHoursChart').getContext('2d');
-    const peakHoursData = {{ peak_hours|safe|default:"[]" }};
+    const peakHoursData = {{ peak_hours|safe_json }};
     
     new Chart(peakHoursCtx, {
         type: 'bar',
@@ -354,7 +355,7 @@
     
     // Gráfica de Actividades Populares
     const activitiesCtx = document.getElementById('popularActivitiesChart').getContext('2d');
-    const activitiesData = {{ popular_activities|safe|default:"[]" }};
+    const activitiesData = {{ popular_activities|safe_json }};
     
     new Chart(activitiesCtx, {
         type: 'bar',

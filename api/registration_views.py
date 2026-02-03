@@ -1,6 +1,8 @@
 """
 Registration API endpoints for mobile apps.
 Allows clients to self-register if enabled by the gym.
+
+SECURITY: All endpoints are rate-limited to prevent abuse.
 """
 from rest_framework import views, status
 from rest_framework.response import Response
@@ -8,6 +10,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 
 from organizations.models import Gym, PublicPortalSettings
 from clients.models import Client, ClientField
@@ -22,9 +26,12 @@ class RegistrationConfigView(views.APIView):
     - whether registration is enabled
     - required fields (both standard and custom)
     - franchise gyms (if applicable)
+    
+    SECURITY: Rate limited to 30 requests/minute per IP
     """
     permission_classes = [AllowAny]
     
+    @method_decorator(ratelimit(key='ip', rate='30/m', method='GET', block=True))
     def get(self, request):
         gym_id = request.query_params.get('gym_id')
         
@@ -127,9 +134,12 @@ class RegisterClientView(views.APIView):
     Optional:
     - phone_number: Client's phone
     - custom_fields: Dict of custom field values (key: field slug, value: field value)
+    
+    SECURITY: Rate limited to 5 registrations per hour per IP to prevent spam
     """
     permission_classes = [AllowAny]
     
+    @method_decorator(ratelimit(key='ip', rate='5/h', method='POST', block=True))
     @transaction.atomic
     def post(self, request):
         data = request.data

@@ -1,6 +1,7 @@
 """
 API endpoints para reconocimiento facial.
 """
+import secrets
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
@@ -300,29 +301,81 @@ def face_recognition_stats(request):
 # Endpoints para el modo Kiosko
 # ============================================
 
+import logging
+security_logger = logging.getLogger('django.security')
+
+def get_client_ip(request):
+    """Obtiene la IP real del cliente, considerando proxies"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', 'unknown')
+
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def kiosk_verify(request, gym_id):
     """
     Endpoint para verificación en modo kiosko.
-    No requiere autenticación (la tablet está en el gym).
-    Debe estar protegido por token de kiosko o IP whitelist.
+    
+    SECURITY:
+    - Requiere token de kiosko válido en header X-Kiosk-Token
+    - Opcionalmente valida IP whitelist
+    - Rate limited implícitamente por el procesamiento de imagen
     """
     from organizations.models import Gym
+    from django_ratelimit.decorators import ratelimit
+    from django_ratelimit.exceptions import Ratelimited
+    
+    client_ip = get_client_ip(request)
     
     # Verificar token de kiosko (header)
-    kiosk_token = request.headers.get('X-Kiosk-Token')
+    kiosk_token = request.headers.get('X-Kiosk-Token', '')
     
     gym = get_object_or_404(Gym, id=gym_id)
     settings, _ = FaceRecognitionSettings.objects.get_or_create(gym=gym)
     
-    # TODO: Implementar verificación de token de kiosko
-    # Por ahora solo verificamos que kiosk_mode está habilitado
+    # SECURITY: Verificar que el modo kiosko está habilitado
     if not settings.kiosk_mode_enabled:
+        security_logger.warning(
+            f"Kiosk access attempt on disabled gym: gym_id={gym_id}, ip={client_ip}"
+        )
         return Response({
             'success': False,
             'error': 'Modo kiosko no habilitado'
         }, status=status.HTTP_403_FORBIDDEN)
+    
+    # SECURITY: Verificar token de kiosko
+    if not settings.kiosk_token:
+        # Auto-generar token si no existe
+        import secrets
+        settings.kiosk_token = secrets.token_urlsafe(32)
+        settings.save(update_fields=['kiosk_token'])
+        security_logger.info(
+            f"Kiosk token auto-generated for gym_id={gym_id}. "
+            f"Configure it in admin panel."
+        )
+    
+    if not kiosk_token or not secrets.compare_digest(kiosk_token, settings.kiosk_token):
+        security_logger.warning(
+            f"Invalid kiosk token attempt: gym_id={gym_id}, ip={client_ip}, "
+            f"token_provided={'yes' if kiosk_token else 'no'}"
+        )
+        return Response({
+            'success': False,
+            'error': 'Token de kiosko inválido'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    # SECURITY: Verificar IP whitelist (si está configurada)
+    if settings.kiosk_allowed_ips:
+        allowed_ips = [ip.strip() for ip in settings.kiosk_allowed_ips.split('\n') if ip.strip()]
+        if allowed_ips and client_ip not in allowed_ips:
+            security_logger.warning(
+                f"Kiosk IP not in whitelist: gym_id={gym_id}, ip={client_ip}"
+            )
+            return Response({
+                'success': False,
+                'error': 'IP no autorizada'
+            }, status=status.HTTP_403_FORBIDDEN)
     
     # Obtener imagen
     image = request.FILES.get('image')
@@ -332,12 +385,23 @@ def kiosk_verify(request, gym_id):
             'error': 'No image'
         }, status=status.HTTP_400_BAD_REQUEST)
     
+    # SECURITY: Validar tamaño de imagen (máx 10MB)
+    if image.size > 10 * 1024 * 1024:
+        return Response({
+            'success': False,
+            'error': 'Imagen demasiado grande (máx 10MB)'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
     # Verificar
     service = FaceRecognitionService(gym)
     result = service.verify_face(image)
     
     if result['success']:
         client = result['client']
+        security_logger.info(
+            f"Kiosk face recognition success: gym_id={gym_id}, "
+            f"client_id={client.id}, confidence={result['confidence']}"
+        )
         return Response({
             'success': True,
             'client_name': client.first_name,

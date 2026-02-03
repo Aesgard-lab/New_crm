@@ -84,6 +84,7 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.SecurityHeadersMiddleware",  # SECURITY: CSP y headers adicionales
     "whitenoise.middleware.WhiteNoiseMiddleware",  # Sirve estáticos eficientemente
     "django.middleware.gzip.GZipMiddleware",  # Compresión de respuestas
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -282,16 +283,22 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 # --------------------------------------------------
-# SECURITY SETTINGS (Production)
+# SECURITY SETTINGS
 # --------------------------------------------------
+
+# Security headers aplicables en todos los entornos
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # Permite iframes solo del mismo origen
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Previene MIME sniffing
+SECURE_BROWSER_XSS_FILTER = True  # Activa filtro XSS del navegador
+
 if not DEBUG:
-    # HTTPS Settings
+    # HTTPS Settings (solo producción)
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     
-    # Cookie Security
+    # Cookie Security (estricta en producción)
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
@@ -301,18 +308,18 @@ if not DEBUG:
     CSRF_COOKIE_HTTPONLY = True
     CSRF_COOKIE_SAMESITE = 'Lax'
     
-    # Content Security
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Más restrictivo en producción
     X_FRAME_OPTIONS = 'DENY'
     
     # Validate SECRET_KEY
     if SECRET_KEY == "dev-secret-key":
         raise ValueError("❌ SECURITY ERROR: SECRET_KEY debe configurarse en producción")
 else:
-    # Development: Cookies más permisivas
+    # Development: Cookies más permisivas pero con httponly
     SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_HTTPONLY = True  # Siempre httponly
     CSRF_COOKIE_SECURE = False
+    CSRF_COOKIE_HTTPONLY = True  # Siempre httponly
     SESSION_COOKIE_AGE = 86400  # 24 horas
 
 # Rate Limiting (Desarrollo y Producción)

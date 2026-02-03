@@ -134,8 +134,9 @@
                 <div class="border-l-4 border-purple-500 bg-purple-50 p-4 rounded-r-xl">
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
+                            {% load sanitize_tags %}
                             <h3 class="font-semibold text-slate-900 mb-1">{{ popup.title }}</h3>
-                            <p class="text-sm text-slate-600">{{ popup.content|safe }}</p>
+                            <p class="text-sm text-slate-600">{{ popup.content|sanitize_html }}</p>
                             <p class="text-xs text-slate-500 mt-2">{{ popup.created_at|timesince }} atrás</p>
                         </div>
                         <button @click="dismissPopup({{ popup.id }})" class="text-slate-400 hover:text-slate-600">

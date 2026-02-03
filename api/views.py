@@ -4,6 +4,8 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
 from django.db.models import Q
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from organizations.models import Gym
 from .serializers import GymSerializer, ClientProfileSerializer
 
@@ -34,9 +36,15 @@ class SystemConfigView(views.APIView):
 class GymSearchView(generics.ListAPIView):
     """
     Public endpoint to search gyms by name.
+    
+    SECURITY: Rate limited to 30 requests/minute per IP
     """
     permission_classes = [AllowAny]
     serializer_class = GymSerializer
+    
+    @method_decorator(ratelimit(key='ip', rate='30/m', method='GET', block=True))
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
     
     def get_queryset(self):
         query = self.request.query_params.get('q', '')
@@ -51,9 +59,12 @@ class LoginView(views.APIView):
     """
     Login endpoint. Returns auth token and client profile.
     Optional: 'gym_id' to validate user belongs to that gym.
+    
+    SECURITY: Rate limited to 10 attempts per minute per IP
     """
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST', block=True))
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')

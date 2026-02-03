@@ -442,7 +442,8 @@
             <!-- Contenido -->
             <div class="p-5">
                 <div class="prose prose-sm max-w-none">
-                    {{ popup.content|safe }}
+                    {% load sanitize_tags %}
+                    {{ popup.content|sanitize_html }}
                 </div>
             </div>
             <!-- Footer con botón de cerrar -->

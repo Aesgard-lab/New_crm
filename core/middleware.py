@@ -72,3 +72,47 @@ class SentryContextMiddleware:
         if hasattr(user, 'membership') and user.membership:
             return 'member'
         return 'user'
+
+
+class SecurityHeadersMiddleware:
+    """
+    Middleware que añade headers de seguridad adicionales a las respuestas.
+    
+    SECURITY: Implementa CSP y otros headers de protección.
+    """
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+    
+    def __call__(self, request):
+        response = self.get_response(request)
+        
+        # Content-Security-Policy
+        # Modo report-only para no romper funcionalidad existente
+        # Cambiar a Content-Security-Policy cuando esté probado
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net cdnjs.cloudflare.com unpkg.com",
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com",
+            "font-src 'self' fonts.gstatic.com cdn.jsdelivr.net",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' https://api.stripe.com",
+            "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]
+        
+        # En desarrollo usamos report-only, en producción lo activamos
+        if settings.DEBUG:
+            response['Content-Security-Policy-Report-Only'] = '; '.join(csp_directives)
+        else:
+            response['Content-Security-Policy'] = '; '.join(csp_directives)
+        
+        # Otros headers de seguridad
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['X-XSS-Protection'] = '1; mode=block'
+        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        
+        return response

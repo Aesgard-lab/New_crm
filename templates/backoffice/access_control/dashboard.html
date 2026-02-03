@@ -284,8 +284,9 @@
 </div>
 
 <script>
+{% load sanitize_tags %}
 // Gráfico de accesos por hora
-const hoursData = {{ hours_data|safe }};
+const hoursData = {{ hours_data|safe_json }};
 const ctx = document.getElementById('accessChart').getContext('2d');
 new Chart(ctx, {
     type: 'bar',

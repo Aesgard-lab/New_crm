@@ -1,5 +1,5 @@
 {% extends "backoffice/base.html" %}
-{% load static analytics_tags %}
+{% load static analytics_tags sanitize_tags %}
 
 {% block title %}Reporte de Instructores - {{ gym.name }}{% endblock %}
 
@@ -406,7 +406,7 @@
     
     // Gráfica comparativa
     const comparisonCtx = document.getElementById('instructorComparisonChart').getContext('2d');
-    const instructorData = {{ top_by_attendance|safe|default:"[]" }};
+    const instructorData = {{ top_by_attendance|safe_json }};
     
     new Chart(comparisonCtx, {
         type: 'bar',
