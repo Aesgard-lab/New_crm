@@ -1,0 +1,166 @@
+{% extends "backoffice/base.html" %}
+{% load i18n %}
+
+{% block title %}Horario Esperado - {{ profile }}{% endblock %}
+
+{% block page_title %}
+<div>Horario Esperado</div>
+<div class="text-sm font-normal text-slate-500 mt-1">
+    Configurar horario de fichaje para {{ profile.user.first_name }} {{ profile.user.last_name }}
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-3xl mx-auto">
+    <!-- Breadcrumb -->
+    <div class="mb-6">
+        <a href="{% url 'staff_detail' profile.pk %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Volver a ficha de {{ profile.user.first_name }}
+        </a>
+    </div>
+
+    <!-- Info Card -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 mb-6">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                {% if profile.photo %}
+                <img src="{{ profile.photo.url }}" class="w-full h-full object-cover">
+                {% else %}
+                <span class="text-blue-700 font-bold text-xl">{{ profile.user.first_name.0 }}{{ profile.user.last_name.0 }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="font-bold text-lg text-slate-900">{{ profile.user.first_name }} {{ profile.user.last_name }}</h3>
+                <p class="text-slate-500 text-sm">{{ profile.get_role_display }} · {{ profile.user.email }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de horario -->
+    <form method="post" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {% csrf_token %}
+        
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100">
+            <h3 class="font-bold text-slate-900">📅 Horario Semanal Esperado</h3>
+            <p class="text-sm text-slate-500 mt-1">
+                Define las horas de entrada y salida esperadas para cada día. Se generarán alertas si el empleado no ficha según este horario.
+            </p>
+        </div>
+
+        <div class="p-6 space-y-4">
+            {% for day in schedule_data %}
+            <div class="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all {% if day.is_active %}bg-blue-50/50 border-blue-200{% endif %}">
+                <!-- Checkbox día activo -->
+                <div class="flex items-center">
+                    <input type="checkbox" 
+                           name="day_{{ day.day_num }}_active" 
+                           id="day_{{ day.day_num }}_active"
+                           {% if day.is_active %}checked{% endif %}
+                           class="w-5 h-5 rounded text-blue-600 border-slate-300 focus:ring-blue-500"
+                           onchange="toggleDayFields({{ day.day_num }}, this.checked)">
+                </div>
+                
+                <!-- Nombre del día -->
+                <div class="w-28">
+                    <label for="day_{{ day.day_num }}_active" class="font-semibold text-slate-900 cursor-pointer">
+                        {{ day.day_name }}
+                    </label>
+                </div>
+                
+                <!-- Campos de hora -->
+                <div class="flex items-center gap-3 flex-1" id="day_{{ day.day_num }}_fields">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-500">Entrada:</label>
+                        <input type="time" 
+                               name="day_{{ day.day_num }}_start"
+                               value="{{ day.start_time }}"
+                               class="rounded-lg border-slate-200 text-sm py-1.5 focus:border-blue-500 focus:ring-blue-500"
+                               {% if not day.is_active %}disabled{% endif %}>
+                    </div>
+                    
+                    <span class="text-slate-400">→</span>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-500">Salida:</label>
+                        <input type="time" 
+                               name="day_{{ day.day_num }}_end"
+                               value="{{ day.end_time }}"
+                               class="rounded-lg border-slate-200 text-sm py-1.5 focus:border-blue-500 focus:ring-blue-500"
+                               {% if not day.is_active %}disabled{% endif %}>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 ml-4">
+                        <label class="text-xs text-slate-500">Tolerancia:</label>
+                        <select name="day_{{ day.day_num }}_grace"
+                                class="rounded-lg border-slate-200 text-sm py-1.5 focus:border-blue-500 focus:ring-blue-500"
+                                {% if not day.is_active %}disabled{% endif %}>
+                            <option value="5" {% if day.grace_minutes == 5 %}selected{% endif %}>5 min</option>
+                            <option value="10" {% if day.grace_minutes == 10 %}selected{% endif %}>10 min</option>
+                            <option value="15" {% if day.grace_minutes == 15 %}selected{% endif %}>15 min</option>
+                            <option value="30" {% if day.grace_minutes == 30 %}selected{% endif %}>30 min</option>
+                            <option value="60" {% if day.grace_minutes == 60 %}selected{% endif %}>1 hora</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Botones -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+            <a href="{% url 'staff_detail' profile.pk %}" 
+               class="text-slate-600 hover:text-slate-800 font-medium text-sm">
+                Cancelar
+            </a>
+            <button type="submit" 
+                    class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Guardar Horario
+            </button>
+        </div>
+    </form>
+
+    <!-- Info adicional -->
+    <div class="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div class="flex gap-3">
+            <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="text-sm text-amber-800">
+                <p class="font-semibold mb-1">¿Cómo funcionan las alertas?</p>
+                <ul class="list-disc ml-4 space-y-1 text-amber-700">
+                    <li>Si el empleado no ficha en el tiempo de tolerancia después de su hora de entrada, se genera una alerta.</li>
+                    <li>Las alertas aparecen en el <a href="{% url 'shift_report' %}" class="underline hover:text-amber-900">Informe de Fichajes</a>.</li>
+                    <li>Los managers pueden resolver/justificar las alertas desde el informe.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleDayFields(dayNum, isActive) {
+    const fields = document.getElementById(`day_${dayNum}_fields`);
+    const inputs = fields.querySelectorAll('input, select');
+    
+    inputs.forEach(input => {
+        input.disabled = !isActive;
+    });
+    
+    // Actualizar estilo visual
+    const container = fields.closest('.flex.items-center');
+    if (isActive) {
+        container.classList.add('bg-blue-50/50', 'border-blue-200');
+    } else {
+        container.classList.remove('bg-blue-50/50', 'border-blue-200');
+    }
+}
+</script>
+
+{% endblock %}

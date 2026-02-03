@@ -9,27 +9,84 @@ from accounts.decorators import require_gym_permission
 from .models import StaffProfile, WorkShift, IncentiveRule, SalaryConfig, RatingIncentive
 from .forms import IncentiveRuleForm
 
-def staff_kiosk(request):
-    """Renderiza la interfaz del Kiosco (Tablet)"""
-    return render(request, "staff/kiosk.html")
+def staff_kiosk(request, gym_slug=None):
+    """Renderiza la interfaz del Kiosco (Tablet)
+    
+    El kiosco puede identificar el gimnasio de varias formas:
+    1. Por slug en la URL: /staff/kiosk/mi-gimnasio/
+    2. Por parámetro GET: /staff/kiosk/?gym=1
+    3. Por sesión del usuario autenticado
+    """
+    from organizations.models import Gym
+    
+    gym = None
+    
+    # Opción 1: Por slug en URL
+    if gym_slug:
+        gym = Gym.objects.filter(slug=gym_slug).first()
+    
+    # Opción 2: Por parámetro GET
+    if not gym:
+        gym_id = request.GET.get('gym')
+        if gym_id:
+            gym = Gym.objects.filter(id=gym_id).first()
+    
+    # Opción 3: Por sesión del usuario autenticado
+    if not gym and hasattr(request, 'gym'):
+        gym = request.gym
+    
+    context = {
+        'gym': gym,
+        'gym_id': gym.id if gym else None,
+        'gym_name': gym.name if gym else 'Gimnasio',
+    }
+    
+    return render(request, "staff/kiosk.html", context)
 
 @require_POST
 def staff_checkin(request):
-    """Procesa el fichaje por PIN"""
+    """Procesa el fichaje por PIN
+    
+    El gimnasio se identifica por:
+    1. Parámetro gym_id en el POST
+    2. Sesión del usuario autenticado (request.gym)
+    
+    IMPORTANTE: El PIN solo es válido dentro del gimnasio especificado
+    para evitar colisiones entre gimnasios.
+    """
+    from organizations.models import Gym
+    
     pin = request.POST.get("pin")
+    gym_id = request.POST.get("gym_id")
     
     if not pin:
         return JsonResponse({
             "status": "error", 
             "message": "Por favor, introduce tu PIN"
         }, status=400)
-
-    # Buscar empleado por PIN (y que esté activo)
-    # TODO: Filtrar por Gym actual si la tablet está asignada a ubicación
-    staff = StaffProfile.objects.select_related('user').filter(
+    
+    # Obtener el gimnasio actual
+    gym = None
+    
+    # Opción 1: gym_id en POST
+    if gym_id:
+        gym = Gym.objects.filter(id=gym_id).first()
+    
+    # Opción 2: Desde la sesión del usuario
+    if not gym and hasattr(request, 'gym'):
+        gym = request.gym
+    
+    # Construir query base
+    staff_query = StaffProfile.objects.select_related('user', 'gym').filter(
         pin_code=pin, 
         is_active=True
-    ).first()
+    )
+    
+    # Filtrar por gimnasio si está disponible (RECOMENDADO)
+    if gym:
+        staff_query = staff_query.filter(gym=gym)
+    
+    staff = staff_query.first()
     
     if not staff:
         return JsonResponse({
@@ -127,7 +184,7 @@ def staff_create(request):
     gym = request.gym
     if request.method == "POST":
         user_form = StaffUserForm(request.POST)
-        profile_form = StaffProfileForm(request.POST, request.FILES)
+        profile_form = StaffProfileForm(request.POST, request.FILES, gym=gym)
         
         if user_form.is_valid() and profile_form.is_valid():
             with transaction.atomic():
@@ -163,7 +220,7 @@ def staff_create(request):
             return redirect("staff_list")
     else:
         user_form = StaffUserForm()
-        profile_form = StaffProfileForm()
+        profile_form = StaffProfileForm(gym=gym)
 
     context = {
         "user_form": user_form,
@@ -177,10 +234,11 @@ def staff_create(request):
 def staff_edit(request, pk):
     profile = get_object_or_404(StaffProfile, pk=pk, gym=request.gym)
     user = profile.user
+    gym = request.gym
     
     if request.method == "POST":
         user_form = StaffUserForm(request.POST, instance=user)
-        profile_form = StaffProfileForm(request.POST, request.FILES, instance=profile)
+        profile_form = StaffProfileForm(request.POST, request.FILES, instance=profile, gym=gym)
         
         if user_form.is_valid() and profile_form.is_valid():
             with transaction.atomic():
@@ -214,7 +272,7 @@ def staff_edit(request, pk):
             return redirect("staff_list")
     else:
         user_form = StaffUserForm(instance=user)
-        profile_form = StaffProfileForm(instance=profile)
+        profile_form = StaffProfileForm(instance=profile, gym=gym)
 
     # Prepare permission structure for display
     current_user_perms = set(user.user_permissions.values_list('codename', flat=True))
@@ -1455,6 +1513,324 @@ def blocked_period_delete(request, pk):
         messages.success(request, "Periodo bloqueado eliminado.")
     
     return redirect('blocked_periods_list')
+
+
+# ==========================================
+# SHIFT REPORTS & ALERTS (Informe de Fichajes)
+# ==========================================
+from datetime import date, datetime, timedelta, time
+from .models import StaffExpectedSchedule, MissingCheckinAlert
+
+
+@login_required
+@require_gym_permission("staff.view_workshift")
+def shift_report(request):
+    """Vista principal del informe de fichajes con alertas"""
+    gym = request.gym
+    
+    # Filtros
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    staff_id = request.GET.get('staff')
+    show_alerts_only = request.GET.get('alerts_only') == '1'
+    
+    # Fechas por defecto: último mes
+    today = timezone.now().date()
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = today
+    else:
+        end_date = today
+    
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = end_date - timedelta(days=30)
+    else:
+        start_date = end_date - timedelta(days=30)
+    
+    # Staff del gimnasio
+    staff_members = StaffProfile.objects.filter(gym=gym, is_active=True).select_related('user')
+    
+    # Filtro de empleado específico
+    if staff_id:
+        staff_filter = StaffProfile.objects.filter(pk=staff_id, gym=gym)
+    else:
+        staff_filter = staff_members
+    
+    # Obtener fichajes
+    shifts = WorkShift.objects.filter(
+        staff__in=staff_filter,
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    ).select_related('staff', 'staff__user').order_by('-start_time')
+    
+    # Obtener alertas no resueltas
+    pending_alerts = MissingCheckinAlert.objects.filter(
+        staff__gym=gym,
+        is_resolved=False,
+        date__gte=start_date,
+        date__lte=end_date
+    ).select_related('staff', 'staff__user').order_by('-date')
+    
+    if staff_id:
+        pending_alerts = pending_alerts.filter(staff_id=staff_id)
+    
+    # Calcular estadísticas
+    total_shifts = shifts.count()
+    total_hours = sum(s.duration_hours for s in shifts if s.end_time)
+    avg_hours_per_day = round(total_hours / max(1, (end_date - start_date).days), 2)
+    
+    # Empleados sin fichar hoy
+    staff_without_checkin_today = _get_staff_without_checkin_today(gym)
+    
+    context = {
+        'shifts': shifts[:100],  # Limitar para rendimiento
+        'pending_alerts': pending_alerts,
+        'staff_without_checkin_today': staff_without_checkin_today,
+        'staff_members': staff_members,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_staff': staff_id,
+        'show_alerts_only': show_alerts_only,
+        'stats': {
+            'total_shifts': total_shifts,
+            'total_hours': round(total_hours, 1),
+            'avg_hours_per_day': avg_hours_per_day,
+            'pending_alerts_count': pending_alerts.count(),
+        }
+    }
+    
+    return render(request, 'backoffice/staff/shift_report.html', context)
+
+
+def _get_staff_without_checkin_today(gym):
+    """Obtiene empleados activos que deberían haber fichado hoy pero no lo han hecho"""
+    today = timezone.now().date()
+    today_weekday = today.weekday()
+    now_time = timezone.now().time()
+    
+    # Empleados con horario esperado para hoy
+    staff_with_schedule_today = StaffExpectedSchedule.objects.filter(
+        staff__gym=gym,
+        staff__is_active=True,
+        day_of_week=today_weekday,
+        is_active=True,
+        start_time__lte=now_time  # Ya deberían haber fichado
+    ).select_related('staff', 'staff__user')
+    
+    # Filtrar los que NO tienen fichaje hoy
+    staff_ids_with_shift_today = WorkShift.objects.filter(
+        staff__gym=gym,
+        start_time__date=today
+    ).values_list('staff_id', flat=True)
+    
+    return [
+        {
+            'staff': schedule.staff,
+            'expected_time': schedule.start_time,
+            'grace_minutes': schedule.grace_minutes,
+            'minutes_late': _calculate_minutes_late(schedule.start_time, schedule.grace_minutes)
+        }
+        for schedule in staff_with_schedule_today
+        if schedule.staff_id not in staff_ids_with_shift_today
+    ]
+
+
+def _calculate_minutes_late(expected_time, grace_minutes):
+    """Calcula los minutos de retraso"""
+    now = timezone.now()
+    expected_datetime = datetime.combine(now.date(), expected_time)
+    expected_datetime = timezone.make_aware(expected_datetime)
+    expected_with_grace = expected_datetime + timedelta(minutes=grace_minutes)
+    
+    if now > expected_with_grace:
+        diff = now - expected_with_grace
+        return int(diff.total_seconds() / 60)
+    return 0
+
+
+@login_required
+@require_gym_permission("staff.change_workshift")
+def resolve_alert(request, pk):
+    """Resolver/justificar una alerta de fichaje"""
+    alert = get_object_or_404(MissingCheckinAlert, pk=pk, staff__gym=request.gym)
+    
+    if request.method == 'POST':
+        notes = request.POST.get('notes', '')
+        alert.is_resolved = True
+        alert.resolution_notes = notes
+        alert.resolved_by = request.user
+        alert.resolved_at = timezone.now()
+        alert.save()
+        messages.success(request, 'Alerta resuelta correctamente.')
+    
+    return redirect('shift_report')
+
+
+@login_required
+@require_gym_permission("staff.view_workshift")
+def shift_export_excel(request):
+    """Exporta informe de fichajes a Excel"""
+    gym = request.gym
+    
+    # Filtros
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    staff_id = request.GET.get('staff')
+    
+    today = timezone.now().date()
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else today
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else end_date - timedelta(days=30)
+    
+    # Obtener fichajes
+    shifts = WorkShift.objects.filter(
+        staff__gym=gym,
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    ).select_related('staff', 'staff__user').order_by('-start_time')
+    
+    if staff_id:
+        shifts = shifts.filter(staff_id=staff_id)
+    
+    config = ExportConfig(
+        title=f"Informe de Fichajes ({start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')})",
+        headers=['Fecha', 'Empleado', 'Entrada', 'Salida', 'Horas', 'Método', 'Estado'],
+        data_extractor=lambda s: [
+            s.start_time.strftime('%d/%m/%Y'),
+            f"{s.staff.user.first_name} {s.staff.user.last_name}",
+            s.start_time.strftime('%H:%M'),
+            s.end_time.strftime('%H:%M') if s.end_time else '-',
+            f"{s.duration_hours}h" if s.end_time else 'En curso',
+            s.get_method_display(),
+            'Cerrado' if s.end_time else 'Abierto',
+        ],
+        column_widths=[12, 25, 10, 10, 10, 15, 12]
+    )
+    
+    excel_file = GenericExportService.export_to_excel(shifts, config, gym.name)
+    
+    response = HttpResponse(
+        excel_file.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"fichajes_{gym.name}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@require_gym_permission("staff.view_workshift")
+def shift_export_pdf(request):
+    """Exporta informe de fichajes a PDF"""
+    gym = request.gym
+    
+    # Filtros
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    staff_id = request.GET.get('staff')
+    
+    today = timezone.now().date()
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else today
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else end_date - timedelta(days=30)
+    
+    # Obtener fichajes
+    shifts = WorkShift.objects.filter(
+        staff__gym=gym,
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    ).select_related('staff', 'staff__user').order_by('-start_time')
+    
+    if staff_id:
+        shifts = shifts.filter(staff_id=staff_id)
+    
+    config = ExportConfig(
+        title=f"Informe de Fichajes ({start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')})",
+        headers=['Fecha', 'Empleado', 'Entrada', 'Salida', 'Horas', 'Método'],
+        data_extractor=lambda s: [
+            s.start_time.strftime('%d/%m/%Y'),
+            f"{s.staff.user.first_name} {s.staff.user.last_name}",
+            s.start_time.strftime('%H:%M'),
+            s.end_time.strftime('%H:%M') if s.end_time else '-',
+            f"{s.duration_hours}h" if s.end_time else '-',
+            s.get_method_display(),
+        ],
+        column_widths=[12, 25, 10, 10, 10, 15]
+    )
+    
+    pdf_file = GenericExportService.export_to_pdf(shifts, config, gym.name)
+    
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    filename = f"fichajes_{gym.name}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@require_gym_permission("staff.change_staffprofile")
+def staff_schedule_edit(request, pk):
+    """Editar horario esperado de un empleado"""
+    profile = get_object_or_404(StaffProfile, pk=pk, gym=request.gym)
+    
+    DAYS_OF_WEEK = [
+        (0, 'Lunes'), (1, 'Martes'), (2, 'Miércoles'), 
+        (3, 'Jueves'), (4, 'Viernes'), (5, 'Sábado'), (6, 'Domingo')
+    ]
+    
+    if request.method == 'POST':
+        # Procesar cada día
+        for day_num, day_name in DAYS_OF_WEEK:
+            is_active = request.POST.get(f'day_{day_num}_active') == 'on'
+            start_time_str = request.POST.get(f'day_{day_num}_start', '')
+            end_time_str = request.POST.get(f'day_{day_num}_end', '')
+            grace = request.POST.get(f'day_{day_num}_grace', '15')
+            
+            schedule, created = StaffExpectedSchedule.objects.get_or_create(
+                staff=profile,
+                day_of_week=day_num,
+                defaults={
+                    'start_time': time(9, 0),
+                    'end_time': time(17, 0),
+                    'grace_minutes': 15
+                }
+            )
+            
+            if is_active and start_time_str and end_time_str:
+                schedule.is_active = True
+                schedule.start_time = datetime.strptime(start_time_str, '%H:%M').time()
+                schedule.end_time = datetime.strptime(end_time_str, '%H:%M').time()
+                schedule.grace_minutes = int(grace) if grace.isdigit() else 15
+                schedule.save()
+            else:
+                schedule.is_active = False
+                schedule.save()
+        
+        messages.success(request, f'Horario de {profile} actualizado correctamente.')
+        return redirect('staff_detail', pk=pk)
+    
+    # Obtener horarios actuales
+    schedules = {s.day_of_week: s for s in profile.expected_schedules.all()}
+    
+    schedule_data = []
+    for day_num, day_name in DAYS_OF_WEEK:
+        schedule = schedules.get(day_num)
+        schedule_data.append({
+            'day_num': day_num,
+            'day_name': day_name,
+            'is_active': schedule.is_active if schedule else False,
+            'start_time': schedule.start_time.strftime('%H:%M') if schedule else '09:00',
+            'end_time': schedule.end_time.strftime('%H:%M') if schedule else '17:00',
+            'grace_minutes': schedule.grace_minutes if schedule else 15,
+        })
+    
+    context = {
+        'profile': profile,
+        'schedule_data': schedule_data,
+    }
+    return render(request, 'backoffice/staff/schedule_edit.html', context)
 
 
 # ==========================================

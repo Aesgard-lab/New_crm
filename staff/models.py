@@ -1,5 +1,17 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
+import re
+
+
+# Validador para asegurar que el PIN solo contenga dígitos
+pin_validator = RegexValidator(
+    regex=r'^\d{4,6}$',
+    message='El PIN debe contener solo dígitos (4-6 caracteres)',
+    code='invalid_pin'
+)
+
 
 class StaffProfile(models.Model):
     class Role(models.TextChoices):
@@ -18,7 +30,13 @@ class StaffProfile(models.Model):
     photo = models.ImageField(upload_to="staff/photos/", blank=True, null=True, help_text="Foto para perfil público y actividades")
     
     # Kiosk/Tablet Access
-    pin_code = models.CharField(max_length=6, blank=True, null=True, help_text="PIN de 4-6 dígitos para fichar en Tablet")
+    pin_code = models.CharField(
+        max_length=6, 
+        blank=True, 
+        null=True, 
+        validators=[pin_validator],
+        help_text="PIN de 4-6 dígitos para fichar en Tablet (debe ser único en el gimnasio)"
+    )
     
     # Status
     is_active = models.BooleanField(default=True)
@@ -31,6 +49,62 @@ class StaffProfile(models.Model):
             ("manage_roles", "Gestionar Roles y Permisos"),
             ("view_incentive", "Ver Incentivos y Comisiones"),
         ]
+        # Restricción única compuesta: PIN + Gimnasio
+        constraints = [
+            models.UniqueConstraint(
+                fields=['gym', 'pin_code'],
+                name='unique_pin_per_gym',
+                condition=models.Q(pin_code__isnull=False) & ~models.Q(pin_code=''),
+                violation_error_message='Este PIN ya está en uso por otro empleado de este gimnasio.'
+            )
+        ]
+
+    def clean(self):
+        """Validación personalizada para el PIN"""
+        super().clean()
+        
+        if self.pin_code:
+            # Validar que el PIN solo contenga dígitos
+            if not re.match(r'^\d{4,6}$', self.pin_code):
+                raise ValidationError({
+                    'pin_code': 'El PIN debe contener solo dígitos (4-6 caracteres).'
+                })
+            
+            # Validar que no sea un PIN "fácil" (repetitivos o secuenciales)
+            if self._is_weak_pin(self.pin_code):
+                raise ValidationError({
+                    'pin_code': 'El PIN es demasiado fácil. Evita secuencias (1234) o números repetidos (1111).'
+                })
+            
+            # Validar unicidad del PIN dentro del mismo gimnasio
+            qs = StaffProfile.objects.filter(
+                gym=self.gym,
+                pin_code=self.pin_code
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            
+            if qs.exists():
+                raise ValidationError({
+                    'pin_code': 'Este PIN ya está en uso por otro empleado de este gimnasio.'
+                })
+    
+    def _is_weak_pin(self, pin):
+        """Detecta PINs débiles como secuencias o números repetidos"""
+        # Todos los dígitos iguales (1111, 2222, etc.)
+        if len(set(pin)) == 1:
+            return True
+        
+        # Secuencias comunes ascendentes y descendentes
+        weak_sequences = [
+            '0123', '1234', '2345', '3456', '4567', '5678', '6789',
+            '9876', '8765', '7654', '6543', '5432', '4321', '3210',
+            '0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999',
+            '012345', '123456', '234567', '345678', '456789',
+            '987654', '876543', '765432', '654321', '543210',
+        ]
+        
+        return pin in weak_sequences
 
     def __str__(self):
         # Fallback if get_full_name doesn't exist (using custom User model)
@@ -305,6 +379,85 @@ class WorkShift(models.Model):
             diff = self.end_time - self.start_time
             return round(diff.total_seconds() / 3600, 2)
         return 0.0
+
+
+class StaffExpectedSchedule(models.Model):
+    """
+    Horario esperado/programado para el staff.
+    Define cuándo se espera que un empleado fiche.
+    """
+    class DayOfWeek(models.IntegerChoices):
+        MONDAY = 0, "Lunes"
+        TUESDAY = 1, "Martes"
+        WEDNESDAY = 2, "Miércoles"
+        THURSDAY = 3, "Jueves"
+        FRIDAY = 4, "Viernes"
+        SATURDAY = 5, "Sábado"
+        SUNDAY = 6, "Domingo"
+    
+    staff = models.ForeignKey(StaffProfile, on_delete=models.CASCADE, related_name="expected_schedules")
+    day_of_week = models.IntegerField(choices=DayOfWeek.choices)
+    
+    start_time = models.TimeField(help_text="Hora esperada de entrada")
+    end_time = models.TimeField(help_text="Hora esperada de salida")
+    
+    is_active = models.BooleanField(default=True)
+    
+    # Tolerancia para alertas
+    grace_minutes = models.IntegerField(
+        default=15, 
+        help_text="Minutos de tolerancia antes de generar alerta"
+    )
+    
+    class Meta:
+        verbose_name = "Horario Esperado"
+        verbose_name_plural = "Horarios Esperados"
+        unique_together = ['staff', 'day_of_week']
+        ordering = ['staff', 'day_of_week']
+    
+    def __str__(self):
+        return f"{self.staff} - {self.get_day_of_week_display()} ({self.start_time}-{self.end_time})"
+
+
+class MissingCheckinAlert(models.Model):
+    """
+    Registro de alertas cuando un empleado no fichó según su horario esperado.
+    """
+    class AlertType(models.TextChoices):
+        NO_CHECKIN = "NO_CHECKIN", "No fichó entrada"
+        LATE_CHECKIN = "LATE_CHECKIN", "Fichaje tardío"
+        NO_CHECKOUT = "NO_CHECKOUT", "No fichó salida"
+        EARLY_CHECKOUT = "EARLY_CHECKOUT", "Salida anticipada"
+    
+    staff = models.ForeignKey(StaffProfile, on_delete=models.CASCADE, related_name="checkin_alerts")
+    date = models.DateField()
+    alert_type = models.CharField(max_length=20, choices=AlertType.choices)
+    
+    expected_time = models.TimeField(null=True, blank=True, help_text="Hora esperada según horario")
+    actual_time = models.TimeField(null=True, blank=True, help_text="Hora real del fichaje (si aplica)")
+    
+    is_resolved = models.BooleanField(default=False, help_text="El manager revisó/justificó esta alerta")
+    resolution_notes = models.TextField(blank=True, help_text="Notas del manager sobre la resolución")
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="resolved_checkin_alerts"
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Alerta de Fichaje"
+        verbose_name_plural = "Alertas de Fichaje"
+        ordering = ["-date", "-created_at"]
+        unique_together = ['staff', 'date', 'alert_type']
+    
+    def __str__(self):
+        return f"{self.staff} - {self.date} - {self.get_alert_type_display()}"
+
 
 class AuditLog(models.Model):
     """

@@ -301,6 +301,9 @@
             const formData = new FormData();
             formData.append('pin', currentPin);
             formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            {% if gym_id %}
+            formData.append('gym_id', '{{ gym_id }}');
+            {% endif %}
 
             fetch("{% url 'staff_checkin' %}", {
                 method: 'POST',

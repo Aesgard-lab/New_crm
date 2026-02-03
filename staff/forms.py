@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group  # Added Import
 from .models import StaffProfile
+import re
 
 User = get_user_model()
 
@@ -42,14 +43,78 @@ class StaffProfileForm(forms.ModelForm):
             'role': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'bio': forms.Textarea(attrs={'rows': 3, 'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'color': forms.TextInput(attrs={'type': 'color', 'class': 'h-10 w-20 p-1 rounded-lg border-slate-200'}),
-            'pin_code': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]', 'placeholder': 'Ej: 1234'}),
+            'pin_code': forms.TextInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]', 
+                'placeholder': 'Ej: 1234',
+                'pattern': '[0-9]{4,6}',
+                'inputmode': 'numeric',
+                'maxlength': '6',
+                'title': 'Introduce 4-6 dígitos'
+            }),
             'is_active': forms.CheckboxInput(attrs={'class': 'rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
         }
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, gym=None, **kwargs):
+        self.gym = gym
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk and self.instance.user.groups.exists():
-            self.fields['assigned_role'].initial = self.instance.user.groups.first()
+        if self.instance and self.instance.pk:
+            if self.instance.user.groups.exists():
+                self.fields['assigned_role'].initial = self.instance.user.groups.first()
+            # Si ya tiene gym asignado, usarlo
+            if not self.gym and self.instance.gym:
+                self.gym = self.instance.gym
+    
+    def clean_pin_code(self):
+        """Validación del PIN único por gimnasio"""
+        pin_code = self.cleaned_data.get('pin_code')
+        
+        if not pin_code:
+            return pin_code
+        
+        # Validar formato: solo dígitos y longitud 4-6
+        if not re.match(r'^\d{4,6}$', pin_code):
+            raise forms.ValidationError(
+                'El PIN debe contener solo dígitos (4-6 caracteres).'
+            )
+        
+        # Validar que no sea un PIN débil
+        if self._is_weak_pin(pin_code):
+            raise forms.ValidationError(
+                'El PIN es demasiado fácil. Evita secuencias (1234) o números repetidos (1111).'
+            )
+        
+        # Validar unicidad dentro del gimnasio
+        if self.gym:
+            qs = StaffProfile.objects.filter(
+                gym=self.gym,
+                pin_code=pin_code
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            if qs.exists():
+                raise forms.ValidationError(
+                    'Este PIN ya está en uso por otro empleado de este gimnasio.'
+                )
+        
+        return pin_code
+    
+    def _is_weak_pin(self, pin):
+        """Detecta PINs débiles como secuencias o números repetidos"""
+        # Todos los dígitos iguales (1111, 2222, etc.)
+        if len(set(pin)) == 1:
+            return True
+        
+        # Secuencias comunes
+        weak_sequences = [
+            '0123', '1234', '2345', '3456', '4567', '5678', '6789',
+            '9876', '8765', '7654', '6543', '5432', '4321', '3210',
+            '0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999',
+            '012345', '123456', '234567', '345678', '456789',
+            '987654', '876543', '765432', '654321', '543210',
+        ]
+        
+        return pin in weak_sequences
 
 
 from .models import SalaryConfig, StaffTask, IncentiveRule

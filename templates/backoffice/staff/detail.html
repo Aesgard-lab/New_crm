@@ -31,9 +31,9 @@
                 {% endif %}
             </div>
 
-            <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="grid grid-cols-2 gap-3 mb-3">
                 <a href="{% url 'staff_edit' profile.id %}"
-                    class="block w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition-colors text-sm">
+                    class="block w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition-colors text-sm text-center">
                     Editar Perfil
                 </a>
 
@@ -52,6 +52,12 @@
                     {% endif %}
                 </form>
             </div>
+            
+            <!-- Botón Horario Esperado -->
+            <a href="{% url 'staff_schedule_edit' profile.id %}"
+                class="block w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm text-center border border-blue-200 mb-4">
+                📅 Configurar Horario
+            </a>
         </div>
 
         <!-- KPIs Mensuales -->

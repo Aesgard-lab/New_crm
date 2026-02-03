@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("kiosk/", views.staff_kiosk, name="staff_kiosk"),
+    path("kiosk/<slug:gym_slug>/", views.staff_kiosk, name="staff_kiosk_gym"),
     path("api/checkin/", views.staff_checkin, name="staff_checkin"),
     
     # Manager Dashboard
@@ -13,6 +14,13 @@ urlpatterns = [
     path("detail/<int:pk>/salary/", views.staff_detail_salary, name="staff_detail_salary"),
     path("detail/<int:pk>/task/add/", views.staff_task_add, name="staff_task_add"),
     path("detail/<int:pk>/shift/toggle/", views.staff_toggle_shift, name="staff_toggle_shift"),
+    path("detail/<int:pk>/schedule/", views.staff_schedule_edit, name="staff_schedule_edit"),
+    
+    # Shift Reports & Alerts (Informe de Fichajes)
+    path("shifts/", views.shift_report, name="shift_report"),
+    path("shifts/export/excel/", views.shift_export_excel, name="shift_export_excel"),
+    path("shifts/export/pdf/", views.shift_export_pdf, name="shift_export_pdf"),
+    path("shifts/alert/<int:pk>/resolve/", views.resolve_alert, name="resolve_alert"),
     
     # Role Settings
     path("roles/", views.role_list, name="role_list"),
