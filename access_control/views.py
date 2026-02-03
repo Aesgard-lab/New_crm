@@ -732,17 +732,12 @@ def device_create(request):
             gym=gym,
             name=request.POST.get('name'),
             device_type=request.POST.get('device_type'),
+            provider=request.POST.get('provider', 'GENERIC'),
             device_id=request.POST.get('device_id') or f"DEV-{uuid.uuid4().hex[:8].upper()}",
             location=request.POST.get('location', ''),
-            direction=request.POST.get('direction', 'BOTH'),
-            ip_address=request.POST.get('ip_address', ''),
+            direction=request.POST.get('direction', 'BIDIRECTIONAL'),
+            ip_address=request.POST.get('ip_address') or None,
             api_key=request.POST.get('api_key') or uuid.uuid4().hex,
-            supports_rfid='supports_rfid' in request.POST,
-            supports_qr='supports_qr' in request.POST,
-            supports_pin='supports_pin' in request.POST,
-            supports_fingerprint='supports_fingerprint' in request.POST,
-            supports_face='supports_face' in request.POST,
-            supports_bluetooth='supports_bluetooth' in request.POST,
             is_active='is_active' in request.POST,
         )
         
@@ -755,10 +750,12 @@ def device_create(request):
         from django.shortcuts import redirect
         from django.contrib import messages
         messages.success(request, f'Dispositivo "{device.name}" creado correctamente.')
-        return redirect('access_control:device_list')
+        return redirect('backoffice:access_device_list')
     
     return render(request, 'backoffice/access_control/device_form.html', {
         'zones': zones,
+        'provider_choices': AccessDevice.PROVIDER_CHOICES,
+        'device_type_choices': AccessDevice.DEVICE_TYPES,
     })
 
 
@@ -772,20 +769,18 @@ def device_edit(request, device_id):
     if request.method == 'POST':
         device.name = request.POST.get('name')
         device.device_type = request.POST.get('device_type')
+        device.provider = request.POST.get('provider', 'GENERIC')
         device.device_id = request.POST.get('device_id')
         device.location = request.POST.get('location', '')
-        device.direction = request.POST.get('direction', 'BOTH')
-        device.ip_address = request.POST.get('ip_address', '')
+        device.direction = request.POST.get('direction', 'BIDIRECTIONAL')
+        
+        # Handle IP address - set to None if empty
+        ip_value = request.POST.get('ip_address', '').strip()
+        device.ip_address = ip_value if ip_value else None
         
         if request.POST.get('api_key'):
             device.api_key = request.POST.get('api_key')
         
-        device.supports_rfid = 'supports_rfid' in request.POST
-        device.supports_qr = 'supports_qr' in request.POST
-        device.supports_pin = 'supports_pin' in request.POST
-        device.supports_fingerprint = 'supports_fingerprint' in request.POST
-        device.supports_face = 'supports_face' in request.POST
-        device.supports_bluetooth = 'supports_bluetooth' in request.POST
         device.is_active = 'is_active' in request.POST
         
         zone_id = request.POST.get('zone')
@@ -796,11 +791,27 @@ def device_edit(request, device_id):
         from django.shortcuts import redirect
         from django.contrib import messages
         messages.success(request, f'Dispositivo "{device.name}" actualizado.')
-        return redirect('access_control:device_list')
+        return redirect('backoffice:access_device_list')
+    
+    # Create form data from device
+    form = {
+        'name': {'value': device.name},
+        'device_type': {'value': device.device_type},
+        'provider': {'value': device.provider},
+        'device_id': {'value': device.device_id},
+        'location': {'value': device.location},
+        'ip_address': {'value': device.ip_address or ''},
+        'api_key': {'value': device.api_key},
+        'is_active': {'value': device.is_active},
+        'zone': {'value': str(device.zone_id) if device.zone_id else ''},
+    }
     
     return render(request, 'backoffice/access_control/device_form.html', {
         'device': device,
+        'form': form,
         'zones': zones,
+        'provider_choices': AccessDevice.PROVIDER_CHOICES,
+        'device_type_choices': AccessDevice.DEVICE_TYPES,
     })
 
 

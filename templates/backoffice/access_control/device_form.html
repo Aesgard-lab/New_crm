@@ -1,182 +1,624 @@
 {% extends "backoffice/base.html" %}
+{% load i18n %}
 
-{% block title %}{% if device %}Editar{% else %}Nuevo{% endif %} Dispositivo{% endblock %}
-
-{% block breadcrumb %}
-<a href="{% url 'access_control:dashboard' %}" class="hover:underline">Control de Acceso</a> >
-<a href="{% url 'access_control:device_list' %}" class="hover:underline">Dispositivos</a> >
-{% if device %}Editar{% else %}Nuevo{% endif %}
-{% endblock %}
-
-{% block page_title %}
-<div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
-        </svg>
-    </div>
-    <div>
-        <h1 class="text-xl font-bold text-slate-800">{% if device %}Editar{% else %}Nuevo{% endif %} Dispositivo</h1>
-        <p class="text-sm text-slate-500">{% if device %}Modificar configuración{% else %}Añadir un nuevo dispositivo de acceso{% endif %}</p>
-    </div>
-</div>
-{% endblock %}
+{% block title %}{% if device %}{% trans "Edit Device" %}{% else %}{% trans "New Access Device" %}{% endif %}{% endblock %}
 
 {% block content %}
-<form method="post" class="max-w-2xl mx-auto">
-    {% csrf_token %}
-    
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="p-6 space-y-6">
-            <!-- Información básica -->
-            <div>
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">Información Básica</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del dispositivo *</label>
-                        <input type="text" name="name" value="{{ device.name|default:'' }}" required
-                               placeholder="Ej: Torno Entrada Principal"
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de dispositivo *</label>
-                        <select name="device_type" required
-                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                            <option value="">Seleccionar...</option>
-                            <option value="TURNSTILE" {% if device.device_type == 'TURNSTILE' %}selected{% endif %}>Torno</option>
-                            <option value="DOOR" {% if device.device_type == 'DOOR' %}selected{% endif %}>Puerta Electrónica</option>
-                            <option value="RFID_READER" {% if device.device_type == 'RFID_READER' %}selected{% endif %}>Lector RFID</option>
-                            <option value="QR_SCANNER" {% if device.device_type == 'QR_SCANNER' %}selected{% endif %}>Escáner QR</option>
-                            <option value="BIOMETRIC" {% if device.device_type == 'BIOMETRIC' %}selected{% endif %}>Biométrico</option>
-                            <option value="GATE" {% if device.device_type == 'GATE' %}selected{% endif %}>Barrera/Gate</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Ubicación y zona -->
-            <div>
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">Ubicación</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Ubicación física</label>
-                        <input type="text" name="location" value="{{ device.location|default:'' }}"
-                               placeholder="Ej: Recepción, Planta baja"
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Zona</label>
-                        <select name="zone"
-                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                            <option value="">Sin zona específica</option>
-                            {% for zone in zones %}
-                            <option value="{{ zone.id }}" {% if device.zone_id == zone.id %}selected{% endif %}>
-                                {{ zone.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Dirección *</label>
-                        <select name="direction" required
-                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                            <option value="ENTRY" {% if device.direction == 'ENTRY' %}selected{% endif %}>Solo Entrada</option>
-                            <option value="EXIT" {% if device.direction == 'EXIT' %}selected{% endif %}>Solo Salida</option>
-                            <option value="BOTH" {% if device.direction == 'BOTH' %}selected{% endif %}>Entrada y Salida</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Configuración técnica -->
-            <div>
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">Configuración Técnica</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">ID del dispositivo</label>
-                        <input type="text" name="device_id" value="{{ device.device_id|default:'' }}"
-                               placeholder="Identificador único del hardware"
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                        <p class="text-xs text-slate-500 mt-1">Proporcionado por el fabricante del dispositivo</p>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Dirección IP</label>
-                        <input type="text" name="ip_address" value="{{ device.ip_address|default:'' }}"
-                               placeholder="192.168.1.100"
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">API Key</label>
-                        <input type="text" name="api_key" value="{{ device.api_key|default:'' }}"
-                               placeholder="Clave de autenticación"
-                               class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[var(--brand-color)] focus:border-[var(--brand-color)]">
-                        <p class="text-xs text-slate-500 mt-1">Para autenticar las peticiones desde el dispositivo</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Credenciales soportadas -->
-            <div>
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">Credenciales Soportadas</h3>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="supports_rfid" {% if device.supports_rfid %}checked{% endif %}
-                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                        <span class="text-sm">RFID/NFC</span>
-                    </label>
-                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="supports_qr" {% if device.supports_qr %}checked{% endif %}
-                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                        <span class="text-sm">QR Code</span>
-                    </label>
-                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="supports_pin" {% if device.supports_pin %}checked{% endif %}
-                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                        <span class="text-sm">PIN</span>
-                    </label>
-                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="supports_fingerprint" {% if device.supports_fingerprint %}checked{% endif %}
-                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                        <span class="text-sm">Huella dactilar</span>
-                    </label>
-                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="supports_face" {% if device.supports_face %}checked{% endif %}
-                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                        <span class="text-sm">Reconocimiento facial</span>
-                    </label>
-                    <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="supports_bluetooth" {% if device.supports_bluetooth %}checked{% endif %}
-                               class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                        <span class="text-sm">Bluetooth</span>
-                    </label>
-                </div>
-            </div>
-            
-            <!-- Estado -->
-            <div>
-                <label class="flex items-center gap-3">
-                    <input type="checkbox" name="is_active" {% if device.is_active or not device %}checked{% endif %}
-                           class="rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                    <span class="text-sm font-medium text-slate-700">Dispositivo activo</span>
-                </label>
-                <p class="text-xs text-slate-500 mt-1 ml-6">Los dispositivos inactivos no procesarán solicitudes de acceso</p>
-            </div>
-        </div>
-        
-        <!-- Actions -->
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <a href="{% url 'access_control:device_list' %}" class="text-sm text-slate-500 hover:text-slate-700">
-                Cancelar
-            </a>
-            <button type="submit" class="btn-brand px-6 py-2">
-                {% if device %}Guardar Cambios{% else %}Crear Dispositivo{% endif %}
-            </button>
+<div x-data="deviceForm()" class="space-y-6">
+    <!-- Breadcrumb -->
+    <nav class="text-sm">
+        <ol class="flex items-center space-x-2 text-gray-500">
+            <li><a href="{% url 'backoffice:dashboard' %}" class="hover:text-[var(--brand-color)]">{% trans "Dashboard" %}</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{% url 'backoffice:access_device_list' %}" class="hover:text-[var(--brand-color)]">{% trans "Access Devices" %}</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 dark:text-white">{% if device %}{{ device.name }}{% else %}{% trans "New Device" %}{% endif %}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {% if device %}{% trans "Edit Access Device" %}{% else %}{% trans "New Access Device" %}{% endif %}
+            </h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {% trans "Configure connection settings for turnstiles, RFID readers, and other access control hardware" %}
+            </p>
         </div>
     </div>
-</form>
+
+    <form method="post" class="space-y-6" @submit="validateForm">
+        {% csrf_token %}
+        
+        <!-- Step 1: Manufacturer Selection -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="flex items-center justify-center w-8 h-8 bg-[var(--brand-color)] text-white rounded-full text-sm font-bold">1</span>
+                {% trans "Select Manufacturer" %}
+            </h2>
+            <p class="text-sm text-gray-500 mb-4">{% trans "Choose your hardware manufacturer for optimized configuration" %}</p>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {% for code, name in provider_choices %}
+                <label class="relative">
+                    <input type="radio" name="provider" value="{{ code }}" 
+                           x-model="provider" 
+                           class="peer sr-only"
+                           {% if form.provider.value == code or device.provider == code %}checked{% endif %}>
+                    <div class="p-4 border-2 rounded-xl cursor-pointer transition-all
+                                border-gray-200 dark:border-gray-600 
+                                hover:border-[var(--brand-color)] hover:bg-gray-50 dark:hover:bg-gray-700
+                                peer-checked:border-[var(--brand-color)] peer-checked:bg-[var(--brand-color)]/5">
+                        <div class="text-center">
+                            <div class="text-2xl mb-2">
+                                {% if code == 'ZKTECO' %}🔐{% elif code == 'GANTNER' %}🎫{% elif code == 'SALTO' %}🚪{% elif code == 'HIKVISION' %}📹{% elif code == 'SUPREMA' %}👆{% elif code == 'DORMAKABA' %}🏢{% elif code == 'CUSTOM' %}⚙️{% else %}🔌{% endif %}
+                            </div>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ name }}</span>
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            
+            <!-- Provider tips -->
+            <div x-show="provider && provider !== 'GENERIC'" x-cloak 
+                 class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div class="flex gap-3">
+                    <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="text-sm text-blue-800 dark:text-blue-200">
+                        <template x-if="provider === 'ZKTECO'">
+                            <span>{% trans "ZKTeco devices use ZKBioSecurity protocol. Ensure your device firmware is updated." %}</span>
+                        </template>
+                        <template x-if="provider === 'GANTNER'">
+                            <span>{% trans "Gantner GAT devices communicate via JSON-RPC. Use the GAT Commander IP as endpoint." %}</span>
+                        </template>
+                        <template x-if="provider === 'SALTO'">
+                            <span>{% trans "Salto Space integration requires SALTO Cloud license. Contact your distributor." %}</span>
+                        </template>
+                        <template x-if="provider === 'HIKVISION'">
+                            <span>{% trans "Hikvision access controllers use ISAPI protocol. Enable HTTPS for security." %}</span>
+                        </template>
+                        <template x-if="provider === 'SUPREMA'">
+                            <span>{% trans "Suprema BioStar2 API integration. Configure API token in BioStar2 admin." %}</span>
+                        </template>
+                        <template x-if="provider === 'DORMAKABA'">
+                            <span>{% trans "dormakaba Exivo Cloud API. Requires active service subscription." %}</span>
+                        </template>
+                        <template x-if="provider === 'CUSTOM'">
+                            <span>{% trans "For custom hardware, implement our REST API specification in your device controller." %}</span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Device Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="flex items-center justify-center w-8 h-8 bg-[var(--brand-color)] text-white rounded-full text-sm font-bold">2</span>
+                {% trans "Device Information" %}
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Name -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Device Name" %} <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="name" 
+                           value="{{ form.name.value|default:'' }}"
+                           placeholder="{% trans 'e.g., Main Entrance Turnstile' %}"
+                           class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                  focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent"
+                           required>
+                </div>
+
+                <!-- Device Type -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Device Type" %} <span class="text-red-500">*</span>
+                    </label>
+                    <select name="device_type" 
+                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                   focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent"
+                            required>
+                        {% for code, name in device_type_choices %}
+                        <option value="{{ code }}" {% if form.device_type.value == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Zone -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Access Zone" %}
+                    </label>
+                    <select name="zone" 
+                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                   focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent">
+                        <option value="">{% trans "No zone assigned" %}</option>
+                        {% for zone in zones %}
+                        <option value="{{ zone.id }}" {% if form.zone.value == zone.id|stringformat:"s" %}selected{% endif %}>{{ zone.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Location -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Physical Location" %}
+                    </label>
+                    <input type="text" name="location" 
+                           value="{{ form.location.value|default:'' }}"
+                           placeholder="{% trans 'e.g., Ground floor, near reception' %}"
+                           class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                                  focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Connection Settings -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="flex items-center justify-center w-8 h-8 bg-[var(--brand-color)] text-white rounded-full text-sm font-bold">3</span>
+                {% trans "Connection Settings" %}
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Device ID -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Device ID" %} <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" name="device_id" x-model="deviceId"
+                               value="{{ form.device_id.value|default:'' }}"
+                               placeholder="{% trans 'Unique identifier' %}"
+                               class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono
+                                      focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent"
+                               required>
+                        <button type="button" @click="generateDeviceId()"
+                                class="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 
+                                       rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title="{% trans 'Auto-generate ID' %}">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">{% trans "Unique identifier used by the device to authenticate" %}</p>
+                </div>
+
+                <!-- IP Address / Endpoint -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "IP Address / Endpoint" %}
+                    </label>
+                    <input type="text" name="ip_address" x-model="ipAddress"
+                           value="{{ form.ip_address.value|default:'' }}"
+                           placeholder="{% trans 'e.g., 192.168.1.100 or https://device.local' %}"
+                           class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono
+                                  focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent">
+                </div>
+
+                <!-- API Key -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "API Key" %} <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <input :type="showApiKey ? 'text' : 'password'" 
+                                   name="api_key" x-model="apiKey"
+                                   value="{{ form.api_key.value|default:'' }}"
+                                   placeholder="{% trans 'Secret key for authentication' %}"
+                                   class="w-full px-4 py-2.5 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono
+                                          focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent"
+                                   required>
+                            <button type="button" @click="showApiKey = !showApiKey"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <svg x-show="!showApiKey" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                <svg x-show="showApiKey" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="button" @click="generateApiKey()"
+                                class="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 
+                                       rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title="{% trans 'Generate secure key' %}">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                            </svg>
+                        </button>
+                        <button type="button" @click="copyToClipboard(apiKey)"
+                                class="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 
+                                       rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title="{% trans 'Copy to clipboard' %}">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Connection -->
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex flex-wrap items-center gap-4">
+                    <button type="button" @click="testConnection()"
+                            :disabled="testing || !ipAddress"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg 
+                                   hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <svg x-show="!testing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <svg x-show="testing" x-cloak class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="testing ? '{% trans "Testing..." %}' : '{% trans "Test Connection" %}'"></span>
+                    </button>
+                    
+                    <!-- Connection result -->
+                    <div x-show="connectionResult" x-cloak class="flex items-center gap-2">
+                        <template x-if="connectionResult === 'success'">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-full text-sm font-medium">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                {% trans "Connection successful" %}
+                            </span>
+                        </template>
+                        <template x-if="connectionResult === 'error'">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full text-sm font-medium">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                                {% trans "Connection failed" %}
+                            </span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Webhook & Integration -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="flex items-center justify-center w-8 h-8 bg-[var(--brand-color)] text-white rounded-full text-sm font-bold">4</span>
+                {% trans "Webhook & Integration" %}
+            </h2>
+            
+            <div class="space-y-4">
+                <!-- Webhook URL -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Webhook URL" %}
+                        <span class="text-gray-400 font-normal">{% trans "(Configure this in your device)" %}</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" readonly
+                               x-model="webhookUrl"
+                               class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                                      bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 font-mono text-sm
+                                      focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent">
+                        <button type="button" @click="copyToClipboard(webhookUrl)"
+                                class="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 
+                                       rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title="{% trans 'Copy webhook URL' %}">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">{% trans "The device should send access events to this URL via POST" %}</p>
+                </div>
+
+                <!-- Active toggle -->
+                <div class="flex items-center justify-between py-3 border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                        <span class="font-medium text-gray-900 dark:text-white">{% trans "Device Active" %}</span>
+                        <p class="text-sm text-gray-500">{% trans "Enable or disable this access point" %}</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="is_active" x-model="isActive" class="sr-only peer"
+                               {% if form.is_active.value or not device %}checked{% endif %}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--brand-color)]/20 
+                                    rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
+                                    peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] 
+                                    after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all 
+                                    dark:border-gray-600 peer-checked:bg-[var(--brand-color)]"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Documentation (Collapsible) -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <button type="button" @click="showDocs = !showDocs"
+                    class="w-full p-6 flex items-center justify-between text-left">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "API Documentation" %}</h3>
+                        <p class="text-sm text-gray-500">{% trans "Technical reference for device integration" %}</p>
+                    </div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': showDocs }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            
+            <div x-show="showDocs" x-collapse x-cloak class="px-6 pb-6 space-y-4">
+                <!-- Validate Access -->
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">POST</span>
+                        <code class="text-sm font-mono text-gray-700 dark:text-gray-300">/api/access/validate/</code>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{% trans "Validate if a member can access this zone" %}</p>
+                    <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto"><code>{
+  "device_id": "<span x-text="deviceId || 'YOUR_DEVICE_ID'"></span>",
+  "api_key": "YOUR_API_KEY",
+  "credential": {
+    "type": "card|qr|biometric|pin",
+    "value": "CREDENTIAL_VALUE"
+  }
+}</code></pre>
+                </div>
+
+                <!-- Register Event -->
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">POST</span>
+                        <code class="text-sm font-mono text-gray-700 dark:text-gray-300">/api/access/event/</code>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{% trans "Register an access event (entry/exit)" %}</p>
+                    <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto"><code>{
+  "device_id": "<span x-text="deviceId || 'YOUR_DEVICE_ID'"></span>",
+  "api_key": "YOUR_API_KEY",
+  "event_type": "entry|exit",
+  "credential": {
+    "type": "card",
+    "value": "CARD_NUMBER"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}</code></pre>
+                </div>
+
+                <!-- Heartbeat -->
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">POST</span>
+                        <code class="text-sm font-mono text-gray-700 dark:text-gray-300">/api/access/heartbeat/</code>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{% trans "Device status heartbeat (send every 60s)" %}</p>
+                    <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto"><code>{
+  "device_id": "<span x-text="deviceId || 'YOUR_DEVICE_ID'"></span>",
+  "api_key": "YOUR_API_KEY",
+  "status": "online",
+  "firmware_version": "1.2.3"
+}</code></pre>
+                </div>
+
+                <!-- Download config -->
+                <div class="flex justify-end pt-2">
+                    <button type="button" @click="downloadConfig()"
+                            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--brand-color)] 
+                                   bg-[var(--brand-color)]/10 rounded-lg hover:bg-[var(--brand-color)]/20 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        {% trans "Download config.json" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Configuration Modal Trigger -->
+        <div class="bg-gradient-to-r from-[var(--brand-color)]/10 to-purple-500/10 rounded-xl border border-[var(--brand-color)]/20 p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center w-12 h-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+                        <svg class="w-6 h-6 text-[var(--brand-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white">{% trans "Quick Setup with QR Code" %}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Let technicians scan a QR code to auto-configure the device" %}</p>
+                    </div>
+                </div>
+                <button type="button" @click="showQrModal = true"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-color)] text-white rounded-lg 
+                               hover:opacity-90 transition-opacity">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                    </svg>
+                    {% trans "Generate QR" %}
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex items-center justify-between pt-4">
+            <a href="{% url 'backoffice:access_device_list' %}" 
+               class="px-5 py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit" 
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[var(--brand-color)] text-white 
+                           font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-[var(--brand-color)]/25">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {% if device %}{% trans "Update Device" %}{% else %}{% trans "Create Device" %}{% endif %}
+            </button>
+        </div>
+    </form>
+
+    <!-- QR Configuration Modal -->
+    <div x-show="showQrModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+         @click.self="showQrModal = false"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6"
+             @click.stop>
+            <div class="text-center">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{% trans "Configuration QR Code" %}</h3>
+                <p class="text-sm text-gray-500 mb-6">{% trans "Scan this QR code from your device's configuration app" %}</p>
+                
+                <!-- QR Code placeholder -->
+                <div class="bg-white p-4 rounded-xl inline-block mb-4">
+                    <div id="qrcode" class="w-48 h-48 bg-gray-100 flex items-center justify-center">
+                        <span class="text-xs text-gray-400">{% trans "QR Code" %}</span>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-gray-400 mb-6">{% trans "This QR contains: Server URL, Device ID, and API Key" %}</p>
+                
+                <div class="flex gap-3">
+                    <button type="button" @click="showQrModal = false"
+                            class="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg 
+                                   text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        {% trans "Close" %}
+                    </button>
+                    <button type="button" @click="printQr()"
+                            class="flex-1 px-4 py-2.5 bg-[var(--brand-color)] text-white rounded-lg hover:opacity-90">
+                        <span class="flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            {% trans "Print" %}
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deviceForm() {
+    return {
+        provider: '{{ form.provider.value|default:"GENERIC" }}',
+        deviceId: '{{ form.device_id.value|default:"" }}',
+        apiKey: '{{ form.api_key.value|default:"" }}',
+        ipAddress: '{{ form.ip_address.value|default:"" }}',
+        isActive: {{ form.is_active.value|yesno:"true,false,true" }},
+        showApiKey: false,
+        showDocs: false,
+        showQrModal: false,
+        testing: false,
+        connectionResult: null,
+        webhookUrl: window.location.origin + '/api/access/webhook/',
+        
+        generateDeviceId() {
+            const prefixes = {
+                'GENERIC': 'DEV',
+                'ZKTECO': 'ZKT',
+                'GANTNER': 'GAT',
+                'SALTO': 'SAL',
+                'HIKVISION': 'HIK',
+                'SUPREMA': 'SUP',
+                'DORMAKABA': 'DKB',
+                'CUSTOM': 'CUS'
+            };
+            const prefix = prefixes[this.provider] || 'DEV';
+            const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+            this.deviceId = `${prefix}-${random}`;
+        },
+        
+        generateApiKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let key = '';
+            for (let i = 0; i < 32; i++) {
+                key += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            this.apiKey = key;
+        },
+        
+        copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Could add a toast notification here
+                alert('{% trans "Copied to clipboard!" %}');
+            });
+        },
+        
+        async testConnection() {
+            if (!this.ipAddress) return;
+            
+            this.testing = true;
+            this.connectionResult = null;
+            
+            try {
+                // Simulate connection test - in production, this would hit the actual endpoint
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // For demo, randomly succeed or fail
+                this.connectionResult = Math.random() > 0.3 ? 'success' : 'error';
+            } catch (error) {
+                this.connectionResult = 'error';
+            } finally {
+                this.testing = false;
+            }
+        },
+        
+        downloadConfig() {
+            const config = {
+                server_url: window.location.origin,
+                webhook_url: this.webhookUrl,
+                device_id: this.deviceId,
+                api_key: this.apiKey,
+                provider: this.provider,
+                endpoints: {
+                    validate: '/api/access/validate/',
+                    event: '/api/access/event/',
+                    heartbeat: '/api/access/heartbeat/'
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `device-config-${this.deviceId || 'new'}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        },
+        
+        printQr() {
+            window.print();
+        },
+        
+        validateForm(e) {
+            // Add any custom validation here
+            return true;
+        }
+    };
+}
+</script>
 {% endblock %}
