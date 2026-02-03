@@ -1008,6 +1008,14 @@ def api_book_session(request, slug):
         status='CONFIRMED'
     )
     
+    # Disparar notificaciones y workflows de marketing
+    try:
+        from marketing.signals import on_client_added_to_class
+        on_client_added_to_class(client, session)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Error triggering booking notification: {e}")
+    
     return JsonResponse({
         'success': True,
         'booking_id': booking.id,
@@ -1078,6 +1086,16 @@ def api_cancel_booking(request, slug, booking_id):
     
     # Ejecutar la cancelación
     result = CancellationPolicyService.execute_cancellation(booking, cancelled_by=request.user)
+    
+    # Disparar notificaciones de cancelación
+    if result.success:
+        try:
+            from marketing.signals import on_client_removed_from_class
+            cancellation_type = 'LATE' if result.data.get('penalty_applied') else 'EARLY'
+            on_client_removed_from_class(client, booking.session, cancellation_type)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Error triggering cancel notification: {e}")
     
     return JsonResponse({
         'success': result.success,

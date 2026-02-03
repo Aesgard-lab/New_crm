@@ -9,16 +9,43 @@ from datetime import timedelta
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# RETRY CONFIGURATION
+# =============================================================================
+
+# Configuración estándar para reintentos
+RETRY_CONFIG = {
+    'autoretry_for': (Exception,),
+    'retry_backoff': True,  # Exponential backoff
+    'retry_backoff_max': 600,  # Max 10 minutes between retries
+    'retry_jitter': True,  # Add randomness to prevent thundering herd
+    'max_retries': 3,
+}
+
+# Para tasks críticas (emails, notificaciones)
+CRITICAL_RETRY_CONFIG = {
+    **RETRY_CONFIG,
+    'max_retries': 5,
+}
+
+
 def safe_task_delay(task, *args, **kwargs):
     """Safely call a Celery task's delay method."""
     try:
         return task.delay(*args, **kwargs)
     except Exception as e:
         logger.warning(f"Could not queue task {task.name}: {e}")
+        # Fallback: intentar ejecutar síncronamente para tasks críticas
+        try:
+            if hasattr(task, 'run'):
+                logger.info(f"Executing {task.name} synchronously as fallback")
+                return task.run(*args, **kwargs)
+        except Exception as sync_e:
+            logger.error(f"Sync fallback also failed for {task.name}: {sync_e}")
         return None
 
 
-@shared_task(name='marketing.check_inactive_leads')
+@shared_task(name='marketing.check_inactive_leads', **RETRY_CONFIG)
 def check_inactive_leads():
     """
     Periodic task to check for leads that have been inactive
@@ -70,7 +97,7 @@ def check_inactive_leads():
     return f"Moved {moved_count} inactive leads"
 
 
-@shared_task(name='marketing.process_lead_automation')
+@shared_task(name='marketing.process_lead_automation', **RETRY_CONFIG)
 def process_lead_automation(client_id, trigger_type):
     """
     Process automation rule for a specific lead/client.
@@ -130,7 +157,7 @@ def process_lead_automation(client_id, trigger_type):
     return f"No matching rule for {trigger_type}"
 
 
-@shared_task(name='marketing.create_lead_card_for_client')
+@shared_task(name='marketing.create_lead_card_for_client', **RETRY_CONFIG)
 def create_lead_card_for_client(client_id, pipeline_id=None):
     """
     Create a LeadCard for a new client with status=LEAD.
@@ -184,7 +211,7 @@ def create_lead_card_for_client(client_id, pipeline_id=None):
 # EMAIL WORKFLOWS (Secuencias)
 # =============================================================================
 
-@shared_task(name='marketing.process_email_workflows')
+@shared_task(name='marketing.process_email_workflows', **CRITICAL_RETRY_CONFIG)
 def process_email_workflows():
     """
     Task periódico que procesa todos los workflows activos.
@@ -303,7 +330,7 @@ def process_email_workflows():
     return f"Processed {processed_count} workflow emails"
 
 
-@shared_task(name='marketing.start_workflow_for_client')
+@shared_task(name='marketing.start_workflow_for_client', **CRITICAL_RETRY_CONFIG)
 def start_workflow_for_client(workflow_id, client_id):
     """
     Inicia un workflow para un cliente específico.
@@ -336,7 +363,7 @@ def start_workflow_for_client(workflow_id, client_id):
 # LEAD SCORING
 # =============================================================================
 
-@shared_task(name='marketing.calculate_lead_score')
+@shared_task(name='marketing.calculate_lead_score', **RETRY_CONFIG)
 def calculate_lead_score(client_id, event_type, event_data=None):
     """
     Calcula y actualiza el score de un lead basado en un evento.
@@ -394,7 +421,7 @@ def calculate_lead_score(client_id, event_type, event_data=None):
     return f"Updated score for {client}: {total_points:+d} pts (Total: {lead_score.score})"
 
 
-@shared_task(name='marketing.decay_lead_scores')
+@shared_task(name='marketing.decay_lead_scores', **RETRY_CONFIG)
 def decay_lead_scores():
     """
     Task periódico para "decaer" scores de leads inactivos.
@@ -425,7 +452,7 @@ def decay_lead_scores():
 # ALERTAS DE RETENCIÓN
 # =============================================================================
 
-@shared_task(name='marketing.check_retention_alerts')
+@shared_task(name='marketing.check_retention_alerts', **RETRY_CONFIG)
 def check_retention_alerts():
     """
     Task periódico que verifica clientes en riesgo y crea alertas.
@@ -543,7 +570,7 @@ def check_retention_alerts():
     return f"Created {alerts_created} retention alerts"
 
 
-@shared_task(name='marketing.send_retention_notifications')
+@shared_task(name='marketing.send_retention_notifications', **CRITICAL_RETRY_CONFIG)
 def send_retention_notifications():
     """
     Envía notificaciones al staff sobre alertas de retención nuevas.

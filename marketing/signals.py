@@ -258,20 +258,32 @@ def on_client_created(sender, instance, created, **kwargs):
 # LEAD SCORING SIGNALS
 # =============================================================================
 
-# Comentado temporalmente - verificar si existe modelo ActivitySessionBooking
-# @receiver(post_save, sender='activities.ActivitySessionBooking')
-# def on_class_booked(sender, instance, created, **kwargs):
-#     """
-#     When a client books a class, update lead scoring.
-#     """
-#     if not created:
-#         return
-#     
-#     if not instance.client:
-#         return
-#     
-#     from .tasks import calculate_lead_score
-#     calculate_lead_score.delay(instance.client.id, 'CLASS_BOOKED')
+@receiver(post_save, sender='activities.ActivitySessionBooking')
+def on_class_booked_scoring(sender, instance, created, **kwargs):
+    """
+    When a client books a class, update lead scoring.
+    Also triggers workflow if configured.
+    """
+    if not created:
+        return
+    
+    if not instance.client:
+        return
+    
+    from .tasks import calculate_lead_score
+    safe_delay(calculate_lead_score, instance.client.id, 'CLASS_BOOKED')
+    
+    # Check for CLASS_BOOKED workflow trigger
+    from .models import EmailWorkflow
+    workflows = EmailWorkflow.objects.filter(
+        gym=instance.session.gym,
+        trigger_event='CLASS_BOOKED',
+        is_active=True
+    )
+    
+    for workflow in workflows:
+        from .tasks import start_workflow_for_client
+        safe_delay(start_workflow_for_client, workflow.id, instance.client.id)
 
 
 # Signal para email opens (requeriría tracking pixel)
