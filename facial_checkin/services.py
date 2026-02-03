@@ -31,8 +31,7 @@ FACE_RECOGNITION_AVAILABLE = check_face_recognition_available()
 
 if not FACE_RECOGNITION_AVAILABLE:
     logger.warning(
-        "La librería face_recognition no está instalada. "
-        "Instálala con: pip install face_recognition"
+        "Módulo de reconocimiento facial no disponible (face_recognition library not installed)"
     )
 
 
