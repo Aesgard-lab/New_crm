@@ -647,6 +647,20 @@ class ClientMembership(models.Model):
             return 0
         return min(100, int((self.sessions_used / self.sessions_total) * 100))
 
+    @property
+    def is_active(self):
+        """Retorna True si la membresía está activa"""
+        return self.status == self.Status.ACTIVE
+
+    @property
+    def days_remaining(self):
+        """Días restantes hasta la expiración, None si no tiene fecha de fin"""
+        from datetime import date
+        if not self.end_date:
+            return None
+        remaining = (self.end_date - date.today()).days
+        return max(0, remaining)
+
 
 class ClientMembershipAccessRule(models.Model):
     """Reglas de acceso personalizadas para una membresía de cliente"""

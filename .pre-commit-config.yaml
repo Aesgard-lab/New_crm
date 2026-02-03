@@ -1,0 +1,83 @@
+# ==============================================
+# PRE-COMMIT HOOKS
+# ==============================================
+# Instalación: pre-commit install
+# Actualizar: pre-commit autoupdate
+# Ejecutar manual: pre-commit run --all-files
+
+repos:
+  # ----------------------------------------------
+  # Validaciones básicas
+  # ----------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^.*\.(md|rst)$
+      - id: end-of-file-fixer
+        exclude: ^.*\.(svg|json)$
+      - id: check-yaml
+        args: [--unsafe]  # Para soportar !reference en GitLab CI
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+  # ----------------------------------------------
+  # Python: Ruff (linting ultra-rápido)
+  # ----------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.1
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ----------------------------------------------
+  # Seguridad: Bandit
+  # ----------------------------------------------
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml', '-ll', '-q']
+        additional_dependencies: ['bandit[toml]']
+        exclude: ^tests/
+
+  # ----------------------------------------------
+  # Django: Validaciones específicas
+  # ----------------------------------------------
+  - repo: local
+    hooks:
+      - id: django-check
+        name: Django System Check
+        entry: python manage.py check
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+
+      - id: django-migrations
+        name: Check Django Migrations
+        entry: python manage.py makemigrations --check --dry-run
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # ----------------------------------------------
+  # Commits: Conventional Commits
+  # ----------------------------------------------
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.1.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]
+
+# Configuración global
+default_language_version:
+  python: python3.12
