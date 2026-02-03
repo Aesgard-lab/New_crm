@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, views_redsys
+from . import views, views_redsys, wallet_views
 
 urlpatterns = [
     # Settings
@@ -48,6 +48,19 @@ urlpatterns = [
     path('verifactu/', views.verifactu_settings, name='verifactu_settings'),
     path('verifactu/records/', views.verifactu_records, name='verifactu_records'),
     path('verifactu/api/enroll/', views.verifactu_enroll_api, name='verifactu_enroll_api'),
+    
+    # Client Wallet (Monedero Virtual)
+    path('wallet/settings/', wallet_views.wallet_settings, name='wallet_settings'),
+    path('wallet/', wallet_views.wallet_list, name='wallet_list'),
+    path('wallet/client/<int:client_id>/', wallet_views.wallet_detail, name='wallet_detail'),
+    path('wallet/client/<int:client_id>/topup/', wallet_views.wallet_topup, name='wallet_topup'),
+    path('wallet/client/<int:client_id>/adjust/', wallet_views.wallet_adjust, name='wallet_adjust'),
+    path('wallet/client/<int:client_id>/toggle/', wallet_views.wallet_toggle, name='wallet_toggle'),
+    path('wallet/client/<int:client_id>/limits/', wallet_views.wallet_update_limits, name='wallet_update_limits'),
+    path('wallet/report/', wallet_views.wallet_report, name='wallet_report'),
+    # Wallet API
+    path('api/wallet/balance/<int:client_id>/', wallet_views.wallet_balance_api, name='wallet_balance_api'),
+    path('api/wallet/pay/', wallet_views.wallet_quick_pay_api, name='wallet_quick_pay_api'),
     
     # Reports
     path('report/billing/', views.billing_dashboard, name='finance_billing_dashboard'),

@@ -83,6 +83,13 @@ from .referral_views import (
     ValidateReferralCodeView,
     InviteFriendView
 )
+from .wallet_views import (
+    WalletStatusView,
+    WalletBalanceView,
+    WalletHistoryView,
+    WalletTopupView,
+    WalletBonusCalculatorView
+)
 
 urlpatterns = [
     # System Config
@@ -185,6 +192,13 @@ urlpatterns = [
     path('referrals/history/', ReferralHistoryView.as_view(), name='api_referral_history'),
     path('referrals/validate/', ValidateReferralCodeView.as_view(), name='api_referral_validate'),
     path('referrals/invite/', InviteFriendView.as_view(), name='api_referral_invite'),
+    
+    # Wallet / Monedero (Mobile App)
+    path('wallet/status/', WalletStatusView.as_view(), name='api_wallet_status'),
+    path('wallet/balance/', WalletBalanceView.as_view(), name='api_wallet_balance'),
+    path('wallet/history/', WalletHistoryView.as_view(), name='api_wallet_history'),
+    path('wallet/topup/', WalletTopupView.as_view(), name='api_wallet_topup'),
+    path('wallet/bonus-calculator/', WalletBonusCalculatorView.as_view(), name='api_wallet_bonus'),
 ]
 
 

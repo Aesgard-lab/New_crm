@@ -1,0 +1,251 @@
+{% extends "public_portal/base.html" %}
+
+{% block title %}Mi Monedero - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.balance-card {
+    background: linear-gradient(135deg, {% if wallet.balance > 0 %}#10b981, #059669{% elif wallet.balance < 0 %}#ef4444, #dc2626{% else %}#94a3b8, #64748b{% endif %});
+}
+.stat-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    text-align: center;
+}
+.tx-credit { color: #10b981; }
+.tx-debit { color: #ef4444; }
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    gap: 1rem;
+    transition: background-color 0.2s;
+}
+.menu-item:hover {
+    background-color: #f8fafc;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-8 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'public_client_profile' slug=settings.public_slug %}" class="p-2 bg-white rounded-xl shadow">
+            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-slate-900">Mi Monedero</h1>
+    </div>
+
+    <!-- Saldo Principal -->
+    <div class="balance-card rounded-2xl p-8 text-white text-center shadow-lg">
+        <p class="text-sm opacity-80 mb-2">Saldo Disponible</p>
+        <p class="text-5xl font-bold">{{ wallet.get_balance_display }}</p>
+        {% if wallet.allow_negative and wallet.negative_limit > 0 %}
+        <p class="text-sm opacity-70 mt-3">
+            Disponible con crédito: {{ wallet.available_balance }}€
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="grid grid-cols-2 gap-4">
+        <div class="stat-card shadow border border-slate-100">
+            <p class="text-sm text-slate-500">Recargado</p>
+            <p class="text-xl font-bold text-blue-600">{{ wallet.total_topups|floatformat:2 }}€</p>
+        </div>
+        <div class="stat-card shadow border border-slate-100">
+            <p class="text-sm text-slate-500">Gastado</p>
+            <p class="text-xl font-bold text-purple-600">{{ wallet.total_spent|floatformat:2 }}€</p>
+        </div>
+    </div>
+
+    <!-- Botón Recargar -->
+    {% if wallet_settings.allow_online_topup %}
+    <button onclick="openTopupModal()" 
+            class="w-full py-4 rounded-xl font-semibold text-white transition-colors"
+            style="background-color: {{ gym.brand_color|default:'#1e293b' }}">
+        💳 Recargar Saldo
+    </button>
+    
+    {% if wallet_settings.topup_bonus_enabled %}
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
+        <span class="text-2xl">🎁</span>
+        <p class="text-sm text-amber-800">
+            <strong>¡Bonificación activa!</strong><br>
+            Recibe un {{ wallet_settings.topup_bonus_percent }}% extra al recargar
+            {% if wallet_settings.topup_bonus_min_amount > 0 %}
+            (mínimo {{ wallet_settings.topup_bonus_min_amount }}€)
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Historial de Transacciones -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="font-bold text-slate-900">Últimos Movimientos</h3>
+        </div>
+        
+        {% if transactions %}
+        <div class="divide-y divide-slate-100">
+            {% for tx in transactions %}
+            <div class="p-4 flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg
+                    {% if tx.is_credit %}bg-green-100{% else %}bg-red-100{% endif %}">
+                    {% if tx.transaction_type == 'TOPUP' %}💳
+                    {% elif tx.transaction_type == 'TOPUP_BONUS' %}🎁
+                    {% elif tx.transaction_type == 'PAYMENT' %}🛒
+                    {% elif tx.transaction_type == 'REFUND' %}↩️
+                    {% elif tx.transaction_type == 'ADJUSTMENT' %}⚖️
+                    {% elif tx.transaction_type == 'REFERRAL_BONUS' %}👥
+                    {% else %}📝{% endif %}
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-slate-900">{{ tx.get_transaction_type_display }}</p>
+                    <p class="text-sm text-slate-500">{{ tx.description|truncatechars:40 }}</p>
+                    <p class="text-xs text-slate-400">{{ tx.created_at|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-lg {% if tx.is_credit %}tx-credit{% else %}tx-debit{% endif %}">
+                        {% if tx.is_credit %}+{% endif %}{{ tx.amount|floatformat:2 }}€
+                    </p>
+                    <p class="text-xs text-slate-400">Saldo: {{ tx.balance_after|floatformat:2 }}€</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-12 text-center">
+            <div class="text-4xl mb-4">📝</div>
+            <p class="text-slate-500">Sin movimientos todavía</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Modal de Recarga -->
+{% if wallet_settings.allow_online_topup %}
+<div id="topupModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" style="display: none;">
+    <div class="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white p-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="text-xl font-bold">Recargar Saldo</h3>
+            <button onclick="closeTopupModal()" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form method="post" action="" class="p-4 space-y-4">
+            {% csrf_token %}
+            
+            <!-- Montos predefinidos -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Selecciona una cantidad</label>
+                <div class="grid grid-cols-4 gap-2">
+                    {% for amount in wallet_settings.topup_preset_amounts %}
+                    <button type="button" onclick="selectAmount({{ amount }})" 
+                            class="preset-amount py-3 rounded-xl border-2 border-slate-200 hover:border-slate-400 transition-colors font-semibold">
+                        {{ amount }}€
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Monto personalizado -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">O introduce otra cantidad</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+                    <input type="number" name="amount" id="topupAmount" step="0.01" 
+                           min="{{ wallet_settings.min_topup_amount }}"
+                           max="{{ wallet_settings.max_topup_amount }}"
+                           class="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-slate-400 focus:outline-none"
+                           placeholder="0.00"
+                           oninput="updateBonus()">
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                    Mínimo: {{ wallet_settings.min_topup_amount }}€ | Máximo: {{ wallet_settings.max_topup_amount }}€
+                </p>
+            </div>
+            
+            <!-- Preview de bonus -->
+            {% if wallet_settings.topup_bonus_enabled %}
+            <div id="bonusPreview" class="p-4 bg-green-50 border border-green-200 rounded-xl" style="display: none;">
+                <div class="flex justify-between items-center">
+                    <span class="text-green-800">🎁 Bonificación:</span>
+                    <span id="bonusAmount" class="font-bold text-green-700">+0.00€</span>
+                </div>
+                <div class="flex justify-between items-center mt-2 pt-2 border-t border-green-200">
+                    <span class="text-green-800 font-semibold">Recibirás:</span>
+                    <span id="totalAmount" class="font-bold text-green-700 text-lg">0.00€</span>
+                </div>
+            </div>
+            {% endif %}
+            
+            <button type="submit" 
+                    class="w-full py-4 rounded-xl font-semibold text-white transition-colors"
+                    style="background-color: {{ gym.brand_color|default:'#1e293b' }}">
+                Confirmar Recarga
+            </button>
+            
+            <p class="text-xs text-center text-slate-500">
+                Se te redirigirá a la pasarela de pago segura
+            </p>
+        </form>
+    </div>
+</div>
+
+<script>
+function openTopupModal() {
+    document.getElementById('topupModal').style.display = 'flex';
+}
+
+function closeTopupModal() {
+    document.getElementById('topupModal').style.display = 'none';
+}
+
+function selectAmount(amount) {
+    document.getElementById('topupAmount').value = amount;
+    // Highlight selected
+    document.querySelectorAll('.preset-amount').forEach(btn => {
+        btn.classList.remove('border-slate-800', 'bg-slate-100');
+    });
+    event.target.classList.add('border-slate-800', 'bg-slate-100');
+    updateBonus();
+}
+
+function updateBonus() {
+    const amount = parseFloat(document.getElementById('topupAmount').value) || 0;
+    const bonusEnabled = {{ wallet_settings.topup_bonus_enabled|yesno:"true,false" }};
+    const bonusPercent = {{ wallet_settings.topup_bonus_percent|default:0 }};
+    const minAmount = {{ wallet_settings.topup_bonus_min_amount|default:0 }};
+    
+    if (bonusEnabled && amount >= minAmount) {
+        const bonus = amount * (bonusPercent / 100);
+        const total = amount + bonus;
+        
+        document.getElementById('bonusPreview').style.display = 'block';
+        document.getElementById('bonusAmount').textContent = '+' + bonus.toFixed(2) + '€';
+        document.getElementById('totalAmount').textContent = total.toFixed(2) + '€';
+    } else {
+        const preview = document.getElementById('bonusPreview');
+        if (preview) preview.style.display = 'none';
+    }
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('topupModal').addEventListener('click', function(e) {
+    if (e.target === this) closeTopupModal();
+});
+</script>
+{% endif %}
+
+{% endblock %}

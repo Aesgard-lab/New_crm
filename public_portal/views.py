@@ -753,6 +753,19 @@ def public_client_profile(request, slug):
     except Exception:
         pass
     
+    # Monedero / Wallet
+    wallet_enabled = False
+    wallet_balance = 0
+    try:
+        from finance.wallet_service import WalletService
+        from finance.models import WalletSettings
+        wallet_settings = WalletService.get_wallet_settings(gym)
+        if wallet_settings.wallet_enabled and wallet_settings.show_in_client_portal:
+            wallet_enabled = True
+            wallet_balance = WalletService.get_balance(client, gym)
+    except Exception:
+        pass
+    
     context = {
         'gym': gym,
         'settings': settings,
@@ -767,6 +780,8 @@ def public_client_profile(request, slug):
         'has_saved_card': has_saved_card,
         'last_card_digits': last_card_digits,
         'referral_enabled': referral_enabled,
+        'wallet_enabled': wallet_enabled,
+        'wallet_balance': wallet_balance,
     }
     
     return render(request, 'public_portal/profile.html', context)
@@ -2863,3 +2878,50 @@ def api_referral_share_data(request, slug):
     share_data = get_share_data(client, request)
     
     return JsonResponse(share_data)
+
+
+# ===========================
+# MONEDERO / WALLET
+# ===========================
+
+@login_required
+def public_wallet(request, slug):
+    """Página del monedero del cliente"""
+    from finance.wallet_service import WalletService
+    from finance.models import ClientWallet, WalletTransaction, WalletSettings
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Verificar si está habilitado
+    wallet_settings = WalletService.get_wallet_settings(gym)
+    if not wallet_settings.wallet_enabled or not wallet_settings.show_in_client_portal:
+        messages.info(request, 'El monedero no está disponible actualmente')
+        return redirect('public_client_dashboard', slug=slug)
+    
+    # Obtener o crear monedero
+    wallet, _ = WalletService.get_or_create_wallet(client, gym)
+    
+    # Historial de transacciones
+    transactions = wallet.transactions.order_by('-created_at')[:30]
+    
+    # Resumen
+    summary = WalletService.get_summary(wallet)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'wallet': wallet,
+        'wallet_settings': wallet_settings,
+        'transactions': transactions,
+        'summary': summary,
+    }
+    
+    return render(request, 'public_portal/wallet.html', context)

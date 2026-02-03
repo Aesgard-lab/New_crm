@@ -1,0 +1,165 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Monederos de Clientes</div>
+<div class="text-sm text-slate-500">Gestión de saldos de cuenta</div>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'wallet_settings' %}" 
+   class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-sm font-medium">
+  ⚙️ Configuración
+</a>
+<a href="{% url 'wallet_report' %}"
+   class="px-4 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors text-sm font-medium">
+  📊 Reportes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Estadísticas -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-blue-600">{{ stats.total }}</div>
+      <div class="text-xs text-slate-500">Total Monederos</div>
+    </div>
+    <div class="bg-white border border-green-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-green-600">{{ stats.with_balance }}</div>
+      <div class="text-xs text-slate-500">Con Saldo</div>
+    </div>
+    <div class="bg-white border border-red-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-red-600">{{ stats.negative }}</div>
+      <div class="text-xs text-slate-500">Saldo Negativo</div>
+    </div>
+    <div class="bg-white border border-purple-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-purple-600">{{ stats.total_balance|floatformat:2 }}€</div>
+      <div class="text-xs text-slate-500">Saldo Total</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+    <form method="get" class="flex flex-wrap gap-4 items-end">
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-sm font-medium text-slate-700 mb-1">Buscar</label>
+        <input type="text" name="search" value="{{ search }}" placeholder="Nombre, email..."
+               class="w-full rounded-xl border-slate-300">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+        <select name="status" class="rounded-xl border-slate-300">
+          <option value="all">Todos</option>
+          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Activos</option>
+          <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactivos</option>
+        </select>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Saldo</label>
+        <select name="balance" class="rounded-xl border-slate-300">
+          <option value="all">Todos</option>
+          <option value="positive" {% if balance_filter == 'positive' %}selected{% endif %}>Positivo</option>
+          <option value="negative" {% if balance_filter == 'negative' %}selected{% endif %}>Negativo</option>
+          <option value="zero" {% if balance_filter == 'zero' %}selected{% endif %}>Cero</option>
+        </select>
+      </div>
+      
+      <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
+        🔍 Filtrar
+      </button>
+    </form>
+  </div>
+
+  <!-- Lista de Monederos -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    {% if wallets %}
+    <table class="w-full">
+      <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+        <tr>
+          <th class="px-6 py-3 text-left">Cliente</th>
+          <th class="px-6 py-3 text-left">Saldo</th>
+          <th class="px-6 py-3 text-left">Total Recargado</th>
+          <th class="px-6 py-3 text-left">Total Gastado</th>
+          <th class="px-6 py-3 text-left">Última Actividad</th>
+          <th class="px-6 py-3 text-left">Estado</th>
+          <th class="px-6 py-3 text-left">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for wallet in wallets %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
+                {% if wallet.balance > 0 %}bg-green-500{% elif wallet.balance < 0 %}bg-red-500{% else %}bg-slate-400{% endif %}">
+                💰
+              </div>
+              <div>
+                <div class="font-medium">{{ wallet.client.get_full_name }}</div>
+                <div class="text-xs text-slate-500">{{ wallet.client.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4">
+            <span class="text-lg font-bold {% if wallet.balance > 0 %}text-green-600{% elif wallet.balance < 0 %}text-red-600{% else %}text-slate-400{% endif %}">
+              {{ wallet.get_balance_display }}
+            </span>
+          </td>
+          <td class="px-6 py-4 text-slate-600">{{ wallet.total_topups|floatformat:2 }}€</td>
+          <td class="px-6 py-4 text-slate-600">{{ wallet.total_spent|floatformat:2 }}€</td>
+          <td class="px-6 py-4 text-sm text-slate-500">
+            {% if wallet.last_transaction_at %}
+              {{ wallet.last_transaction_at|date:"d/m/Y H:i" }}
+            {% else %}
+              Sin actividad
+            {% endif %}
+          </td>
+          <td class="px-6 py-4">
+            {% if wallet.is_active %}
+            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Activo</span>
+            {% else %}
+            <span class="px-2 py-1 bg-slate-100 text-slate-500 text-xs rounded-full">Inactivo</span>
+            {% endif %}
+            {% if wallet.allow_negative %}
+            <span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full ml-1" title="Fiado permitido">💳</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4">
+            <a href="{% url 'wallet_detail' wallet.client.pk %}"
+               class="text-blue-600 hover:underline text-sm">
+              Ver detalle →
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    
+    <!-- Paginación -->
+    {% if wallets.has_other_pages %}
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-center gap-2">
+      {% if wallets.has_previous %}
+      <a href="?page={{ wallets.previous_page_number }}&search={{ search }}&status={{ status_filter }}&balance={{ balance_filter }}"
+         class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200">← Anterior</a>
+      {% endif %}
+      <span class="px-3 py-1">Página {{ wallets.number }} de {{ wallets.paginator.num_pages }}</span>
+      {% if wallets.has_next %}
+      <a href="?page={{ wallets.next_page_number }}&search={{ search }}&status={{ status_filter }}&balance={{ balance_filter }}"
+         class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200">Siguiente →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="p-12 text-center">
+      <div class="text-4xl mb-4">💰</div>
+      <h3 class="text-lg font-semibold text-slate-700">No hay monederos</h3>
+      <p class="text-slate-500">Los monederos se crean automáticamente o desde la ficha del cliente</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

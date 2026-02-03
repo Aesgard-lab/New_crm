@@ -89,6 +89,9 @@ urlpatterns = [
     path('gym/<slug:slug>/referrals/', views.public_referrals, name='public_referrals'),
     path('gym/<slug:slug>/api/referrals/share-data/', views.api_referral_share_data, name='api_referral_share_data'),
     
+    # Monedero / Wallet
+    path('gym/<slug:slug>/wallet/', views.public_wallet, name='public_wallet'),
+    
     # Autenticación de clientes
     path('gym/<slug:slug>/login/', views.public_login, name='public_login'),
     path('gym/<slug:slug>/logout/', views.public_logout, name='public_logout'),

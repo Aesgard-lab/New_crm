@@ -1,0 +1,131 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Reporte de Monederos</div>
+<div class="text-sm text-slate-500">Análisis del sistema de saldos</div>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'wallet_list' %}"
+   class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm font-medium">
+  ← Volver a Lista
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Filtros de Fecha -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+    <form method="get" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Desde</label>
+        <input type="date" name="from_date" value="{{ from_date }}"
+               class="rounded-xl border-slate-300">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Hasta</label>
+        <input type="date" name="to_date" value="{{ to_date }}"
+               class="rounded-xl border-slate-300">
+      </div>
+      <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
+        📊 Generar Reporte
+      </button>
+    </form>
+  </div>
+
+  <!-- Resumen General -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-blue-600">{{ summary.total_wallets }}</div>
+      <div class="text-xs text-slate-500">Total Monederos</div>
+    </div>
+    <div class="bg-white border border-green-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-green-600">{{ summary.total_balance|floatformat:2 }}€</div>
+      <div class="text-xs text-slate-500">Saldo Total</div>
+    </div>
+    <div class="bg-white border border-blue-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-blue-600">{{ summary.total_topups|floatformat:2 }}€</div>
+      <div class="text-xs text-slate-500">Total Recargado</div>
+    </div>
+    <div class="bg-white border border-purple-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-purple-600">{{ summary.total_spent|floatformat:2 }}€</div>
+      <div class="text-xs text-slate-500">Total Gastado</div>
+    </div>
+    <div class="bg-white border border-red-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-red-600">{{ summary.negative_count }}</div>
+      <div class="text-xs text-slate-500">Saldo Negativo</div>
+    </div>
+    <div class="bg-white border border-amber-200 rounded-2xl p-5 text-center">
+      <div class="text-2xl font-bold text-amber-600">{{ summary.negative_total|floatformat:2 }}€</div>
+      <div class="text-xs text-slate-500">Total Fiado</div>
+    </div>
+  </div>
+
+  <!-- Totales por Tipo -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <h3 class="text-lg font-bold text-slate-900 mb-4">Totales por Tipo de Transacción</h3>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {% for total in totals_by_type %}
+      <div class="p-4 bg-slate-50 rounded-xl">
+        <div class="text-sm text-slate-500">{{ total.transaction_type }}</div>
+        <div class="text-xl font-bold text-slate-800">{{ total.total|floatformat:2 }}€</div>
+        <div class="text-xs text-slate-400">{{ total.count }} transacciones</div>
+      </div>
+      {% empty %}
+      <p class="text-slate-500">Sin datos</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Últimas Transacciones -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-slate-100">
+      <h3 class="text-lg font-bold text-slate-900">Últimas Transacciones</h3>
+    </div>
+    
+    {% if transactions %}
+    <table class="w-full">
+      <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+        <tr>
+          <th class="px-6 py-3 text-left">Fecha</th>
+          <th class="px-6 py-3 text-left">Cliente</th>
+          <th class="px-6 py-3 text-left">Tipo</th>
+          <th class="px-6 py-3 text-left">Descripción</th>
+          <th class="px-6 py-3 text-right">Monto</th>
+          <th class="px-6 py-3 text-right">Saldo Después</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for tx in transactions %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-6 py-4 text-sm text-slate-500">{{ tx.created_at|date:"d/m/Y H:i" }}</td>
+          <td class="px-6 py-4">
+            <a href="{% url 'wallet_detail' tx.wallet.client.pk %}" class="text-blue-600 hover:underline">
+              {{ tx.wallet.client.get_full_name }}
+            </a>
+          </td>
+          <td class="px-6 py-4">
+            <span class="px-2 py-1 rounded-full text-xs font-medium
+              {% if tx.is_credit %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+              {{ tx.get_transaction_type_display }}
+            </span>
+          </td>
+          <td class="px-6 py-4 text-sm text-slate-600">{{ tx.description|truncatechars:40 }}</td>
+          <td class="px-6 py-4 text-right font-bold {% if tx.is_credit %}text-green-600{% else %}text-red-600{% endif %}">
+            {% if tx.is_credit %}+{% endif %}{{ tx.amount|floatformat:2 }}€
+          </td>
+          <td class="px-6 py-4 text-right text-slate-600">{{ tx.balance_after|floatformat:2 }}€</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-12 text-center text-slate-500">
+      Sin transacciones en el período seleccionado
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

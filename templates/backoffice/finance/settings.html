@@ -30,6 +30,10 @@
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-all">
                 Pasarelas de Pago
             </button>
+            <a href="{% url 'wallet_settings' %}"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-500 hover:text-slate-700 hover:bg-white">
+                💰 Monedero
+            </a>
             {% if has_verifactu_module %}
             <button @click="tab = 'verifactu'"
                 :class="{'bg-white text-[var(--brand-color)] shadow-sm': tab === 'verifactu', 'text-slate-500 hover:text-slate-700': tab !== 'verifactu'}"

@@ -746,3 +746,418 @@ class VerifactuRecord(models.Model):
         
         record.save()
         return record
+
+
+# =============================================================================
+# CLIENT WALLET (MONEDERO VIRTUAL)
+# =============================================================================
+
+class ClientWallet(models.Model):
+    """
+    Monedero virtual del cliente - Saldo de cuenta para pagos.
+    """
+    client = models.OneToOneField(
+        'clients.Client',
+        on_delete=models.CASCADE,
+        related_name='wallet'
+    )
+    gym = models.ForeignKey(
+        Gym,
+        on_delete=models.CASCADE,
+        related_name='client_wallets'
+    )
+    
+    # Saldo
+    balance = models.DecimalField(
+        _("Saldo Disponible"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+    
+    # Configuración individual del cliente
+    allow_negative = models.BooleanField(
+        _("Permitir Saldo Negativo"),
+        default=False,
+        help_text=_("Permite que el cliente tenga saldo negativo (fiado)")
+    )
+    negative_limit = models.DecimalField(
+        _("Límite de Saldo Negativo"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        help_text=_("Máximo saldo negativo permitido")
+    )
+    
+    # Auto-recarga
+    auto_topup_enabled = models.BooleanField(
+        _("Auto-Recarga Activada"),
+        default=False
+    )
+    auto_topup_threshold = models.DecimalField(
+        _("Umbral de Auto-Recarga"),
+        max_digits=10,
+        decimal_places=2,
+        default=10.00,
+        help_text=_("Recargar cuando el saldo baje de esta cantidad")
+    )
+    auto_topup_amount = models.DecimalField(
+        _("Cantidad de Auto-Recarga"),
+        max_digits=10,
+        decimal_places=2,
+        default=50.00
+    )
+    
+    # Estado
+    is_active = models.BooleanField(_("Activo"), default=True)
+    
+    # Tracking
+    last_transaction_at = models.DateTimeField(null=True, blank=True)
+    total_topups = models.DecimalField(
+        _("Total Recargado"),
+        max_digits=12,
+        decimal_places=2,
+        default=0.00
+    )
+    total_spent = models.DecimalField(
+        _("Total Gastado"),
+        max_digits=12,
+        decimal_places=2,
+        default=0.00
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Monedero de Cliente")
+        verbose_name_plural = _("Monederos de Clientes")
+        unique_together = ('client', 'gym')
+
+    def __str__(self):
+        return f"Monedero de {self.client} - {self.balance}€"
+    
+    @property
+    def available_balance(self):
+        """Saldo disponible incluyendo límite negativo si está permitido"""
+        if self.allow_negative:
+            return self.balance + self.negative_limit
+        return max(self.balance, 0)
+    
+    @property
+    def is_negative(self):
+        return self.balance < 0
+    
+    def can_pay(self, amount):
+        """Verifica si puede pagar una cantidad"""
+        if self.allow_negative:
+            return (self.balance - amount) >= -self.negative_limit
+        return self.balance >= amount
+    
+    def get_balance_display(self):
+        """Retorna el saldo formateado con color"""
+        if self.balance > 0:
+            return f"+{self.balance:.2f}€"
+        elif self.balance < 0:
+            return f"{self.balance:.2f}€"
+        return "0.00€"
+
+
+class WalletTransaction(models.Model):
+    """
+    Historial de transacciones del monedero.
+    """
+    class TransactionType(models.TextChoices):
+        TOPUP = 'TOPUP', _('Recarga')
+        TOPUP_BONUS = 'TOPUP_BONUS', _('Bonificación por Recarga')
+        PAYMENT = 'PAYMENT', _('Pago')
+        REFUND = 'REFUND', _('Devolución')
+        ADJUSTMENT = 'ADJUSTMENT', _('Ajuste Manual')
+        REFERRAL_BONUS = 'REFERRAL_BONUS', _('Bonus por Referido')
+        POINTS_CONVERSION = 'POINTS_CONVERSION', _('Conversión de Puntos')
+        EXPIRY = 'EXPIRY', _('Caducidad')
+        TRANSFER_IN = 'TRANSFER_IN', _('Transferencia Recibida')
+        TRANSFER_OUT = 'TRANSFER_OUT', _('Transferencia Enviada')
+    
+    wallet = models.ForeignKey(
+        ClientWallet,
+        on_delete=models.CASCADE,
+        related_name='transactions'
+    )
+    
+    # Tipo y monto
+    transaction_type = models.CharField(
+        _("Tipo"),
+        max_length=20,
+        choices=TransactionType.choices
+    )
+    amount = models.DecimalField(
+        _("Monto"),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Positivo para ingresos, negativo para gastos")
+    )
+    balance_before = models.DecimalField(
+        _("Saldo Anterior"),
+        max_digits=10,
+        decimal_places=2
+    )
+    balance_after = models.DecimalField(
+        _("Saldo Posterior"),
+        max_digits=10,
+        decimal_places=2
+    )
+    
+    # Descripción
+    description = models.CharField(
+        _("Descripción"),
+        max_length=255,
+        blank=True
+    )
+    
+    # Referencias opcionales
+    order = models.ForeignKey(
+        'sales.Order',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='wallet_transactions'
+    )
+    # Reference to external payment if linked (generic text for flexibility)
+    external_payment_ref = models.CharField(
+        _("Referencia de Pago Externa"),
+        max_length=100,
+        blank=True,
+        help_text=_("ID de pago en Stripe/Redsys si aplica")
+    )
+    
+    # Para recargas
+    topup_method = models.ForeignKey(
+        PaymentMethod,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='wallet_topups'
+    )
+    
+    # Quién realizó la operación
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='wallet_transactions_created'
+    )
+    
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(_("Notas Internas"), blank=True)
+
+    class Meta:
+        verbose_name = _("Transacción de Monedero")
+        verbose_name_plural = _("Transacciones de Monedero")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        sign = "+" if self.amount > 0 else ""
+        return f"{self.get_transaction_type_display()}: {sign}{self.amount}€"
+    
+    @property
+    def is_credit(self):
+        """Es un ingreso (suma al saldo)"""
+        return self.amount > 0
+    
+    @property
+    def is_debit(self):
+        """Es un gasto (resta del saldo)"""
+        return self.amount < 0
+
+
+class WalletSettings(models.Model):
+    """
+    Configuración del sistema de monedero por gimnasio.
+    """
+    gym = models.OneToOneField(
+        Gym,
+        on_delete=models.CASCADE,
+        related_name='wallet_settings'
+    )
+    
+    # Activación
+    wallet_enabled = models.BooleanField(
+        _("Sistema de Monedero Habilitado"),
+        default=False
+    )
+    
+    # Creación automática
+    auto_create_wallet = models.BooleanField(
+        _("Crear Monedero Automáticamente"),
+        default=True,
+        help_text=_("Crear monedero al registrar nuevo cliente")
+    )
+    
+    # Saldo negativo (fiado)
+    allow_negative_default = models.BooleanField(
+        _("Permitir Saldo Negativo por Defecto"),
+        default=False
+    )
+    default_negative_limit = models.DecimalField(
+        _("Límite de Saldo Negativo por Defecto"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+    
+    # Bonificación por recarga
+    topup_bonus_enabled = models.BooleanField(
+        _("Bonificación por Recarga"),
+        default=False,
+        help_text=_("Dar extra cuando el cliente recarga su monedero")
+    )
+    topup_bonus_type = models.CharField(
+        _("Tipo de Bonificación"),
+        max_length=20,
+        choices=[
+            ('PERCENT', _('Porcentaje')),
+            ('FIXED', _('Cantidad Fija')),
+            ('TIERED', _('Por Tramos')),
+        ],
+        default='PERCENT'
+    )
+    topup_bonus_percent = models.DecimalField(
+        _("% de Bonificación"),
+        max_digits=5,
+        decimal_places=2,
+        default=10.00,
+        help_text=_("Ej: 10 = cliente recarga 50€, recibe 55€")
+    )
+    topup_bonus_min_amount = models.DecimalField(
+        _("Recarga Mínima para Bonificación"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+    topup_bonus_max_amount = models.DecimalField(
+        _("Bonificación Máxima"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        help_text=_("0 = sin límite")
+    )
+    
+    # Tramos de bonificación (JSON)
+    topup_bonus_tiers = models.JSONField(
+        _("Tramos de Bonificación"),
+        default=list,
+        blank=True,
+        help_text=_('Ej: [{"min": 50, "bonus": 5}, {"min": 100, "bonus": 15}]')
+    )
+    
+    # Auto-recarga
+    allow_auto_topup = models.BooleanField(
+        _("Permitir Auto-Recarga"),
+        default=False,
+        help_text=_("Los clientes pueden configurar recarga automática")
+    )
+    
+    # Uso del saldo
+    use_wallet_first = models.BooleanField(
+        _("Usar Saldo Primero"),
+        default=True,
+        help_text=_("Intentar usar saldo antes que otros métodos de pago")
+    )
+    allow_partial_wallet_payment = models.BooleanField(
+        _("Permitir Pago Parcial con Saldo"),
+        default=True,
+        help_text=_("Si no hay saldo suficiente, usar lo disponible y pagar el resto con otro método")
+    )
+    
+    # Devoluciones
+    refunds_to_wallet = models.BooleanField(
+        _("Devoluciones al Monedero"),
+        default=True,
+        help_text=_("Las devoluciones van al saldo en lugar de al método original")
+    )
+    
+    # Caducidad
+    balance_expires = models.BooleanField(
+        _("El Saldo Caduca"),
+        default=False
+    )
+    balance_expiry_months = models.PositiveIntegerField(
+        _("Meses hasta Caducidad"),
+        default=12,
+        help_text=_("Meses de inactividad antes de que caduque el saldo")
+    )
+    
+    # Visibilidad
+    show_in_client_portal = models.BooleanField(
+        _("Mostrar en Portal del Cliente"),
+        default=True
+    )
+    show_in_app = models.BooleanField(
+        _("Mostrar en App Móvil"),
+        default=True
+    )
+    allow_online_topup = models.BooleanField(
+        _("Permitir Recarga Online"),
+        default=True,
+        help_text=_("El cliente puede recargar desde el portal/app")
+    )
+    
+    # Montos predefinidos para recarga
+    topup_preset_amounts = models.JSONField(
+        _("Montos Predefinidos para Recarga"),
+        default=list,
+        blank=True,
+        help_text=_('Ej: [20, 50, 100, 200]')
+    )
+    min_topup_amount = models.DecimalField(
+        _("Recarga Mínima"),
+        max_digits=10,
+        decimal_places=2,
+        default=10.00
+    )
+    max_topup_amount = models.DecimalField(
+        _("Recarga Máxima"),
+        max_digits=10,
+        decimal_places=2,
+        default=500.00
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Configuración de Monedero")
+        verbose_name_plural = _("Configuraciones de Monedero")
+
+    def __str__(self):
+        status = "✅ Activo" if self.wallet_enabled else "❌ Inactivo"
+        return f"Monedero: {self.gym.name} ({status})"
+    
+    def calculate_bonus(self, topup_amount):
+        """Calcula la bonificación para una recarga"""
+        if not self.topup_bonus_enabled:
+            return 0
+        
+        if topup_amount < self.topup_bonus_min_amount:
+            return 0
+        
+        if self.topup_bonus_type == 'PERCENT':
+            bonus = topup_amount * (self.topup_bonus_percent / 100)
+        elif self.topup_bonus_type == 'FIXED':
+            bonus = self.topup_bonus_percent  # Usamos el mismo campo
+        elif self.topup_bonus_type == 'TIERED':
+            bonus = 0
+            for tier in sorted(self.topup_bonus_tiers, key=lambda x: x.get('min', 0), reverse=True):
+                if topup_amount >= tier.get('min', 0):
+                    bonus = tier.get('bonus', 0)
+                    break
+        else:
+            bonus = 0
+        
+        # Aplicar máximo si está configurado
+        if self.topup_bonus_max_amount > 0:
+            bonus = min(bonus, self.topup_bonus_max_amount)
+        
+        return bonus

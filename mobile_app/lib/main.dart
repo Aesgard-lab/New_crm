@@ -8,6 +8,7 @@ import 'screens/chat_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/billing_screen.dart';
 import 'screens/payment_methods_screen.dart';
+import 'screens/wallet_screen.dart';
 import 'widgets/main_navigator.dart';
 import 'api/api_service.dart';
 
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
         '/history': (context) => const HistoryScreen(),
         '/billing': (context) => const BillingScreen(),
         '/payment-methods': (context) => const PaymentMethodsScreen(),
+        '/wallet': (context) => const WalletScreen(),
       },
     );
   }

@@ -4,6 +4,7 @@ import '../api/api_service.dart';
 import '../widgets/promo_section.dart';
 import 'gamification_screen.dart';
 import 'referrals_screen.dart';
+import 'wallet_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,11 +16,14 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _referralEnabled = false;
   bool _checkingReferral = true;
+  Map<String, dynamic>? _walletBalance;
+  bool _walletEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _checkReferralStatus();
+    _checkWalletStatus();
   }
 
   Future<void> _checkReferralStatus() async {
@@ -37,6 +41,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _referralEnabled = false;
           _checkingReferral = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkWalletStatus() async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    try {
+      final balance = await api.getWalletBalance();
+      if (mounted) {
+        setState(() {
+          _walletBalance = balance;
+          _walletEnabled = balance['show'] == true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _walletEnabled = false;
         });
       }
     }
@@ -213,6 +236,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 12),
                   _InfoCard(
                     children: [
+                      // Wallet - only show if enabled
+                      if (_walletEnabled) ...[
+                        _SettingsRow(
+                          icon: Icons.account_balance_wallet,
+                          iconColor: Colors.green,
+                          label: 'Mi Monedero',
+                          subtitle: _walletBalance != null 
+                            ? 'Saldo: ${_walletBalance!['balance_display'] ?? '0.00€'}'
+                            : 'Tu saldo de cuenta',
+                          trailing: _walletBalance != null && (_walletBalance!['is_positive'] == true)
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _walletBalance!['balance_display'] ?? '',
+                                  style: TextStyle(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              )
+                            : null,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const WalletScreen(),
+                              ),
+                            ).then((_) => _checkWalletStatus());
+                          },
+                        ),
+                        const Divider(height: 24),
+                      ],
                       _SettingsRow(
                         icon: Icons.emoji_events_outlined,
                         label: 'Gamificación',
@@ -461,19 +521,24 @@ class _InfoRow extends StatelessWidget {
 
 class _SettingsRow extends StatelessWidget {
   final IconData icon;
+  final Color? iconColor;
   final String label;
   final String? subtitle;
+  final Widget? trailing;
   final VoidCallback onTap;
 
   const _SettingsRow({
     required this.icon,
+    this.iconColor,
     required this.label,
     this.subtitle,
+    this.trailing,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveIconColor = iconColor ?? const Color(0xFF0F172A);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -482,10 +547,10 @@ class _SettingsRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A).withOpacity(0.1),
+              color: effectiveIconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: const Color(0xFF0F172A)),
+            child: Icon(icon, size: 20, color: effectiveIconColor),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -511,6 +576,10 @@ class _SettingsRow extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) ...[
+            trailing!,
+            const SizedBox(width: 8),
+          ],
           Icon(Icons.chevron_right, color: Colors.grey[400]),
         ],
       ),

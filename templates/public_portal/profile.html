@@ -249,6 +249,22 @@
                 </svg>
             </a>
             
+            {% if wallet_enabled %}
+            <a href="{% url 'public_wallet' slug=settings.public_slug %}" class="menu-item">
+                <div class="menu-icon bg-emerald-100 text-emerald-600">💰</div>
+                <div class="flex-1">
+                    <div class="font-semibold text-slate-900">Mi Monedero</div>
+                    <div class="text-sm text-slate-500">Saldo de tu cuenta</div>
+                </div>
+                {% if wallet_balance and wallet_balance > 0 %}
+                <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">{{ wallet_balance|floatformat:2 }}€</span>
+                {% endif %}
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
+            {% endif %}
+            
             {% if referral_enabled %}
             <a href="{% url 'public_referrals' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-pink-100 text-pink-600">🎁</div>

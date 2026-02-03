@@ -1,0 +1,270 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Configuración de Monedero</div>
+<div class="text-sm text-slate-500">Sistema de saldo de cuenta para clientes</div>
+{% endblock %}
+
+{% block page_actions %}
+{% if settings.wallet_enabled %}
+<span class="px-4 py-2 bg-green-100 text-green-700 rounded-xl text-sm font-medium">
+  ✅ Sistema Activo
+</span>
+{% else %}
+<span class="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-sm font-medium">
+  ⏸️ Sistema Inactivo
+</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-5xl mx-auto space-y-6">
+  {% csrf_token %}
+
+  <!-- Estadísticas -->
+  {% if settings.wallet_enabled %}
+  <div class="grid grid-cols-3 gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-blue-600">{{ stats.total_wallets }}</div>
+      <div class="text-sm text-slate-500">Monederos Creados</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-green-600">{{ stats.total_balance|floatformat:2 }}€</div>
+      <div class="text-sm text-slate-500">Saldo Total en Cuentas</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-red-600">{{ stats.negative_wallets }}</div>
+      <div class="text-sm text-slate-500">Con Saldo Negativo</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Activación Principal -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <div class="flex items-start gap-4">
+      <div class="flex-1">
+        <h2 class="text-lg font-bold text-slate-900">💰 Activar Sistema de Monedero</h2>
+        <p class="text-sm text-slate-500 mt-1">
+          Permite a los clientes tener saldo en su cuenta para realizar pagos
+        </p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" name="wallet_enabled" class="sr-only peer" 
+               {% if settings.wallet_enabled %}checked{% endif %}>
+        <div class="w-14 h-8 bg-slate-200 peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500"></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Opciones Generales -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">⚙️ Configuración General</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="auto_create_wallet" class="w-5 h-5 rounded"
+               {% if settings.auto_create_wallet %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Crear monedero automáticamente</span>
+          <p class="text-xs text-slate-500">Al registrar un nuevo cliente</p>
+        </div>
+      </label>
+      
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="use_wallet_first" class="w-5 h-5 rounded"
+               {% if settings.use_wallet_first %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Usar saldo primero</span>
+          <p class="text-xs text-slate-500">Priorizar saldo antes que otros métodos</p>
+        </div>
+      </label>
+      
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="allow_partial_wallet_payment" class="w-5 h-5 rounded"
+               {% if settings.allow_partial_wallet_payment %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Permitir pago parcial</span>
+          <p class="text-xs text-slate-500">Si no hay saldo, usar lo disponible</p>
+        </div>
+      </label>
+      
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="refunds_to_wallet" class="w-5 h-5 rounded"
+               {% if settings.refunds_to_wallet %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Devoluciones al saldo</span>
+          <p class="text-xs text-slate-500">Las devoluciones van al monedero</p>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Saldo Negativo (Fiado) -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">💳 Saldo Negativo (Fiado)</h2>
+    <p class="text-sm text-slate-500">Permite a los clientes gastar más de lo que tienen</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <label class="flex items-center gap-3 p-4 bg-amber-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="allow_negative_default" class="w-5 h-5 rounded"
+               {% if settings.allow_negative_default %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Permitir saldo negativo</span>
+          <p class="text-xs text-slate-500">Por defecto para nuevos clientes</p>
+        </div>
+      </label>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Límite de fiado (€)</label>
+        <input type="number" name="default_negative_limit" step="0.01" min="0"
+               value="{{ settings.default_negative_limit }}"
+               class="w-full rounded-xl border-slate-300">
+        <p class="text-xs text-slate-500 mt-1">Máximo saldo negativo permitido</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bonificación por Recarga -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">🎁 Bonificación por Recarga</h2>
+    <p class="text-sm text-slate-500">Incentiva a los clientes a cargar más saldo</p>
+    
+    <label class="flex items-center gap-3 p-4 bg-green-50 rounded-xl cursor-pointer">
+      <input type="checkbox" name="topup_bonus_enabled" class="w-5 h-5 rounded"
+             {% if settings.topup_bonus_enabled %}checked{% endif %}>
+      <div>
+        <span class="font-medium text-slate-700">Activar bonificación</span>
+        <p class="text-xs text-slate-500">Dar extra cuando el cliente recarga</p>
+      </div>
+    </label>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Tipo</label>
+        <select name="topup_bonus_type" class="w-full rounded-xl border-slate-300">
+          <option value="PERCENT" {% if settings.topup_bonus_type == 'PERCENT' %}selected{% endif %}>Porcentaje</option>
+          <option value="FIXED" {% if settings.topup_bonus_type == 'FIXED' %}selected{% endif %}>Cantidad Fija</option>
+          <option value="TIERED" {% if settings.topup_bonus_type == 'TIERED' %}selected{% endif %}>Por Tramos</option>
+        </select>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Bonificación</label>
+        <input type="number" name="topup_bonus_percent" step="0.01" min="0"
+               value="{{ settings.topup_bonus_percent }}"
+               class="w-full rounded-xl border-slate-300">
+        <p class="text-xs text-slate-500 mt-1">% o cantidad fija</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Recarga mínima (€)</label>
+        <input type="number" name="topup_bonus_min_amount" step="0.01" min="0"
+               value="{{ settings.topup_bonus_min_amount }}"
+               class="w-full rounded-xl border-slate-300">
+        <p class="text-xs text-slate-500 mt-1">Para aplicar bono</p>
+      </div>
+    </div>
+    
+    <div class="p-4 bg-blue-50 rounded-xl">
+      <p class="text-sm text-blue-800">
+        💡 <strong>Ejemplo:</strong> Con 10% de bonificación, si el cliente carga 50€, recibe 55€
+      </p>
+    </div>
+  </div>
+
+  <!-- Límites de Recarga -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">📊 Límites de Recarga</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Mínimo (€)</label>
+        <input type="number" name="min_topup_amount" step="0.01" min="0"
+               value="{{ settings.min_topup_amount }}"
+               class="w-full rounded-xl border-slate-300">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Máximo (€)</label>
+        <input type="number" name="max_topup_amount" step="0.01" min="0"
+               value="{{ settings.max_topup_amount }}"
+               class="w-full rounded-xl border-slate-300">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Montos Predefinidos</label>
+        <input type="text" name="topup_preset_amounts"
+               value="{{ settings.topup_preset_amounts|join:',' }}"
+               class="w-full rounded-xl border-slate-300"
+               placeholder="20,50,100,200">
+        <p class="text-xs text-slate-500 mt-1">Separados por coma</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visibilidad -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">👁️ Visibilidad</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="show_in_client_portal" class="w-5 h-5 rounded"
+               {% if settings.show_in_client_portal %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Portal del Cliente</span>
+          <p class="text-xs text-slate-500">Mostrar en web del cliente</p>
+        </div>
+      </label>
+      
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="show_in_app" class="w-5 h-5 rounded"
+               {% if settings.show_in_app %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">App Móvil</span>
+          <p class="text-xs text-slate-500">Mostrar en Flutter app</p>
+        </div>
+      </label>
+      
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="allow_online_topup" class="w-5 h-5 rounded"
+               {% if settings.allow_online_topup %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">Recarga Online</span>
+          <p class="text-xs text-slate-500">Cliente puede recargar</p>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Caducidad -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">⏰ Caducidad del Saldo</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer">
+        <input type="checkbox" name="balance_expires" class="w-5 h-5 rounded"
+               {% if settings.balance_expires %}checked{% endif %}>
+        <div>
+          <span class="font-medium text-slate-700">El saldo caduca</span>
+          <p class="text-xs text-slate-500">Por inactividad prolongada</p>
+        </div>
+      </label>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Meses hasta caducidad</label>
+        <input type="number" name="balance_expiry_months" min="1"
+               value="{{ settings.balance_expiry_months }}"
+               class="w-full rounded-xl border-slate-300">
+      </div>
+    </div>
+  </div>
+
+  <!-- Botón Guardar -->
+  <div class="flex justify-end gap-3 pb-8">
+    <button type="submit"
+            class="px-6 py-2.5 rounded-xl bg-[var(--brand-color)] text-white font-semibold hover:opacity-90">
+      💾 Guardar Configuración
+    </button>
+  </div>
+</form>
+{% endblock %}

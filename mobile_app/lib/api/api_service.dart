@@ -1753,6 +1753,100 @@ class ApiService extends ChangeNotifier {
     'Authorization': 'Token $_token',
     'Content-Type': 'application/json',
   };
+
+  // =============================================
+  // WALLET / MONEDERO
+  // =============================================
+
+  /// Get wallet status and configuration
+  Future<Map<String, dynamic>> getWalletStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/wallet/status/'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'enabled': false, 'show_in_app': false};
+    } catch (e) {
+      print('Error getting wallet status: $e');
+      return {'enabled': false, 'show_in_app': false};
+    }
+  }
+
+  /// Get wallet balance only (for badges/widgets)
+  Future<Map<String, dynamic>> getWalletBalance() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/wallet/balance/'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'balance': '0.00', 'show': false};
+    } catch (e) {
+      print('Error getting wallet balance: $e');
+      return {'balance': '0.00', 'show': false};
+    }
+  }
+
+  /// Get wallet transaction history
+  Future<Map<String, dynamic>> getWalletHistory({int page = 1, int perPage = 20}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/wallet/history/?page=$page&per_page=$perPage'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'transactions': []};
+    } catch (e) {
+      print('Error getting wallet history: $e');
+      return {'transactions': []};
+    }
+  }
+
+  /// Start wallet topup process
+  Future<Map<String, dynamic>> topupWallet(double amount) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/wallet/topup/'),
+        headers: _authHeaders,
+        body: json.encode({
+          'amount': amount,
+        }),
+      );
+
+      return json.decode(response.body);
+    } catch (e) {
+      print('Error topping up wallet: $e');
+      throw Exception('Error al recargar: $e');
+    }
+  }
+
+  /// Calculate bonus for a topup amount
+  Future<Map<String, dynamic>> calculateWalletBonus(double amount) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/wallet/bonus-calculator/?amount=$amount'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'bonus': '0.00'};
+    } catch (e) {
+      print('Error calculating bonus: $e');
+      return {'bonus': '0.00'};
+    }
+  }
 }
 
 // Helper classes for referral data (to avoid importing models here)
