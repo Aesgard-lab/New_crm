@@ -41,4 +41,8 @@ urlpatterns = [
     path('system/', views.system_status, name='system_status'),
     path('system/init-plans/', views.system_initialize_plans, name='system_initialize_plans'),
     path('system/migrate/', views.system_migrate_orphans, name='system_migrate_orphans'),
+    
+    # Health Dashboard
+    path('health/', views.health_dashboard, name='health_dashboard'),
+    path('health/api/', views.health_api, name='health_api'),
 ]

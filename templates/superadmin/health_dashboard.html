@@ -1,0 +1,276 @@
+{% extends "superadmin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Health Dashboard" %} - Superadmin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">
+            <i class="bi bi-heart-pulse me-2"></i>
+            {% trans "System Health Dashboard" %}
+        </h1>
+        <div>
+            <span class="badge {% if overall_status == 'healthy' %}bg-success{% elif overall_status == 'warning' %}bg-warning{% else %}bg-danger{% endif %} fs-6">
+                {% if overall_status == 'healthy' %}
+                    <i class="bi bi-check-circle me-1"></i> {% trans "Healthy" %}
+                {% elif overall_status == 'warning' %}
+                    <i class="bi bi-exclamation-triangle me-1"></i> {% trans "Warning" %}
+                {% else %}
+                    <i class="bi bi-x-circle me-1"></i> {% trans "Critical" %}
+                {% endif %}
+            </span>
+            <button class="btn btn-outline-secondary btn-sm ms-2" onclick="refreshHealth()">
+                <i class="bi bi-arrow-clockwise"></i> {% trans "Refresh" %}
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Webhook Health -->
+        <div class="col-md-4">
+            <div class="card h-100 {% if not webhook.is_healthy %}border-danger{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-webhook me-2"></i>
+                        {% trans "Stripe Webhooks" %}
+                    </h5>
+                    {% if webhook.is_healthy %}
+                        <span class="badge bg-success">{% trans "OK" %}</span>
+                    {% else %}
+                        <span class="badge bg-danger">{% trans "Issues" %}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-success">{{ webhook.successful_24h }}</div>
+                            <small class="text-muted">{% trans "Success" %}</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-danger">{{ webhook.failed_24h }}</div>
+                            <small class="text-muted">{% trans "Failed" %}</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ webhook.total_received_24h }}</div>
+                            <small class="text-muted">{% trans "Total 24h" %}</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <p class="mb-1">
+                        <strong>{% trans "Last received:" %}</strong>
+                        {% if webhook.last_received %}
+                            {{ webhook.last_received|timesince }} ago
+                        {% else %}
+                            <span class="text-muted">{% trans "Never" %}</span>
+                        {% endif %}
+                    </p>
+                    
+                    {% if webhook.consecutive_failures > 0 %}
+                        <div class="alert alert-danger mb-0 mt-2">
+                            <strong>{{ webhook.consecutive_failures }}</strong> {% trans "consecutive failures" %}
+                            {% if webhook.last_error %}
+                                <br><small>{{ webhook.last_error|truncatewords:20 }}</small>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Health -->
+        <div class="col-md-4">
+            <div class="card h-100 {% if payments.success_rate_7d < 90 %}border-warning{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-credit-card me-2"></i>
+                        {% trans "Payment Processing" %}
+                    </h5>
+                    {% if payments.success_rate_7d >= 95 %}
+                        <span class="badge bg-success">{{ payments.success_rate_7d }}%</span>
+                    {% elif payments.success_rate_7d >= 80 %}
+                        <span class="badge bg-warning">{{ payments.success_rate_7d }}%</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ payments.success_rate_7d }}%</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">{% trans "Success Rate (7 days)" %}</label>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar {% if payments.success_rate_7d >= 95 %}bg-success{% elif payments.success_rate_7d >= 80 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 style="width: {{ payments.success_rate_7d }}%">
+                                {{ payments.success_rate_7d }}%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-4 fw-bold">{{ payments.total_attempts_7d }}</div>
+                            <small class="text-muted">{% trans "Attempts" %}</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-4 fw-bold text-danger">{{ payments.failed_attempts_7d }}</div>
+                            <small class="text-muted">{% trans "Failed" %}</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-4 fw-bold text-warning">{{ payments.pending_retries }}</div>
+                            <small class="text-muted">{% trans "Retrying" %}</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <p class="mb-0 text-muted small">
+                        {% trans "Avg retries per invoice:" %} {{ payments.avg_retry_count }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription Health -->
+        <div class="col-md-4">
+            <div class="card h-100 {% if subscriptions.at_risk_count > 5 %}border-warning{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people me-2"></i>
+                        {% trans "Subscriptions" %}
+                    </h5>
+                    <span class="badge bg-info">{{ subscriptions.total_active }} {% trans "active" %}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-3">
+                            <div class="fs-4 fw-bold text-success">{{ subscriptions.total_active }}</div>
+                            <small class="text-muted">{% trans "Active" %}</small>
+                        </div>
+                        <div class="col-3">
+                            <div class="fs-4 fw-bold text-warning">{{ subscriptions.total_past_due }}</div>
+                            <small class="text-muted">{% trans "Past Due" %}</small>
+                        </div>
+                        <div class="col-3">
+                            <div class="fs-4 fw-bold text-danger">{{ subscriptions.total_suspended }}</div>
+                            <small class="text-muted">{% trans "Suspended" %}</small>
+                        </div>
+                        <div class="col-3">
+                            <div class="fs-4 fw-bold text-secondary">{{ subscriptions.total_cancelled }}</div>
+                            <small class="text-muted">{% trans "Cancelled" %}</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>{% trans "At Risk" %}</span>
+                        <span class="badge {% if subscriptions.at_risk_count > 5 %}bg-danger{% elif subscriptions.at_risk_count > 0 %}bg-warning{% else %}bg-success{% endif %}">
+                            {{ subscriptions.at_risk_count }}
+                        </span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span>{% trans "Churn Rate (30d)" %}</span>
+                        <span class="badge {% if subscriptions.churn_rate_30d > 5 %}bg-danger{% elif subscriptions.churn_rate_30d > 2 %}bg-warning{% else %}bg-success{% endif %}">
+                            {{ subscriptions.churn_rate_30d }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Analytics -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-receipt me-2"></i>
+                        {% trans "Invoice Analytics (Last 30 Days)" %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <div class="fs-2 fw-bold">{{ invoice_analytics.total_invoices }}</div>
+                                <span class="text-muted">{% trans "Total Invoices" %}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 border-success">
+                                <div class="fs-2 fw-bold text-success">{{ invoice_analytics.paid.count }}</div>
+                                <span class="text-muted">{% trans "Paid" %}</span>
+                                <br><small class="text-success">{{ invoice_analytics.paid.amount|floatformat:2 }}€</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 border-warning">
+                                <div class="fs-2 fw-bold text-warning">{{ invoice_analytics.pending.count }}</div>
+                                <span class="text-muted">{% trans "Pending" %}</span>
+                                <br><small class="text-warning">{{ invoice_analytics.pending.amount|floatformat:2 }}€</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 border-danger">
+                                <div class="fs-2 fw-bold text-danger">{{ invoice_analytics.failed.count }}</div>
+                                <span class="text-muted">{% trans "Failed" %}</span>
+                                <br><small class="text-danger">{{ invoice_analytics.failed.amount|floatformat:2 }}€</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning me-2"></i>
+                        {% trans "Quick Actions" %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-3 flex-wrap">
+                        <a href="{% url 'superadmin:gym_list' %}?status=PAST_DUE" class="btn btn-outline-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            {% trans "View Past Due" %} ({{ subscriptions.total_past_due }})
+                        </a>
+                        <a href="{% url 'superadmin:gym_list' %}?status=SUSPENDED" class="btn btn-outline-danger">
+                            <i class="bi bi-pause-circle me-1"></i>
+                            {% trans "View Suspended" %} ({{ subscriptions.total_suspended }})
+                        </a>
+                        <a href="{% url 'superadmin:audit_logs' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-journal-text me-1"></i>
+                            {% trans "Audit Logs" %}
+                        </a>
+                        <a href="{% url 'superadmin:billing_config' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-gear me-1"></i>
+                            {% trans "Billing Config" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshHealth() {
+    fetch('{% url "superadmin:health_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            location.reload(); // Simple refresh for now
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// Auto-refresh every 60 seconds
+setInterval(refreshHealth, 60000);
+</script>
+{% endblock %}

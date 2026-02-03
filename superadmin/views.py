@@ -19,6 +19,7 @@ from saas_billing.models import (
     Invoice, BillingConfig, AuditLog
 )
 from saas_billing.migration_service import MigrationService
+from saas_billing.health import health_monitor
 from clients.models import Client
 
 
@@ -31,6 +32,7 @@ def dashboard(request):
     total_gyms = Gym.objects.count()
     active_gyms = GymSubscription.objects.filter(status='ACTIVE').count()
     suspended_gyms = GymSubscription.objects.filter(status='SUSPENDED').count()
+    past_due_gyms = GymSubscription.objects.filter(status='PAST_DUE').count()
     
     # Revenue metrics
     current_month_start = date.today().replace(day=1)
@@ -57,6 +59,9 @@ def dashboard(request):
     ).count()
     churn_rate = (cancelled_this_month / total_gyms * 100) if total_gyms > 0 else 0
     
+    # System health status
+    health_status = health_monitor._calculate_overall_status()
+    
     # Recent activity
     recent_gyms = Gym.objects.order_by('-created_at')[:5]
     recent_invoices = Invoice.objects.select_related('gym', 'franchise').order_by('-created_at')[:10]
@@ -71,10 +76,12 @@ def dashboard(request):
         'total_gyms': total_gyms,
         'active_gyms': active_gyms,
         'suspended_gyms': suspended_gyms,
+        'past_due_gyms': past_due_gyms,
         'monthly_revenue': f"{monthly_revenue:.2f}",
         'mrr': f"{mrr:.2f}",
         'arr': f"{arr:.2f}",
         'churn_rate': f"{churn_rate:.1f}",
+        'health_status': health_status,
         'recent_gyms': recent_gyms,
         'recent_invoices': recent_invoices,
         'recent_logs': recent_logs,
@@ -622,3 +629,43 @@ def system_migrate_orphans(request):
         except Exception as e:
             messages.error(request, f"Error en migración: {str(e)}")
     return redirect('superadmin:system_status')
+
+
+@superuser_required
+def health_dashboard(request):
+    """
+    System health dashboard showing webhook status, payment health, and subscription metrics.
+    """
+    health_data = health_monitor.get_health_dashboard()
+    invoice_analytics = health_monitor.get_invoice_analytics(days=30)
+    
+    # Parse webhook last_received for template
+    webhook_data = health_data.get('webhook', {})
+    if webhook_data.get('last_received'):
+        try:
+            webhook_data['last_received'] = datetime.fromisoformat(
+                webhook_data['last_received'].replace('Z', '+00:00')
+            ) if isinstance(webhook_data['last_received'], str) else webhook_data['last_received']
+        except (ValueError, AttributeError):
+            pass
+    
+    context = {
+        'health': health_data,
+        'webhook': webhook_data,
+        'payments': health_data.get('payments', {}),
+        'subscriptions': health_data.get('subscriptions', {}),
+        'overall_status': health_data.get('overall_status', 'unknown'),
+        'invoice_analytics': invoice_analytics,
+    }
+    
+    return render(request, 'superadmin/health_dashboard.html', context)
+
+
+@superuser_required
+def health_api(request):
+    """
+    API endpoint for health dashboard (AJAX refresh).
+    """
+    from django.http import JsonResponse
+    health_data = health_monitor.get_health_dashboard()
+    return JsonResponse(health_data)
