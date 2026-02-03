@@ -363,41 +363,69 @@ def clients_with_photos_no_face(request):
     """
     Devuelve la lista de clientes que tienen foto de perfil pero no tienen
     rostro registrado para reconocimiento facial.
-    Solo para staff.
+    Solo para staff o usuarios con gimnasio asignado.
     """
     from clients.models import Client
     from django.db.models import Exists, OuterRef
     
-    staff = getattr(request.user, 'staff_profile', None)
+    # Obtener el gimnasio del request (middleware) o del staff_profile
+    gym = getattr(request, 'gym', None)
     
-    if not staff:
+    if not gym:
+        staff = getattr(request.user, 'staff_profile', None)
+        if staff:
+            gym = staff.gym
+    
+    if not gym:
         return Response({
-            'error': 'Solo disponible para staff'
+            'error': 'No se pudo determinar el gimnasio'
         }, status=status.HTTP_403_FORBIDDEN)
     
+    # Subquery para verificar si tiene face encoding
+    has_face_encoding = ClientFaceEncoding.objects.filter(
+        client_id=OuterRef('pk')
+    )
+    
     # Clientes con foto pero sin face encoding
-    clients = Client.objects.filter(
-        gym=staff.gym,
+    clients_qs = Client.objects.filter(
+        gym=gym,
         status='active'
     ).exclude(
         photo=''
     ).exclude(
         photo__isnull=True
-    ).exclude(
-        # Excluir los que ya tienen face encoding
-        id__in=ClientFaceEncoding.objects.values_list('client_id', flat=True)
-    ).select_related('gym')[:50]  # Limitar a 50 para rendimiento
+    ).annotate(
+        has_face=Exists(has_face_encoding)
+    ).filter(
+        has_face=False
+    ).select_related('gym')
+    
+    # Log para debug
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Filtrar solo los que realmente tienen una foto válida
+    clients = []
+    for c in clients_qs[:100]:  # Revisar hasta 100
+        if c.photo and c.photo.name:  # Verificar que tiene nombre de archivo
+            try:
+                # Intentar obtener la URL (puede fallar si el archivo no existe)
+                photo_url = c.photo.url
+                clients.append({
+                    'id': c.id,
+                    'full_name': c.full_name,
+                    'email': c.email,
+                    'photo': photo_url
+                })
+                if len(clients) >= 50:
+                    break
+            except Exception:
+                pass  # Ignorar si hay error con la foto
+    
+    logger.info(f"Clientes con foto válida sin face encoding en gym {gym.id}: {len(clients)}")
     
     return Response({
-        'clients': [
-            {
-                'id': c.id,
-                'full_name': c.full_name,
-                'email': c.email,
-                'photo': c.photo.url if c.photo else None
-            }
-            for c in clients
-        ]
+        'clients': clients
     })
 
 
