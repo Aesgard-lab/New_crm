@@ -155,5 +155,148 @@
             </a>
         </div>
     </div>
+
+    <!-- Guía de Automatizaciones -->
+    <div class="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6 mt-6">
+        <div class="flex items-start gap-4 mb-6">
+            <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900 text-lg">¿Cómo funcionan las Automatizaciones?</h3>
+                <p class="text-slate-600 text-sm mt-1">Automatiza tareas repetitivas y mejora la retención de clientes</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Workflows -->
+            <div class="bg-white rounded-xl p-5 border border-slate-200">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-bold text-indigo-900">Email Workflows</h4>
+                </div>
+                <p class="text-sm text-slate-600 mb-3">Secuencias automáticas de emails basadas en eventos.</p>
+                <ul class="text-xs text-slate-500 space-y-1.5">
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-500 mt-0.5">→</span>
+                        <span><strong>Lead Creado:</strong> Envía bienvenida + seguimiento día 3, 7</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-500 mt-0.5">→</span>
+                        <span><strong>Clase Reservada:</strong> Confirmación + recordatorio 24h</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-500 mt-0.5">→</span>
+                        <span><strong>Membresía Creada:</strong> Onboarding en 5 pasos</span>
+                    </li>
+                </ul>
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <p class="text-xs text-slate-400"><strong>Configurar:</strong> Crea workflow → Elige trigger → Añade pasos con delays</p>
+                </div>
+            </div>
+
+            <!-- Lead Scoring -->
+            <div class="bg-white rounded-xl p-5 border border-slate-200">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-bold text-amber-900">Lead Scoring</h4>
+                </div>
+                <p class="text-sm text-slate-600 mb-3">Puntúa leads automáticamente según su engagement.</p>
+                <ul class="text-xs text-slate-500 space-y-1.5">
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5">+</span>
+                        <span><strong>+10 pts:</strong> Visita registrada</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5">+</span>
+                        <span><strong>+15 pts:</strong> Clase reservada</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5">+</span>
+                        <span><strong>+25 pts:</strong> Compra realizada</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-500 mt-0.5">−</span>
+                        <span><strong>-5 pts:</strong> Inactividad (14 días)</span>
+                    </li>
+                </ul>
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <p class="text-xs text-slate-400"><strong>Automatizar:</strong> Score > 50 → Mover a etapa "Interesado"</p>
+                </div>
+            </div>
+
+            <!-- Retención -->
+            <div class="bg-white rounded-xl p-5 border border-slate-200">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-bold text-red-900">Alertas de Retención</h4>
+                </div>
+                <p class="text-sm text-slate-600 mb-3">Detecta clientes en riesgo antes de que se vayan.</p>
+                <ul class="text-xs text-slate-500 space-y-1.5">
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-500 mt-0.5">⚠</span>
+                        <span><strong>Sin asistir X días:</strong> Alerta al staff asignado</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-500 mt-0.5">⚠</span>
+                        <span><strong>Membresía expira:</strong> Notificar Y días antes</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-500 mt-0.5">⚠</span>
+                        <span><strong>Bajada de actividad:</strong> Contactar proactivamente</span>
+                    </li>
+                </ul>
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <p class="text-xs text-slate-400"><strong>Acción:</strong> Asignar staff + Iniciar workflow de recuperación</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flujo Visual -->
+        <div class="mt-6 pt-6 border-t border-slate-200">
+            <h4 class="font-bold text-slate-800 mb-4 text-sm">📋 Pasos para Configurar tus Automatizaciones</h4>
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200">
+                    <span class="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                    <span class="text-slate-700">Crea una <strong>plantilla de email</strong></span>
+                </div>
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200">
+                    <span class="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                    <span class="text-slate-700">Configura un <strong>workflow</strong> con trigger</span>
+                </div>
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200">
+                    <span class="w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                    <span class="text-slate-700">Define <strong>reglas de scoring</strong></span>
+                </div>
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200">
+                    <span class="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                    <span class="text-slate-700">Activa <strong>alertas de retención</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

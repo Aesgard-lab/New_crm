@@ -38,11 +38,24 @@ class StaffProfileForm(forms.ModelForm):
 
     class Meta:
         model = StaffProfile
-        fields = ["role", "assigned_role", "bio", "color", "photo", "pin_code", "checkin_method", "is_active"]
+        fields = [
+            "role", "assigned_role", "bio", "color", "photo", 
+            "birth_date", "id_document", "show_in_public_schedule",
+            "pin_code", "checkin_method", "is_active"
+        ]
         widgets = {
             'role': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
-            'bio': forms.Textarea(attrs={'rows': 3, 'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'bio': forms.Textarea(attrs={'rows': 3, 'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]', 'placeholder': 'Especialidades, certificaciones, experiencia...'}),
             'color': forms.TextInput(attrs={'type': 'color', 'class': 'h-10 w-20 p-1 rounded-lg border-slate-200'}),
+            'birth_date': forms.DateInput(attrs={
+                'type': 'date', 
+                'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'
+            }),
+            'id_document': forms.TextInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]',
+                'placeholder': 'DNI / NIE / Pasaporte'
+            }),
+            'show_in_public_schedule': forms.CheckboxInput(attrs={'class': 'rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'pin_code': forms.TextInput(attrs={
                 'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]', 
                 'placeholder': 'Ej: 1234',

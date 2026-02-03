@@ -36,6 +36,17 @@ class StaffProfile(models.Model):
     color = models.CharField(max_length=7, default="#3b82f6", help_text="Color para el calendario (HEX)")
     photo = models.ImageField(upload_to="staff/photos/", blank=True, null=True, help_text="Foto para perfil público y actividades")
     
+    # Datos personales adicionales
+    birth_date = models.DateField(null=True, blank=True, verbose_name="Fecha de Nacimiento")
+    id_document = models.CharField(max_length=20, blank=True, verbose_name="Documento de Identidad", help_text="DNI, NIE, Pasaporte, etc.")
+    
+    # Visibilidad pública
+    show_in_public_schedule = models.BooleanField(
+        default=True, 
+        verbose_name="Mostrar en horario público",
+        help_text="Si está activo, su foto y bio se mostrarán en el portal del cliente y la app móvil"
+    )
+    
     # Kiosk/Tablet Access
     pin_code = models.CharField(
         max_length=6, 
