@@ -15,6 +15,7 @@ urlpatterns = [
     path('gyms/create/', views.gym_create, name='gym_create'),
     path('gyms/<int:gym_id>/', views.gym_detail, name='gym_detail'),
     path('gyms/<int:gym_id>/change-plan/', views.gym_change_plan, name='gym_change_plan'),
+    path('gyms/<int:gym_id>/change-billing-mode/', views.gym_change_billing_mode, name='gym_change_billing_mode'),
     path('gyms/<int:gym_id>/login-as-admin/', views.gym_login_as_admin, name='gym_login_as_admin'),
     
     # Franchises

@@ -231,6 +231,11 @@ class GymSubscription(models.Model):
         ('YEARLY', _('Anual')),
     ]
     
+    BILLING_MODE_CHOICES = [
+        ('AUTO', _('Automático (tarjeta)')),
+        ('MANUAL', _('Manual (transferencia/otro)')),
+    ]
+    
     gym = models.OneToOneField(
         'organizations.Gym',
         on_delete=models.CASCADE,
@@ -245,6 +250,15 @@ class GymSubscription(models.Model):
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
     billing_frequency = models.CharField(max_length=20, choices=BILLING_FREQUENCY_CHOICES, default='MONTHLY')
+    
+    # Billing Mode (AUTO=requires card, MANUAL=no card required)
+    billing_mode = models.CharField(
+        max_length=20, 
+        choices=BILLING_MODE_CHOICES, 
+        default='AUTO',
+        verbose_name=_("Modo de facturación"),
+        help_text=_("Manual permite activar sin tarjeta (cobro por transferencia)")
+    )
     
     # Billing Cycle
     current_period_start = models.DateField(help_text=_("Inicio del período actual"))
@@ -294,6 +308,11 @@ class FranchiseSubscription(models.Model):
         ('CANCELLED', _('Cancelada')),
     ]
     
+    BILLING_MODE_CHOICES = [
+        ('AUTO', _('Automático (tarjeta)')),
+        ('MANUAL', _('Manual (transferencia/otro)')),
+    ]
+    
     franchise = models.OneToOneField(
         'organizations.Franchise',
         on_delete=models.CASCADE,
@@ -316,6 +335,16 @@ class FranchiseSubscription(models.Model):
     # Status and billing (same as GymSubscription)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
     billing_frequency = models.CharField(max_length=20, default='MONTHLY')
+    
+    # Billing Mode (AUTO=requires card, MANUAL=no card required)
+    billing_mode = models.CharField(
+        max_length=20, 
+        choices=BILLING_MODE_CHOICES, 
+        default='AUTO',
+        verbose_name=_("Modo de facturación"),
+        help_text=_("Manual permite activar sin tarjeta (cobro por transferencia)")
+    )
+    
     current_period_start = models.DateField()
     current_period_end = models.DateField()
     

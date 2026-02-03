@@ -44,6 +44,62 @@ def staff_kiosk(request, gym_slug=None):
     return render(request, "staff/kiosk.html", context)
 
 @require_POST
+def staff_check_status(request):
+    """Verifica el estado del empleado sin fichar (para mostrar confirmación)"""
+    from organizations.models import Gym
+    
+    pin = request.POST.get("pin")
+    gym_id = request.POST.get("gym_id")
+    
+    if not pin:
+        return JsonResponse({"status": "error", "message": "PIN requerido"}, status=400)
+    
+    # Obtener gimnasio
+    gym = None
+    if gym_id:
+        gym = Gym.objects.filter(id=gym_id).first()
+    if not gym and hasattr(request, 'gym'):
+        gym = request.gym
+    
+    # Buscar empleado
+    staff_query = StaffProfile.objects.select_related('user', 'gym').filter(pin_code=pin, is_active=True)
+    if gym:
+        staff_query = staff_query.filter(gym=gym)
+    staff = staff_query.first()
+    
+    if not staff:
+        return JsonResponse({"status": "error", "message": "PIN incorrecto"}, status=404)
+    
+    staff_name = staff.user.get_full_name() or staff.user.email.split('@')[0]
+    staff_photo = staff.photo.url if staff.photo else None
+    
+    # Verificar turno abierto
+    open_shift = WorkShift.objects.filter(staff=staff, end_time__isnull=True).first()
+    
+    if open_shift:
+        duration = open_shift.duration_hours
+        hours = int(duration)
+        minutes = int((duration - hours) * 60)
+        return JsonResponse({
+            "status": "success",
+            "action": "checkout",
+            "staff_name": staff_name,
+            "staff_photo": staff_photo,
+            "message": f"Llevas {hours}h {minutes}min trabajando",
+            "shift_start": open_shift.start_time.isoformat(),
+            "duration_hours": duration
+        })
+    else:
+        return JsonResponse({
+            "status": "success",
+            "action": "checkin",
+            "staff_name": staff_name,
+            "staff_photo": staff_photo,
+            "message": "Vas a iniciar tu jornada"
+        })
+
+
+@require_POST
 def staff_checkin(request):
     """Procesa el fichaje por PIN
     

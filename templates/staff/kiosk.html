@@ -69,6 +69,36 @@
 
     <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 text-center mx-4">
 
+        <!-- Modal de Confirmación -->
+        <div id="confirm-modal"
+            class="hidden absolute top-0 left-0 w-full h-full bg-white/98 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-20 transition-all p-6">
+            
+            <!-- Foto del empleado -->
+            <div id="confirm-photo-container" class="mb-4">
+                <img id="confirm-photo" src="" alt="" class="w-28 h-28 rounded-full object-cover border-4 shadow-xl">
+            </div>
+            
+            <h2 id="confirm-name" class="text-2xl font-bold text-slate-800 mb-1"></h2>
+            <p id="confirm-duration" class="text-slate-500 text-sm mb-4"></p>
+            
+            <div id="confirm-action-badge" class="px-6 py-3 rounded-2xl text-xl font-bold mb-6">
+                <!-- ENTRADA o SALIDA -->
+            </div>
+            
+            <p class="text-slate-500 text-sm mb-6">¿Confirmar fichaje?</p>
+            
+            <div class="flex gap-4 w-full max-w-xs">
+                <button id="cancel-confirm-btn" 
+                    class="flex-1 bg-slate-200 text-slate-700 font-bold py-4 rounded-xl transition-all hover:bg-slate-300">
+                    Cancelar
+                </button>
+                <button id="do-confirm-btn" 
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all hover:shadow-xl">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+
         <!-- Estado (Mensajes) -->
         <div id="status-message"
             class="hidden absolute top-0 left-0 w-full h-full bg-white/95 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-10 transition-all">
@@ -101,7 +131,10 @@
                 <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
                 <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
                 <div class="w-5 h-5 rounded-full bg-slate-200 pin-dot transition-all duration-200"></div>
+                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot transition-all duration-200 opacity-50"></div>
+                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot transition-all duration-200 opacity-50"></div>
             </div>
+            <p class="text-xs text-slate-400 mt-2">PIN de 4-6 dígitos</p>
             <input type="password" id="pin-input" class="opacity-0 absolute w-0 h-0" maxlength="6" inputmode="numeric">
         </div>
 
@@ -184,7 +217,8 @@
         const submitBtn = document.getElementById('submit-btn');
         const pinDisplay = document.getElementById('pin-display');
         let currentPin = "";
-        const MAX_PIN = 4;
+        const MIN_PIN = 4;
+        const MAX_PIN = 6;
         let isSubmitting = false;
         
         // Actualizar reloj en tiempo real
@@ -240,12 +274,7 @@
                     updateUI();
                     resetInactivityTimer();
                     
-                    // Auto-submit cuando se completan 4 dígitos
-                    if (currentPin.length === MAX_PIN) {
-                        setTimeout(() => {
-                            submitBtn.click();
-                        }, 300);
-                    }
+                    // NO auto-submit - el usuario debe pulsar FICHAR
                 }
             });
         });
@@ -278,7 +307,7 @@
                 }
             });
 
-            if (currentPin.length >= 4) {
+            if (currentPin.length >= MIN_PIN) {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 submitBtn.classList.add('cursor-pointer');
@@ -289,7 +318,147 @@
             }
         }
 
-        submitBtn.addEventListener('click', submitPin);
+        submitBtn.addEventListener('click', checkStatusBeforeSubmit);
+        
+        // Variables para confirmación
+        let pendingCheckinData = null;
+
+        function checkStatusBeforeSubmit() {
+            if (isSubmitting || currentPin.length < 4) return;
+            
+            isSubmitting = true;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Verificando...</span>';
+            
+            const formData = new FormData();
+            formData.append('pin', currentPin);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            {% if gym_id %}
+            formData.append('gym_id', '{{ gym_id }}');
+            {% endif %}
+
+            fetch("{% url 'staff_check_status' %}", {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Mostrar modal de confirmación
+                        showConfirmModal(data);
+                    } else {
+                        // PIN incorrecto o error
+                        showStatus(data);
+                        resetSubmitButton();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showStatus({ status: 'error', message: 'Error de conexión. Verifica tu red.' });
+                    resetSubmitButton();
+                });
+        }
+        
+        function showConfirmModal(data) {
+            const modal = document.getElementById('confirm-modal');
+            const photo = document.getElementById('confirm-photo');
+            const photoContainer = document.getElementById('confirm-photo-container');
+            const name = document.getElementById('confirm-name');
+            const duration = document.getElementById('confirm-duration');
+            const actionBadge = document.getElementById('confirm-action-badge');
+            
+            // Guardar datos para el fichaje
+            pendingCheckinData = {
+                pin: currentPin,
+                staffName: data.staff_name
+            };
+            
+            // Mostrar nombre
+            name.textContent = data.staff_name || 'Empleado';
+            
+            // Mostrar foto si existe
+            if (data.staff_photo) {
+                photo.src = data.staff_photo;
+                photoContainer.classList.remove('hidden');
+            } else {
+                photoContainer.classList.add('hidden');
+            }
+            
+            // Configurar badge de acción
+            if (data.action === 'checkin') {
+                actionBadge.textContent = '📥 ENTRADA';
+                actionBadge.className = 'px-6 py-3 rounded-2xl text-xl font-bold mb-6 bg-green-100 text-green-700';
+                photo.className = 'w-28 h-28 rounded-full object-cover border-4 shadow-xl border-green-500';
+                duration.textContent = '';
+            } else {
+                actionBadge.textContent = '📤 SALIDA';
+                actionBadge.className = 'px-6 py-3 rounded-2xl text-xl font-bold mb-6 bg-orange-100 text-orange-700';
+                photo.className = 'w-28 h-28 rounded-full object-cover border-4 shadow-xl border-orange-500';
+                
+                // Mostrar duración si existe
+                if (data.duration_hours) {
+                    const hours = Math.floor(data.duration_hours);
+                    const minutes = Math.round((data.duration_hours - hours) * 60);
+                    duration.textContent = `⏱️ Tiempo trabajado: ${hours}h ${minutes}m`;
+                } else {
+                    duration.textContent = '';
+                }
+            }
+            
+            modal.classList.remove('hidden');
+        }
+        
+        // Event listeners para botones de confirmación
+        document.getElementById('cancel-confirm-btn').addEventListener('click', function() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingCheckinData = null;
+            clearPin();
+            resetSubmitButton();
+        });
+        
+        document.getElementById('do-confirm-btn').addEventListener('click', function() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            executeCheckin();
+        });
+        
+        function executeCheckin() {
+            const formData = new FormData();
+            formData.append('pin', pendingCheckinData.pin);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            {% if gym_id %}
+            formData.append('gym_id', '{{ gym_id }}');
+            {% endif %}
+
+            fetch("{% url 'staff_checkin' %}", {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data);
+                    setTimeout(() => {
+                        clearPin();
+                        resetSubmitButton();
+                        pendingCheckinData = null;
+                    }, 3500);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showStatus({ status: 'error', message: 'Error de conexión. Verifica tu red.' });
+                    setTimeout(() => {
+                        clearPin();
+                        resetSubmitButton();
+                        pendingCheckinData = null;
+                    }, 3500);
+                });
+        }
+        
+        function resetSubmitButton() {
+            isSubmitting = false;
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            submitBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>FICHAR</span>';
+        }
 
         function submitPin() {
             if (isSubmitting || currentPin.length < 4) return;

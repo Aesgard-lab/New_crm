@@ -145,7 +145,38 @@
                     <span class="text-gray-500">Renovación Auto.</span>
                     <span class="text-white font-medium">{% if subscription.auto_renew %}Sí{% else %}No{% endif %}</span>
                 </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Modo Facturación</span>
+                    <span class="font-medium {% if subscription.billing_mode == 'MANUAL' %}text-amber-400{% else %}text-white{% endif %}">
+                        {% if subscription.billing_mode == 'MANUAL' %}
+                        🔓 Manual (sin tarjeta)
+                        {% else %}
+                        💳 Automático
+                        {% endif %}
+                    </span>
+                </div>
             </div>
+            
+            <!-- Cambiar modo de facturación -->
+            <form method="post" action="{% url 'superadmin:gym_change_billing_mode' gym.id %}" class="mb-4">
+                {% csrf_token %}
+                <div class="flex gap-2">
+                    <select name="billing_mode" class="flex-1 bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="AUTO" {% if subscription.billing_mode == 'AUTO' %}selected{% endif %}>💳 Automático (tarjeta)</option>
+                        <option value="MANUAL" {% if subscription.billing_mode == 'MANUAL' %}selected{% endif %}>🔓 Manual (transferencia)</option>
+                    </select>
+                    <button type="submit" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg border border-gray-600 transition">
+                        Cambiar
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    {% if subscription.billing_mode == 'MANUAL' %}
+                    ⚠️ Cobro manual: No se requiere tarjeta. El gimnasio paga por transferencia u otro medio.
+                    {% else %}
+                    El gimnasio tiene configurado el cobro automático por tarjeta.
+                    {% endif %}
+                </p>
+            </form>
 
             <a href="{% url 'superadmin:gym_change_plan' gym.id %}"
                 class="block w-full text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition font-medium">

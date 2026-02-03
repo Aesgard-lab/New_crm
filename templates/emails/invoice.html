@@ -39,11 +39,23 @@
         <div class="card">
             <h3>Cliente</h3>
             {% if order.client %}
-                <p class="small">{{ order.client.first_name }} {{ order.client.last_name }}</p>
-                {% if order.client.dni %}<p class="small">DNI/NIE: {{ order.client.dni }}</p>{% endif %}
-                {% if order.client.email %}<p class="small">Email: {{ order.client.email }}</p>{% endif %}
-                {% if order.client.phone_number %}<p class="small">Tel: {{ order.client.phone_number }}</p>{% endif %}
-                {% if order.client.address %}<p class="small">{{ order.client.address }}</p>{% endif %}
+                {% if order.client.is_company_client and order.client.use_company_data_in_invoices and order.client.company_name %}
+                    <!-- Datos de Empresa -->
+                    <p class="small" style="font-weight: bold; font-size: 14px;">{{ order.client.company_name }}</p>
+                    {% if order.client.company_tax_id %}<p class="small">CIF/NIF: {{ order.client.company_tax_id }}</p>{% endif %}
+                    {% if order.client.company_address %}<p class="small">{{ order.client.company_address }}</p>{% endif %}
+                    {% if order.client.company_email %}<p class="small">Email: {{ order.client.company_email }}</p>
+                    {% elif order.client.email %}<p class="small">Email: {{ order.client.email }}</p>{% endif %}
+                    {% if order.client.phone_number %}<p class="small">Tel: {{ order.client.phone_number }}</p>{% endif %}
+                    <p class="small muted" style="margin-top: 4px;">Contacto: {{ order.client.first_name }} {{ order.client.last_name }}</p>
+                {% else %}
+                    <!-- Datos Personales -->
+                    <p class="small">{{ order.client.first_name }} {{ order.client.last_name }}</p>
+                    {% if order.client.dni %}<p class="small">DNI/NIE: {{ order.client.dni }}</p>{% endif %}
+                    {% if order.client.email %}<p class="small">Email: {{ order.client.email }}</p>{% endif %}
+                    {% if order.client.phone_number %}<p class="small">Tel: {{ order.client.phone_number }}</p>{% endif %}
+                    {% if order.client.address %}<p class="small">{{ order.client.address }}</p>{% endif %}
+                {% endif %}
             {% else %}
                 <p class="small">Cliente no especificado</p>
             {% endif %}

@@ -30,8 +30,7 @@
                         </div>
                     </div>
                     <div class="ml-3 flex items-center h-5">
-                        <input type="radio" name="plan" value="{{ plan.id }}" class="sr-only peer" {% if
-                            gym.subscription and gym.subscription.plan.id == plan.id %}checked{% endif %}>
+                        <input type="radio" name="plan_id" value="{{ plan.id }}" class="sr-only peer" {% if gym.subscription and gym.subscription.plan.id == plan.id %}checked{% elif not gym.subscription and forloop.first %}checked{% endif %}>
                         <div
                             class="peer-checked:border-indigo-500 peer-checked:bg-indigo-600 w-4 h-4 rounded-full border-2 border-gray-600 flex items-center justify-center">
                             <div
@@ -43,6 +42,32 @@
                 {% empty %}
                 <p class="text-gray-400 text-center py-4">No hay planes activos disponibles.</p>
                 {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Modo de Facturación -->
+        <div class="glass-panel p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-white mb-4">Modo de Facturación</h3>
+            <p class="text-gray-400 text-sm mb-4">Selecciona cómo se cobrará al gimnasio. El modo manual permite activar el servicio sin necesidad de tarjeta bancaria.</p>
+            
+            <div class="space-y-3">
+                <label class="flex items-start p-4 cursor-pointer bg-gray-900/50 rounded-lg border border-gray-800 hover:border-indigo-500 transition">
+                    <input type="radio" name="billing_mode" value="AUTO" class="mt-1 h-4 w-4 text-indigo-600 border-gray-600 bg-gray-800 focus:ring-indigo-500"
+                           {% if not current_subscription or current_subscription.billing_mode == 'AUTO' %}checked{% endif %}>
+                    <div class="ml-3">
+                        <span class="font-medium text-white">💳 Automático (tarjeta)</span>
+                        <p class="text-gray-400 text-sm mt-1">Cobra automáticamente mediante tarjeta bancaria vinculada a Stripe. Requiere que el gimnasio configure una tarjeta.</p>
+                    </div>
+                </label>
+                
+                <label class="flex items-start p-4 cursor-pointer bg-gray-900/50 rounded-lg border border-gray-800 hover:border-amber-500 transition">
+                    <input type="radio" name="billing_mode" value="MANUAL" class="mt-1 h-4 w-4 text-amber-600 border-gray-600 bg-gray-800 focus:ring-amber-500"
+                           {% if current_subscription and current_subscription.billing_mode == 'MANUAL' %}checked{% endif %}>
+                    <div class="ml-3">
+                        <span class="font-medium text-amber-400">🔓 Manual (sin tarjeta)</span>
+                        <p class="text-gray-400 text-sm mt-1">El gimnasio paga por transferencia bancaria u otro medio externo. <strong class="text-amber-400">No requiere tarjeta para activar el servicio.</strong></p>
+                    </div>
+                </label>
             </div>
         </div>
 

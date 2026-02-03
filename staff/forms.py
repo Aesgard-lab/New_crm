@@ -77,12 +77,6 @@ class StaffProfileForm(forms.ModelForm):
                 'El PIN debe contener solo dígitos (4-6 caracteres).'
             )
         
-        # Validar que no sea un PIN débil
-        if self._is_weak_pin(pin_code):
-            raise forms.ValidationError(
-                'El PIN es demasiado fácil. Evita secuencias (1234) o números repetidos (1111).'
-            )
-        
         # Validar unicidad dentro del gimnasio
         if self.gym:
             qs = StaffProfile.objects.filter(
@@ -98,23 +92,6 @@ class StaffProfileForm(forms.ModelForm):
                 )
         
         return pin_code
-    
-    def _is_weak_pin(self, pin):
-        """Detecta PINs débiles como secuencias o números repetidos"""
-        # Todos los dígitos iguales (1111, 2222, etc.)
-        if len(set(pin)) == 1:
-            return True
-        
-        # Secuencias comunes
-        weak_sequences = [
-            '0123', '1234', '2345', '3456', '4567', '5678', '6789',
-            '9876', '8765', '7654', '6543', '5432', '4321', '3210',
-            '0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999',
-            '012345', '123456', '234567', '345678', '456789',
-            '987654', '876543', '765432', '654321', '543210',
-        ]
-        
-        return pin in weak_sequences
 
 
 from .models import SalaryConfig, StaffTask, IncentiveRule

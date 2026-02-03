@@ -96,6 +96,36 @@ class Client(models.Model):
     groups = models.ManyToManyField(ClientGroup, blank=True, related_name="clients")
     tags = models.ManyToManyField(ClientTag, blank=True, related_name="clients")
     is_company_client = models.BooleanField(default=False, help_text="Marca si el cliente pertenece a una empresa")
+    
+    # Datos de facturación empresa (solo si is_company_client=True)
+    company_name = models.CharField(
+        max_length=200, 
+        blank=True, 
+        verbose_name="Razón Social",
+        help_text="Nombre fiscal de la empresa"
+    )
+    company_tax_id = models.CharField(
+        max_length=20, 
+        blank=True, 
+        verbose_name="CIF/NIF Empresa",
+        help_text="CIF o NIF de la empresa"
+    )
+    company_address = models.TextField(
+        blank=True, 
+        verbose_name="Dirección Fiscal",
+        help_text="Dirección fiscal completa de la empresa"
+    )
+    company_email = models.EmailField(
+        blank=True, 
+        null=True,
+        verbose_name="Email de Facturación",
+        help_text="Email para enviar facturas (si es distinto al personal)"
+    )
+    use_company_data_in_invoices = models.BooleanField(
+        default=True, 
+        verbose_name="Usar datos de empresa en facturas",
+        help_text="Si está activo, las facturas y tickets mostrarán los datos de la empresa en lugar de los personales"
+    )
 
     # Campos extra (JSON)
     extra_data = models.JSONField(default=dict, blank=True) # Ej: {"como_nos_conocio": "Google"}

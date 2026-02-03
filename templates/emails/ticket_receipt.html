@@ -100,7 +100,14 @@
         <p><strong>Ticket #{{ order.id }}</strong></p>
         <p>Fecha: {{ order.created_at|date:"d/m/Y H:i" }}</p>
         {% if order.client %}
-        <p>Cliente: {{ order.client.first_name }} {{ order.client.last_name }}</p>
+            {% if order.client.is_company_client and order.client.use_company_data_in_invoices and order.client.company_name %}
+            <p><strong>{{ order.client.company_name }}</strong></p>
+            {% if order.client.company_tax_id %}<p>CIF: {{ order.client.company_tax_id }}</p>{% endif %}
+            {% if order.client.company_address %}<p>{{ order.client.company_address }}</p>{% endif %}
+            {% else %}
+            <p>Cliente: {{ order.client.first_name }} {{ order.client.last_name }}</p>
+            {% if order.client.dni %}<p>DNI/NIF: {{ order.client.dni }}</p>{% endif %}
+            {% endif %}
         {% endif %}
     </div>
 

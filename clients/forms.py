@@ -55,7 +55,9 @@ class ClientForm(forms.ModelForm):
         fields = [
             "first_name", "last_name", "email", "phone_number", 
             "dni", "birth_date", "gender", "address", 
-            "status", "photo", "access_code", "is_company_client", "tags", "groups"
+            "status", "photo", "access_code", "is_company_client", 
+            "company_name", "company_tax_id", "company_address", "company_email", "use_company_data_in_invoices",
+            "tags", "groups"
         ]
         widgets = {
             "first_name": forms.TextInput(attrs={"class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900 placeholder-slate-400"}),
@@ -69,7 +71,12 @@ class ClientForm(forms.ModelForm):
             "status": forms.Select(attrs={"class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900"}),
             "photo": forms.FileInput(attrs={"class": "w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100"}),
             "access_code": forms.TextInput(attrs={"class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900 placeholder-slate-400", "placeholder": "PIN de acceso"}),
-            "is_company_client": forms.CheckboxInput(attrs={"class": "h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"}),
+            "is_company_client": forms.CheckboxInput(attrs={"class": "h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500", "x-model": "isCompany"}),
+            "company_name": forms.TextInput(attrs={"class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900 placeholder-slate-400", "placeholder": "Razón Social de la empresa"}),
+            "company_tax_id": forms.TextInput(attrs={"class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900 placeholder-slate-400", "placeholder": "Ej: B12345678"}),
+            "company_address": forms.Textarea(attrs={"rows": 2, "class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900 placeholder-slate-400", "placeholder": "Dirección fiscal completa"}),
+            "company_email": forms.EmailInput(attrs={"class": "w-full rounded-xl border-slate-200 text-sm focus:ring-slate-900 focus:border-slate-900 placeholder-slate-400", "placeholder": "facturacion@empresa.com"}),
+            "use_company_data_in_invoices": forms.CheckboxInput(attrs={"class": "h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"}),
             "tags": forms.CheckboxSelectMultiple(),
             "groups": forms.CheckboxSelectMultiple(),
         }

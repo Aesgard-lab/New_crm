@@ -5,6 +5,7 @@ urlpatterns = [
     path("kiosk/", views.staff_kiosk, name="staff_kiosk"),
     path("kiosk/<slug:gym_slug>/", views.staff_kiosk, name="staff_kiosk_gym"),
     path("api/checkin/", views.staff_checkin, name="staff_checkin"),
+    path("api/check-status/", views.staff_check_status, name="staff_check_status"),
     
     # Manager Dashboard
     path("list/", views.staff_list, name="staff_list"),

@@ -5,10 +5,32 @@
 {% block header_title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto" x-data="{ activeTab: 'datos' }">
     <form method="post" enctype="multipart/form-data"
         class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         {% csrf_token %}
+
+        <!-- Tabs de Navegación -->
+        <div class="border-b border-slate-200 bg-slate-50">
+            <nav class="flex gap-1 p-2">
+                <button type="button" @click="activeTab = 'datos'"
+                    :class="activeTab === 'datos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'"
+                    class="px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    Datos del Empleado
+                </button>
+                <button type="button" @click="activeTab = 'permisos'"
+                    :class="activeTab === 'permisos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'"
+                    class="px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    Permisos
+                </button>
+            </nav>
+        </div>
 
         <div class="p-8">
             {% if user_form.non_field_errors or profile_form.non_field_errors %}
@@ -18,132 +40,142 @@
             </div>
             {% endif %}
 
-            <h2 class="text-lg font-bold text-slate-900 mb-6">Datos Personales (Usuario)</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {% for field in user_form %}
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
-                    {% endif %}
+            <!-- Tab: Datos del Empleado -->
+            <div x-show="activeTab === 'datos'" x-transition>
+                <h2 class="text-lg font-bold text-slate-900 mb-6">Datos Personales (Usuario)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {% for field in user_form %}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+
+                <hr class="border-slate-100 my-8">
+
+                <h2 class="text-lg font-bold text-slate-900 mb-6">Ficha de Empleado</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Role -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Rol (Permisos)</label>
+                        {{ profile_form.assigned_role }}
+                        {% if profile_form.assigned_role.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.assigned_role.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-slate-400 mt-1">
+                            Gestiona permisos en <a href="{% url 'role_list' %}"
+                                class="underline hover:text-indigo-600">Configuración > Roles</a>
+                        </p>
+                    </div>
+
+
+                    <!-- PIN -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">PIN Tablet</label>
+                        <div class="relative">
+                            {{ profile_form.pin_code }}
+                            <div
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                🔢
+                            </div>
+                        </div>
+                        {% if profile_form.pin_code.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.pin_code.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-slate-400 mt-1">
+                            PIN de 4-6 dígitos único para fichar en el Kiosco.
+                        </p>
+                    </div>
+
+                    <!-- Color -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Color Calendario</label>
+                        <div class="flex items-center gap-3">
+                            {{ profile_form.color }}
+                            <span class="text-xs text-slate-500">Selecciona un color distintivo</span>
+                        </div>
+                        {% if profile_form.color.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.color.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Active -->
+                    <div class="flex flex-col mt-6">
+                        <div class="flex items-center">
+                            {{ profile_form.is_active }}
+                            <label class="ml-2 text-sm text-slate-700">Cuenta Activa</label>
+                        </div>
+                        {% if profile_form.is_active.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.is_active.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Bio -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Biografía / Notas</label>
+                        {{ profile_form.bio }}
+                        {% if profile_form.bio.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.bio.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Photo -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Foto de Perfil</label>
+                        {{ profile_form.photo }}
+                        {% if profile_form.photo.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.photo.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-slate-400 mt-1">Se mostrará en la app y web</p>
+                    </div>
+                </div>
             </div>
 
-            <hr class="border-slate-100 my-8">
-
-            <h2 class="text-lg font-bold text-slate-900 mb-6">Ficha de Empleado</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Role -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Rol (Permisos)</label>
-                    {{ profile_form.assigned_role }}
-                    {% if profile_form.assigned_role.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.assigned_role.errors.0 }}</p>
-                    {% endif %}
-                    <p class="text-xs text-slate-400 mt-1">
-                        Gestiona permisos en <a href="{% url 'role_list' %}"
-                            class="underline hover:text-indigo-600">Configuración > Roles</a>
-                    </p>
-                </div>
-
-
-                <!-- PIN -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">PIN Tablet</label>
-                    <div class="relative">
-                        {{ profile_form.pin_code }}
-                        <div
-                            class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            🔢
+            <!-- Tab: Permisos -->
+            <div x-show="activeTab === 'permisos'" x-transition x-cloak>
+                <h2 class="text-lg font-bold text-slate-900 mb-2">Permisos Individuales</h2>
+                <p class="text-sm text-slate-600 mb-6">Asigna permisos específicos a este empleado, además de los heredados del rol:</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for module, permissions in structured_permissions.items %}
+                    <div x-data="{ open: false }" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <button type="button" @click="open = !open"
+                            class="w-full bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center hover:bg-slate-100 transition-colors">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <svg class="w-4 h-4 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                                {{ module }}
+                                <span class="text-xs font-normal text-slate-500">({{ permissions|length }})</span>
+                            </h3>
+                            <label @click.stop class="text-xs flex items-center gap-2 cursor-pointer text-slate-500 hover:text-indigo-600">
+                                <input type="checkbox" onclick="toggleGroup(this)"
+                                    class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                Todos
+                            </label>
+                        </button>
+                        <div x-show="open" x-collapse class="p-4 space-y-2 max-h-64 overflow-y-auto">
+                            {% for perm in permissions %}
+                            <label class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                                <input type="checkbox" name="permissions" value="{{ perm.codename }}" {% if perm.is_active %}checked{% endif %}
+                                    class="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                <span class="text-sm text-slate-700">{{ perm.label }}</span>
+                            </label>
+                            {% endfor %}
                         </div>
                     </div>
-                    {% if profile_form.pin_code.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.pin_code.errors.0 }}</p>
-                    {% endif %}
-                    <p class="text-xs text-slate-400 mt-1">
-                        PIN de 4-6 dígitos único para fichar en el Kiosco.
-                        <span class="text-amber-500">Evita secuencias (1234) o repetidos (1111).</span>
-                    </p>
+                    {% endfor %}
                 </div>
 
-                <!-- Color -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Color Calendario</label>
-                    <div class="flex items-center gap-3">
-                        {{ profile_form.color }}
-                        <span class="text-xs text-slate-500">Selecciona un color distintivo</span>
-                    </div>
-                    {% if profile_form.color.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.color.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- Active -->
-                <div class="flex flex-col mt-6">
-                    <div class="flex items-center">
-                        {{ profile_form.is_active }}
-                        <label class="ml-2 text-sm text-slate-700">Cuenta Activa</label>
-                    </div>
-                    {% if profile_form.is_active.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.is_active.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- Bio -->
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Biografía / Notas</label>
-                    {{ profile_form.bio }}
-                    {% if profile_form.bio.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.bio.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- Photo -->
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Foto de Perfil</label>
-                    {{ profile_form.photo }}
-                    {% if profile_form.photo.errors %}
-                    <p class="text-red-500 text-xs mt-1">{{ profile_form.photo.errors.0 }}</p>
-                    {% endif %}
-                    <p class="text-xs text-slate-400 mt-1">Se mostrará en la app y web</p>
+                <div class="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl text-blue-800 text-sm">
+                    <strong>💡 Nota:</strong> Los permisos individuales se suman a los del Rol asignado. El empleado tendrá acceso a todas las acciones permitidas.
                 </div>
             </div>
 
-            <hr class="border-slate-100 my-8">
-
-            <h2 class="text-lg font-bold text-slate-900 mb-6">Permisos Individuales</h2>
-            <p class="text-sm text-slate-600 mb-6">Asigna permisos específicos a este empleado, además de los heredados del rol:</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {% for module, permissions in structured_permissions.items %}
-                <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-800">{{ module }}</h3>
-                        <label class="text-xs flex items-center gap-2 cursor-pointer text-slate-500 hover:text-indigo-600">
-                            <input type="checkbox" onclick="toggleGroup(this)"
-                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                            Seleccionar Todo
-                        </label>
-                    </div>
-                    <div class="p-5 space-y-3">
-                        {% for perm in permissions %}
-                        <label class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-                            <input type="checkbox" name="permissions" value="{{ perm.codename }}" {% if perm.is_active %}checked{% endif %}
-                                class="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
-                            <div>
-                                <span class="block text-sm font-medium text-slate-800">{{ perm.label }}</span>
-                            </div>
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-blue-800 text-sm">
-                <strong>💡 Nota:</strong> Los permisos individuales se suman a los del Rol asignado. El empleado tendrá acceso a todas las acciones permitidas.
             </div>
 
             <script>
@@ -166,4 +198,8 @@
     </form>
 
 </div>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
 {% endblock %}

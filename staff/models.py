@@ -70,12 +70,6 @@ class StaffProfile(models.Model):
                     'pin_code': 'El PIN debe contener solo dígitos (4-6 caracteres).'
                 })
             
-            # Validar que no sea un PIN "fácil" (repetitivos o secuenciales)
-            if self._is_weak_pin(self.pin_code):
-                raise ValidationError({
-                    'pin_code': 'El PIN es demasiado fácil. Evita secuencias (1234) o números repetidos (1111).'
-                })
-            
             # Validar unicidad del PIN dentro del mismo gimnasio
             qs = StaffProfile.objects.filter(
                 gym=self.gym,
@@ -88,23 +82,6 @@ class StaffProfile(models.Model):
                 raise ValidationError({
                     'pin_code': 'Este PIN ya está en uso por otro empleado de este gimnasio.'
                 })
-    
-    def _is_weak_pin(self, pin):
-        """Detecta PINs débiles como secuencias o números repetidos"""
-        # Todos los dígitos iguales (1111, 2222, etc.)
-        if len(set(pin)) == 1:
-            return True
-        
-        # Secuencias comunes ascendentes y descendentes
-        weak_sequences = [
-            '0123', '1234', '2345', '3456', '4567', '5678', '6789',
-            '9876', '8765', '7654', '6543', '5432', '4321', '3210',
-            '0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999',
-            '012345', '123456', '234567', '345678', '456789',
-            '987654', '876543', '765432', '654321', '543210',
-        ]
-        
-        return pin in weak_sequences
 
     def __str__(self):
         # Fallback if get_full_name doesn't exist (using custom User model)

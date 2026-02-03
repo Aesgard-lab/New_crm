@@ -206,6 +206,12 @@ def gym_change_plan(request, gym_id):
     
     if request.method == 'POST':
         plan_id = request.POST.get('plan_id')
+        billing_mode = request.POST.get('billing_mode', 'AUTO')
+        
+        if not plan_id:
+            messages.error(request, "Debes seleccionar un plan")
+            return redirect('superadmin:gym_change_plan', gym_id=gym.id)
+        
         plan = get_object_or_404(SubscriptionPlan, id=plan_id)
         
         # Get or create subscription
@@ -214,6 +220,7 @@ def gym_change_plan(request, gym_id):
             defaults={
                 'plan': plan,
                 'status': 'ACTIVE',
+                'billing_mode': billing_mode,
                 'current_period_start': date.today(),
                 'current_period_end': date.today() + timedelta(days=30)
             }
@@ -221,14 +228,52 @@ def gym_change_plan(request, gym_id):
         
         if not created:
             subscription.plan = plan
+            subscription.billing_mode = billing_mode
             subscription.save()
         
-        messages.success(request, f"Plan actualizado a {plan.name}")
+        billing_label = "manual (sin tarjeta)" if billing_mode == 'MANUAL' else "automático"
+        messages.success(request, f"Plan actualizado a {plan.name} con cobro {billing_label}")
         return redirect('superadmin:gym_detail', gym_id=gym.id)
     
     plans = SubscriptionPlan.objects.filter(is_active=True)
-    context = {'gym': gym, 'plans': plans}
+    
+    # Get current subscription if exists
+    try:
+        current_subscription = gym.subscription
+    except GymSubscription.DoesNotExist:
+        current_subscription = None
+    
+    context = {
+        'gym': gym, 
+        'plans': plans,
+        'current_subscription': current_subscription,
+        'billing_mode_choices': GymSubscription.BILLING_MODE_CHOICES
+    }
     return render(request, 'superadmin/gyms/change_plan.html', context)
+
+
+@superuser_required
+@log_superadmin_action('CHANGE_BILLING_MODE', 'Changed gym billing mode')
+def gym_change_billing_mode(request, gym_id):
+    """
+    Change a gym's billing mode (AUTO/MANUAL).
+    """
+    gym = get_object_or_404(Gym, id=gym_id)
+    
+    if request.method == 'POST':
+        billing_mode = request.POST.get('billing_mode', 'AUTO')
+        
+        try:
+            subscription = gym.subscription
+            subscription.billing_mode = billing_mode
+            subscription.save()
+            
+            billing_label = "manual (sin tarjeta)" if billing_mode == 'MANUAL' else "automático (tarjeta)"
+            messages.success(request, f"Modo de facturación cambiado a {billing_label}")
+        except GymSubscription.DoesNotExist:
+            messages.error(request, "Este gimnasio no tiene suscripción activa")
+        
+    return redirect('superadmin:gym_detail', gym_id=gym.id)
 
 
 @superuser_required
