@@ -51,7 +51,7 @@ class ProfileView(views.APIView):
             'last_name': client.last_name,
             'full_name': client.full_name,
             'email': client.email,
-            'phone': client.phone or '',
+            'phone': client.phone_number or '',
             'dni': client.dni or '',
             'birth_date_formatted': client.birth_date.strftime('%d/%m/%Y') if client.birth_date else '',
             'address': client.address or '',

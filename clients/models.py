@@ -192,6 +192,11 @@ class Client(models.Model):
         return f"{self.first_name} {self.last_name} ({self.status})".strip()
 
     @property
+    def full_name(self):
+        """Nombre completo del cliente"""
+        return f"{self.first_name} {self.last_name}".strip()
+
+    @property
     def has_portal_access(self):
         """Indica si el cliente tiene acceso al portal (tiene usuario vinculado)"""
         return self.user is not None
