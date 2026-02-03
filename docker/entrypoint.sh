@@ -63,8 +63,21 @@ echo "[4/5] Verificando archivos estaticos..."
 if [ "$DJANGO_ENV" = "production" ] || [ "$DJANGO_ENV" = "staging" ]; then
     if [[ "$1" == "gunicorn" ]]; then
         echo "  - Recolectando archivos estaticos..."
-        python manage.py collectstatic --noinput
-        echo "  - Estaticos recolectados!"
+        python manage.py collectstatic --noinput --clear
+        
+        # Verificar que se crearon los archivos
+        STATIC_COUNT=$(ls -1 /app/staticfiles/ 2>/dev/null | wc -l)
+        echo "  - Archivos estáticos: $STATIC_COUNT directorios/archivos"
+        
+        # Asegurar permisos correctos
+        if [ -d "/app/staticfiles" ]; then
+            chmod -R 755 /app/staticfiles/ 2>/dev/null || true
+        fi
+        if [ -d "/app/media" ]; then
+            chmod -R 755 /app/media/ 2>/dev/null || true
+        fi
+        
+        echo "  - Estaticos recolectados y permisos configurados!"
     fi
 else
     echo "  - Saltando collectstatic (modo desarrollo)"
