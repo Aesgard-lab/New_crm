@@ -1,0 +1,203 @@
+{% extends 'backoffice/base.html' %}
+{% load i18n %}
+
+{% block title %}Configuración de Fichaje - {{ gym.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <nav class="text-sm mb-2">
+            <a href="{% url 'settings_dashboard' %}" class="text-slate-400 hover:text-slate-600">⚙️ Configuración</a>
+            <span class="mx-2 text-slate-300">/</span>
+            <span class="text-slate-600">Fichaje de Empleados</span>
+        </nav>
+        <h1 class="text-3xl font-bold text-slate-800">⏰ Configuración de Fichaje</h1>
+        <p class="text-slate-500 mt-1">Configura cómo los empleados deben fichar entrada y salida</p>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Kiosko URL -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h3 class="text-xl font-bold mb-1">🖥️ Kiosco de Fichaje</h3>
+                    <p class="text-blue-100 text-sm">URL para abrir en tablet o dispositivo fijo</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" value="{{ kiosk_url }}" readonly 
+                        class="bg-white/20 text-white rounded-lg px-4 py-2 text-sm w-72 font-mono">
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ kiosk_url }}'); this.textContent='✅'" 
+                        class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        📋 Copiar
+                    </button>
+                    <a href="{{ kiosk_url }}" target="_blank" 
+                        class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        🔗 Abrir
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Métodos de verificación -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-6">📸 Métodos de Verificación</h3>
+            
+            <div class="space-y-6">
+                <!-- Selfie requerido -->
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="flex-shrink-0 pt-1">
+                        {{ form.require_checkin_photo }}
+                    </div>
+                    <div class="flex-1">
+                        <label for="{{ form.require_checkin_photo.id_for_label }}" class="font-semibold text-slate-800 cursor-pointer">
+                            📸 Requerir Selfie al Fichar
+                        </label>
+                        <p class="text-sm text-slate-500 mt-1">
+                            Los empleados deberán tomarse una foto cada vez que fichen entrada o salida. 
+                            Las fotos se guardan para verificación posterior.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Geolocalización requerida -->
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="flex-shrink-0 pt-1">
+                        {{ form.require_checkin_geolocation }}
+                    </div>
+                    <div class="flex-1">
+                        <label for="{{ form.require_checkin_geolocation.id_for_label }}" class="font-semibold text-slate-800 cursor-pointer">
+                            📍 Requerir Ubicación GPS
+                        </label>
+                        <p class="text-sm text-slate-500 mt-1">
+                            Los empleados solo podrán fichar si están dentro del radio de geocerca definido. 
+                            Útil para verificar que están en el gimnasio.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuración de Geocerca -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6" x-data="{ expanded: {{ gym.require_checkin_geolocation|yesno:'true,false' }} }">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-800">🗺️ Configuración de Geocerca</h3>
+                <span class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                    {% if gym.latitude and gym.longitude %}✅ Configurada{% else %}⚠️ Sin configurar{% endif %}
+                </span>
+            </div>
+            
+            <p class="text-sm text-slate-500 mb-6">
+                Define la ubicación del gimnasio y el radio máximo permitido para fichar.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Latitud -->
+                <div>
+                    <label for="{{ form.latitude.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Latitud
+                    </label>
+                    {{ form.latitude }}
+                    <p class="text-xs text-slate-400 mt-1">Ej: 40.4168 (Madrid)</p>
+                </div>
+                
+                <!-- Longitud -->
+                <div>
+                    <label for="{{ form.longitude.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Longitud
+                    </label>
+                    {{ form.longitude }}
+                    <p class="text-xs text-slate-400 mt-1">Ej: -3.7038 (Madrid)</p>
+                </div>
+                
+                <!-- Radio -->
+                <div>
+                    <label for="{{ form.geofence_radius.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Radio (metros)
+                    </label>
+                    {{ form.geofence_radius }}
+                    <p class="text-xs text-slate-400 mt-1">Distancia máxima para fichar</p>
+                </div>
+            </div>
+            
+            <!-- Botón para obtener ubicación actual -->
+            <div class="mt-4 pt-4 border-t border-slate-200">
+                <button type="button" onclick="getMyLocation()" 
+                    class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    📍 Usar mi ubicación actual
+                </button>
+                <p class="text-xs text-slate-400 mt-1">
+                    Haz clic para capturar las coordenadas de tu ubicación actual
+                </p>
+            </div>
+        </div>
+        
+        <!-- Info de métodos por empleado -->
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+            <div class="flex items-start gap-4">
+                <span class="text-2xl">💡</span>
+                <div>
+                    <h4 class="font-semibold text-amber-800 mb-1">Configuración por Empleado</h4>
+                    <p class="text-sm text-amber-700">
+                        Además de esta configuración global, puedes definir el método de fichaje preferido 
+                        para cada empleado individualmente en su ficha. El método del empleado tiene prioridad 
+                        sobre la configuración global.
+                    </p>
+                    <a href="{% url 'staff_list' %}" class="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-800 hover:underline">
+                        👥 Ver listado de empleados →
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Botón Guardar -->
+        <div class="flex justify-end">
+            <button type="submit" 
+                class="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all">
+                💾 Guardar Configuración
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function getMyLocation() {
+    if (!navigator.geolocation) {
+        alert('Tu navegador no soporta geolocalización');
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            document.getElementById('{{ form.latitude.id_for_label }}').value = position.coords.latitude.toFixed(6);
+            document.getElementById('{{ form.longitude.id_for_label }}').value = position.coords.longitude.toFixed(6);
+            alert('✅ Ubicación capturada: ' + position.coords.latitude.toFixed(6) + ', ' + position.coords.longitude.toFixed(6));
+        },
+        function(error) {
+            let msg = 'Error al obtener ubicación: ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    msg += 'Permiso denegado';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    msg += 'Ubicación no disponible';
+                    break;
+                case error.TIMEOUT:
+                    msg += 'Tiempo de espera agotado';
+                    break;
+                default:
+                    msg += 'Error desconocido';
+            }
+            alert(msg);
+        },
+        { enableHighAccuracy: true }
+    );
+}
+</script>
+{% endblock %}

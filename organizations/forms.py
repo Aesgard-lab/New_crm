@@ -70,3 +70,53 @@ class GymSettingsForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class GymCheckinSettingsForm(forms.ModelForm):
+    """Formulario para configurar los métodos de fichaje del gimnasio"""
+    
+    class Meta:
+        model = Gym
+        fields = [
+            'require_checkin_photo',
+            'require_checkin_geolocation',
+            'latitude',
+            'longitude',
+            'geofence_radius',
+        ]
+        widgets = {
+            'require_checkin_photo': forms.CheckboxInput(attrs={
+                'class': 'rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-5 w-5'
+            }),
+            'require_checkin_geolocation': forms.CheckboxInput(attrs={
+                'class': 'rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-5 w-5'
+            }),
+            'latitude': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 p-2.5',
+                'step': 'any',
+                'placeholder': 'Ej: 40.4168'
+            }),
+            'longitude': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 p-2.5',
+                'step': 'any',
+                'placeholder': 'Ej: -3.7038'
+            }),
+            'geofence_radius': forms.NumberInput(attrs={
+                'class': 'w-full rounded-xl border-slate-200 p-2.5',
+                'min': '10',
+                'max': '1000',
+                'placeholder': '100'
+            }),
+        }
+        labels = {
+            'require_checkin_photo': 'Requerir selfie al fichar',
+            'require_checkin_geolocation': 'Requerir ubicación GPS al fichar',
+            'latitude': 'Latitud del gimnasio',
+            'longitude': 'Longitud del gimnasio',
+            'geofence_radius': 'Radio de geocerca (metros)',
+        }
+        help_texts = {
+            'require_checkin_photo': 'Los empleados deberán tomar una foto al fichar entrada/salida',
+            'require_checkin_geolocation': 'Los empleados deberán estar dentro del radio de geocerca para poder fichar',
+            'geofence_radius': 'Distancia máxima permitida desde el gimnasio para fichar (10-1000 metros)',
+        }

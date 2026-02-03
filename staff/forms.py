@@ -38,7 +38,7 @@ class StaffProfileForm(forms.ModelForm):
 
     class Meta:
         model = StaffProfile
-        fields = ["role", "assigned_role", "bio", "color", "photo", "pin_code", "is_active"]
+        fields = ["role", "assigned_role", "bio", "color", "photo", "pin_code", "checkin_method", "is_active"]
         widgets = {
             'role': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'bio': forms.Textarea(attrs={'rows': 3, 'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
@@ -51,6 +51,7 @@ class StaffProfileForm(forms.ModelForm):
                 'maxlength': '6',
                 'title': 'Introduce 4-6 dígitos'
             }),
+            'checkin_method': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'rounded text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
         }
     

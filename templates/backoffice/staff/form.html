@@ -91,6 +91,18 @@
                         </p>
                     </div>
 
+                    <!-- Método de Fichaje -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Método de Fichaje</label>
+                        {{ profile_form.checkin_method }}
+                        {% if profile_form.checkin_method.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ profile_form.checkin_method.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-xs text-slate-400 mt-1">
+                            Método requerido: PIN, reconocimiento facial, GPS o selfie.
+                        </p>
+                    </div>
+
                     <!-- Color -->
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Color Calendario</label>

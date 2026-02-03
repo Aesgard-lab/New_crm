@@ -92,6 +92,37 @@
             </ul>
         </a>
 
+        <!-- FICHAJE DE EMPLEADOS -->
+        <a href="{% url 'checkin_settings' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">{% trans "Fichaje Empleados" %}</h3>
+                    <p class="text-sm text-slate-500">{% trans "Kiosco, selfie y GPS" %}</p>
+                </div>
+            </div>
+            <ul class="space-y-2 text-sm text-slate-600">
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>{% trans "Kiosco de fichaje" %}</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>{% trans "Selfie obligatorio" %}</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>{% trans "Geocerca GPS" %}</span>
+                </li>
+            </ul>
+        </a>
+
         <!-- 3. SERVICES & PRODUCTS -->
         <a href="{% url 'service_list' %}" class="bg-white border border-slate-200 rounded-2xl p-5 card-hover cursor-pointer block hover:border-slate-300 hover:shadow-md transition-all">
             <div class="flex items-center gap-4 mb-4">

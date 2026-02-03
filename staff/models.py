@@ -20,6 +20,13 @@ class StaffProfile(models.Model):
         RECEPTIONIST = "RECEPTIONIST", "Recepción"
         CLEANER = "CLEANER", "Limpieza"
         OTHER = "OTHER", "Otro"
+    
+    class CheckinMethod(models.TextChoices):
+        ANY = "ANY", "Cualquiera disponible"
+        PIN = "PIN", "Solo PIN"
+        FACIAL = "FACIAL", "Reconocimiento facial"
+        GEO = "GEO", "Geolocalización (móvil)"
+        PHOTO = "PHOTO", "Selfie obligatorio"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff_profile")
     gym = models.ForeignKey("organizations.Gym", on_delete=models.CASCADE, related_name="staff")
@@ -36,6 +43,15 @@ class StaffProfile(models.Model):
         null=True, 
         validators=[pin_validator],
         help_text="PIN de 4-6 dígitos para fichar en Tablet (debe ser único en el gimnasio)"
+    )
+    
+    # Check-in method preference
+    checkin_method = models.CharField(
+        max_length=10,
+        choices=CheckinMethod.choices,
+        default=CheckinMethod.ANY,
+        verbose_name="Método de fichaje",
+        help_text="Método requerido para este empleado"
     )
     
     # Status
@@ -330,6 +346,7 @@ class WorkShift(models.Model):
         TABLET = "TABLET", "Kiosco Tablet"
         MANUAL = "MANUAL", "Manual Manager"
         MOBILE = "MOBILE", "Móvil (GPS)"
+        FACIAL = "FACIAL", "Reconocimiento Facial"
         AUTO = "AUTO", "Automático"
 
     staff = models.ForeignKey(StaffProfile, on_delete=models.CASCADE, related_name="shifts")
@@ -339,6 +356,40 @@ class WorkShift(models.Model):
     
     method = models.CharField(max_length=20, choices=Method.choices, default=Method.WEB)
     location_info = models.JSONField(default=dict, blank=True, help_text="Snapshot de ubicación o IP")
+    
+    # Check-in photos (selfie evidence)
+    checkin_photo = models.ImageField(
+        upload_to="staff/checkin_photos/",
+        blank=True,
+        null=True,
+        help_text="Foto capturada al fichar entrada"
+    )
+    checkout_photo = models.ImageField(
+        upload_to="staff/checkout_photos/",
+        blank=True,
+        null=True,
+        help_text="Foto capturada al fichar salida"
+    )
+    
+    # Geolocation data
+    checkin_latitude = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True
+    )
+    checkin_longitude = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True
+    )
+    checkout_latitude = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True
+    )
+    checkout_longitude = models.DecimalField(
+        max_digits=10, decimal_places=7, null=True, blank=True
+    )
+    
+    # Facial recognition match score (0-100)
+    facial_match_score = models.IntegerField(
+        null=True, blank=True,
+        help_text="Porcentaje de coincidencia del reconocimiento facial"
+    )
     
     is_closed = models.BooleanField(default=False)
 

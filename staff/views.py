@@ -73,28 +73,44 @@ def staff_check_status(request):
     staff_name = staff.user.get_full_name() or staff.user.email.split('@')[0]
     staff_photo = staff.photo.url if staff.photo else None
     
+    # Determinar método de fichaje requerido
+    checkin_method = staff.checkin_method  # ANY, PIN, FACIAL, GEO, PHOTO
+    require_photo = (
+        checkin_method in ['FACIAL', 'PHOTO'] or 
+        (gym and gym.require_checkin_photo)
+    )
+    require_geo = (
+        checkin_method == 'GEO' or 
+        (gym and gym.require_checkin_geolocation)
+    )
+    
     # Verificar turno abierto
     open_shift = WorkShift.objects.filter(staff=staff, end_time__isnull=True).first()
+    
+    base_response = {
+        "status": "success",
+        "staff_name": staff_name,
+        "staff_photo": staff_photo,
+        "checkin_method": checkin_method,
+        "require_photo": require_photo,
+        "require_geo": require_geo,
+    }
     
     if open_shift:
         duration = open_shift.duration_hours
         hours = int(duration)
         minutes = int((duration - hours) * 60)
         return JsonResponse({
-            "status": "success",
+            **base_response,
             "action": "checkout",
-            "staff_name": staff_name,
-            "staff_photo": staff_photo,
             "message": f"Llevas {hours}h {minutes}min trabajando",
             "shift_start": open_shift.start_time.isoformat(),
             "duration_hours": duration
         })
     else:
         return JsonResponse({
-            "status": "success",
+            **base_response,
             "action": "checkin",
-            "staff_name": staff_name,
-            "staff_photo": staff_photo,
             "message": "Vas a iniciar tu jornada"
         })
 
@@ -109,11 +125,21 @@ def staff_checkin(request):
     
     IMPORTANTE: El PIN solo es válido dentro del gimnasio especificado
     para evitar colisiones entre gimnasios.
+    
+    Parámetros adicionales opcionales:
+    - photo: base64 de la foto capturada
+    - latitude, longitude: coordenadas GPS
     """
     from organizations.models import Gym
+    from django.core.files.base import ContentFile
+    import base64
+    import math
     
     pin = request.POST.get("pin")
     gym_id = request.POST.get("gym_id")
+    photo_data = request.POST.get("photo")  # base64
+    latitude = request.POST.get("latitude")
+    longitude = request.POST.get("longitude")
     
     if not pin:
         return JsonResponse({
@@ -149,6 +175,35 @@ def staff_checkin(request):
             "status": "error", 
             "message": "PIN incorrecto. Verifica tu código e intenta nuevamente."
         }, status=404)
+    
+    # Validar geolocalización si es requerida
+    if gym and gym.require_checkin_geolocation:
+        if not latitude or not longitude:
+            return JsonResponse({
+                "status": "error",
+                "message": "Se requiere ubicación GPS para fichar"
+            }, status=400)
+        
+        if gym.latitude and gym.longitude:
+            # Calcular distancia con fórmula Haversine
+            distance = _calculate_distance(
+                float(gym.latitude), float(gym.longitude),
+                float(latitude), float(longitude)
+            )
+            
+            if distance > gym.geofence_radius:
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Debes estar en el gimnasio para fichar (distancia: {int(distance)}m)"
+                }, status=400)
+    
+    # Validar foto si es requerida
+    if gym and gym.require_checkin_photo:
+        if not photo_data:
+            return JsonResponse({
+                "status": "error",
+                "message": "Se requiere foto para fichar"
+            }, status=400)
 
     # Obtener nombre del empleado
     staff_name = staff.user.get_full_name() if hasattr(staff.user, 'get_full_name') else f"{staff.user.first_name} {staff.user.last_name}".strip()
@@ -164,6 +219,16 @@ def staff_checkin(request):
     if open_shift:
         # Cerrar turno
         open_shift.end_time = timezone.now()
+        
+        # Guardar foto de checkout si se proporcionó
+        if photo_data:
+            open_shift.checkout_photo = _decode_base64_photo(photo_data, f"checkout_{staff.id}")
+        
+        # Guardar ubicación de checkout
+        if latitude and longitude:
+            open_shift.checkout_latitude = latitude
+            open_shift.checkout_longitude = longitude
+        
         open_shift.save()
         
         # Calcular duración
@@ -180,12 +245,26 @@ def staff_checkin(request):
             "shift_start": open_shift.start_time.isoformat()
         })
     else:
+        # Determinar método basado en lo que se envió
+        method = WorkShift.Method.TABLET
+        if photo_data:
+            method = WorkShift.Method.FACIAL
+        elif latitude and longitude:
+            method = WorkShift.Method.MOBILE
+        
         # Abrir turno
         new_shift = WorkShift.objects.create(
             staff=staff,
             start_time=timezone.now(),
-            method=WorkShift.Method.TABLET
+            method=method,
+            checkin_latitude=latitude if latitude else None,
+            checkin_longitude=longitude if longitude else None,
         )
+        
+        # Guardar foto de checkin si se proporcionó
+        if photo_data:
+            new_shift.checkin_photo = _decode_base64_photo(photo_data, f"checkin_{staff.id}")
+            new_shift.save()
         
         msg = f"¡Que tengas un gran día de trabajo!"
         
@@ -197,6 +276,40 @@ def staff_checkin(request):
             "staff_photo": staff_photo,
             "shift_start": new_shift.start_time.isoformat()
         })
+
+
+def _calculate_distance(lat1, lon1, lat2, lon2):
+    """Calcula distancia en metros entre dos coordenadas usando Haversine"""
+    import math
+    R = 6371000  # Radio de la Tierra en metros
+    
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    
+    a = math.sin(delta_phi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    return R * c
+
+
+def _decode_base64_photo(base64_data, filename_prefix):
+    """Decodifica una imagen base64 y retorna un ContentFile"""
+    from django.core.files.base import ContentFile
+    import base64
+    import uuid
+    
+    # Remover header del data URL si existe
+    if ',' in base64_data:
+        base64_data = base64_data.split(',')[1]
+    
+    try:
+        image_data = base64.b64decode(base64_data)
+        filename = f"{filename_prefix}_{uuid.uuid4().hex[:8]}.jpg"
+        return ContentFile(image_data, name=filename)
+    except Exception:
+        return None
 
 # -----------------------------------------------------
 # MANAGER VIEWS

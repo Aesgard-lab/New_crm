@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import translation
 from django.urls import reverse
-from .forms import GymSettingsForm
+from .forms import GymSettingsForm, GymCheckinSettingsForm
 from .models import Gym, PublicPortalSettings
 from core.mixins import require_gym
 
@@ -82,3 +82,34 @@ def widget_code_generator(request):
     }
     
     return render(request, 'organizations/widget_code.html', context)
+
+
+@login_required
+@require_gym
+def checkin_settings_view(request):
+    """Vista para configurar los métodos de fichaje de empleados"""
+    gym = request.gym
+    
+    if request.method == 'POST':
+        form = GymCheckinSettingsForm(request.POST, instance=gym)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Configuración de fichaje actualizada.')
+            return redirect('checkin_settings')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'Error en {field}: {error}')
+    else:
+        form = GymCheckinSettingsForm(instance=gym)
+    
+    # URL del kiosko
+    kiosk_url = request.build_absolute_uri(
+        reverse('staff_kiosk') + f'?gym_id={gym.id}'
+    )
+    
+    return render(request, 'backoffice/settings/checkin_settings.html', {
+        'form': form,
+        'gym': gym,
+        'kiosk_url': kiosk_url,
+    })

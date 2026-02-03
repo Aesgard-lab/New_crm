@@ -71,31 +71,61 @@
 
         <!-- Modal de Confirmación -->
         <div id="confirm-modal"
-            class="hidden absolute top-0 left-0 w-full h-full bg-white/98 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-20 transition-all p-6">
+            class="hidden absolute top-0 left-0 w-full h-full bg-white/98 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-20 transition-all p-6 overflow-hidden">
             
-            <!-- Foto del empleado -->
-            <div id="confirm-photo-container" class="mb-4">
-                <img id="confirm-photo" src="" alt="" class="w-28 h-28 rounded-full object-cover border-4 shadow-xl">
+            <!-- Vista de captura de cámara (oculta por defecto) -->
+            <div id="camera-view" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center z-30">
+                <video id="camera-video" class="w-full h-full object-cover" autoplay playsinline></video>
+                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 flex flex-col items-center">
+                    <p class="text-white text-lg mb-4" id="camera-instruction">Mira a la cámara para capturar</p>
+                    <button id="capture-btn" 
+                        class="w-20 h-20 rounded-full bg-white border-4 border-white/50 shadow-xl flex items-center justify-center hover:scale-105 transition-transform">
+                        <div class="w-16 h-16 rounded-full bg-white"></div>
+                    </button>
+                    <button id="cancel-camera-btn" class="mt-4 text-white/70 text-sm hover:text-white">Cancelar</button>
+                </div>
+                <canvas id="photo-canvas" class="hidden"></canvas>
             </div>
             
-            <h2 id="confirm-name" class="text-2xl font-bold text-slate-800 mb-1"></h2>
-            <p id="confirm-duration" class="text-slate-500 text-sm mb-4"></p>
-            
-            <div id="confirm-action-badge" class="px-6 py-3 rounded-2xl text-xl font-bold mb-6">
-                <!-- ENTRADA o SALIDA -->
-            </div>
-            
-            <p class="text-slate-500 text-sm mb-6">¿Confirmar fichaje?</p>
-            
-            <div class="flex gap-4 w-full max-w-xs">
-                <button id="cancel-confirm-btn" 
-                    class="flex-1 bg-slate-200 text-slate-700 font-bold py-4 rounded-xl transition-all hover:bg-slate-300">
-                    Cancelar
-                </button>
-                <button id="do-confirm-btn" 
-                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all hover:shadow-xl">
-                    Confirmar
-                </button>
+            <!-- Vista de confirmación normal -->
+            <div id="confirm-content" class="flex flex-col items-center justify-center">
+                <!-- Foto del empleado o selfie capturado -->
+                <div id="confirm-photo-container" class="mb-4 relative">
+                    <img id="confirm-photo" src="" alt="" class="w-28 h-28 rounded-full object-cover border-4 shadow-xl">
+                    <!-- Badge de cámara si se requiere selfie -->
+                    <div id="selfie-badge" class="hidden absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <h2 id="confirm-name" class="text-2xl font-bold text-slate-800 mb-1"></h2>
+                <p id="confirm-duration" class="text-slate-500 text-sm mb-4"></p>
+                
+                <div id="confirm-action-badge" class="px-6 py-3 rounded-2xl text-xl font-bold mb-4">
+                    <!-- ENTRADA o SALIDA -->
+                </div>
+                
+                <!-- Método requerido -->
+                <div id="method-required" class="hidden text-xs text-slate-500 mb-4 flex items-center gap-2">
+                    <span id="method-icon">📸</span>
+                    <span id="method-text">Se requiere selfie</span>
+                </div>
+                
+                <p class="text-slate-500 text-sm mb-6">¿Confirmar fichaje?</p>
+                
+                <div class="flex gap-4 w-full max-w-xs">
+                    <button id="cancel-confirm-btn" 
+                        class="flex-1 bg-slate-200 text-slate-700 font-bold py-4 rounded-xl transition-all hover:bg-slate-300">
+                        Cancelar
+                    </button>
+                    <button id="do-confirm-btn" 
+                        class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all hover:shadow-xl">
+                        Confirmar
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -322,6 +352,22 @@
         
         // Variables para confirmación
         let pendingCheckinData = null;
+        let capturedPhotoBase64 = null;
+        let capturedLatitude = null;
+        let capturedLongitude = null;
+        let videoStream = null;
+        
+        // Elementos de cámara
+        const cameraView = document.getElementById('camera-view');
+        const cameraVideo = document.getElementById('camera-video');
+        const photoCanvas = document.getElementById('photo-canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const cancelCameraBtn = document.getElementById('cancel-camera-btn');
+        const cameraInstruction = document.getElementById('camera-instruction');
+        const selfieBadge = document.getElementById('selfie-badge');
+        const methodRequired = document.getElementById('method-required');
+        const methodIcon = document.getElementById('method-icon');
+        const methodText = document.getElementById('method-text');
 
         function checkStatusBeforeSubmit() {
             if (isSubmitting || currentPin.length < 4) return;
@@ -367,10 +413,18 @@
             const duration = document.getElementById('confirm-duration');
             const actionBadge = document.getElementById('confirm-action-badge');
             
+            // Reset captured data
+            capturedPhotoBase64 = null;
+            capturedLatitude = null;
+            capturedLongitude = null;
+            
             // Guardar datos para el fichaje
             pendingCheckinData = {
                 pin: currentPin,
-                staffName: data.staff_name
+                staffName: data.staff_name,
+                requirePhoto: data.require_photo || false,
+                requireGeo: data.require_geo || false,
+                action: data.action
             };
             
             // Mostrar nombre
@@ -384,15 +438,33 @@
                 photoContainer.classList.add('hidden');
             }
             
+            // Mostrar requisitos de método
+            if (data.require_photo || data.require_geo) {
+                methodRequired.classList.remove('hidden');
+                let reqText = [];
+                if (data.require_photo) reqText.push('📸 selfie');
+                if (data.require_geo) reqText.push('📍 ubicación');
+                methodText.textContent = 'Se requiere: ' + reqText.join(' y ');
+                
+                if (data.require_photo) {
+                    selfieBadge.classList.remove('hidden');
+                } else {
+                    selfieBadge.classList.add('hidden');
+                }
+            } else {
+                methodRequired.classList.add('hidden');
+                selfieBadge.classList.add('hidden');
+            }
+            
             // Configurar badge de acción
             if (data.action === 'checkin') {
                 actionBadge.textContent = '📥 ENTRADA';
-                actionBadge.className = 'px-6 py-3 rounded-2xl text-xl font-bold mb-6 bg-green-100 text-green-700';
+                actionBadge.className = 'px-6 py-3 rounded-2xl text-xl font-bold mb-4 bg-green-100 text-green-700';
                 photo.className = 'w-28 h-28 rounded-full object-cover border-4 shadow-xl border-green-500';
                 duration.textContent = '';
             } else {
                 actionBadge.textContent = '📤 SALIDA';
-                actionBadge.className = 'px-6 py-3 rounded-2xl text-xl font-bold mb-6 bg-orange-100 text-orange-700';
+                actionBadge.className = 'px-6 py-3 rounded-2xl text-xl font-bold mb-4 bg-orange-100 text-orange-700';
                 photo.className = 'w-28 h-28 rounded-full object-cover border-4 shadow-xl border-orange-500';
                 
                 // Mostrar duración si existe
@@ -406,20 +478,173 @@
             }
             
             modal.classList.remove('hidden');
+            
+            // Si se requiere geolocalización, obtenerla automáticamente
+            if (data.require_geo) {
+                getGeolocation();
+            }
         }
         
         // Event listeners para botones de confirmación
         document.getElementById('cancel-confirm-btn').addEventListener('click', function() {
+            stopCamera();
             document.getElementById('confirm-modal').classList.add('hidden');
             pendingCheckinData = null;
+            capturedPhotoBase64 = null;
+            capturedLatitude = null;
+            capturedLongitude = null;
             clearPin();
             resetSubmitButton();
         });
         
         document.getElementById('do-confirm-btn').addEventListener('click', function() {
+            // Si se requiere foto y no la tenemos, abrir cámara
+            if (pendingCheckinData.requirePhoto && !capturedPhotoBase64) {
+                openCamera();
+                return;
+            }
+            
+            // Si se requiere geo y no la tenemos, mostrar error
+            if (pendingCheckinData.requireGeo && (!capturedLatitude || !capturedLongitude)) {
+                showTemporaryMessage('📍 Ubicación requerida', 'Esperando ubicación GPS...', 'warning');
+                getGeolocation();
+                return;
+            }
+            
             document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('confirm-content').classList.remove('hidden');
             executeCheckin();
         });
+        
+        // Event listeners para cámara
+        if (captureBtn) {
+            captureBtn.addEventListener('click', capturePhoto);
+        }
+        if (cancelCameraBtn) {
+            cancelCameraBtn.addEventListener('click', function() {
+                stopCamera();
+                cameraView.classList.add('hidden');
+                document.getElementById('confirm-content').classList.remove('hidden');
+            });
+        }
+        
+        function openCamera() {
+            document.getElementById('confirm-content').classList.add('hidden');
+            cameraView.classList.remove('hidden');
+            cameraInstruction.textContent = 'Mira a la cámara y toca el botón';
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user', width: 640, height: 480 },
+                audio: false 
+            })
+            .then(function(stream) {
+                videoStream = stream;
+                cameraVideo.srcObject = stream;
+                cameraVideo.play();
+            })
+            .catch(function(err) {
+                console.error('Error accessing camera:', err);
+                cameraView.classList.add('hidden');
+                document.getElementById('confirm-content').classList.remove('hidden');
+                showTemporaryMessage('❌ Error de cámara', 'No se pudo acceder a la cámara', 'error');
+            });
+        }
+        
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            cameraVideo.srcObject = null;
+            cameraView.classList.add('hidden');
+        }
+        
+        function capturePhoto() {
+            if (!cameraVideo.srcObject) return;
+            
+            // Configurar canvas
+            photoCanvas.width = cameraVideo.videoWidth || 640;
+            photoCanvas.height = cameraVideo.videoHeight || 480;
+            
+            // Dibujar frame actual
+            const ctx = photoCanvas.getContext('2d');
+            ctx.drawImage(cameraVideo, 0, 0, photoCanvas.width, photoCanvas.height);
+            
+            // Convertir a base64
+            capturedPhotoBase64 = photoCanvas.toDataURL('image/jpeg', 0.8);
+            
+            // Mostrar preview
+            const confirmPhoto = document.getElementById('confirm-photo');
+            const photoContainer = document.getElementById('confirm-photo-container');
+            confirmPhoto.src = capturedPhotoBase64;
+            photoContainer.classList.remove('hidden');
+            
+            // Cerrar cámara
+            stopCamera();
+            document.getElementById('confirm-content').classList.remove('hidden');
+            
+            // Feedback
+            cameraInstruction.textContent = '✅ Foto capturada';
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            
+            // Marcar selfie badge como completo
+            if (selfieBadge) {
+                selfieBadge.classList.remove('bg-blue-500');
+                selfieBadge.classList.add('bg-green-500');
+            }
+            
+            // Si también tenemos geo (o no se requiere), proceder automáticamente
+            if (!pendingCheckinData.requireGeo || (capturedLatitude && capturedLongitude)) {
+                setTimeout(function() {
+                    document.getElementById('confirm-modal').classList.add('hidden');
+                    executeCheckin();
+                }, 500);
+            }
+        }
+        
+        function getGeolocation() {
+            if (!navigator.geolocation) {
+                showTemporaryMessage('❌ Geolocalización', 'Tu navegador no soporta GPS', 'error');
+                return;
+            }
+            
+            methodText.textContent = '📍 Obteniendo ubicación...';
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    capturedLatitude = position.coords.latitude;
+                    capturedLongitude = position.coords.longitude;
+                    methodText.textContent = '✅ Ubicación obtenida';
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate(30);
+                    }
+                },
+                function(error) {
+                    console.error('Geolocation error:', error);
+                    let msg = 'No se pudo obtener ubicación';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            msg = 'Permiso de ubicación denegado';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            msg = 'Ubicación no disponible';
+                            break;
+                        case error.TIMEOUT:
+                            msg = 'Tiempo de espera agotado';
+                            break;
+                    }
+                    methodText.textContent = '❌ ' + msg;
+                },
+                { 
+                    enableHighAccuracy: true, 
+                    timeout: 10000, 
+                    maximumAge: 0 
+                }
+            );
+        }
         
         function executeCheckin() {
             const formData = new FormData();
@@ -428,6 +653,17 @@
             {% if gym_id %}
             formData.append('gym_id', '{{ gym_id }}');
             {% endif %}
+            
+            // Añadir foto si fue capturada
+            if (capturedPhotoBase64) {
+                formData.append('photo', capturedPhotoBase64);
+            }
+            
+            // Añadir geolocalización si fue capturada
+            if (capturedLatitude && capturedLongitude) {
+                formData.append('latitude', capturedLatitude);
+                formData.append('longitude', capturedLongitude);
+            }
 
             fetch("{% url 'staff_checkin' %}", {
                 method: 'POST',
@@ -440,6 +676,9 @@
                         clearPin();
                         resetSubmitButton();
                         pendingCheckinData = null;
+                        capturedPhotoBase64 = null;
+                        capturedLatitude = null;
+                        capturedLongitude = null;
                     }, 3500);
                 })
                 .catch(error => {
@@ -449,6 +688,9 @@
                         clearPin();
                         resetSubmitButton();
                         pendingCheckinData = null;
+                        capturedPhotoBase64 = null;
+                        capturedLatitude = null;
+                        capturedLongitude = null;
                     }, 3500);
                 });
         }

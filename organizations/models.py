@@ -115,6 +115,53 @@ class Gym(models.Model):
         verbose_name="Calcular letra del DNI automáticamente",
         help_text="Calcula automáticamente la letra del DNI español si no se proporciona"
     )
+    
+    # Staff Check-in/Clock settings
+    CHECKIN_METHOD_CHOICES = [
+        ('PIN', 'PIN numérico'),
+        ('FACIAL', 'Reconocimiento facial'),
+        ('GEO', 'Geolocalización'),
+        ('PHOTO', 'Selfie (foto al fichar)'),
+    ]
+    allowed_checkin_methods = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Métodos de fichaje permitidos",
+        help_text="Lista de métodos: PIN, FACIAL, GEO, PHOTO. Vacío = todos permitidos"
+    )
+    require_checkin_photo = models.BooleanField(
+        default=False,
+        verbose_name="Requerir foto al fichar",
+        help_text="Obliga a capturar selfie en cada fichaje como evidencia"
+    )
+    require_checkin_geolocation = models.BooleanField(
+        default=False,
+        verbose_name="Requerir geolocalización",
+        help_text="Valida que el empleado esté dentro del radio del gimnasio"
+    )
+    
+    # Geolocation for staff check-in
+    latitude = models.DecimalField(
+        max_digits=10, 
+        decimal_places=7, 
+        null=True, 
+        blank=True,
+        verbose_name="Latitud",
+        help_text="Coordenada GPS del gimnasio"
+    )
+    longitude = models.DecimalField(
+        max_digits=10, 
+        decimal_places=7, 
+        null=True, 
+        blank=True,
+        verbose_name="Longitud",
+        help_text="Coordenada GPS del gimnasio"
+    )
+    geofence_radius = models.IntegerField(
+        default=100,
+        verbose_name="Radio de geofence (metros)",
+        help_text="Distancia máxima permitida para fichar por GPS"
+    )
 
     class Meta:
         unique_together = ("franchise", "name")  # nombre único dentro de una franquicia

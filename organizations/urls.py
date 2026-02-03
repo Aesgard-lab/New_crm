@@ -10,6 +10,9 @@ urlpatterns = [
     # Widget embebible
     path('widget-code/', views.widget_code_generator, name='widget_code'),
     
+    # Configuración de fichaje de empleados
+    path('checkin-settings/', views.checkin_settings_view, name='checkin_settings'),
+    
     # Horarios y festivos
     path('horarios/', views_holidays.gym_opening_hours, name='gym_opening_hours'),
     path('festivos/', views_holidays.gym_holidays_list, name='gym_holidays_list'),
