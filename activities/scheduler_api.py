@@ -191,6 +191,37 @@ def create_session_api(request):
         # Get schedule settings for validations
         settings = ScheduleSettings.get_for_gym(gym)
         
+        # Check operating hours if enforced
+        if settings.enforce_opening_hours:
+            session_start_time = start_dt.time()
+            session_end_time = end_dt.time()
+            
+            if session_start_time < settings.schedule_start_time:
+                return JsonResponse({
+                    'error': f'⚠️ Horario no permitido: La clase comienza antes de las {settings.schedule_start_time.strftime("%H:%M")}'
+                }, status=400)
+            
+            if session_end_time > settings.schedule_end_time:
+                return JsonResponse({
+                    'error': f'⚠️ Horario no permitido: La clase termina después de las {settings.schedule_end_time.strftime("%H:%M")}'
+                }, status=400)
+        
+        # Check holidays if blocked
+        if settings.block_holidays:
+            from organizations.models import GymHoliday
+            session_date = start_dt.date()
+            holiday = GymHoliday.objects.filter(
+                gym=gym,
+                date=session_date,
+                is_closed=True,
+                allow_classes=False
+            ).first()
+            
+            if holiday:
+                return JsonResponse({
+                    'error': f'⚠️ Día festivo: {holiday.name} ({session_date.strftime("%d/%m/%Y")}) - El gimnasio está cerrado'
+                }, status=400)
+        
         # Check room overlaps if not allowed
         if room and not settings.allow_room_overlaps:
             overlapping_sessions = ActivitySession.objects.filter(

@@ -615,6 +615,53 @@ class ScheduleSettings(models.Model):
         help_text=_("Enviar recordatorio X horas antes de la clase (0 = desactivado)")
     )
     
+    # === RESTRICCIONES DE HORARIO ===
+    enforce_opening_hours = models.BooleanField(
+        default=True,
+        verbose_name=_("Respetar horario de apertura"),
+        help_text=_("Las clases deben estar dentro del horario de apertura del gimnasio")
+    )
+    
+    # Horario de operación para clases
+    schedule_start_time = models.TimeField(
+        default='07:00',
+        verbose_name=_("Hora inicio de clases"),
+        help_text=_("Hora más temprana para programar clases")
+    )
+    
+    schedule_end_time = models.TimeField(
+        default='22:00',
+        verbose_name=_("Hora fin de clases"),
+        help_text=_("Hora más tardía para que terminen las clases")
+    )
+    
+    # Intervalo de tiempo para el calendario
+    calendar_slot_minutes = models.IntegerField(
+        default=30,
+        verbose_name=_("Intervalo de calendario (minutos)"),
+        help_text=_("Duración de cada slot en el calendario (15, 30, 60 min)")
+    )
+    
+    # Validar festivos
+    block_holidays = models.BooleanField(
+        default=True,
+        verbose_name=_("Bloquear clases en festivos"),
+        help_text=_("No permitir crear clases en días marcados como festivos cerrados")
+    )
+    
+    # Check-in
+    allow_late_checkin = models.BooleanField(
+        default=True,
+        verbose_name=_("Permitir check-in tardío"),
+        help_text=_("Permitir check-in después de que haya empezado la clase")
+    )
+    
+    late_checkin_grace_minutes = models.IntegerField(
+        default=10,
+        verbose_name=_("Minutos de gracia para llegar tarde"),
+        help_text=_("Cuántos minutos después del inicio se permite el check-in")
+    )
+    
     # === METADATOS ===
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
