@@ -184,6 +184,45 @@
                             </div>
                         </div>
                         {% endif %}
+                        
+                        {% if wallet_enabled %}
+                        <!-- Saldo Monedero -->
+                        <div class="pt-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">
+                                💰 Saldo de Monedero
+                            </label>
+                            <div class="flex flex-wrap gap-2">
+                                <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 border-slate-200">
+                                    <input type="checkbox" name="wallet_balance" value="positive"
+                                        @change="updatePreview()"
+                                        class="rounded border-slate-300 text-green-600 focus:ring-green-500 w-4 h-4">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                    <span class="text-sm">Saldo positivo</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 border-slate-200">
+                                    <input type="checkbox" name="wallet_balance" value="negative"
+                                        @change="updatePreview()"
+                                        class="rounded border-slate-300 text-red-600 focus:ring-red-500 w-4 h-4">
+                                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                    <span class="text-sm">Saldo negativo (fiado)</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 border-slate-200">
+                                    <input type="checkbox" name="wallet_balance" value="zero"
+                                        @change="updatePreview()"
+                                        class="rounded border-slate-300 text-slate-600 focus:ring-slate-500 w-4 h-4">
+                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                    <span class="text-sm">Saldo cero</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 border-slate-200">
+                                    <input type="checkbox" name="wallet_balance" value="no_wallet"
+                                        @change="updatePreview()"
+                                        class="rounded border-slate-300 text-gray-600 focus:ring-gray-500 w-4 h-4">
+                                    <span class="w-2 h-2 rounded-full bg-gray-300"></span>
+                                    <span class="text-sm">Sin monedero</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     
                     <!-- Static Members (for STATIC/MIXED) -->

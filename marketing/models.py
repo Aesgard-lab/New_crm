@@ -184,6 +184,21 @@ class SavedAudience(models.Model):
             elif filters.get('company') == 'individual':
                 qs = qs.filter(is_company_client=False)
             
+            # === FILTRO DE SALDO DE MONEDERO ===
+            if filters.get('wallet_balances'):
+                wallet_balances = filters['wallet_balances'] if isinstance(filters['wallet_balances'], list) else [filters['wallet_balances']]
+                wallet_q = Q()
+                if 'positive' in wallet_balances:
+                    wallet_q |= Q(wallet__balance__gt=0)
+                if 'negative' in wallet_balances:
+                    wallet_q |= Q(wallet__balance__lt=0)
+                if 'zero' in wallet_balances:
+                    wallet_q |= Q(wallet__balance=0)
+                if 'no_wallet' in wallet_balances:
+                    wallet_q |= Q(wallet__isnull=True)
+                if wallet_q:
+                    qs = qs.filter(wallet_q)
+            
             # Para audiencia mixta, añadir miembros estáticos
             if self.audience_type == self.AudienceType.MIXED:
                 static_ids = self.static_members.values_list('id', flat=True)

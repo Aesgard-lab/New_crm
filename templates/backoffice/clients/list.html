@@ -68,18 +68,59 @@
         <input type="text" name="q" value="{{ filters.q }}" placeholder="{% trans "Nombre, email, teléfono" %}"
           class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
       </div>
-      <div>
+      
+      <!-- Estado (Multi-select con checkboxes) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Estado" %}</label>
-        <select name="status"
-          class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.status == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
-          <option value="ACTIVE" {% if filters.status == 'ACTIVE' %}selected{% endif %}>{% trans "Activo" %}</option>
-          <option value="LEAD" {% if filters.status == 'LEAD' %}selected{% endif %}>Lead</option>
-          <option value="INACTIVE" {% if filters.status == 'INACTIVE' %}selected{% endif %}>{% trans "Inactivo" %}</option>
-          <option value="PAUSED" {% if filters.status == 'PAUSED' %}selected{% endif %}>{% trans "Excedencia" %}</option>
-          <option value="BLOCKED" {% if filters.status == 'BLOCKED' %}selected{% endif %}>{% trans "Bloqueado" %}</option>
-        </select>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.statuses %}{{ filters.statuses|length }} seleccionado{{ filters.statuses|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1">
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="status" value="ACTIVE" 
+              {% if 'ACTIVE' in filters.statuses %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            {% trans "Activo" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="status" value="LEAD" 
+              {% if 'LEAD' in filters.statuses %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            Lead
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="status" value="INACTIVE" 
+              {% if 'INACTIVE' in filters.statuses %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            {% trans "Inactivo" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="status" value="PAUSED" 
+              {% if 'PAUSED' in filters.statuses %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            {% trans "Excedencia" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="status" value="BLOCKED" 
+              {% if 'BLOCKED' in filters.statuses %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            {% trans "Bloqueado" %}
+          </label>
+        </div>
       </div>
+      
       <div>
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Tipo de cliente" %}</label>
         <select name="company"
@@ -126,25 +167,86 @@
           <option value="backoffice" {% if filters.created_from == 'backoffice' %}selected{% endif %}>Backoffice</option>
         </select>
       </div>
-      <div>
+      
+      <!-- Pasarela Pago (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Pasarela Pago" %}</label>
-        <select name="gateway" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.gateway == 'all' %}selected{% endif %}>{% trans "Todas" %}</option>
-          <option value="stripe" {% if filters.gateway == 'stripe' %}selected{% endif %}>Stripe</option>
-          <option value="redsys" {% if filters.gateway == 'redsys' %}selected{% endif %}>Redsys</option>
-          <option value="auto" {% if filters.gateway == 'auto' %}selected{% endif %}>Auto (sin preferencia)</option>
-        </select>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.gateways %}{{ filters.gateways|length }} seleccionada{{ filters.gateways|length|pluralize }}{% else %}{% trans "Todas" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1">
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gateway" value="stripe" 
+              {% if 'stripe' in filters.gateways %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+            Stripe
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gateway" value="redsys" 
+              {% if 'redsys' in filters.gateways %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            Redsys
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gateway" value="auto" 
+              {% if 'auto' in filters.gateways %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            Auto (sin preferencia)
+          </label>
+        </div>
       </div>
-      <div>
+      
+      <!-- Género (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Género" %}</label>
-        <select name="gender" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
-          <option value="M" {% if filters.gender == 'M' %}selected{% endif %}>{% trans "Masculino" %}</option>
-          <option value="F" {% if filters.gender == 'F' %}selected{% endif %}>{% trans "Femenino" %}</option>
-          <option value="O" {% if filters.gender == 'O' %}selected{% endif %}>{% trans "Otro" %}</option>
-          <option value="X" {% if filters.gender == 'X' %}selected{% endif %}>{% trans "No especificado" %}</option>
-        </select>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.genders %}{{ filters.genders|length }} seleccionado{{ filters.genders|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1">
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gender" value="M" 
+              {% if 'M' in filters.genders %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            {% trans "Masculino" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gender" value="F" 
+              {% if 'F' in filters.genders %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            {% trans "Femenino" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gender" value="O" 
+              {% if 'O' in filters.genders %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            {% trans "Otro" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="gender" value="X" 
+              {% if 'X' in filters.genders %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            {% trans "No especificado" %}
+          </label>
+        </div>
       </div>
+      
       <div>
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Edad" %}</label>
         <div class="grid grid-cols-2 gap-2">
@@ -152,6 +254,57 @@
           <input type="number" name="age_max" min="0" max="120" value="{{ filters.age_max }}" placeholder="{% trans "Hasta" %}" class="w-full rounded-xl border-slate-200 text-xs" />
         </div>
       </div>
+      
+      {% if wallet_enabled %}
+      <!-- Saldo Monedero (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
+        <label class="block text-xs font-bold text-slate-600 mb-2">
+          <span class="inline-flex items-center gap-1">
+            💰 {% trans "Saldo Monedero" %}
+          </span>
+        </label>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.wallet_balances %}{{ filters.wallet_balances|length }} seleccionado{{ filters.wallet_balances|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1">
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="wallet_balance" value="positive" 
+              {% if 'positive' in filters.wallet_balances %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            {% trans "Saldo positivo" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="wallet_balance" value="negative" 
+              {% if 'negative' in filters.wallet_balances %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            {% trans "Saldo negativo (fiado)" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="wallet_balance" value="zero" 
+              {% if 'zero' in filters.wallet_balances %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            {% trans "Saldo cero" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="wallet_balance" value="no_wallet" 
+              {% if 'no_wallet' in filters.wallet_balances %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-gray-300"></span>
+            {% trans "Sin monedero" %}
+          </label>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
     <div class="mt-4">

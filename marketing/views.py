@@ -2280,6 +2280,11 @@ def audience_create_view(request):
         if request.POST.get('company') and request.POST.get('company') != 'all':
             filters['company'] = request.POST.get('company')
         
+        # Filtro de saldo de monedero
+        wallet_balances = request.POST.getlist('wallet_balance')
+        if wallet_balances:
+            filters['wallet_balances'] = wallet_balances
+        
         # Crear audiencia
         audience = SavedAudience.objects.create(
             gym=gym,
@@ -2313,6 +2318,15 @@ def audience_create_view(request):
     products = Product.objects.filter(gym=gym, is_active=True)
     groups = ClientGroup.objects.filter(gym=gym)
     
+    # Verificar si el monedero está activo
+    from finance.models import WalletSettings
+    wallet_enabled = False
+    try:
+        wallet_settings = WalletSettings.objects.get(gym=gym)
+        wallet_enabled = wallet_settings.wallet_enabled
+    except WalletSettings.DoesNotExist:
+        pass
+    
     context = {
         'title': 'Nueva Audiencia',
         'tags': tags,
@@ -2320,6 +2334,7 @@ def audience_create_view(request):
         'services': services,
         'products': products,
         'groups': groups,
+        'wallet_enabled': wallet_enabled,
     }
     return render(request, 'backoffice/marketing/audiences/form.html', context)
 

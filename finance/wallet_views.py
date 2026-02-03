@@ -13,8 +13,35 @@ from django.utils import timezone
 
 from accounts.decorators import require_gym_permission
 from clients.models import Client
+from organizations.models import Gym
 from .models import ClientWallet, WalletTransaction, WalletSettings, PaymentMethod
 from .wallet_service import WalletService
+
+
+def get_franchise_gyms(gym):
+    """Obtiene todos los gyms de la franquicia si existe."""
+    if gym.franchise:
+        return list(gym.franchise.gyms.filter(is_active=True))
+    return [gym]
+
+
+def get_gym_filter(request, gym):
+    """Obtiene el filtro de gym basado en el parámetro selected_gyms."""
+    selected_gym_ids = request.GET.getlist('gym')
+    franchise_gyms = get_franchise_gyms(gym)
+    
+    if selected_gym_ids and 'all' not in selected_gym_ids:
+        # Filtrar solo los gyms válidos de la franquicia
+        valid_ids = [g.id for g in franchise_gyms]
+        selected_ids = [int(gid) for gid in selected_gym_ids if gid.isdigit() and int(gid) in valid_ids]
+        if selected_ids:
+            return selected_ids
+    
+    # Si es "all" o no hay selección, retornar solo el gym actual
+    if 'all' in selected_gym_ids:
+        return [g.id for g in franchise_gyms]
+    
+    return [gym.id]
 
 
 # ============================================
@@ -27,6 +54,7 @@ def wallet_settings(request):
     """Configuración del sistema de monedero del gym."""
     gym = request.gym
     settings = WalletService.get_wallet_settings(gym)
+    franchise_gyms = get_franchise_gyms(gym)
     
     if request.method == 'POST':
         # Activación
@@ -107,8 +135,10 @@ def wallet_settings(request):
 def wallet_list(request):
     """Lista todos los monederos de clientes."""
     gym = request.gym
+    franchise_gyms = get_franchise_gyms(gym)
+    selected_gym_ids = get_gym_filter(request, gym)
     
-    wallets = ClientWallet.objects.filter(gym=gym).select_related('client__user')
+    wallets = ClientWallet.objects.filter(gym_id__in=selected_gym_ids).select_related('client__user', 'gym')
     
     # Filtros
     search = request.GET.get('search', '').strip()
@@ -141,14 +171,17 @@ def wallet_list(request):
     page = request.GET.get('page', 1)
     wallets = paginator.get_page(page)
     
-    # Estadísticas
-    all_wallets = ClientWallet.objects.filter(gym=gym)
+    # Estadísticas (según gyms seleccionados)
+    all_wallets = ClientWallet.objects.filter(gym_id__in=selected_gym_ids)
     stats = {
         'total': all_wallets.count(),
         'with_balance': all_wallets.filter(balance__gt=0).count(),
         'negative': all_wallets.filter(balance__lt=0).count(),
         'total_balance': all_wallets.aggregate(total=Sum('balance'))['total'] or Decimal('0.00'),
     }
+    
+    # Gyms seleccionados para el template
+    selected_gyms = request.GET.getlist('gym') or []
     
     context = {
         'title': 'Monederos de Clientes',
@@ -157,6 +190,10 @@ def wallet_list(request):
         'search': search,
         'status_filter': status_filter,
         'balance_filter': balance_filter,
+        # Franquicia
+        'franchise_gyms': franchise_gyms if len(franchise_gyms) > 1 else None,
+        'selected_gyms': selected_gyms,
+        'has_franchise': len(franchise_gyms) > 1,
     }
     return render(request, 'backoffice/finance/wallet_list.html', context)
 
@@ -412,14 +449,16 @@ def wallet_quick_pay_api(request):
 def wallet_report(request):
     """Reporte de monederos."""
     gym = request.gym
+    franchise_gyms = get_franchise_gyms(gym)
+    selected_gym_ids = get_gym_filter(request, gym)
     
     # Filtros de fecha
     from_date = request.GET.get('from_date')
     to_date = request.GET.get('to_date')
     
     transactions = WalletTransaction.objects.filter(
-        wallet__gym=gym
-    ).select_related('wallet__client', 'created_by')
+        wallet__gym_id__in=selected_gym_ids
+    ).select_related('wallet__client', 'wallet__gym', 'created_by')
     
     if from_date:
         transactions = transactions.filter(created_at__date__gte=from_date)
@@ -432,8 +471,8 @@ def wallet_report(request):
         count=Count('id')
     )
     
-    # Resumen general
-    all_wallets = ClientWallet.objects.filter(gym=gym)
+    # Resumen general (según gyms seleccionados)
+    all_wallets = ClientWallet.objects.filter(gym_id__in=selected_gym_ids)
     summary = {
         'total_wallets': all_wallets.count(),
         'total_balance': all_wallets.aggregate(total=Sum('balance'))['total'] or Decimal('0.00'),
@@ -445,6 +484,9 @@ def wallet_report(request):
         )['total'] or Decimal('0.00')),
     }
     
+    # Gyms seleccionados para el template
+    selected_gyms = request.GET.getlist('gym') or []
+    
     context = {
         'title': 'Reporte de Monederos',
         'totals_by_type': totals_by_type,
@@ -452,6 +494,10 @@ def wallet_report(request):
         'transactions': transactions[:100],
         'from_date': from_date,
         'to_date': to_date,
+        # Franquicia
+        'franchise_gyms': franchise_gyms if len(franchise_gyms) > 1 else None,
+        'selected_gyms': selected_gyms,
+        'has_franchise': len(franchise_gyms) > 1,
     }
     return render(request, 'backoffice/finance/wallet_report.html', context)
 

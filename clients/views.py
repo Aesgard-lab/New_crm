@@ -119,8 +119,14 @@ def clients_list(request):
             | Q(phone_number__icontains=query)
         )
 
-    status = request.GET.get("status", "all")
-    if status and status != "all":
+    # Filtro de estado (multi-select)
+    statuses = request.GET.getlist("status")
+    if statuses and 'all' not in statuses:
+        clients = clients.filter(status__in=statuses)
+    
+    # Legacy support para status único
+    status = request.GET.get("status_single", "all")
+    if status and status != "all" and not statuses:
         clients = clients.filter(status=status)
 
     selected_tags = request.GET.getlist("tags")
@@ -133,14 +139,52 @@ def clients_list(request):
     elif company == "individual":
         clients = clients.filter(is_company_client=False)
 
-    # Filtro por pasarela de pago
-    gateway = request.GET.get("gateway", "all")
-    if gateway == "stripe":
-        clients = clients.filter(Q(preferred_gateway='STRIPE') | Q(stripe_customer_id__isnull=False))
-    elif gateway == "redsys":
-        clients = clients.filter(Q(preferred_gateway='REDSYS') | Q(redsys_tokens__isnull=False)).distinct()
-    elif gateway == "auto":
-        clients = clients.filter(preferred_gateway='AUTO', stripe_customer_id__isnull=True).exclude(redsys_tokens__isnull=False)
+    # Filtro por pasarela de pago (multi-select)
+    gateways = request.GET.getlist("gateway")
+    if gateways and 'all' not in gateways:
+        gateway_q = Q()
+        if 'stripe' in gateways:
+            gateway_q |= Q(preferred_gateway='STRIPE') | Q(stripe_customer_id__isnull=False)
+        if 'redsys' in gateways:
+            gateway_q |= Q(preferred_gateway='REDSYS') | Q(redsys_tokens__isnull=False)
+        if 'auto' in gateways:
+            gateway_q |= Q(preferred_gateway='AUTO', stripe_customer_id__isnull=True)
+        clients = clients.filter(gateway_q).distinct()
+    
+    # Legacy support
+    gateway = request.GET.get("gateway_single", "all")
+    if gateway and gateway != "all" and not gateways:
+        if gateway == "stripe":
+            clients = clients.filter(Q(preferred_gateway='STRIPE') | Q(stripe_customer_id__isnull=False))
+        elif gateway == "redsys":
+            clients = clients.filter(Q(preferred_gateway='REDSYS') | Q(redsys_tokens__isnull=False)).distinct()
+        elif gateway == "auto":
+            clients = clients.filter(preferred_gateway='AUTO', stripe_customer_id__isnull=True).exclude(redsys_tokens__isnull=False)
+    
+    # Filtro por género (multi-select)
+    genders = request.GET.getlist("gender")
+    if genders and 'all' not in genders:
+        clients = clients.filter(gender__in=genders)
+    
+    # Legacy gender
+    gender = request.GET.get("gender_single", "all")
+    if gender and gender != "all" and not genders:
+        clients = clients.filter(gender=gender)
+    
+    # === FILTRO DE SALDO DE MONEDERO ===
+    wallet_balance = request.GET.getlist("wallet_balance")
+    if wallet_balance and 'all' not in wallet_balance:
+        from finance.models import ClientWallet
+        wallet_q = Q()
+        if 'positive' in wallet_balance:
+            wallet_q |= Q(wallet__balance__gt=0)
+        if 'negative' in wallet_balance:
+            wallet_q |= Q(wallet__balance__lt=0)
+        if 'zero' in wallet_balance:
+            wallet_q |= Q(wallet__balance=0)
+        if 'no_wallet' in wallet_balance:
+            wallet_q |= Q(wallet__isnull=True)
+        clients = clients.filter(wallet_q)
 
     custom_fields = list(
         ClientField.objects.filter(gym=gym, is_active=True)
@@ -194,6 +238,15 @@ def clients_list(request):
     services = Service.objects.filter(gym=gym, is_active=True).order_by('name')
     products = Product.objects.filter(gym=gym, is_active=True).order_by('name')
 
+    # Verificar si el monedero está activo
+    from finance.models import WalletSettings
+    wallet_enabled = False
+    try:
+        wallet_settings = WalletSettings.objects.get(gym=gym)
+        wallet_enabled = wallet_settings.wallet_enabled
+    except WalletSettings.DoesNotExist:
+        pass
+
     context = {
         "clients": clients_page,
         "page_obj": page_obj,
@@ -205,8 +258,15 @@ def clients_list(request):
         "membership_plans": membership_plans,
         "services": services,
         "products": products,
+        "wallet_enabled": wallet_enabled,
         "filters": {
             "q": query,
+            # Multi-select filters
+            "statuses": statuses or [],
+            "gateways": gateways or [],
+            "genders": genders or [],
+            "wallet_balances": wallet_balance or [],
+            # Legacy single select (for backwards compatibility)
             "status": status or "all",
             "selected_tags": [int(t) for t in selected_tags] if selected_tags else [],
             "company": company or "all",
@@ -216,7 +276,7 @@ def clients_list(request):
             "service": request.GET.get('service', 'all'),
             "product": request.GET.get('product', 'all'),
             "created_from": request.GET.get('created_from', 'all'),
-            "gender": request.GET.get('gender', 'all'),
+            "gender": gender or "all",
             "age_min": request.GET.get('age_min', ''),
             "age_max": request.GET.get('age_max', ''),
         },
