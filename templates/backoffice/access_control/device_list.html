@@ -258,8 +258,8 @@
                 </svg>
                 <h3 class="text-lg font-semibold text-slate-800 mb-2">No hay dispositivos configurados</h3>
                 <p class="text-slate-500 mb-6">Añade tu primer dispositivo de control de acceso para empezar.</p>
-                <a href="{% url 'access_control:device_create' %}" class="btn-brand px-6 py-2">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <a href="{% url 'access_control:device_create' %}" class="inline-flex items-center justify-center gap-2 bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
                     Añadir Dispositivo
@@ -402,7 +402,10 @@
                             </svg>
                             <h3 class="font-semibold text-slate-800 mb-1">No hay dispositivos configurados</h3>
                             <p class="text-sm text-slate-500 mb-4">Añade tu primer dispositivo de control de acceso.</p>
-                            <a href="{% url 'access_control:device_create' %}" class="btn-brand px-4 py-2 text-sm">
+                            <a href="{% url 'access_control:device_create' %}" class="inline-flex items-center justify-center gap-2 bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
                                 Añadir Dispositivo
                             </a>
                         </td>
