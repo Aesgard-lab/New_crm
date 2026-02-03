@@ -6,10 +6,94 @@
 {% endblock %}
 
 {% block content %}
-<div class="h-[calc(100vh-140px)] flex gap-4 -mx-4 md:-mx-6 -mb-4 md:-mb-6" x-data="{ staffSidebar: true, selectedStaffIds: [] }">
+<div class="h-[calc(100vh-140px)] flex gap-4 -mx-4 md:-mx-6 -mb-4 md:-mb-6"
+     x-data="{
+        staffSidebar: true, 
+        selectedStaffIds: [], 
+        viewMode: 'calendar',
+        listDate: new Date().toISOString().split('T')[0],
+        listSessions: [],
+        listStats: { total: 0, attended: 0, percentage: 0 },
+        listLoading: false,
+        selectedInstructor: '',
+        async loadListSessions() {
+            this.listLoading = true;
+            try {
+                let url = `/activities/api/sessions/?date=${this.listDate}`;
+                if (this.selectedInstructor) url += `&staff=${this.selectedInstructor}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                this.listSessions = data.sessions || [];
+                this.listStats = data.stats || { total: 0, attended: 0, percentage: 0 };
+            } catch(e) {
+                console.error('Error loading sessions:', e);
+            }
+            this.listLoading = false;
+        },
+        formatListDate(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            return date.toLocaleDateString('es-ES', options);
+        },
+        prevDay() {
+            const d = new Date(this.listDate);
+            d.setDate(d.getDate() - 1);
+            this.listDate = d.toISOString().split('T')[0];
+            this.loadListSessions();
+        },
+        nextDay() {
+            const d = new Date(this.listDate);
+            d.setDate(d.getDate() + 1);
+            this.listDate = d.toISOString().split('T')[0];
+            this.loadListSessions();
+        },
+        today() {
+            this.listDate = new Date().toISOString().split('T')[0];
+            this.loadListSessions();
+        },
+        openSessionDetail(sessionId) {
+            window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: { id: 'sess_' + sessionId } }));
+        },
+        getStatusClass(session) {
+            if (session.status === 'CANCELLED') return 'bg-red-50 border-red-200 opacity-60';
+            if (session.booked >= session.capacity) return 'bg-amber-50 border-amber-200';
+            if (session.booked >= session.capacity * 0.8) return 'bg-yellow-50 border-yellow-200';
+            return 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md';
+        },
+        getCapacityColor(session) {
+            const pct = session.capacity > 0 ? (session.booked / session.capacity) * 100 : 0;
+            if (pct >= 100) return 'bg-red-500';
+            if (pct >= 80) return 'bg-amber-500';
+            if (pct >= 50) return 'bg-emerald-500';
+            return 'bg-blue-500';
+        },
+        // Nuevas funciones para la vista de lista mejorada
+        getRowBgClass(session) {
+            if (session.status === 'CANCELLED') return 'bg-slate-100 opacity-60';
+            const pct = session.capacity > 0 ? (session.booked / session.capacity) * 100 : 0;
+            if (pct >= 100) return 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-400';
+            if (pct >= 80) return 'bg-amber-50 hover:bg-amber-100 border-l-4 border-l-amber-400';
+            if (pct >= 50) return 'bg-emerald-50 hover:bg-emerald-100 border-l-4 border-l-emerald-400';
+            return 'bg-white hover:bg-slate-50 border-l-4 border-l-blue-400';
+        },
+        getRegistrarClass(session) {
+            const pct = session.capacity > 0 ? (session.booked / session.capacity) * 100 : 0;
+            if (pct >= 100) return 'bg-red-100 text-red-700 hover:bg-red-200';
+            if (pct >= 80) return 'bg-amber-100 text-amber-700 hover:bg-amber-200';
+            return 'bg-blue-100 text-blue-700 hover:bg-blue-200';
+        },
+        getOccupancyTextClass(session) {
+            const pct = session.capacity > 0 ? (session.booked / session.capacity) * 100 : 0;
+            if (pct >= 100) return 'text-red-600';
+            if (pct >= 80) return 'text-amber-600';
+            if (pct >= 50) return 'text-emerald-600';
+            return 'text-blue-600';
+        }
+     }"
+     x-init="$watch('viewMode', v => { if(v === 'list') { loadListSessions(); $nextTick(() => initScrollIndicators()); } })">
 
-    <!-- Staff Sidebar -->
-    <div x-show="staffSidebar" x-transition:enter="transition ease-out duration-200"
+    <!-- Staff Sidebar (only in calendar view) -->
+    <div x-show="staffSidebar && viewMode === 'calendar'" x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="-translate-x-full opacity-0" x-transition:enter-end="translate-x-0 opacity-100"
         class="w-56 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col flex-shrink-0 ml-4 md:ml-6">
         <div class="p-3 border-b border-slate-100 bg-slate-50/50">
@@ -31,43 +115,106 @@
         </div>
     </div>
 
-    <!-- Main Calendar Area -->
-    <div class="flex-1 flex flex-col min-w-0 mr-4 md:mr-6">
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0 mr-4 md:mr-6" :class="{ 'ml-4 md:ml-6': viewMode === 'list' || !staffSidebar }">
         <!-- Toolbar / Filters -->
-        <div
-            class="mb-4 flex flex-wrap gap-4 items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+        <div class="mb-4 flex flex-wrap gap-4 items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
             <div class="flex items-center gap-2">
-                <!-- Toggle Sidebar -->
-                <button @click="staffSidebar = !staffSidebar; setTimeout(resizeCalendar, 250)"
-                    class="text-sm font-medium px-3 py-2 rounded-lg transition-colors"
-                    :class="staffSidebar ? 'bg-[var(--brand-color)]/10 text-[var(--brand-color)]' : 'text-slate-600 hover:text-[var(--brand-color)] hover:bg-[var(--brand-color)]/10'">
-                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
-                        </path>
-                    </svg>
-                    Panel Staff
-                </button>
+                <!-- View Mode Tabs -->
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button @click="viewMode = 'calendar'; setTimeout(resizeCalendar, 100)"
+                        :class="viewMode === 'calendar' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Cuadrícula
+                    </button>
+                    <button @click="viewMode = 'list'"
+                        :class="viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        Listado
+                    </button>
+                </div>
 
-                <!-- Room Filter -->
-                <select id="roomFilter"
-                    class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">Todas las Salas</option>
-                    {% for room in rooms %}
-                    <option value="{{ room.id }}">{{ room.name }}</option>
-                    {% endfor %}
-                </select>
+                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+                <!-- Calendar-specific controls -->
+                <template x-if="viewMode === 'calendar'">
+                    <div class="flex items-center gap-2">
+                        <button @click="staffSidebar = !staffSidebar; setTimeout(resizeCalendar, 250)"
+                            class="text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+                            :class="staffSidebar ? 'bg-[var(--brand-color)]/10 text-[var(--brand-color)]' : 'text-slate-600 hover:text-[var(--brand-color)] hover:bg-[var(--brand-color)]/10'">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                                </path>
+                            </svg>
+                            Panel Staff
+                        </button>
+                        <select id="roomFilter"
+                            class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Todas las Salas</option>
+                            {% for room in rooms %}
+                            <option value="{{ room.id }}">{{ room.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </template>
+
+                <!-- List-specific controls -->
+                <template x-if="viewMode === 'list'">
+                    <div class="flex items-center gap-2">
+                        <input type="date" x-model="listDate" @change="loadListSessions()"
+                            class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                        <select x-model="selectedInstructor" @change="loadListSessions()"
+                            class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Todos los instructores</option>
+                            {% for s in staff_list %}
+                            <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </template>
             </div>
 
             <div class="flex items-center gap-3">
-                <button onclick="calendar.changeView('timeGridDay')"
-                    class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Día</button>
-                <button onclick="calendar.changeView('timeGridWeek')"
-                    class="text-sm px-3 py-1.5 rounded-lg bg-slate-100 font-bold text-slate-800">Semana</button>
-                <button onclick="calendar.changeView('dayGridMonth')"
-                    class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Mes</button>
+                <!-- Calendar view controls -->
+                <template x-if="viewMode === 'calendar'">
+                    <div class="flex items-center gap-3">
+                        <button onclick="calendar.changeView('timeGridDay')"
+                            class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Día</button>
+                        <button onclick="calendar.changeView('timeGridWeek')"
+                            class="text-sm px-3 py-1.5 rounded-lg bg-slate-100 font-bold text-slate-800">Semana</button>
+                        <button onclick="calendar.changeView('dayGridMonth')"
+                            class="text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100 font-medium text-slate-600">Mes</button>
+                        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                    </div>
+                </template>
 
-                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                <!-- List view controls -->
+                <template x-if="viewMode === 'list'">
+                    <div class="flex items-center gap-2">
+                        <button @click="today()" class="text-sm px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200 transition-colors">Hoy</button>
+                        <div class="flex items-center bg-slate-100 rounded-lg">
+                            <button @click="prevDay()" class="p-1.5 hover:bg-slate-200 rounded-l-lg transition-colors">
+                                <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                            </button>
+                            <span class="px-3 text-sm font-medium text-slate-700">Día</span>
+                            <button @click="nextDay()" class="p-1.5 hover:bg-slate-200 rounded-r-lg transition-colors">
+                                <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                    </div>
+                </template>
 
                 <button onclick="triggerNewClassModal()"
                     class="btn-brand px-4 py-2 text-sm flex items-center gap-2">
@@ -80,13 +227,165 @@
             </div>
         </div>
 
-        <!-- Calendar Container -->
-        <div class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative">
+        <!-- CALENDAR VIEW -->
+        <div x-show="viewMode === 'calendar'" class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative">
             <div id="calendar" class="h-full w-full p-2"></div>
-
-            <!-- Loading Indicator -->
             <div id="loading" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 hidden">
                 <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            </div>
+        </div>
+
+        <!-- LIST VIEW - Vista tipo tabla con colores por ocupación -->
+        <div x-show="viewMode === 'list'" x-cloak class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col ml-4 md:ml-6 min-w-0 relative">
+            <!-- Indicador de scroll izquierdo -->
+            <div class="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white to-transparent z-20 pointer-events-none opacity-0 transition-opacity" id="scrollLeftIndicator"></div>
+            <!-- Indicador de scroll derecho -->
+            <div class="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent z-20 pointer-events-none" id="scrollRightIndicator"></div>
+            
+            <!-- List Header with Date and Stats -->
+            <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 capitalize" x-text="formatListDate(listDate)"></h2>
+                        <p class="text-sm text-slate-500 mt-1">
+                            Se ha(n) presentado <span class="font-semibold text-slate-700" x-text="listStats.attended"></span>
+                            <span class="text-slate-400">(<span x-text="listStats.percentage.toFixed(2)"></span>%)</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Leyenda de colores -->
+                        <div class="hidden md:flex items-center gap-4 text-xs">
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-3 h-3 rounded-full bg-emerald-100 border-2 border-emerald-400"></span>
+                                Disponible
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-3 h-3 rounded-full bg-amber-100 border-2 border-amber-400"></span>
+                                Casi llena
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-3 h-3 rounded-full bg-red-100 border-2 border-red-400"></span>
+                                Completa
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Table Container -->
+            <div class="flex-1 list-scroll-container">
+                <div class="list-table-content">
+                    <!-- Table Header -->
+                    <div class="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-0 left-0 z-10">
+                        <div class="col-span-2 whitespace-nowrap">Horario</div>
+                        <div class="col-span-2 text-center whitespace-nowrap">Registrar</div>
+                        <div class="col-span-4 whitespace-nowrap">Clases <span class="text-slate-400 font-normal">(Haga clic para detalles)</span></div>
+                        <div class="col-span-3 whitespace-nowrap">Instructor <span class="text-slate-400 font-normal">(Marque la casilla)</span></div>
+                        <div class="col-span-1 text-center whitespace-nowrap">Estado</div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div x-show="listLoading" class="flex items-center justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div x-show="!listLoading && listSessions.length === 0" class="text-center py-12">
+                        <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <p class="text-slate-500 font-medium">No hay clases programadas para este día</p>
+                        <button @click="triggerNewClassModal()" class="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium">
+                            + Crear una clase
+                        </button>
+                    </div>
+
+                    <!-- Sessions Table Rows -->
+                    <div x-show="!listLoading && listSessions.length > 0" class="divide-y divide-slate-100">
+                        <template x-for="session in listSessions" :key="session.id">
+                            <div @click="openSessionDetail(session.id)"
+                                class="grid grid-cols-12 gap-2 px-4 py-3 cursor-pointer transition-all duration-200 hover:shadow-md group"
+                                :class="getRowBgClass(session)">
+                                
+                                <!-- Horario -->
+                                <div class="col-span-2 flex items-center gap-3">
+                                    <div class="text-center">
+                                        <p class="text-base font-bold text-slate-800 whitespace-nowrap" x-text="session.start_time + ' - ' + session.end_time"></p>
+                                    </div>
+                                </div>
+
+                                <!-- Registrar (checked_in/booked) -->
+                                <div class="col-span-2 flex items-center justify-center">
+                                    <a @click.stop="openSessionDetail(session.id)" 
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                                       :class="getRegistrarClass(session)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                        </svg>
+                                        Registrar (<span x-text="session.checked_in"></span>/<span x-text="session.booked"></span>)
+                                    </a>
+                                </div>
+
+                                <!-- Clases (Activity + icon) -->
+                                <div class="col-span-4 flex items-center gap-3">
+                                    <div class="w-1 h-10 rounded-full flex-shrink-0" :style="'background:' + (session.color || '#3B82F6')"></div>
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                        </svg>
+                                        <div class="min-w-0">
+                                            <h3 class="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors" x-text="session.activity_name"></h3>
+                                            <p class="text-xs text-slate-500 truncate" x-text="session.room_name || 'Sin sala asignada'"></p>
+                                        </div>
+                                    </div>
+                                    <!-- Badges -->
+                                    <div class="flex items-center gap-1 ml-auto">
+                                        <span x-show="session.status === 'CANCELLED'" class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Cancelada</span>
+                                        <span x-show="session.has_waitlist" class="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-medium">⏳ Espera</span>
+                                    </div>
+                                </div>
+
+                                <!-- Instructor -->
+                                <div class="col-span-3 flex items-center gap-2">
+                                    <input type="checkbox" 
+                                           class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                           @click.stop
+                                           :checked="session.instructor_confirmed">
+                                    <a @click.stop href="#" class="text-sm text-blue-600 hover:text-blue-800 hover:underline truncate" x-text="session.instructor_name || 'Sin asignar'"></a>
+                                </div>
+
+                                <!-- Estado / Ocupación visual -->
+                                <div class="col-span-1 flex items-center justify-center">
+                                    <div class="flex flex-col items-center">
+                                        <span class="text-xs font-bold" :class="getOccupancyTextClass(session)" x-text="Math.round((session.booked / session.capacity) * 100) + '%'"></span>
+                                        <div class="w-8 h-1.5 rounded-full bg-slate-200 overflow-hidden mt-1">
+                                            <div class="h-full rounded-full transition-all" 
+                                                :class="getCapacityColor(session)"
+                                                :style="'width:' + Math.min((session.booked / session.capacity) * 100, 100) + '%'"></div>
+                                        </div>
+                                        <span class="text-[10px] text-slate-400 mt-0.5" x-text="session.booked + '/' + session.capacity"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer con resumen -->
+            <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-sm">
+                <div class="flex items-center gap-4">
+                    <span class="text-slate-500">Total: <span class="font-semibold text-slate-700" x-text="listSessions.length"></span> clases</span>
+                    <span class="text-slate-500">Reservas: <span class="font-semibold text-slate-700" x-text="listStats.total"></span></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-emerald-600 font-medium">
+                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span x-text="listStats.attended"></span> presentados
+                    </span>
+                </div>
             </div>
         </div>
     </div>
@@ -95,6 +394,63 @@
 
 <!-- Custom Styles -->
 <style>
+    /* ============================================
+       LIST VIEW HORIZONTAL SCROLL STYLES
+       ============================================ */
+    
+    /* Contenedor principal con scroll horizontal */
+    .list-scroll-container {
+        overflow-x: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: auto;
+        scrollbar-color: #94a3b8 #f1f5f9;
+        scroll-behavior: smooth;
+    }
+    
+    .list-scroll-container::-webkit-scrollbar {
+        height: 12px;
+        width: 8px;
+    }
+    
+    .list-scroll-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 6px;
+        margin: 0 4px;
+    }
+    
+    .list-scroll-container::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+        border-radius: 6px;
+        border: 2px solid #f1f5f9;
+    }
+    
+    .list-scroll-container::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+    }
+    
+    /* Ancho mínimo de la tabla para scroll horizontal */
+    .list-table-content {
+        min-width: 1100px;
+        width: max-content;
+    }
+    
+    /* En pantallas grandes, hacer scroll horizontal más visible */
+    @media (min-width: 1024px) {
+        .list-scroll-container::-webkit-scrollbar {
+            height: 14px;
+        }
+    }
+    
+    /* Indicadores de scroll con gradiente */
+    #scrollLeftIndicator,
+    #scrollRightIndicator {
+        transition: opacity 0.3s ease;
+    }
+    
+    /* ============================================
+       FULLCALENDAR STYLES
+       ============================================ */
     .fc {
         font-family: 'Inter', sans-serif;
         --fc-border-color: #e2e8f0;
@@ -2120,6 +2476,31 @@
         if (window.calendar) {
             window.calendar.updateSize();
         }
+    }
+
+    // Scroll indicators for list view
+    function initScrollIndicators() {
+        const scrollContainer = document.querySelector('.list-scroll-container');
+        const leftIndicator = document.getElementById('scrollLeftIndicator');
+        const rightIndicator = document.getElementById('scrollRightIndicator');
+        
+        if (!scrollContainer || !leftIndicator || !rightIndicator) return;
+        
+        function updateIndicators() {
+            const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+            
+            // Show left indicator if scrolled
+            leftIndicator.style.opacity = scrollLeft > 10 ? '1' : '0';
+            
+            // Show right indicator if there's more to scroll
+            rightIndicator.style.opacity = (scrollLeft + clientWidth < scrollWidth - 10) ? '1' : '0';
+        }
+        
+        scrollContainer.addEventListener('scroll', updateIndicators);
+        window.addEventListener('resize', updateIndicators);
+        
+        // Initial check
+        setTimeout(updateIndicators, 100);
     }
 
     function triggerNewClassModal() {

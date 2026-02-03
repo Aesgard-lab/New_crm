@@ -3,16 +3,128 @@ Session Detail API for Class Modal
 Provides endpoints for managing individual activity sessions.
 """
 import json
-from django.db.models import Q
+from datetime import timedelta
+from django.db.models import Q, Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.utils import timezone
 
-from .models import ActivitySession, WaitlistEntry
+from .models import ActivitySession, WaitlistEntry, SessionCheckin
 from clients.models import ClientVisit
 from clients.models import Client
+
+
+@login_required
+@require_GET
+def get_sessions_list(request):
+    """
+    API para obtener sesiones de un día específico en formato lista.
+    Usado por la vista de listado del calendario.
+    
+    Query params:
+        - date: YYYY-MM-DD (requerido)
+        - staff: ID del instructor (opcional)
+        - room: ID de la sala (opcional)
+    """
+    from datetime import datetime
+    
+    gym = request.gym
+    date_str = request.GET.get('date')
+    staff_id = request.GET.get('staff')
+    room_id = request.GET.get('room')
+    
+    if not date_str:
+        return JsonResponse({'error': 'Se requiere el parámetro date'}, status=400)
+    
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'}, status=400)
+    
+    # Base query
+    sessions = ActivitySession.objects.filter(
+        gym=gym,
+        start_datetime__date=target_date
+    ).select_related(
+        'activity', 'room', 'staff', 'staff__user'
+    ).prefetch_related(
+        'attendees'
+    ).order_by('start_datetime')
+    
+    # Filtros opcionales
+    if staff_id:
+        sessions = sessions.filter(staff_id=staff_id)
+    if room_id:
+        sessions = sessions.filter(room_id=room_id)
+    
+    # Estadísticas del día
+    total_attendees = 0
+    total_checked_in = 0
+    
+    sessions_data = []
+    for session in sessions:
+        # Calcular check-ins para esta sesión
+        checked_in_count = SessionCheckin.objects.filter(session=session).count()
+        booked_count = session.attendee_count
+        capacity = session.max_capacity or session.activity.default_capacity or 20
+        
+        total_attendees += booked_count
+        total_checked_in += checked_in_count
+        
+        # Determinar nombre del instructor
+        instructor_name = None
+        if session.staff and session.staff.user:
+            user = session.staff.user
+            if user.first_name or user.last_name:
+                instructor_name = f"{user.first_name} {user.last_name}".strip()
+            else:
+                instructor_name = user.email.split('@')[0]
+        
+        # Calcular duration desde end_datetime - start_datetime
+        if session.end_datetime:
+            duration = int((session.end_datetime - session.start_datetime).total_seconds() / 60)
+            end_datetime = session.end_datetime
+        else:
+            duration = session.activity.duration or 60
+            end_datetime = session.start_datetime + timedelta(minutes=duration)
+        
+        sessions_data.append({
+            'id': session.id,
+            'activity_name': session.activity.name,
+            'activity_id': session.activity.id,
+            'color': session.activity.color or '#3B82F6',
+            'start_time': session.start_datetime.strftime('%H:%M'),
+            'end_time': end_datetime.strftime('%H:%M'),
+            'duration': duration,
+            'room_id': session.room.id if session.room else None,
+            'room_name': session.room.name if session.room else None,
+            'instructor_id': session.staff.id if session.staff else None,
+            'instructor_name': instructor_name,
+            'capacity': capacity,
+            'booked': booked_count,
+            'checked_in': checked_in_count,
+            'status': session.status,
+            'is_full': booked_count >= capacity,
+            'utilization': round((booked_count / capacity) * 100) if capacity > 0 else 0,
+        })
+    
+    # Calcular porcentaje de asistencia
+    attendance_percentage = 0
+    if total_attendees > 0:
+        attendance_percentage = (total_checked_in / total_attendees) * 100
+    
+    return JsonResponse({
+        'date': date_str,
+        'sessions': sessions_data,
+        'stats': {
+            'total': total_attendees,
+            'attended': total_checked_in,
+            'percentage': attendance_percentage,
+            'sessions_count': len(sessions_data),
+        }
+    })
 
 
 def _get_cancelled_late_ids(session):

@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/events/update/', scheduler_api.update_session_api, name='api_session_update'),
     
     # Session Detail API (for class modal)
+    path('api/sessions/', session_api.get_sessions_list, name='api_sessions_list'),
     path('api/session/<int:session_id>/', session_api.get_session_detail, name='api_session_detail'),
     path('api/session/<int:session_id>/attendees/', session_api.add_attendee, name='api_session_add_attendee'),
     path('api/session/<int:session_id>/attendees/<int:client_id>/remove/', session_api.remove_attendee, name='api_session_remove_attendee'),
