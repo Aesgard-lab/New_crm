@@ -1,0 +1,221 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Historial de Referidos</div>
+<div class="text-sm text-slate-500">Seguimiento de todas las referencias y sus estados</div>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'referral_program_list' %}"
+   class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-sm font-medium">
+  ← Volver a Programas
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Filtros -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {% if is_franchise_owner %}
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Gimnasio</label>
+        <select name="gym" class="w-full rounded-xl border-slate-300 text-sm">
+          <option value="">Todos los gimnasios</option>
+          {% for g in franchise_gyms %}
+          <option value="{{ g.id }}" {% if request.GET.gym == g.id|stringformat:"s" %}selected{% endif %}>
+            {{ g.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Programa</label>
+        <select name="program" class="w-full rounded-xl border-slate-300 text-sm">
+          <option value="">Todos los programas</option>
+          {% for p in programs %}
+          <option value="{{ p.id }}" {% if request.GET.program == p.id|stringformat:"s" %}selected{% endif %}>
+            {{ p.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Estado</label>
+        <select name="status" class="w-full rounded-xl border-slate-300 text-sm">
+          <option value="">Todos</option>
+          <option value="pending" {% if request.GET.status == "pending" %}selected{% endif %}>Pendiente</option>
+          <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Completado</option>
+          <option value="expired" {% if request.GET.status == "expired" %}selected{% endif %}>Expirado</option>
+          <option value="cancelled" {% if request.GET.status == "cancelled" %}selected{% endif %}>Cancelado</option>
+        </select>
+      </div>
+
+      <div class="flex items-end">
+        <button type="submit" 
+                class="w-full px-4 py-2 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
+          🔍 Filtrar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-blue-600">{{ stats.total }}</div>
+      <div class="text-xs text-slate-500">Total Referidos</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-green-600">{{ stats.completed }}</div>
+      <div class="text-xs text-slate-500">Completados</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-amber-600">{{ stats.pending }}</div>
+      <div class="text-xs text-slate-500">Pendientes</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-purple-600">{{ stats.this_month }}</div>
+      <div class="text-xs text-slate-500">Este Mes</div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    {% if referrals %}
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+          <tr>
+            {% if is_franchise_owner %}
+            <th class="px-6 py-3 text-left">Gimnasio</th>
+            {% endif %}
+            <th class="px-6 py-3 text-left">Programa</th>
+            <th class="px-6 py-3 text-left">Referidor</th>
+            <th class="px-6 py-3 text-left">Referido</th>
+            <th class="px-6 py-3 text-left">Fecha</th>
+            <th class="px-6 py-3 text-left">Estado</th>
+            <th class="px-6 py-3 text-left">Recompensas</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for ref in referrals %}
+          <tr class="hover:bg-slate-50">
+            {% if is_franchise_owner %}
+            <td class="px-6 py-4">
+              <span class="text-sm text-slate-600">{{ ref.program.gym.name }}</span>
+            </td>
+            {% endif %}
+            <td class="px-6 py-4">
+              <a href="{% url 'referral_program_detail' ref.program.pk %}" class="text-blue-600 hover:underline text-sm">
+                {{ ref.program.name }}
+              </a>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
+                  {{ ref.referrer.user.first_name|slice:":1"|upper }}{{ ref.referrer.user.last_name|slice:":1"|upper }}
+                </div>
+                <div>
+                  <div class="font-medium text-sm">{{ ref.referrer.user.get_full_name|default:ref.referrer.user.email }}</div>
+                  <div class="text-xs text-slate-500">{{ ref.referrer.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs font-bold">
+                  {{ ref.referred.user.first_name|slice:":1"|upper }}{{ ref.referred.user.last_name|slice:":1"|upper }}
+                </div>
+                <div>
+                  <div class="font-medium text-sm">{{ ref.referred.user.get_full_name|default:ref.referred.user.email }}</div>
+                  <div class="text-xs text-slate-500">{{ ref.referred.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-sm text-slate-500">
+              {{ ref.created_at|date:"d/m/Y" }}
+              <br>
+              <span class="text-xs">{{ ref.created_at|time:"H:i" }}</span>
+            </td>
+            <td class="px-6 py-4">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                {% if ref.status == 'completed' %}bg-green-100 text-green-700
+                {% elif ref.status == 'pending' %}bg-amber-100 text-amber-700
+                {% elif ref.status == 'expired' %}bg-slate-100 text-slate-600
+                {% else %}bg-red-100 text-red-700{% endif %}">
+                {% if ref.status == 'completed' %}✅
+                {% elif ref.status == 'pending' %}⏳
+                {% elif ref.status == 'expired' %}⌛
+                {% else %}❌{% endif %}
+                {{ ref.get_status_display }}
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="text-xs space-y-1">
+                {% if ref.referrer_reward_applied %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded bg-green-50 text-green-700">
+                  ✓ Referidor recompensado
+                </span>
+                {% endif %}
+                {% if ref.referred_reward_applied %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                  ✓ Referido recompensado
+                </span>
+                {% endif %}
+                {% if not ref.referrer_reward_applied and not ref.referred_reward_applied %}
+                <span class="text-slate-400">Sin recompensas aún</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if referrals.has_other_pages %}
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-center gap-2">
+      {% if referrals.has_previous %}
+      <a href="?page={{ referrals.previous_page_number }}{% if request.GET.gym %}&gym={{ request.GET.gym }}{% endif %}{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+         class="px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+        ← Anterior
+      </a>
+      {% endif %}
+      
+      <span class="px-3 py-1 text-slate-600">
+        Página {{ referrals.number }} de {{ referrals.paginator.num_pages }}
+      </span>
+      
+      {% if referrals.has_next %}
+      <a href="?page={{ referrals.next_page_number }}{% if request.GET.gym %}&gym={{ request.GET.gym }}{% endif %}{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+         class="px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+        Siguiente →
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="p-12 text-center">
+      <div class="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
+        <span class="text-3xl">📭</span>
+      </div>
+      <h3 class="text-lg font-semibold text-slate-700 mb-2">No hay referidos</h3>
+      <p class="text-slate-500">
+        {% if request.GET %}
+        No se encontraron referidos con los filtros seleccionados
+        {% else %}
+        Aún no hay registros de referidos en tus programas
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

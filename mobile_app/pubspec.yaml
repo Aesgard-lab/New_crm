@@ -31,8 +31,9 @@ dependencies:
   # QR Scanner
   mobile_scanner: ^5.1.1
   
-  # Video Player
+  # Video Player & Sharing
   url_launcher: ^6.2.0
+  share_plus: ^7.2.0
 
 dev_dependencies:
   flutter_test:

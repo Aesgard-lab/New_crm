@@ -16,10 +16,19 @@ urlpatterns = [
     path('validate/', views.validate_discount_code, name='validate_discount_code'),
     path('client/<int:client_id>/available/', views.available_discounts_for_client, name='available_discounts_for_client'),
     
-    # Referral Programs
+    # Referral Programs - Gestión completa
     path('referrals/', views.referral_program_list, name='referral_program_list'),
     path('referrals/create/', views.referral_program_create, name='referral_program_create'),
+    path('referrals/<int:pk>/', views.referral_program_detail, name='referral_program_detail'),
+    path('referrals/<int:pk>/edit/', views.referral_program_edit, name='referral_program_edit'),
+    path('referrals/<int:pk>/delete/', views.referral_program_delete, name='referral_program_delete'),
+    path('referrals/<int:pk>/toggle/', views.referral_program_toggle, name='referral_program_toggle'),
+    path('referrals/<int:pk>/duplicate/', views.referral_program_duplicate, name='referral_program_duplicate'),
     path('referrals/tracking/', views.referral_tracking, name='referral_tracking'),
+    
+    # Referral Settings (activar/desactivar por gym)
+    path('referrals/settings/', views.referral_settings, name='referral_settings'),
+    path('referrals/settings/bulk/', views.referral_settings_bulk, name='referral_settings_bulk'),
     
     # Analytics
     path('analytics/', views.discount_analytics, name='discount_analytics'),

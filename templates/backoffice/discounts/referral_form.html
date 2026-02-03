@@ -2,72 +2,219 @@
 
 {% block page_title %}
 <div>{{ title|default:"Nuevo Programa de Referidos" }}</div>
-<div class="text-sm text-slate-500">Configura los descuentos para quien refiere y el referido.</div>
+<div class="text-sm text-slate-500">
+  {% if is_edit %}Edita la configuración del programa{% else %}Configura las recompensas para referidor y referido{% endif %}
+</div>
 {% endblock %}
 
 {% block content %}
-<form method="post" class="max-w-4xl mx-auto space-y-6" novalidate>
+<form method="post" class="max-w-5xl mx-auto space-y-6" novalidate>
   {% csrf_token %}
 
-  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-    <h2 class="text-lg font-bold text-slate-900">Datos del programa</h2>
+  {% if form.non_field_errors %}
+  <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
 
-    {% if form.non_field_errors %}
-    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-      {{ form.non_field_errors }}
+  <!-- Selección de Gyms (solo para franquicias al crear) -->
+  {% if is_franchise_owner and not is_edit %}
+  <div class="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+    <h2 class="text-lg font-bold text-purple-900 mb-4">
+      <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+      </svg>
+      Gimnasios Destino
+    </h2>
+    <p class="text-sm text-purple-700 mb-4">
+      Selecciona en qué gimnasios de tu franquicia quieres crear este programa
+    </p>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {% for fg in franchise_gyms %}
+      <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-purple-200 cursor-pointer hover:border-purple-400 transition-colors">
+        <input type="checkbox" name="target_gyms" value="{{ fg.id }}" 
+               class="w-4 h-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+               {% if fg.id == current_gym.id %}checked{% endif %}>
+        <span class="text-sm font-medium text-slate-700">{{ fg.name }}</span>
+      </label>
+      {% endfor %}
     </div>
-    {% endif %}
+    <p class="text-xs text-purple-600 mt-3">
+      💡 Puedes crear el programa en varios gimnasios a la vez
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Datos Básicos -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">📋 Información Básica</h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre</label>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Nombre del Programa *</label>
         {{ form.name }}
         {% if form.name.errors %}<p class="text-xs text-red-500 mt-1">{{ form.name.errors.0 }}</p>{% endif %}
       </div>
       <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Estado</label>
-        {{ form.is_active }}
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento para quien refiere</label>
-        {{ form.referrer_discount }}
-        {% if form.referrer_discount.errors %}<p class="text-xs text-red-500 mt-1">{{ form.referrer_discount.errors.0 }}</p>{% endif %}
-      </div>
-      <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento para referido</label>
-        {{ form.referred_discount }}
-        {% if form.referred_discount.errors %}<p class="text-xs text-red-500 mt-1">{{ form.referred_discount.errors.0 }}</p>{% endif %}
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Bonus adicional (opcional)</label>
-        {{ form.bonus_discount }}
-        {% if form.bonus_discount.errors %}<p class="text-xs text-red-500 mt-1">{{ form.bonus_discount.errors.0 }}</p>{% endif %}
-      </div>
-      <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1">Límite de usos</label>
-        {{ form.usage_limit }}
-        {% if form.usage_limit.errors %}<p class="text-xs text-red-500 mt-1">{{ form.usage_limit.errors.0 }}</p>{% endif %}
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Tipo de Recompensa</label>
+        {{ form.reward_type }}
+        {% if form.reward_type.errors %}<p class="text-xs text-red-500 mt-1">{{ form.reward_type.errors.0 }}</p>{% endif %}
       </div>
     </div>
 
     <div>
       <label class="block text-sm font-semibold text-slate-700 mb-1">Descripción</label>
       {{ form.description }}
+      <p class="text-xs text-slate-500 mt-1">Esta descripción será visible para los clientes</p>
       {% if form.description.errors %}<p class="text-xs text-red-500 mt-1">{{ form.description.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div class="flex items-center gap-3 pt-2">
+      {{ form.is_active }}
+      <label class="text-sm font-medium text-slate-700">Programa Activo</label>
     </div>
   </div>
 
-  <div class="flex justify-end gap-3">
-    <a href="{% url 'referral_program_list' %}" class="px-5 py-2 rounded-xl text-slate-600 hover:bg-slate-100">Cancelar</a>
+  <!-- Recompensas para quien REFIERE -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">
+      🎁 Recompensa para Quien Refiere
+    </h2>
+    <p class="text-sm text-slate-500">El cliente existente que invita a otros recibe:</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento</label>
+        {{ form.referrer_discount }}
+        <p class="text-xs text-slate-500 mt-1">Descuento a aplicar</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Crédito (€)</label>
+        {{ form.referrer_credit_amount }}
+        <p class="text-xs text-slate-500 mt-1">Se suma al saldo del cliente</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Días Gratis</label>
+        {{ form.referrer_free_days }}
+        <p class="text-xs text-slate-500 mt-1">Extiende la membresía</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recompensas para el REFERIDO -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">
+      👤 Recompensa para el Nuevo Cliente
+    </h2>
+    <p class="text-sm text-slate-500">El amigo que se registra usando el código recibe:</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento</label>
+        {{ form.referred_discount }}
+        <p class="text-xs text-slate-500 mt-1">Descuento en su primera compra</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Crédito (€)</label>
+        {{ form.referred_credit_amount }}
+        <p class="text-xs text-slate-500 mt-1">Crédito de bienvenida</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Días Gratis</label>
+        {{ form.referred_free_days }}
+        <p class="text-xs text-slate-500 mt-1">Días de prueba adicionales</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Condiciones -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">⚙️ Condiciones</h2>
+
+    <div class="flex items-start gap-3 p-4 bg-amber-50 rounded-xl">
+      {{ form.require_membership_purchase }}
+      <div>
+        <label class="text-sm font-medium text-slate-700">Requiere compra de membresía</label>
+        <p class="text-xs text-slate-500">Las recompensas solo se dan cuando el referido compra una membresía</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Valor Mínimo de Membresía (€)</label>
+        {{ form.min_membership_value }}
+        <p class="text-xs text-slate-500 mt-1">0 = cualquier membresía</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bonus por múltiples referidos -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">🏆 Bonus por Múltiples Referidos</h2>
+    <p class="text-sm text-slate-500">Recompensa adicional al alcanzar un número de referidos</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Mínimo de Referidos</label>
+        {{ form.min_referrals_for_bonus }}
+        <p class="text-xs text-slate-500 mt-1">0 = sin bonus</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Descuento Bonus</label>
+        {{ form.bonus_discount }}
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Crédito Bonus (€)</label>
+        {{ form.bonus_credit_amount }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Límites -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">📊 Límites</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Máx. Referidos por Cliente</label>
+        {{ form.max_referrals_per_client }}
+        <p class="text-xs text-slate-500 mt-1">0 = ilimitado</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Máx. Total del Programa</label>
+        {{ form.max_total_referrals }}
+        <p class="text-xs text-slate-500 mt-1">0 = ilimitado</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vigencia -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-900">📅 Vigencia</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Válido Desde</label>
+        {{ form.valid_from }}
+        <p class="text-xs text-slate-500 mt-1">Dejar vacío = desde ahora</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-1">Válido Hasta</label>
+        {{ form.valid_until }}
+        <p class="text-xs text-slate-500 mt-1">Dejar vacío = sin fecha límite</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botones -->
+  <div class="flex justify-end gap-3 pb-8">
+    <a href="{% url 'referral_program_list' %}" 
+       class="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
+      Cancelar
+    </a>
     <button type="submit"
-      class="px-6 py-2 rounded-xl bg-[var(--brand-color)] text-white font-semibold hover:opacity-90">
-      Guardar programa
+            class="px-6 py-2.5 rounded-xl bg-[var(--brand-color)] text-white font-semibold hover:opacity-90 transition-opacity">
+      {% if is_edit %}Guardar Cambios{% else %}Crear Programa{% endif %}
     </button>
   </div>
 </form>

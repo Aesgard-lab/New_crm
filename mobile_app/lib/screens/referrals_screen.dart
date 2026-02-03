@@ -170,7 +170,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
                         Text(
                           'Comparte tu código y gana recompensas',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white70,
                             fontSize: 14,
                           ),
                         ),
@@ -284,11 +284,11 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -468,11 +468,11 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -560,11 +560,11 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -599,30 +599,35 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     );
   }
 
-  Widget _buildHistoryItem(ReferralHistory item, Color brandColor) {
+  Widget _buildHistoryItem(dynamic item, Color brandColor) {
     Color statusColor;
+    Color statusTextColor;
     switch (item.status) {
       case 'PENDING':
         statusColor = Colors.amber;
+        statusTextColor = Colors.amber.shade700;
         break;
       case 'REGISTERED':
         statusColor = Colors.blue;
+        statusTextColor = Colors.blue.shade700;
         break;
       case 'COMPLETED':
       case 'REWARDED':
         statusColor = Colors.green;
+        statusTextColor = Colors.green.shade700;
         break;
       default:
         statusColor = Colors.grey;
+        statusTextColor = Colors.grey.shade700;
     }
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: brandColor.withOpacity(0.1),
+        backgroundColor: brandColor.withValues(alpha: 0.1),
         child: Icon(Icons.person, color: brandColor, size: 20),
       ),
       title: Text(
-        item.referredName,
+        item.referredName ?? 'Invitado',
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
@@ -637,13 +642,13 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.1),
+          color: statusColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          item.statusDisplay,
+          item.statusDisplay ?? '',
           style: TextStyle(
-            color: statusColor.shade700,
+            color: statusTextColor,
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
@@ -666,11 +671,11 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -726,7 +731,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: brandColor.withOpacity(0.1),
+            color: brandColor.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Center(

@@ -1,0 +1,81 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Eliminar Programa</div>
+<div class="text-sm text-slate-500">Esta acción no se puede deshacer</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white border border-red-200 rounded-2xl shadow-sm overflow-hidden">
+    <!-- Header -->
+    <div class="bg-red-50 p-6 border-b border-red-200">
+      <div class="flex items-center gap-4">
+        <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+          <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-red-900">{{ program.name }}</h2>
+          <p class="text-sm text-red-700 mt-1">
+            {% if program.gym %}{{ program.gym.name }}{% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido -->
+    <div class="p-6 space-y-4">
+      <p class="text-slate-700">
+        ¿Estás seguro de que deseas eliminar este programa de referidos?
+      </p>
+
+      {% if total_referrals > 0 %}
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div class="flex items-start gap-3">
+          <span class="text-amber-500 text-xl">⚠️</span>
+          <div>
+            <p class="font-medium text-amber-800">Este programa tiene historial</p>
+            <p class="text-sm text-amber-700 mt-1">
+              Hay <strong>{{ total_referrals }} referido{{ total_referrals|pluralize:"s" }}</strong> 
+              registrado{{ total_referrals|pluralize:"s" }} en este programa.
+              El historial se mantendrá pero el programa dejará de estar disponible.
+            </p>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="bg-slate-50 rounded-xl p-4">
+        <h3 class="font-semibold text-slate-700 mb-2">Resumen del programa:</h3>
+        <ul class="text-sm text-slate-600 space-y-1">
+          <li>• Estado: {% if program.is_active %}Activo{% else %}Inactivo{% endif %}</li>
+          {% if program.referrer_discount %}
+          <li>• Descuento referidor: {{ program.referrer_discount.name }}</li>
+          {% endif %}
+          {% if program.referred_discount %}
+          <li>• Descuento referido: {{ program.referred_discount.name }}</li>
+          {% endif %}
+          <li>• Creado: {{ program.created_at|date:"d/m/Y" }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+      <a href="{% url 'referral_program_detail' program.pk %}"
+         class="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+        Cancelar
+      </a>
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit"
+                class="px-6 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors">
+          Sí, eliminar programa
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

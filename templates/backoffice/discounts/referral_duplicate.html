@@ -1,0 +1,147 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Duplicar Programa</div>
+<div class="text-sm text-slate-500">Copia "{{ program.name }}" a otros gimnasios de tu franquicia</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <!-- Programa Original -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold text-slate-900 mb-4">📋 Programa a Duplicar</h2>
+      
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+            <span class="text-xl">🎁</span>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-blue-900">{{ program.name }}</h3>
+            <p class="text-sm text-blue-700">{{ program.gym.name }}</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-medium {% if program.is_active %}bg-green-100 text-green-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+            {% if program.is_active %}Activo{% else %}Inactivo{% endif %}
+          </span>
+        </div>
+        
+        <div class="mt-4 pt-4 border-t border-blue-200 grid grid-cols-2 gap-4 text-sm">
+          {% if program.referrer_discount or program.referrer_credit_amount %}
+          <div>
+            <span class="text-blue-600">Referidor recibe:</span>
+            {% if program.referrer_discount %}{{ program.referrer_discount.name }}{% endif %}
+            {% if program.referrer_credit_amount %}{{ program.referrer_credit_amount }}€{% endif %}
+          </div>
+          {% endif %}
+          {% if program.referred_discount or program.referred_credit_amount %}
+          <div>
+            <span class="text-blue-600">Referido recibe:</span>
+            {% if program.referred_discount %}{{ program.referred_discount.name }}{% endif %}
+            {% if program.referred_credit_amount %}{{ program.referred_credit_amount }}€{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Selección de Gimnasios -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold text-slate-900 mb-4">🏢 Gimnasios Destino</h2>
+      <p class="text-sm text-slate-600 mb-4">
+        Selecciona los gimnasios donde quieres crear una copia de este programa
+      </p>
+
+      {% if available_gyms %}
+      <div class="space-y-3">
+        <!-- Seleccionar Todos -->
+        <label class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-200 cursor-pointer">
+          <input type="checkbox" id="select-all" 
+                 class="w-5 h-5 rounded border-purple-300 text-purple-600 focus:ring-purple-500">
+          <span class="font-semibold text-purple-700">Seleccionar todos los gimnasios</span>
+        </label>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+          {% for gym in available_gyms %}
+          <label class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors gym-checkbox-label">
+            <input type="checkbox" name="target_gyms" value="{{ gym.id }}" 
+                   class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 gym-checkbox">
+            <div class="flex-1">
+              <span class="font-medium text-slate-700">{{ gym.name }}</span>
+              {% if gym.has_referral_program %}
+              <span class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+                Ya tiene programa
+              </span>
+              {% endif %}
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-8 text-slate-500">
+        <p>No hay otros gimnasios disponibles en tu franquicia</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Opciones -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold text-slate-900 mb-4">⚙️ Opciones</h2>
+      
+      <div class="space-y-4">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" name="copy_active_state" value="1" checked
+                 class="w-5 h-5 mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+          <div>
+            <span class="font-medium text-slate-700">Mantener estado activo/inactivo</span>
+            <p class="text-sm text-slate-500">Las copias tendrán el mismo estado que el programa original</p>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" name="replace_existing" value="1"
+                 class="w-5 h-5 mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+          <div>
+            <span class="font-medium text-slate-700">Reemplazar programas existentes</span>
+            <p class="text-sm text-slate-500">Si el gimnasio ya tiene un programa con el mismo nombre, será reemplazado</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="flex justify-end gap-3 pb-8">
+      <a href="{% url 'referral_program_detail' program.pk %}"
+         class="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
+        Cancelar
+      </a>
+      <button type="submit" {% if not available_gyms %}disabled{% endif %}
+              class="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        📋 Duplicar a Gimnasios Seleccionados
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('select-all');
+  const checkboxes = document.querySelectorAll('.gym-checkbox');
+  
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+    
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', function() {
+        selectAll.checked = [...checkboxes].every(c => c.checked);
+      });
+    });
+  }
+});
+</script>
+{% endblock %}

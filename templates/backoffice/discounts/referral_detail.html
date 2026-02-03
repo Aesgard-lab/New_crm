@@ -1,0 +1,230 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>{{ program.name }}</div>
+<div class="text-sm text-slate-500">Detalles del programa de referidos</div>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex items-center gap-2">
+  <a href="{% url 'referral_program_edit' program.pk %}"
+     class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-sm font-medium">
+    ✏️ Editar
+  </a>
+  {% if is_franchise_owner %}
+  <a href="{% url 'referral_program_duplicate' program.pk %}"
+     class="px-4 py-2 rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors text-sm font-medium">
+    📋 Duplicar
+  </a>
+  {% endif %}
+  <form method="post" action="{% url 'referral_program_toggle' program.pk %}" class="inline">
+    {% csrf_token %}
+    <button type="submit"
+            class="px-4 py-2 rounded-xl {% if program.is_active %}bg-amber-100 text-amber-700 hover:bg-amber-200{% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %} transition-colors text-sm font-medium">
+      {% if program.is_active %}⏸️ Desactivar{% else %}▶️ Activar{% endif %}
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+  <!-- Estado y Estadísticas Principales -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-blue-600">{{ stats.total_referrals }}</div>
+      <div class="text-sm text-slate-500 mt-1">Total Referidos</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-green-600">{{ stats.completed_referrals }}</div>
+      <div class="text-sm text-slate-500 mt-1">Completados</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-amber-600">{{ stats.pending_referrals }}</div>
+      <div class="text-sm text-slate-500 mt-1">Pendientes</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+      <div class="text-3xl font-bold text-purple-600">{{ stats.unique_referrers }}</div>
+      <div class="text-sm text-slate-500 mt-1">Referidores</div>
+    </div>
+  </div>
+
+  <!-- Estado del Programa -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-slate-900">Estado</h2>
+      <span class="px-3 py-1 rounded-full text-sm font-medium {% if program.is_active %}bg-green-100 text-green-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+        {% if program.is_active %}✅ Activo{% else %}⏸️ Inactivo{% endif %}
+      </span>
+    </div>
+    
+    {% if program.valid_from or program.valid_until %}
+    <div class="flex items-center gap-4 text-sm text-slate-600">
+      {% if program.valid_from %}
+      <span>📅 Desde: {{ program.valid_from|date:"d/m/Y" }}</span>
+      {% endif %}
+      {% if program.valid_until %}
+      <span>📅 Hasta: {{ program.valid_until|date:"d/m/Y" }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Configuración de Recompensas -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Referidor -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold text-slate-900 mb-4">🎁 Recompensa Referidor</h2>
+      <ul class="space-y-3">
+        {% if program.referrer_discount %}
+        <li class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">%</span>
+          <span>{{ program.referrer_discount.name }}</span>
+        </li>
+        {% endif %}
+        {% if program.referrer_credit_amount %}
+        <li class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">€</span>
+          <span>{{ program.referrer_credit_amount }}€ de crédito</span>
+        </li>
+        {% endif %}
+        {% if program.referrer_free_days %}
+        <li class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">📅</span>
+          <span>{{ program.referrer_free_days }} días gratis</span>
+        </li>
+        {% endif %}
+        {% if not program.referrer_discount and not program.referrer_credit_amount and not program.referrer_free_days %}
+        <li class="text-slate-500 text-sm">Sin recompensa configurada</li>
+        {% endif %}
+      </ul>
+    </div>
+
+    <!-- Referido -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold text-slate-900 mb-4">👤 Recompensa Referido</h2>
+      <ul class="space-y-3">
+        {% if program.referred_discount %}
+        <li class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">%</span>
+          <span>{{ program.referred_discount.name }}</span>
+        </li>
+        {% endif %}
+        {% if program.referred_credit_amount %}
+        <li class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">€</span>
+          <span>{{ program.referred_credit_amount }}€ de crédito</span>
+        </li>
+        {% endif %}
+        {% if program.referred_free_days %}
+        <li class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">📅</span>
+          <span>{{ program.referred_free_days }} días gratis</span>
+        </li>
+        {% endif %}
+        {% if not program.referred_discount and not program.referred_credit_amount and not program.referred_free_days %}
+        <li class="text-slate-500 text-sm">Sin recompensa configurada</li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Condiciones y Límites -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <h2 class="text-lg font-bold text-slate-900 mb-4">⚙️ Condiciones y Límites</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="p-4 bg-slate-50 rounded-xl">
+        <div class="text-sm text-slate-500">Requiere Membresía</div>
+        <div class="font-semibold mt-1">{% if program.require_membership_purchase %}Sí{% else %}No{% endif %}</div>
+      </div>
+      <div class="p-4 bg-slate-50 rounded-xl">
+        <div class="text-sm text-slate-500">Valor Mínimo</div>
+        <div class="font-semibold mt-1">{% if program.min_membership_value %}{{ program.min_membership_value }}€{% else %}Sin mínimo{% endif %}</div>
+      </div>
+      <div class="p-4 bg-slate-50 rounded-xl">
+        <div class="text-sm text-slate-500">Máx. por Cliente</div>
+        <div class="font-semibold mt-1">{% if program.max_referrals_per_client %}{{ program.max_referrals_per_client }}{% else %}Ilimitado{% endif %}</div>
+      </div>
+      <div class="p-4 bg-slate-50 rounded-xl">
+        <div class="text-sm text-slate-500">Máx. Total</div>
+        <div class="font-semibold mt-1">{% if program.max_total_referrals %}{{ program.max_total_referrals }}{% else %}Ilimitado{% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bonus -->
+  {% if program.min_referrals_for_bonus %}
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+    <h2 class="text-lg font-bold text-amber-900 mb-2">🏆 Bonus por Múltiples Referidos</h2>
+    <p class="text-sm text-amber-700">
+      Al completar <strong>{{ program.min_referrals_for_bonus }} referidos</strong>:
+      {% if program.bonus_discount %}{{ program.bonus_discount.name }}{% endif %}
+      {% if program.bonus_credit_amount %}+ {{ program.bonus_credit_amount }}€ de crédito{% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Últimos Referidos -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-900">📋 Últimos Referidos</h2>
+      <a href="{% url 'referral_tracking' %}?program={{ program.pk }}" 
+         class="text-sm text-blue-600 hover:underline">Ver todos →</a>
+    </div>
+    
+    {% if recent_referrals %}
+    <table class="w-full">
+      <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+        <tr>
+          <th class="px-6 py-3 text-left">Referidor</th>
+          <th class="px-6 py-3 text-left">Referido</th>
+          <th class="px-6 py-3 text-left">Fecha</th>
+          <th class="px-6 py-3 text-left">Estado</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for ref in recent_referrals %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-6 py-4">{{ ref.referrer.user.get_full_name|default:ref.referrer.user.email }}</td>
+          <td class="px-6 py-4">{{ ref.referred.user.get_full_name|default:ref.referred.user.email }}</td>
+          <td class="px-6 py-4 text-slate-500 text-sm">{{ ref.created_at|date:"d/m/Y" }}</td>
+          <td class="px-6 py-4">
+            <span class="px-2 py-1 rounded-full text-xs font-medium
+              {% if ref.status == 'completed' %}bg-green-100 text-green-700
+              {% elif ref.status == 'pending' %}bg-amber-100 text-amber-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ ref.get_status_display }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-8 text-center text-slate-500">
+      <p>Aún no hay referidos en este programa</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Descripción -->
+  {% if program.description %}
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <h2 class="text-lg font-bold text-slate-900 mb-2">📝 Descripción</h2>
+    <p class="text-slate-600">{{ program.description }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Acciones -->
+  <div class="flex justify-between items-center pb-8">
+    <a href="{% url 'referral_program_list' %}" class="text-slate-600 hover:text-slate-900">
+      ← Volver a la lista
+    </a>
+    <a href="{% url 'referral_program_delete' program.pk %}"
+       class="px-4 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors text-sm font-medium">
+      🗑️ Eliminar Programa
+    </a>
+  </div>
+</div>
+{% endblock %}

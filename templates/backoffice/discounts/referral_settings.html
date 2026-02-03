@@ -1,0 +1,110 @@
+{% extends "backoffice/base.html" %}
+
+{% block page_title %}
+<div>Configuración de Referidos</div>
+<div class="text-sm text-slate-500">{{ gym.name }}</div>
+{% endblock %}
+
+{% block page_actions %}
+{% if is_franchise_owner %}
+<a href="{% url 'referral_settings_bulk' %}"
+   class="px-4 py-2 rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors text-sm font-medium">
+  🏢 Configurar Franquicia
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+  <!-- Estado Actual -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Estado del Sistema de Referidos</h2>
+        <p class="text-sm text-slate-500 mt-1">
+          {% if settings and settings.referral_program_enabled %}
+          Los clientes pueden ver y usar el sistema de referidos
+          {% else %}
+          El sistema de referidos está oculto para los clientes
+          {% endif %}
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="px-4 py-2 rounded-xl text-sm font-medium
+          {% if settings and settings.referral_program_enabled %}bg-green-100 text-green-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+          {% if settings and settings.referral_program_enabled %}✅ Habilitado{% else %}⏸️ Deshabilitado{% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario -->
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-6">
+      <h2 class="text-lg font-bold text-slate-900">⚙️ Configuración</h2>
+
+      <!-- Toggle Principal -->
+      <div class="flex items-start gap-4 p-4 bg-slate-50 rounded-xl">
+        <div class="relative">
+          <input type="checkbox" name="referral_program_enabled" id="enabled" value="1"
+                 {% if settings and settings.referral_program_enabled %}checked{% endif %}
+                 class="sr-only peer">
+          <label for="enabled" 
+                 class="block w-14 h-8 bg-slate-300 rounded-full cursor-pointer peer-checked:bg-green-500 transition-colors">
+          </label>
+          <div class="absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform peer-checked:translate-x-6"></div>
+        </div>
+        <div>
+          <label for="enabled" class="font-semibold text-slate-700 cursor-pointer">
+            Habilitar Sistema de Referidos
+          </label>
+          <p class="text-sm text-slate-500 mt-1">
+            Muestra la opción de referidos en el portal del cliente y la app móvil
+          </p>
+        </div>
+      </div>
+
+      <!-- Info adicional -->
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <h3 class="font-semibold text-blue-900 mb-2">ℹ️ ¿Qué significa habilitar el sistema?</h3>
+        <ul class="text-sm text-blue-800 space-y-2">
+          <li>• <strong>Portal del cliente:</strong> Se mostrará la sección "Invita a un amigo"</li>
+          <li>• <strong>App móvil:</strong> Los clientes podrán ver su código y compartirlo</li>
+          <li>• <strong>Registro:</strong> Los nuevos clientes podrán ingresar un código de referido</li>
+        </ul>
+      </div>
+
+      <!-- Nota sobre programas -->
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p class="text-sm text-amber-800">
+          <strong>💡 Importante:</strong> Habilitar el sistema no crea automáticamente un programa de referidos.
+          Debes <a href="{% url 'referral_program_list' %}" class="underline">crear al menos un programa</a> 
+          con recompensas configuradas para que los clientes puedan beneficiarse.
+        </p>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="flex justify-end gap-3 pb-8">
+      <a href="{% url 'referral_program_list' %}"
+         class="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
+        Cancelar
+      </a>
+      <button type="submit"
+              class="px-6 py-2.5 rounded-xl bg-[var(--brand-color)] text-white font-semibold hover:opacity-90 transition-opacity">
+        Guardar Configuración
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+/* Custom toggle switch */
+input[type="checkbox"]:checked + label + div {
+  transform: translateX(1.5rem);
+}
+</style>
+{% endblock %}

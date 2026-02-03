@@ -279,72 +279,514 @@ def available_discounts_for_client(request, client_id):
 
 
 # ============================================
-# REFERRAL PROGRAM
+# REFERRAL PROGRAM - CRUD Completo
 # ============================================
 
 @login_required
 @require_gym_permission('discounts.view')
 def referral_program_list(request):
-    """Lista de programas de referidos"""
+    """Lista de programas de referidos con soporte de franquicia"""
     gym = request.gym
-    programs = ReferralProgram.objects.filter(gym=gym).select_related(
-        'referrer_discount', 'referred_discount', 'bonus_discount'
-    )
+    user = request.user
+    
+    # Verificar si es owner de franquicia
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    franchise = None
+    franchise_gyms = []
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        franchise_gyms = list(franchise.gyms.all())
+    
+    # Filtro por gimnasio (para owners de franquicia)
+    selected_gym_id = request.GET.get('gym', '')
+    
+    if is_franchise_owner and not selected_gym_id:
+        # Mostrar programas de todos los gyms de la franquicia
+        programs = ReferralProgram.objects.filter(
+            gym__in=franchise_gyms
+        ).select_related('gym', 'referrer_discount', 'referred_discount')
+    elif selected_gym_id and is_franchise_owner:
+        programs = ReferralProgram.objects.filter(
+            gym_id=selected_gym_id
+        ).select_related('gym', 'referrer_discount', 'referred_discount')
+    else:
+        programs = ReferralProgram.objects.filter(
+            gym=gym
+        ).select_related('gym', 'referrer_discount', 'referred_discount')
+    
+    # Obtener configuración de referidos por gym
+    from organizations.models import PublicPortalSettings
+    gym_settings = {}
+    
+    if is_franchise_owner:
+        for fg in franchise_gyms:
+            try:
+                settings = PublicPortalSettings.objects.get(gym=fg)
+                gym_settings[fg.id] = {
+                    'enabled': settings.referral_program_enabled,
+                    'message': settings.referral_share_message,
+                }
+            except PublicPortalSettings.DoesNotExist:
+                gym_settings[fg.id] = {'enabled': False, 'message': ''}
+    else:
+        try:
+            settings = PublicPortalSettings.objects.get(gym=gym)
+            gym_settings[gym.id] = {
+                'enabled': settings.referral_program_enabled,
+                'message': settings.referral_share_message,
+            }
+        except PublicPortalSettings.DoesNotExist:
+            gym_settings[gym.id] = {'enabled': False, 'message': ''}
     
     context = {
         'title': 'Programas de Referidos',
-        'programs': programs,
+        'programs': programs.order_by('-is_active', '-created_at'),
+        'is_franchise_owner': is_franchise_owner,
+        'franchise': franchise,
+        'franchise_gyms': franchise_gyms,
+        'selected_gym_id': selected_gym_id,
+        'gym_settings': gym_settings,
+        'current_gym': gym,
     }
-    return render(request, 'backoffice/discounts/list.html', context)
+    return render(request, 'backoffice/discounts/referral_list.html', context)
 
 
 @login_required
 @require_gym_permission('discounts.create')
 def referral_program_create(request):
-    """Crear programa de referidos"""
+    """Crear programa de referidos con soporte de franquicia"""
     gym = request.gym
+    user = request.user
+    
+    # Verificar franquicia
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    franchise = None
+    franchise_gyms = []
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        franchise_gyms = list(franchise.gyms.all())
     
     if request.method == 'POST':
-        form = ReferralProgramForm(request.POST, gym=gym)
+        # Obtener gyms seleccionados
+        selected_gym_ids = request.POST.getlist('target_gyms')
+        
+        form = ReferralProgramForm(
+            request.POST, 
+            gym=gym if not is_franchise_owner else None,
+            gyms=franchise_gyms if is_franchise_owner else None
+        )
+        
         if form.is_valid():
-            program = form.save(commit=False)
-            program.gym = gym
-            program.save()
+            if is_franchise_owner and selected_gym_ids:
+                # Crear programa para cada gym seleccionado
+                from organizations.models import Gym
+                for gym_id in selected_gym_ids:
+                    target_gym = Gym.objects.get(id=gym_id)
+                    program = form.save(commit=False)
+                    program.pk = None  # Reset PK para crear nuevo
+                    program.gym = target_gym
+                    program.save()
+                from django.contrib import messages
+                messages.success(request, f'Programa creado en {len(selected_gym_ids)} gimnasio(s)')
+            else:
+                # Crear solo para el gym actual
+                program = form.save(commit=False)
+                program.gym = gym
+                program.save()
+                from django.contrib import messages
+                messages.success(request, 'Programa de referidos creado exitosamente')
+            
             return redirect('referral_program_list')
     else:
-        form = ReferralProgramForm(gym=gym)
+        form = ReferralProgramForm(
+            gym=gym if not is_franchise_owner else None,
+            gyms=franchise_gyms if is_franchise_owner else None
+        )
     
     context = {
         'title': 'Nuevo Programa de Referidos',
         'form': form,
+        'is_franchise_owner': is_franchise_owner,
+        'franchise_gyms': franchise_gyms,
+        'current_gym': gym,
     }
     return render(request, 'backoffice/discounts/referral_form.html', context)
 
 
 @login_required
 @require_gym_permission('discounts.view')
-def referral_tracking(request):
-    """Tracking de referidos del gimnasio"""
+def referral_program_detail(request, pk):
+    """Detalle de un programa de referidos"""
     gym = request.gym
+    user = request.user
     
-    referrals = Referral.objects.filter(
-        program__gym=gym
-    ).select_related('referrer', 'referred', 'program').order_by('-created_at')
+    # Verificar permisos
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
     
-    # Estadísticas
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        program = get_object_or_404(ReferralProgram, pk=pk, gym__in=franchise.gyms.all())
+    else:
+        program = get_object_or_404(ReferralProgram, pk=pk, gym=gym)
+    
+    # Estadísticas del programa
+    referrals = Referral.objects.filter(program=program)
     stats = {
         'total': referrals.count(),
         'pending': referrals.filter(status=Referral.Status.PENDING).count(),
+        'registered': referrals.filter(status=Referral.Status.REGISTERED).count(),
         'completed': referrals.filter(status=Referral.Status.COMPLETED).count(),
         'rewarded': referrals.filter(status=Referral.Status.REWARDED).count(),
+        'total_credit_given': referrals.aggregate(
+            total=Sum('referrer_credit_given')
+        )['total'] or Decimal('0.00'),
     }
+    
+    # Últimos referidos
+    recent_referrals = referrals.select_related('referrer', 'referred').order_by('-created_at')[:20]
+    
+    context = {
+        'title': f'Programa: {program.name}',
+        'program': program,
+        'stats': stats,
+        'referrals': recent_referrals,
+    }
+    return render(request, 'backoffice/discounts/referral_detail.html', context)
+
+
+@login_required
+@require_gym_permission('discounts.edit')
+def referral_program_edit(request, pk):
+    """Editar programa de referidos"""
+    gym = request.gym
+    user = request.user
+    
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        program = get_object_or_404(ReferralProgram, pk=pk, gym__in=franchise.gyms.all())
+        franchise_gyms = list(franchise.gyms.all())
+    else:
+        program = get_object_or_404(ReferralProgram, pk=pk, gym=gym)
+        franchise_gyms = []
+    
+    if request.method == 'POST':
+        form = ReferralProgramForm(
+            request.POST, 
+            instance=program,
+            gym=program.gym if not is_franchise_owner else None,
+            gyms=franchise_gyms if is_franchise_owner else None
+        )
+        if form.is_valid():
+            form.save()
+            from django.contrib import messages
+            messages.success(request, 'Programa actualizado exitosamente')
+            return redirect('referral_program_list')
+    else:
+        form = ReferralProgramForm(
+            instance=program,
+            gym=program.gym if not is_franchise_owner else None,
+            gyms=franchise_gyms if is_franchise_owner else None
+        )
+    
+    context = {
+        'title': f'Editar: {program.name}',
+        'form': form,
+        'program': program,
+        'is_edit': True,
+    }
+    return render(request, 'backoffice/discounts/referral_form.html', context)
+
+
+@login_required
+@require_gym_permission('discounts.delete')
+def referral_program_delete(request, pk):
+    """Eliminar programa de referidos"""
+    gym = request.gym
+    user = request.user
+    
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        program = get_object_or_404(ReferralProgram, pk=pk, gym__in=franchise.gyms.all())
+    else:
+        program = get_object_or_404(ReferralProgram, pk=pk, gym=gym)
+    
+    if request.method == 'POST':
+        program.delete()
+        from django.contrib import messages
+        messages.success(request, 'Programa eliminado')
+        return redirect('referral_program_list')
+    
+    context = {
+        'title': f'Eliminar: {program.name}',
+        'program': program,
+    }
+    return render(request, 'backoffice/discounts/referral_delete.html', context)
+
+
+@login_required
+@require_gym_permission('discounts.edit')
+def referral_program_toggle(request, pk):
+    """Activar/desactivar programa de referidos"""
+    gym = request.gym
+    user = request.user
+    
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        program = get_object_or_404(ReferralProgram, pk=pk, gym__in=franchise.gyms.all())
+    else:
+        program = get_object_or_404(ReferralProgram, pk=pk, gym=gym)
+    
+    program.is_active = not program.is_active
+    program.save(update_fields=['is_active'])
+    
+    from django.contrib import messages
+    status = 'activado' if program.is_active else 'desactivado'
+    messages.success(request, f'Programa {status}')
+    
+    return redirect('referral_program_list')
+
+
+@login_required
+@require_gym_permission('discounts.create')
+def referral_program_duplicate(request, pk):
+    """Duplicar programa de referidos (útil para franquicias)"""
+    gym = request.gym
+    user = request.user
+    
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        program = get_object_or_404(ReferralProgram, pk=pk, gym__in=franchise.gyms.all())
+        franchise_gyms = list(franchise.gyms.all())
+    else:
+        program = get_object_or_404(ReferralProgram, pk=pk, gym=gym)
+        franchise_gyms = []
+    
+    if request.method == 'POST':
+        target_gym_ids = request.POST.getlist('target_gyms')
+        
+        if target_gym_ids:
+            from organizations.models import Gym
+            count = 0
+            for gym_id in target_gym_ids:
+                # No duplicar en el mismo gym
+                if int(gym_id) == program.gym_id:
+                    continue
+                    
+                target_gym = Gym.objects.get(id=gym_id)
+                
+                # Crear copia
+                new_program = ReferralProgram.objects.create(
+                    gym=target_gym,
+                    name=f"{program.name}",
+                    description=program.description,
+                    reward_type=program.reward_type,
+                    referrer_credit_amount=program.referrer_credit_amount,
+                    referrer_free_days=program.referrer_free_days,
+                    referred_credit_amount=program.referred_credit_amount,
+                    referred_free_days=program.referred_free_days,
+                    require_membership_purchase=program.require_membership_purchase,
+                    min_membership_value=program.min_membership_value,
+                    min_referrals_for_bonus=program.min_referrals_for_bonus,
+                    bonus_credit_amount=program.bonus_credit_amount,
+                    max_referrals_per_client=program.max_referrals_per_client,
+                    max_total_referrals=program.max_total_referrals,
+                    valid_from=program.valid_from,
+                    valid_until=program.valid_until,
+                    is_active=program.is_active,
+                )
+                count += 1
+            
+            from django.contrib import messages
+            messages.success(request, f'Programa duplicado a {count} gimnasio(s)')
+        
+        return redirect('referral_program_list')
+    
+    context = {
+        'title': f'Duplicar: {program.name}',
+        'program': program,
+        'franchise_gyms': franchise_gyms,
+        'is_franchise_owner': is_franchise_owner,
+    }
+    return render(request, 'backoffice/discounts/referral_duplicate.html', context)
+
+
+@login_required
+@require_gym_permission('discounts.view')
+def referral_tracking(request):
+    """Tracking de referidos del gimnasio con soporte de franquicia"""
+    gym = request.gym
+    user = request.user
+    
+    is_franchise_owner = hasattr(user, 'franchises_owned') and user.franchises_owned.exists()
+    franchise = None
+    franchise_gyms = []
+    
+    if is_franchise_owner:
+        franchise = user.franchises_owned.first()
+        franchise_gyms = list(franchise.gyms.all())
+    
+    # Filtros
+    selected_gym_id = request.GET.get('gym', '')
+    status_filter = request.GET.get('status', '')
+    program_filter = request.GET.get('program', '')
+    
+    # Base query
+    if is_franchise_owner and not selected_gym_id:
+        referrals = Referral.objects.filter(program__gym__in=franchise_gyms)
+    elif selected_gym_id:
+        referrals = Referral.objects.filter(program__gym_id=selected_gym_id)
+    else:
+        referrals = Referral.objects.filter(program__gym=gym)
+    
+    # Aplicar filtros
+    if status_filter:
+        referrals = referrals.filter(status=status_filter)
+    if program_filter:
+        referrals = referrals.filter(program_id=program_filter)
+    
+    referrals = referrals.select_related(
+        'referrer', 'referred', 'program', 'program__gym'
+    ).order_by('-created_at')
+    
+    # Estadísticas
+    all_referrals = referrals
+    stats = {
+        'total': all_referrals.count(),
+        'pending': all_referrals.filter(status=Referral.Status.PENDING).count(),
+        'registered': all_referrals.filter(status=Referral.Status.REGISTERED).count(),
+        'completed': all_referrals.filter(status=Referral.Status.COMPLETED).count(),
+        'rewarded': all_referrals.filter(status=Referral.Status.REWARDED).count(),
+        'total_credit': all_referrals.aggregate(
+            total=Sum('referrer_credit_given')
+        )['total'] or Decimal('0.00'),
+    }
+    
+    # Programas para filtro
+    if is_franchise_owner:
+        programs = ReferralProgram.objects.filter(gym__in=franchise_gyms)
+    else:
+        programs = ReferralProgram.objects.filter(gym=gym)
     
     context = {
         'title': 'Tracking de Referidos',
-        'referrals': referrals[:100],  # Limitar a 100
+        'referrals': referrals[:200],
         'stats': stats,
+        'is_franchise_owner': is_franchise_owner,
+        'franchise': franchise,
+        'franchise_gyms': franchise_gyms,
+        'selected_gym_id': selected_gym_id,
+        'status_filter': status_filter,
+        'program_filter': program_filter,
+        'programs': programs,
+        'status_choices': Referral.Status.choices,
     }
-    return render(request, 'backoffice/discounts/list.html', context)
+    return render(request, 'backoffice/discounts/referral_tracking.html', context)
+
+
+@login_required
+@require_gym_permission('discounts.edit')
+def referral_settings(request):
+    """Configuración de referidos (activar/desactivar) para el gym actual"""
+    gym = request.gym
+    
+    from organizations.models import PublicPortalSettings
+    settings, _ = PublicPortalSettings.objects.get_or_create(gym=gym)
+    
+    if request.method == 'POST':
+        settings.referral_program_enabled = request.POST.get('referral_program_enabled') == 'on'
+        settings.referral_share_message = request.POST.get('referral_share_message', '')
+        settings.save()
+        
+        from django.contrib import messages
+        messages.success(request, 'Configuración guardada')
+        return redirect('referral_program_list')
+    
+    context = {
+        'title': 'Configuración de Referidos',
+        'settings': settings,
+        'gym': gym,
+    }
+    return render(request, 'backoffice/discounts/referral_settings.html', context)
+
+
+@login_required
+@require_gym_permission('discounts.edit')
+def referral_settings_bulk(request):
+    """Configuración masiva de referidos para franquicia"""
+    user = request.user
+    
+    if not (hasattr(user, 'franchises_owned') and user.franchises_owned.exists()):
+        from django.contrib import messages
+        messages.error(request, 'Esta función solo está disponible para owners de franquicia')
+        return redirect('referral_program_list')
+    
+    franchise = user.franchises_owned.first()
+    franchise_gyms = list(franchise.gyms.all())
+    
+    from organizations.models import PublicPortalSettings
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        selected_gym_ids = request.POST.getlist('selected_gyms')
+        share_message = request.POST.get('referral_share_message', '')
+        
+        updated = 0
+        for gym in franchise_gyms:
+            if str(gym.id) in selected_gym_ids:
+                settings, _ = PublicPortalSettings.objects.get_or_create(gym=gym)
+                
+                if action == 'enable':
+                    settings.referral_program_enabled = True
+                elif action == 'disable':
+                    settings.referral_program_enabled = False
+                
+                if share_message:
+                    settings.referral_share_message = share_message
+                
+                settings.save()
+                updated += 1
+        
+        from django.contrib import messages
+        messages.success(request, f'Configuración actualizada en {updated} gimnasio(s)')
+        return redirect('referral_program_list')
+    
+    # Obtener estado actual de cada gym
+    gym_states = []
+    for gym in franchise_gyms:
+        try:
+            settings = PublicPortalSettings.objects.get(gym=gym)
+            enabled = settings.referral_program_enabled
+            message = settings.referral_share_message
+        except PublicPortalSettings.DoesNotExist:
+            enabled = False
+            message = ''
+        
+        # Contar programas activos
+        active_programs = ReferralProgram.objects.filter(gym=gym, is_active=True).count()
+        
+        gym_states.append({
+            'gym': gym,
+            'enabled': enabled,
+            'message': message,
+            'active_programs': active_programs,
+        })
+    
+    context = {
+        'title': 'Configuración Masiva de Referidos',
+        'franchise': franchise,
+        'gym_states': gym_states,
+    }
+    return render(request, 'backoffice/discounts/referral_settings_bulk.html', context)
 
 
 # ============================================
