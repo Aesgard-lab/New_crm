@@ -363,9 +363,19 @@ class MembershipPlan(models.Model):
         return self.eligibility_criteria != 'NONE' or self.is_new_client_only
 
 class PlanAccessRule(models.Model):
+    """
+    Define qué actividades/servicios incluye un plan y con qué restricciones.
+    
+    Ejemplo de configuración:
+    - Plan "Básico": 4 clases/mes, máx 1/día, reservar 24h antes
+    - Plan "Premium": Ilimitado, máx 2/día, reservar 7 días antes
+    - Plan "VIP": Ilimitado sin restricciones
+    """
     PERIODS = [
         ('TOTAL', _("Total (Bono)")),
         ('PER_CYCLE', _("Por Ciclo (Recurrente)")),
+        ('PER_DAY', _("Por Día")),
+        ('PER_WEEK', _("Por Semana")),
     ]
     
     plan = models.ForeignKey(MembershipPlan, on_delete=models.CASCADE, related_name='access_rules')
@@ -378,8 +388,67 @@ class PlanAccessRule(models.Model):
     service_category = models.ForeignKey(ServiceCategory, on_delete=models.CASCADE, null=True, blank=True)
     service = models.ForeignKey(Service, on_delete=models.CASCADE, null=True, blank=True)
     
-    quantity = models.IntegerField(_("Cantidad"), default=0, help_text=_("0 = Ilimitado"))
-    period = models.CharField(max_length=20, choices=PERIODS, default='PER_CYCLE')
+    # === LÍMITES DE CANTIDAD ===
+    quantity = models.IntegerField(
+        _("Cantidad"), 
+        default=0, 
+        help_text=_("0 = Ilimitado")
+    )
+    period = models.CharField(
+        max_length=20, 
+        choices=PERIODS, 
+        default='PER_CYCLE'
+    )
+    
+    # === RESTRICCIONES DE RESERVA (NUEVO) ===
+    max_per_day = models.PositiveIntegerField(
+        _("Máx. reservas por día"),
+        default=0,
+        help_text=_("0 = Sin límite diario")
+    )
+    
+    max_per_week = models.PositiveIntegerField(
+        _("Máx. reservas por semana"),
+        default=0,
+        help_text=_("0 = Sin límite semanal")
+    )
+    
+    max_simultaneous = models.PositiveIntegerField(
+        _("Máx. reservas simultáneas"),
+        default=0,
+        help_text=_("0 = Sin límite de reservas futuras a la vez")
+    )
+    
+    # === VENTANA DE RESERVA ===
+    advance_booking_hours = models.PositiveIntegerField(
+        _("Horas de antelación para reservar"),
+        default=0,
+        help_text=_("Cuántas horas antes puede reservar (0 = usar config. global)")
+    )
+    
+    advance_booking_days = models.PositiveIntegerField(
+        _("Días máximos para reservar"),
+        default=0,
+        help_text=_("Cuántos días en el futuro puede reservar (0 = usar config. global)")
+    )
+    
+    # === PRIORIDAD (Para planes premium) ===
+    booking_priority = models.PositiveIntegerField(
+        _("Prioridad de reserva"),
+        default=0,
+        help_text=_("Mayor número = más prioridad (para desempate en waitlist)")
+    )
+    
+    # === PERMITE LISTA DE ESPERA ===
+    allow_waitlist = models.BooleanField(
+        _("Permitir lista de espera"),
+        default=True,
+        help_text=_("Si la clase está llena, puede unirse a la lista")
+    )
+    
+    class Meta:
+        verbose_name = _("Regla de Acceso")
+        verbose_name_plural = _("Reglas de Acceso")
     
     def __str__(self):
         if self.activity: target = f"Actividad: {self.activity.name}"
@@ -390,6 +459,19 @@ class PlanAccessRule(models.Model):
         
         qty = "Ilimitado" if self.quantity == 0 else str(self.quantity)
         return f"{qty} x {target}"
+    
+    def get_restrictions_display(self):
+        """Devuelve un resumen legible de las restricciones"""
+        parts = []
+        if self.max_per_day > 0:
+            parts.append(f"Máx {self.max_per_day}/día")
+        if self.max_per_week > 0:
+            parts.append(f"Máx {self.max_per_week}/semana")
+        if self.max_simultaneous > 0:
+            parts.append(f"Máx {self.max_simultaneous} simultáneas")
+        if self.advance_booking_days > 0:
+            parts.append(f"Reservar hasta {self.advance_booking_days} días antes")
+        return " • ".join(parts) if parts else "Sin restricciones adicionales"
 
 
 class MembershipPause(models.Model):

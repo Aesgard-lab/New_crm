@@ -415,8 +415,9 @@
                     <tr>
                         <th class="px-3 py-2 w-1/4">Actividad (Cat / Específica)</th>
                         <th class="px-3 py-2 w-1/4">Servicio (Cat / Específico)</th>
-                        <th class="px-3 py-2 w-24">Cant.</th>
-                        <th class="px-3 py-2">Periodo</th>
+                        <th class="px-3 py-2 w-20">Cant.</th>
+                        <th class="px-3 py-2 w-28">Periodo</th>
+                        <th class="px-3 py-2 w-16">Límites</th>
                         <th class="px-3 py-2 w-10">Eliminar</th>
                     </tr>
                 </thead>
@@ -444,7 +445,7 @@
 
                     <!-- Access Rules (Dynamic Formset) -->
                     {% for rule_form in formset %}
-                    <tr class="border-b border-slate-100 rule-row {% if rule_form.DELETE.value %}hidden{% endif %}">
+                    <tr class="border-b border-slate-100 rule-row {% if rule_form.DELETE.value %}hidden{% endif %}" x-data="{ showLimits: false }">
                         <td class="px-3 py-3 space-y-2">
                             {{ rule_form.id }}
                             <div>
@@ -471,6 +472,17 @@
                         <td class="px-3 py-3 align-top pt-8">{{ rule_form.quantity }}</td>
                         <td class="px-3 py-3 align-top pt-8">{{ rule_form.period }}</td>
                         <td class="px-3 py-3 align-top pt-8 text-center">
+                            <button type="button" @click="showLimits = !showLimits" 
+                                class="text-slate-400 hover:text-slate-600 transition-colors" 
+                                :class="{'text-blue-600': showLimits}"
+                                title="Configurar límites de reserva">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </button>
+                        </td>
+                        <td class="px-3 py-3 align-top pt-8 text-center">
                             <div class="hidden">
                                 {{ rule_form.DELETE }}
                             </div>
@@ -482,6 +494,44 @@
                                     </path>
                                 </svg>
                             </button>
+                        </td>
+                    </tr>
+                    <!-- Fila expandible con límites de reserva -->
+                    <tr x-show="showLimits" x-transition class="bg-blue-50/50 border-b border-slate-200">
+                        <td colspan="6" class="px-4 py-3">
+                            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Día</label>
+                                    {{ rule_form.max_per_day }}
+                                    <span class="text-[9px] text-slate-400">0 = sin límite</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Semana</label>
+                                    {{ rule_form.max_per_week }}
+                                    <span class="text-[9px] text-slate-400">0 = sin límite</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Simultáneas</label>
+                                    {{ rule_form.max_simultaneous }}
+                                    <span class="text-[9px] text-slate-400">Reservas activas</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Días Antelación</label>
+                                    {{ rule_form.advance_booking_days }}
+                                    <span class="text-[9px] text-slate-400">Máx días antes</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Prioridad</label>
+                                    {{ rule_form.booking_priority }}
+                                    <span class="text-[9px] text-slate-400">Mayor = antes</span>
+                                </div>
+                                <div class="flex items-center pt-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        {{ rule_form.allow_waitlist }}
+                                        <span class="text-xs text-slate-600">Permite Waitlist</span>
+                                    </label>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -511,7 +561,7 @@
 <!-- Empty Form Template for JS -->
 <table style="display:none">
     <tbody id="empty-form-row">
-        <tr class="border-b border-slate-100 rule-row bg-slate-50/50">
+        <tr class="border-b border-slate-100 rule-row bg-slate-50/50" x-data="{ showLimits: false }">
             <td class="px-3 py-3 space-y-2">
                 {{ formset.empty_form.id }}
                 <div>
@@ -538,6 +588,17 @@
             <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.quantity }}</td>
             <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.period }}</td>
             <td class="px-3 py-3 align-top pt-8 text-center">
+                <button type="button" @click="showLimits = !showLimits" 
+                    class="text-slate-400 hover:text-slate-600 transition-colors limits-toggle-btn" 
+                    :class="{'text-blue-600': showLimits}"
+                    title="Configurar límites de reserva">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+            </td>
+            <td class="px-3 py-3 align-top pt-8 text-center">
                 <button type="button" class="text-red-400 hover:text-red-600 delete-row-btn" title="Eliminar fila">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -547,6 +608,44 @@
                 </button>
                 <div class="hidden">
                     {{ formset.empty_form.DELETE }}
+                </div>
+            </td>
+        </tr>
+        <!-- Fila expandible con límites de reserva (empty form) -->
+        <tr x-show="showLimits" x-transition class="bg-blue-50/50 border-b border-slate-200 limits-row">
+            <td colspan="6" class="px-4 py-3">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Día</label>
+                        {{ formset.empty_form.max_per_day }}
+                        <span class="text-[9px] text-slate-400">0 = sin límite</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Semana</label>
+                        {{ formset.empty_form.max_per_week }}
+                        <span class="text-[9px] text-slate-400">0 = sin límite</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Simultáneas</label>
+                        {{ formset.empty_form.max_simultaneous }}
+                        <span class="text-[9px] text-slate-400">Reservas activas</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Días Antelación</label>
+                        {{ formset.empty_form.advance_booking_days }}
+                        <span class="text-[9px] text-slate-400">Máx días antes</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Prioridad</label>
+                        {{ formset.empty_form.booking_priority }}
+                        <span class="text-[9px] text-slate-400">Mayor = antes</span>
+                    </div>
+                    <div class="flex items-center pt-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            {{ formset.empty_form.allow_waitlist }}
+                            <span class="text-xs text-slate-600">Permite Waitlist</span>
+                        </label>
+                    </div>
                 </div>
             </td>
         </tr>

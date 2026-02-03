@@ -102,7 +102,12 @@ class MembershipPlanForm(forms.ModelForm):
 class PlanAccessRuleForm(forms.ModelForm):
     class Meta:
         model = PlanAccessRule
-        fields = ['activity_category', 'activity', 'service_category', 'service', 'quantity', 'period']
+        fields = [
+            'activity_category', 'activity', 'service_category', 'service', 
+            'quantity', 'period',
+            'max_per_day', 'max_per_week', 'max_simultaneous',
+            'advance_booking_days', 'booking_priority', 'allow_waitlist'
+        ]
         widgets = {
             'activity_category': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm target-selector', 'data-type': 'activity_cat'}),
             'activity': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm target-selector', 'data-type': 'activity'}),
@@ -110,8 +115,16 @@ class PlanAccessRuleForm(forms.ModelForm):
             'service_category': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm target-selector', 'data-type': 'service_cat'}),
             'service': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm target-selector', 'data-type': 'service'}),
             
-            'quantity': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0 = Ilimitado'}),
+            'quantity': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0 = Ilimitado', 'min': '0'}),
             'period': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm'}),
+            
+            # Nuevos campos de restricciones
+            'max_per_day': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'max_per_week': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'max_simultaneous': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'advance_booking_days': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'booking_priority': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'allow_waitlist': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-blue-600'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -122,6 +135,14 @@ class PlanAccessRuleForm(forms.ModelForm):
         self.fields['activity'].required = False
         self.fields['service_category'].required = False
         self.fields['service'].required = False
+        
+        # Labels más cortos para la tabla
+        self.fields['max_per_day'].label = "Máx/Día"
+        self.fields['max_per_week'].label = "Máx/Semana"
+        self.fields['max_simultaneous'].label = "Simultáneas"
+        self.fields['advance_booking_days'].label = "Días Antelación"
+        self.fields['booking_priority'].label = "Prioridad"
+        self.fields['allow_waitlist'].label = "Waitlist"
 
     def clean(self):
         cleaned_data = super().clean()

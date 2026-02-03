@@ -6,15 +6,280 @@ para reservas, cancelaciones, listas de espera y penalizaciones.
 """
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, List
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 
 from .models import (
     Activity, ActivitySession, ActivitySessionBooking,
     ActivityPolicy, WaitlistEntry
 )
+
+
+class PolicyValidationResult:
+    """Resultado de una validación de política"""
+    
+    def __init__(self, success: bool, message: str = "", data: dict = None):
+        self.success = success
+        self.message = message
+        self.data = data or {}
+    
+    def to_dict(self) -> dict:
+        return {
+            'success': self.success,
+            'message': self.message,
+            **self.data
+        }
+
+
+class MembershipAccessService:
+    """
+    Servicio para verificar restricciones de acceso según la membresía del cliente.
+    Verifica límites por día, semana, mes y reservas simultáneas.
+    """
+    
+    @classmethod
+    def get_access_rules_for_activity(cls, client, activity: Activity) -> List:
+        """
+        Obtiene las reglas de acceso aplicables para esta actividad
+        según las membresías activas del cliente.
+        """
+        from clients.models import ClientMembership
+        from memberships.models import PlanAccessRule
+        
+        # Obtener membresías activas del cliente
+        today = timezone.now().date()
+        active_memberships = ClientMembership.objects.filter(
+            client=client,
+            gym=activity.gym,
+            status='ACTIVE',
+            start_date__lte=today
+        ).filter(
+            Q(end_date__gte=today) | Q(end_date__isnull=True)
+        ).select_related('plan')
+        
+        if not active_memberships.exists():
+            return []
+        
+        # Buscar reglas que apliquen a esta actividad
+        plan_ids = [m.plan_id for m in active_memberships]
+        
+        rules = PlanAccessRule.objects.filter(
+            plan_id__in=plan_ids
+        ).filter(
+            # Regla específica para esta actividad
+            Q(activity=activity) |
+            # O regla para la categoría de esta actividad
+            Q(activity_category=activity.category, activity__isnull=True) |
+            # O regla genérica (sin actividad ni categoría = acceso a todo)
+            Q(activity__isnull=True, activity_category__isnull=True, service__isnull=True, service_category__isnull=True)
+        ).select_related('plan')
+        
+        return list(rules)
+    
+    @classmethod
+    def check_booking_limits(cls, client, session: ActivitySession) -> PolicyValidationResult:
+        """
+        Verifica si el cliente cumple con los límites de reserva de su membresía.
+        
+        Verifica:
+        - Límite por día
+        - Límite por semana
+        - Límite por ciclo/total
+        - Reservas simultáneas
+        - Ventana de reserva anticipada
+        """
+        activity = session.activity
+        rules = cls.get_access_rules_for_activity(client, activity)
+        
+        if not rules:
+            # Sin reglas = sin membresía válida o actividad no incluida
+            return PolicyValidationResult(
+                False,
+                "Tu membresía no incluye acceso a esta actividad",
+                {'requires_membership': True}
+            )
+        
+        # Usar la regla más permisiva (la mejor para el cliente)
+        # Ordenar por prioridad de reserva (mayor = mejor)
+        rules = sorted(rules, key=lambda r: r.booking_priority, reverse=True)
+        best_rule = rules[0]
+        
+        now = timezone.now()
+        today = now.date()
+        
+        # === VERIFICAR LÍMITE POR DÍA ===
+        if best_rule.max_per_day > 0:
+            session_date = session.start_datetime.date()
+            bookings_today = ActivitySessionBooking.objects.filter(
+                client=client,
+                session__start_datetime__date=session_date,
+                session__activity__gym=activity.gym,
+                status='CONFIRMED'
+            ).count()
+            
+            if bookings_today >= best_rule.max_per_day:
+                return PolicyValidationResult(
+                    False,
+                    f"Has alcanzado el límite de {best_rule.max_per_day} reservas para este día",
+                    {'limit_type': 'daily', 'limit': best_rule.max_per_day, 'current': bookings_today}
+                )
+        
+        # === VERIFICAR LÍMITE POR SEMANA ===
+        if best_rule.max_per_week > 0:
+            # Calcular inicio y fin de la semana de la sesión
+            session_date = session.start_datetime.date()
+            week_start = session_date - timedelta(days=session_date.weekday())
+            week_end = week_start + timedelta(days=6)
+            
+            bookings_week = ActivitySessionBooking.objects.filter(
+                client=client,
+                session__start_datetime__date__gte=week_start,
+                session__start_datetime__date__lte=week_end,
+                session__activity__gym=activity.gym,
+                status='CONFIRMED'
+            ).count()
+            
+            if bookings_week >= best_rule.max_per_week:
+                return PolicyValidationResult(
+                    False,
+                    f"Has alcanzado el límite de {best_rule.max_per_week} reservas para esta semana",
+                    {'limit_type': 'weekly', 'limit': best_rule.max_per_week, 'current': bookings_week}
+                )
+        
+        # === VERIFICAR RESERVAS SIMULTÁNEAS ===
+        if best_rule.max_simultaneous > 0:
+            future_bookings = ActivitySessionBooking.objects.filter(
+                client=client,
+                session__start_datetime__gt=now,
+                session__activity__gym=activity.gym,
+                status='CONFIRMED'
+            ).count()
+            
+            if future_bookings >= best_rule.max_simultaneous:
+                return PolicyValidationResult(
+                    False,
+                    f"Ya tienes {future_bookings} reservas futuras. Máximo permitido: {best_rule.max_simultaneous}",
+                    {'limit_type': 'simultaneous', 'limit': best_rule.max_simultaneous, 'current': future_bookings}
+                )
+        
+        # === VERIFICAR VENTANA DE RESERVA ANTICIPADA ===
+        if best_rule.advance_booking_days > 0:
+            max_date = today + timedelta(days=best_rule.advance_booking_days)
+            if session.start_datetime.date() > max_date:
+                return PolicyValidationResult(
+                    False,
+                    f"Solo puedes reservar hasta {best_rule.advance_booking_days} días en el futuro",
+                    {'limit_type': 'advance_days', 'max_days': best_rule.advance_booking_days}
+                )
+        
+        # === VERIFICAR CANTIDAD TOTAL (BONOS) ===
+        if best_rule.quantity > 0:
+            from clients.models import ClientMembership
+            
+            # Obtener membresía activa con esta regla
+            membership = ClientMembership.objects.filter(
+                client=client,
+                plan=best_rule.plan,
+                status='ACTIVE'
+            ).first()
+            
+            if membership:
+                used_count = cls._count_used_sessions(client, best_rule, membership)
+                
+                if used_count >= best_rule.quantity:
+                    period_label = dict(best_rule.PERIODS).get(best_rule.period, '')
+                    return PolicyValidationResult(
+                        False,
+                        f"Has usado {used_count}/{best_rule.quantity} sesiones ({period_label})",
+                        {'limit_type': 'quantity', 'limit': best_rule.quantity, 'used': used_count}
+                    )
+        
+        # Todo OK
+        return PolicyValidationResult(
+            True,
+            "Acceso permitido",
+            {
+                'rule_id': best_rule.id,
+                'plan_name': best_rule.plan.name,
+                'priority': best_rule.booking_priority
+            }
+        )
+    
+    @staticmethod
+    def _count_used_sessions(client, rule, membership) -> int:
+        """Cuenta las sesiones usadas según el período de la regla"""
+        from clients.models import ClientMembership
+        
+        now = timezone.now()
+        
+        base_filter = {
+            'client': client,
+            'session__activity__gym': rule.plan.gym,
+            'status': 'CONFIRMED'
+        }
+        
+        # Filtrar por actividad/categoría si está especificada
+        if rule.activity:
+            base_filter['session__activity'] = rule.activity
+        elif rule.activity_category:
+            base_filter['session__activity__category'] = rule.activity_category
+        
+        if rule.period == 'TOTAL':
+            # Total desde inicio de membresía
+            base_filter['session__start_datetime__gte'] = membership.start_date
+            if membership.end_date:
+                base_filter['session__start_datetime__lte'] = membership.end_date
+        
+        elif rule.period == 'PER_CYCLE':
+            # Calcular el ciclo actual basado en la frecuencia del plan
+            plan = rule.plan
+            cycle_start = MembershipAccessService._calculate_current_cycle_start(membership, plan)
+            base_filter['session__start_datetime__gte'] = cycle_start
+        
+        elif rule.period == 'PER_DAY':
+            base_filter['session__start_datetime__date'] = now.date()
+        
+        elif rule.period == 'PER_WEEK':
+            week_start = now.date() - timedelta(days=now.weekday())
+            base_filter['session__start_datetime__date__gte'] = week_start
+        
+        return ActivitySessionBooking.objects.filter(**base_filter).count()
+    
+    @staticmethod
+    def _calculate_current_cycle_start(membership, plan):
+        """Calcula el inicio del ciclo actual de la membresía"""
+        from dateutil.relativedelta import relativedelta
+        
+        start = membership.start_date
+        now = timezone.now().date()
+        
+        # Calcular duración del ciclo
+        if plan.frequency_unit == 'DAY':
+            delta = timedelta(days=plan.frequency_amount)
+        elif plan.frequency_unit == 'WEEK':
+            delta = timedelta(weeks=plan.frequency_amount)
+        elif plan.frequency_unit == 'MONTH':
+            delta = relativedelta(months=plan.frequency_amount)
+        elif plan.frequency_unit == 'YEAR':
+            delta = relativedelta(years=plan.frequency_amount)
+        else:
+            delta = relativedelta(months=1)
+        
+        # Encontrar el ciclo actual
+        cycle_start = start
+        while True:
+            if hasattr(delta, 'days'):
+                next_cycle = cycle_start + delta
+            else:
+                next_cycle = cycle_start + delta
+            
+            if next_cycle > now:
+                break
+            cycle_start = next_cycle
+        
+        return timezone.make_aware(datetime.combine(cycle_start, datetime.min.time()))
 
 
 class PolicyValidationResult:
@@ -133,12 +398,19 @@ class BookingPolicyService:
                 "Ya estás en la lista de espera para esta clase"
             )
         
+        # 6. NUEVO: Verificar restricciones de membresía (límites por día/semana/etc)
+        membership_check = MembershipAccessService.check_booking_limits(client, session)
+        if not membership_check.success:
+            return membership_check
+        
         return PolicyValidationResult(
             True,
             "Reserva disponible",
             {
                 'spots_available': capacity - confirmed_count if capacity else None,
-                'policy_name': policy.name if policy else None
+                'policy_name': policy.name if policy else None,
+                'plan_name': membership_check.data.get('plan_name'),
+                'booking_priority': membership_check.data.get('priority', 0)
             }
         )
     
