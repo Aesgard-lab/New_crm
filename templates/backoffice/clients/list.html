@@ -9,7 +9,12 @@
   <div class="flex items-center justify-between mb-6">
     <div>
       <h2 class="text-lg font-semibold">{% trans "Listado de Clientes" %}</h2>
-      <div class="text-sm text-slate-500">{% trans "Gestiona los socios de este gimnasio" %}</div>
+      <div class="flex items-center gap-2 text-sm text-slate-500">
+        <span>{% trans "Gestiona los socios de este gimnasio" %}</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+          {{ paginator.count }} {% trans "resultado" %}{{ paginator.count|pluralize:"s" }}
+        </span>
+      </div>
     </div>
 
     <div class="flex gap-2">
@@ -62,6 +67,25 @@
   </div>
 
   <form method="get" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
+    <!-- Ordenación -->
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+      <div class="flex items-center gap-2">
+        <label class="text-xs font-bold text-slate-600">{% trans "Ordenar por" %}:</label>
+        <select name="sort" onchange="this.form.submit()"
+          class="rounded-lg border-slate-200 text-sm py-1 px-2 focus:border-indigo-500 focus:ring-indigo-500">
+          <option value="-created_at" {% if filters.sort == '-created_at' %}selected{% endif %}>{% trans "Más recientes" %}</option>
+          <option value="created_at" {% if filters.sort == 'created_at' %}selected{% endif %}>{% trans "Más antiguos" %}</option>
+          <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>{% trans "Nombre A-Z" %}</option>
+          <option value="-name" {% if filters.sort == '-name' %}selected{% endif %}>{% trans "Nombre Z-A" %}</option>
+          <option value="-last_visit" {% if filters.sort == '-last_visit' %}selected{% endif %}>{% trans "Última visita (reciente)" %}</option>
+          <option value="last_visit" {% if filters.sort == 'last_visit' %}selected{% endif %}>{% trans "Última visita (antigua)" %}</option>
+        </select>
+      </div>
+      <div class="text-xs text-slate-500">
+        <span class="font-medium">{{ paginator.count }}</span> {% trans "clientes encontrados" %}
+      </div>
+    </div>
+    
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Buscar" %}</label>
@@ -118,54 +142,158 @@
             <span class="w-2 h-2 rounded-full bg-red-500"></span>
             {% trans "Bloqueado" %}
           </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="status" value="UNPAID" 
+              {% if 'UNPAID' in filters.statuses %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+            {% trans "Impagado" %}
+          </label>
         </div>
       </div>
       
-      <div>
+      <!-- Tipo de cliente (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Tipo de cliente" %}</label>
-        <select name="company"
-          class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.company == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
-          <option value="company" {% if filters.company == 'company' %}selected{% endif %}>{% trans "Solo empresas" %}</option>
-          <option value="individual" {% if filters.company == 'individual' %}selected{% endif %}>{% trans "Solo particulares" %}</option>
-        </select>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.companies %}{{ filters.companies|length }} seleccionado{{ filters.companies|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1">
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="company" value="company" 
+              {% if 'company' in filters.companies %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+            {% trans "Empresas" %}
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="company" value="individual" 
+              {% if 'individual' in filters.companies %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+            {% trans "Particulares" %}
+          </label>
+        </div>
       </div>
 
       <!-- Filtros avanzados -->
-      <div>
+      <!-- Tipo de cuota (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Tipo de cuota" %}</label>
-        <select name="membership_plan" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.membership_plan == 'all' %}selected{% endif %}>{% trans "Todas" %}</option>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.membership_plans %}{{ filters.membership_plans|length }} seleccionada{{ filters.membership_plans|length|pluralize }}{% else %}{% trans "Todas" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1 max-h-48 overflow-y-auto">
           {% for plan in membership_plans %}
-          <option value="{{ plan.id }}" {% if filters.membership_plan == plan.id|stringformat:'s' %}selected{% endif %}>{{ plan.name }}</option>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="membership_plan" value="{{ plan.id }}" 
+              {% if plan.id|stringformat:'s' in filters.membership_plans %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            {{ plan.name }}
+          </label>
+          {% empty %}
+          <p class="text-sm text-slate-400 px-2 py-1">{% trans "Sin cuotas configuradas" %}</p>
           {% endfor %}
-        </select>
+        </div>
       </div>
-      <div>
+      <!-- Servicio (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Servicio" %}</label>
-        <select name="service" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.service == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.services %}{{ filters.services|length }} seleccionado{{ filters.services|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1 max-h-48 overflow-y-auto">
           {% for service in services %}
-          <option value="{{ service.id }}" {% if filters.service == service.id|stringformat:'s' %}selected{% endif %}>{{ service.name }}</option>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="service" value="{{ service.id }}" 
+              {% if service.id|stringformat:'s' in filters.services %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            {{ service.name }}
+          </label>
+          {% empty %}
+          <p class="text-sm text-slate-400 px-2 py-1">{% trans "Sin servicios configurados" %}</p>
           {% endfor %}
-        </select>
+        </div>
       </div>
-      <div>
+      <!-- Producto (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Producto" %}</label>
-        <select name="product" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.product == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.products %}{{ filters.products|length }} seleccionado{{ filters.products|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1 max-h-48 overflow-y-auto">
           {% for product in products %}
-          <option value="{{ product.id }}" {% if filters.product == product.id|stringformat:'s' %}selected{% endif %}>{{ product.name }}</option>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="product" value="{{ product.id }}" 
+              {% if product.id|stringformat:'s' in filters.products %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            {{ product.name }}
+          </label>
+          {% empty %}
+          <p class="text-sm text-slate-400 px-2 py-1">{% trans "Sin productos configurados" %}</p>
           {% endfor %}
-        </select>
+        </div>
       </div>
-      <div>
+      <!-- Origen de alta (Multi-select) -->
+      <div x-data="{ open: false }" class="relative">
         <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Origen de alta" %}</label>
-        <select name="created_from" class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <option value="all" {% if filters.created_from == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
-          <option value="app" {% if filters.created_from == 'app' %}selected{% endif %}>App</option>
-          <option value="backoffice" {% if filters.created_from == 'backoffice' %}selected{% endif %}>Backoffice</option>
-        </select>
+        <button type="button" @click="open = !open" 
+          class="w-full rounded-xl border border-slate-200 bg-white text-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-left flex items-center justify-between">
+          <span class="text-slate-600">
+            {% if filters.created_froms %}{{ filters.created_froms|length }} seleccionado{{ filters.created_froms|length|pluralize }}{% else %}{% trans "Todos" %}{% endif %}
+          </span>
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open" @click.away="open = false" x-cloak
+          class="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg p-2 space-y-1">
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="created_from" value="app" 
+              {% if 'app' in filters.created_froms %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            App
+          </label>
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
+            <input type="checkbox" name="created_from" value="backoffice" 
+              {% if 'backoffice' in filters.created_froms %}checked{% endif %}
+              class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+            Backoffice
+          </label>
+        </div>
       </div>
       
       <!-- Pasarela Pago (Multi-select) -->
@@ -307,6 +435,133 @@
       {% endif %}
     </div>
 
+    <!-- Filtros de Fecha y Engagement -->
+    <div class="mt-4 pt-4 border-t border-slate-200">
+      <div x-data="{ showAdvanced: false }">
+        <button type="button" @click="showAdvanced = !showAdvanced" 
+          class="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors mb-3">
+          <svg class="w-4 h-4 transition-transform" :class="showAdvanced ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+          {% trans "Filtros avanzados (fechas y engagement)" %}
+        </button>
+        
+        <div x-show="showAdvanced" x-cloak class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <!-- Fecha de alta desde -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              {% trans "Alta desde" %}
+            </label>
+            <input type="date" name="date_from" value="{{ filters.date_from }}"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Fecha de alta hasta -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              {% trans "Alta hasta" %}
+            </label>
+            <input type="date" name="date_to" value="{{ filters.date_to }}"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Días sin asistir -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "Días sin asistir" %}
+            </label>
+            <input type="number" name="days_no_visit" value="{{ filters.days_no_visit }}" min="1" placeholder="ej: 30"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Días sin reservar -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "Días sin reservar" %}
+            </label>
+            <input type="number" name="days_no_booking" value="{{ filters.days_no_booking }}" min="1" placeholder="ej: 14"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Membresía expira en X días -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "Cuota expira en (días)" %}
+            </label>
+            <input type="number" name="membership_expires_days" value="{{ filters.membership_expires_days }}" min="1" placeholder="ej: 7"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Fecha de baja desde -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "Baja desde" %}
+            </label>
+            <input type="date" name="cancelled_from" value="{{ filters.cancelled_from }}"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Fecha de baja hasta -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "Baja hasta" %}
+            </label>
+            <input type="date" name="cancelled_to" value="{{ filters.cancelled_to }}"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+          
+          <!-- Excedencia activa -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "Excedencia" %}
+            </label>
+            <select name="has_active_pause"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+              <option value="" {% if not filters.has_active_pause %}selected{% endif %}>{% trans "Todos" %}</option>
+              <option value="yes" {% if filters.has_active_pause == 'yes' %}selected{% endif %}>{% trans "Con excedencia activa" %}</option>
+              <option value="no" {% if filters.has_active_pause == 'no' %}selected{% endif %}>{% trans "Sin excedencia" %}</option>
+            </select>
+          </div>
+          
+          <!-- No-shows (reserva pero no asiste) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">
+              <svg class="w-3.5 h-3.5 inline mr-1 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
+              </svg>
+              {% trans "No-shows (mín.)" %}
+            </label>
+            <input type="number" name="min_no_shows" value="{{ filters.min_no_shows }}" min="1" placeholder="ej: 3"
+              class="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="mt-4">
       <label class="block text-xs font-bold text-slate-600 mb-2">{% trans "Etiquetas" %}</label>
       <div class="flex flex-wrap gap-2">
@@ -396,16 +651,35 @@
             {% endif %}
 
             <div>
-              <a href="{% url 'client_detail' client.id %}"
-                class="font-semibold hover:text-[var(--brand-color)] transition-colors">
-                {% with fn=client.first_name|default_if_none:"" ln=client.last_name|default_if_none:"" %}
-                  {% if fn or ln %}
-                    {{ fn }}{% if fn and ln %} {% endif %}{{ ln }}
-                  {% else %}
-                    {% trans "Cliente sin nombre" %}
+              <div class="flex items-center gap-1">
+                {% if client.wallet %}
+                  {% if client.wallet.balance > 0 %}
+                  <span class="text-emerald-500" title="Saldo: {{ client.wallet.balance|floatformat:2 }} €">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                      <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                    </svg>
+                  </span>
+                  {% elif client.wallet.balance < 0 %}
+                  <span class="text-red-500" title="Saldo: {{ client.wallet.balance|floatformat:2 }} € (fiado)">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                      <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                    </svg>
+                  </span>
                   {% endif %}
-                {% endwith %}
-              </a>
+                {% endif %}
+                <a href="{% url 'client_detail' client.id %}"
+                  class="font-semibold hover:text-[var(--brand-color)] transition-colors">
+                  {% with fn=client.first_name|default_if_none:"" ln=client.last_name|default_if_none:"" %}
+                    {% if fn or ln %}
+                      {{ fn }}{% if fn and ln %} {% endif %}{{ ln }}
+                    {% else %}
+                      {% trans "Cliente sin nombre" %}
+                    {% endif %}
+                  {% endwith %}
+                </a>
+              </div>
               <div class="text-xs text-slate-400 font-normal">
                 DNI: {{ client.dni|default:"--" }}
                 {% if client.has_portal_access %}

@@ -2,9 +2,24 @@
 Django Signals for Lead Management Automations
 Triggers Celery tasks when relevant events occur.
 """
+import logging
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+
+
+def safe_delay(task, *args, **kwargs):
+    """
+    Safely call a Celery task's delay method.
+    If Redis/Celery broker is unavailable, log the error and continue.
+    """
+    try:
+        return task.delay(*args, **kwargs)
+    except Exception as e:
+        logger.warning(f"Celery task {task.name} could not be queued (broker unavailable): {e}")
+        return None
 
 
 # =============================================================================
@@ -150,7 +165,7 @@ def on_client_visit_created(sender, instance, created, **kwargs):
     
     # Update lead scoring
     from .tasks import calculate_lead_score
-    calculate_lead_score.delay(client.id, 'VISIT_REGISTERED')
+    safe_delay(calculate_lead_score, client.id, 'VISIT_REGISTERED')
     
     # Only process if client is a LEAD
     if client.status != 'LEAD':
@@ -160,7 +175,7 @@ def on_client_visit_created(sender, instance, created, **kwargs):
     visit_count = client.visits.count()
     if visit_count == 1:
         from .tasks import process_lead_automation
-        process_lead_automation.delay(client.id, 'FIRST_VISIT')
+        safe_delay(process_lead_automation, client.id, 'FIRST_VISIT')
 
 
 @receiver(post_save, sender='clients.ClientMembership')
@@ -179,7 +194,7 @@ def on_membership_created(sender, instance, created, **kwargs):
         return
     
     from .tasks import process_lead_automation
-    process_lead_automation.delay(client.id, 'MEMBERSHIP_CREATED')
+    safe_delay(process_lead_automation, client.id, 'MEMBERSHIP_CREATED')
     
     # Convert to active client
     client.status = 'ACTIVE'
@@ -202,14 +217,14 @@ def on_order_created(sender, instance, created, **kwargs):
     
     # Update lead scoring
     from .tasks import calculate_lead_score
-    calculate_lead_score.delay(client.id, 'PURCHASE_MADE')
+    safe_delay(calculate_lead_score, client.id, 'PURCHASE_MADE')
     
     # Only process if client is a LEAD
     if client.status != 'LEAD':
         return
     
     from .tasks import process_lead_automation
-    process_lead_automation.delay(client.id, 'ORDER_CREATED')
+    safe_delay(process_lead_automation, client.id, 'ORDER_CREATED')
 
 
 @receiver(post_save, sender='clients.Client')
@@ -224,7 +239,7 @@ def on_client_created(sender, instance, created, **kwargs):
         return
     
     from .tasks import create_lead_card_for_client
-    create_lead_card_for_client.delay(instance.id)
+    safe_delay(create_lead_card_for_client, instance.id)
     
     # Check if there's an active workflow for LEAD_CREATED trigger
     from .models import EmailWorkflow
@@ -236,7 +251,7 @@ def on_client_created(sender, instance, created, **kwargs):
     
     for workflow in workflows:
         from .tasks import start_workflow_for_client
-        start_workflow_for_client.delay(workflow.id, instance.id)
+        safe_delay(start_workflow_for_client, workflow.id, instance.id)
 
 
 # =============================================================================
@@ -266,7 +281,7 @@ def track_email_opened(client_id):
     Llamar esta función cuando se detecte apertura de email.
     """
     from .tasks import calculate_lead_score
-    calculate_lead_score.delay(client_id, 'EMAIL_OPENED')
+    safe_delay(calculate_lead_score, client_id, 'EMAIL_OPENED')
 
 
 # =============================================================================

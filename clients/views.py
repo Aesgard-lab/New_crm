@@ -108,7 +108,7 @@ def clients_list(request):
         if not gym:
             return redirect("home")
 
-    clients = Client.objects.filter(gym=gym).prefetch_related("tags")
+    clients = Client.objects.filter(gym=gym).prefetch_related("tags").select_related("wallet")
 
     query = request.GET.get("q", "").strip()
     if query:
@@ -122,7 +122,22 @@ def clients_list(request):
     # Filtro de estado (multi-select)
     statuses = request.GET.getlist("status")
     if statuses and 'all' not in statuses:
-        clients = clients.filter(status__in=statuses)
+        # Separar estado "UNPAID" (impagado) de los estados normales
+        normal_statuses = [s for s in statuses if s != 'UNPAID']
+        has_unpaid_filter = 'UNPAID' in statuses
+        
+        if normal_statuses and has_unpaid_filter:
+            # Combinar: clientes con esos estados O clientes con membresía impagada
+            clients = clients.filter(
+                Q(status__in=normal_statuses) | 
+                Q(memberships__status='PENDING_PAYMENT')
+            ).distinct()
+        elif has_unpaid_filter:
+            # Solo impagados: clientes con membresía pendiente de pago
+            clients = clients.filter(memberships__status='PENDING_PAYMENT').distinct()
+        elif normal_statuses:
+            # Solo estados normales
+            clients = clients.filter(status__in=normal_statuses)
     
     # Legacy support para status único
     status = request.GET.get("status_single", "all")
@@ -133,11 +148,15 @@ def clients_list(request):
     if selected_tags:
         clients = clients.filter(tags__id__in=selected_tags)
 
-    company = request.GET.get("company", "all")
-    if company == "company":
-        clients = clients.filter(is_company_client=True)
-    elif company == "individual":
-        clients = clients.filter(is_company_client=False)
+    # Filtro de tipo de cliente (multi-select)
+    companies = request.GET.getlist("company")
+    if companies and 'all' not in companies:
+        company_q = Q()
+        if 'company' in companies:
+            company_q |= Q(is_company_client=True)
+        if 'individual' in companies:
+            company_q |= Q(is_company_client=False)
+        clients = clients.filter(company_q)
 
     # Filtro por pasarela de pago (multi-select)
     gateways = request.GET.getlist("gateway")
@@ -186,6 +205,111 @@ def clients_list(request):
             wallet_q |= Q(wallet__isnull=True)
         clients = clients.filter(wallet_q)
 
+    # === FILTRO POR TIPO DE CUOTA (multi-select) ===
+    membership_plans_filter = request.GET.getlist("membership_plan")
+    if membership_plans_filter and 'all' not in membership_plans_filter:
+        clients = clients.filter(memberships__plan_id__in=membership_plans_filter).distinct()
+    
+    # === FILTRO POR SERVICIO (multi-select) ===
+    services_filter = request.GET.getlist("service")
+    if services_filter and 'all' not in services_filter:
+        from activities.models import SessionBooking
+        clients = clients.filter(
+            Q(session_bookings__session__service_id__in=services_filter) |
+            Q(memberships__plan__services__id__in=services_filter)
+        ).distinct()
+    
+    # === FILTRO POR PRODUCTO (multi-select) ===
+    products_filter = request.GET.getlist("product")
+    if products_filter and 'all' not in products_filter:
+        clients = clients.filter(orders__items__product_id__in=products_filter).distinct()
+    
+    # === FILTRO POR ORIGEN DE ALTA (multi-select) ===
+    created_froms = request.GET.getlist("created_from")
+    if created_froms and 'all' not in created_froms:
+        clients = clients.filter(created_from__in=created_froms)
+
+    # === FILTROS DE FECHA ===
+    # Fecha de alta entre
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    if date_from:
+        clients = clients.filter(created_at__date__gte=date_from)
+    if date_to:
+        clients = clients.filter(created_at__date__lte=date_to)
+    
+    # === FILTROS DE ENGAGEMENT ===
+    from django.db.models import Max
+    from datetime import timedelta
+    
+    # Días sin asistir
+    days_no_visit = request.GET.get('days_no_visit', '')
+    if days_no_visit and days_no_visit.isdigit():
+        days = int(days_no_visit)
+        threshold_date = timezone.now().date() - timedelta(days=days)
+        # Clientes cuya última visita fue antes de la fecha umbral o no tienen visitas
+        clients = clients.annotate(
+            last_visit_date=Max('visits__date')
+        ).filter(
+            Q(last_visit_date__lt=threshold_date) | Q(last_visit_date__isnull=True)
+        )
+    
+    # Días sin reservar
+    days_no_booking = request.GET.get('days_no_booking', '')
+    if days_no_booking and days_no_booking.isdigit():
+        days = int(days_no_booking)
+        threshold_date = timezone.now().date() - timedelta(days=days)
+        clients = clients.annotate(
+            last_booking_date=Max('session_bookings__created_at')
+        ).filter(
+            Q(last_booking_date__date__lt=threshold_date) | Q(last_booking_date__isnull=True)
+        )
+    
+    # Membresía expira en X días
+    membership_expires_days = request.GET.get('membership_expires_days', '')
+    if membership_expires_days and membership_expires_days.isdigit():
+        days = int(membership_expires_days)
+        threshold_date = timezone.now().date() + timedelta(days=days)
+        clients = clients.filter(
+            memberships__status='ACTIVE',
+            memberships__end_date__lte=threshold_date,
+            memberships__end_date__gte=timezone.now().date()
+        ).distinct()
+    
+    # === FILTROS DE FECHA DE BAJA ===
+    cancelled_from = request.GET.get('cancelled_from', '')
+    cancelled_to = request.GET.get('cancelled_to', '')
+    if cancelled_from:
+        clients = clients.filter(memberships__status='CANCELLED', memberships__updated_at__date__gte=cancelled_from).distinct()
+    if cancelled_to:
+        clients = clients.filter(memberships__status='CANCELLED', memberships__updated_at__date__lte=cancelled_to).distinct()
+    
+    # === FILTRO DE EXCEDENCIA ACTIVA ===
+    has_active_pause = request.GET.get('has_active_pause', '')
+    if has_active_pause == 'yes':
+        today = timezone.now().date()
+        clients = clients.filter(
+            memberships__pauses__status='ACTIVE',
+            memberships__pauses__start_date__lte=today,
+            memberships__pauses__end_date__gte=today
+        ).distinct()
+    elif has_active_pause == 'no':
+        today = timezone.now().date()
+        clients = clients.exclude(
+            memberships__pauses__status='ACTIVE',
+            memberships__pauses__start_date__lte=today,
+            memberships__pauses__end_date__gte=today
+        )
+    
+    # === FILTRO DE NO-SHOWS ===
+    from django.db.models import Count
+    min_no_shows = request.GET.get('min_no_shows', '')
+    if min_no_shows and min_no_shows.isdigit():
+        min_count = int(min_no_shows)
+        clients = clients.annotate(
+            noshow_count=Count('visits', filter=Q(visits__status='NOSHOW'))
+        ).filter(noshow_count__gte=min_count)
+
     custom_fields = list(
         ClientField.objects.filter(gym=gym, is_active=True)
         .prefetch_related("options")
@@ -203,7 +327,30 @@ def clients_list(request):
                 clients = clients.filter(**{f"extra_data__{field.slug}": selected_value})
         field.selected_value = selected_value or ""
 
-    clients = clients.order_by("-created_at").distinct()
+    # === ORDENACIÓN ===
+    sort_by = request.GET.get('sort', '-created_at')
+    valid_sorts = {
+        'created_at': 'created_at',
+        '-created_at': '-created_at',
+        'name': ('first_name', 'last_name'),
+        '-name': ('-first_name', '-last_name'),
+        'last_visit': 'last_visit_date',
+        '-last_visit': '-last_visit_date',
+    }
+    
+    # Añadir anotación de última visita si no existe
+    if 'last_visit' in sort_by and not hasattr(clients, '_last_visit_annotated'):
+        from django.db.models import Max
+        clients = clients.annotate(last_visit_date=Max('visits__date'))
+    
+    if sort_by in valid_sorts:
+        sort_fields = valid_sorts[sort_by]
+        if isinstance(sort_fields, tuple):
+            clients = clients.order_by(*sort_fields).distinct()
+        else:
+            clients = clients.order_by(sort_fields).distinct()
+    else:
+        clients = clients.order_by("-created_at").distinct()
 
     custom_field_options = {
         field.slug: ({True: "Sí", False: "No"} if field.field_type == ClientField.FieldType.TOGGLE else {opt.value: opt.label for opt in field.options.all()})
@@ -266,19 +413,34 @@ def clients_list(request):
             "gateways": gateways or [],
             "genders": genders or [],
             "wallet_balances": wallet_balance or [],
+            "companies": companies or [],
+            "membership_plans": membership_plans_filter or [],
+            "services": services_filter or [],
+            "products": products_filter or [],
+            "created_froms": created_froms or [],
             # Legacy single select (for backwards compatibility)
             "status": status or "all",
             "selected_tags": [int(t) for t in selected_tags] if selected_tags else [],
-            "company": company or "all",
             "gateway": gateway or "all",
             "custom_field_filters": custom_field_filters,
-            "membership_plan": request.GET.get('membership_plan', 'all'),
-            "service": request.GET.get('service', 'all'),
-            "product": request.GET.get('product', 'all'),
-            "created_from": request.GET.get('created_from', 'all'),
             "gender": gender or "all",
             "age_min": request.GET.get('age_min', ''),
             "age_max": request.GET.get('age_max', ''),
+            # Filtros de fecha
+            "date_from": date_from,
+            "date_to": date_to,
+            # Filtros de engagement
+            "days_no_visit": days_no_visit,
+            "days_no_booking": days_no_booking,
+            "membership_expires_days": membership_expires_days,
+            # Filtros de baja y excedencia
+            "cancelled_from": cancelled_from,
+            "cancelled_to": cancelled_to,
+            "has_active_pause": has_active_pause,
+            # No-shows
+            "min_no_shows": min_no_shows,
+            # Ordenación
+            "sort": sort_by,
         },
     }
     return render(request, "backoffice/clients/list.html", context)

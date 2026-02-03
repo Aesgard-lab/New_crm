@@ -1,9 +1,21 @@
 """
 Celery Tasks for Lead Management Automations
 """
+import logging
 from celery import shared_task
 from django.utils import timezone
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
+
+
+def safe_task_delay(task, *args, **kwargs):
+    """Safely call a Celery task's delay method."""
+    try:
+        return task.delay(*args, **kwargs)
+    except Exception as e:
+        logger.warning(f"Could not queue task {task.name}: {e}")
+        return None
 
 
 @shared_task(name='marketing.check_inactive_leads')
@@ -377,7 +389,7 @@ def calculate_lead_score(client_id, event_type, event_data=None):
                     client.lead_card.save()
             
             elif automation.action_type == 'START_WORKFLOW' and automation.target_workflow:
-                start_workflow_for_client.delay(automation.target_workflow.id, client.id)
+                safe_task_delay(start_workflow_for_client, automation.target_workflow.id, client.id)
     
     return f"Updated score for {client}: {total_points:+d} pts (Total: {lead_score.score})"
 
@@ -485,7 +497,7 @@ def check_retention_alerts():
                     
                     # Iniciar workflow si configurado
                     if rule.start_workflow:
-                        start_workflow_for_client.delay(rule.start_workflow.id, client.id)
+                        safe_task_delay(start_workflow_for_client, rule.start_workflow.id, client.id)
                     
                     alerts_created += 1
         
