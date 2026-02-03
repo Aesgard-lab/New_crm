@@ -75,6 +75,14 @@ from .calendar_views import (
     DownloadBookingICSView,
     AddToCalendarView
 )
+from .referral_views import (
+    ReferralStatusView,
+    ReferralCodeView,
+    ReferralStatsView,
+    ReferralHistoryView,
+    ValidateReferralCodeView,
+    InviteFriendView
+)
 
 urlpatterns = [
     # System Config
@@ -169,6 +177,14 @@ urlpatterns = [
     path('calendar/regenerate-token/', RegenerateCalendarTokenView.as_view(), name='api_calendar_regenerate'),
     path('calendar/booking/<int:booking_id>/ics/', DownloadBookingICSView.as_view(), name='api_calendar_booking_ics'),
     path('calendar/add-event/', AddToCalendarView.as_view(), name='api_calendar_add_event'),
+    
+    # Referral Program (Mobile App)
+    path('referrals/status/', ReferralStatusView.as_view(), name='api_referral_status'),
+    path('referrals/code/', ReferralCodeView.as_view(), name='api_referral_code'),
+    path('referrals/stats/', ReferralStatsView.as_view(), name='api_referral_stats'),
+    path('referrals/history/', ReferralHistoryView.as_view(), name='api_referral_history'),
+    path('referrals/validate/', ValidateReferralCodeView.as_view(), name='api_referral_validate'),
+    path('referrals/invite/', InviteFriendView.as_view(), name='api_referral_invite'),
 ]
 
 

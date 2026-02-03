@@ -745,6 +745,14 @@ def public_client_profile(request, slug):
     except Exception:
         pass
     
+    # Programa de referidos
+    referral_enabled = False
+    try:
+        from discounts.referral_service import is_referral_enabled
+        referral_enabled = is_referral_enabled(gym)
+    except Exception:
+        pass
+    
     context = {
         'gym': gym,
         'settings': settings,
@@ -758,6 +766,7 @@ def public_client_profile(request, slug):
         'rank_position': rank_position,
         'has_saved_card': has_saved_card,
         'last_card_digits': last_card_digits,
+        'referral_enabled': referral_enabled,
     }
     
     return render(request, 'public_portal/profile.html', context)
@@ -2784,3 +2793,73 @@ def public_download_booking_ics(request, slug, booking_id):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     return response
+
+
+# ===========================
+# PROGRAMA DE REFERIDOS
+# ===========================
+
+@login_required
+def public_referrals(request, slug):
+    """Página del programa de referidos para el cliente"""
+    from discounts.referral_service import (
+        is_referral_enabled,
+        get_active_referral_program,
+        get_share_data,
+        get_referral_stats,
+        get_referral_history
+    )
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return render(request, 'public_portal/404.html', status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return redirect('public_login', slug=slug)
+    
+    # Verificar si está habilitado
+    if not is_referral_enabled(gym):
+        messages.info(request, 'El programa de referidos no está disponible actualmente')
+        return redirect('public_client_dashboard', slug=slug)
+    
+    # Obtener datos
+    program = get_active_referral_program(gym)
+    share_data = get_share_data(client, request)
+    stats = get_referral_stats(client)
+    history = get_referral_history(client, limit=20)
+    
+    context = {
+        'gym': gym,
+        'settings': settings,
+        'client': client,
+        'program': program,
+        'share_data': share_data,
+        'stats': stats,
+        'history': history,
+    }
+    
+    return render(request, 'public_portal/referrals.html', context)
+
+
+@login_required
+def api_referral_share_data(request, slug):
+    """API para obtener datos de compartir referido (AJAX)"""
+    from discounts.referral_service import is_referral_enabled, get_share_data
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'error': 'Gym not found'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'error': 'Not a client'}, status=403)
+    
+    if not is_referral_enabled(gym):
+        return JsonResponse({'error': 'Referral program not enabled'}, status=400)
+    
+    share_data = get_share_data(client, request)
+    
+    return JsonResponse(share_data)

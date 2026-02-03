@@ -1620,4 +1620,201 @@ class ApiService extends ChangeNotifier {
       print('Error tracking click: $e');
     }
   }
+
+  // ===========================
+  // REFERRAL PROGRAM
+  // ===========================
+
+  /// Check if referral program is enabled for the gym
+  Future<Map<String, dynamic>> getReferralStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/referrals/status/'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'enabled': false};
+    } catch (e) {
+      print('Error getting referral status: $e');
+      return {'enabled': false};
+    }
+  }
+
+  /// Get the client's referral code and share data
+  Future<dynamic> getReferralCode() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/referrals/code/'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // Import model dynamically to avoid circular deps
+        return _parseReferralShareData(data);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting referral code: $e');
+      return null;
+    }
+  }
+
+  dynamic _parseReferralShareData(Map<String, dynamic> json) {
+    // Return a map that can be used to construct ReferralShareData
+    return _ReferralShareData(
+      code: json['code'] ?? '',
+      link: json['link'] ?? '',
+      shareMessage: json['share_message'] ?? '',
+      gymName: json['gym_name'] ?? '',
+      program: json['program'] != null ? _ReferralProgram(
+        name: json['program']['name'] ?? '',
+        referrerReward: json['program']['referrer_reward'] ?? '',
+        referredReward: json['program']['referred_reward'] ?? '',
+      ) : null,
+    );
+  }
+
+  /// Get referral statistics for the current client
+  Future<dynamic> getReferralStats() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/referrals/stats/'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _ReferralStats(
+          totalInvited: data['total_invited'] ?? 0,
+          pending: data['pending'] ?? 0,
+          registered: data['registered'] ?? 0,
+          completed: data['completed'] ?? 0,
+          totalCreditEarned: data['total_credit_earned']?.toString() ?? '0.00',
+        );
+      }
+      return null;
+    } catch (e) {
+      print('Error getting referral stats: $e');
+      return null;
+    }
+  }
+
+  /// Get referral history for the current client
+  Future<List<dynamic>> getReferralHistory() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/referrals/history/'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> referrals = data['referrals'] ?? [];
+        return referrals.map((item) => _ReferralHistory(
+          id: item['id'] ?? 0,
+          referredName: item['referred_name'] ?? 'Invitado',
+          status: item['status'] ?? 'PENDING',
+          statusDisplay: item['status_display'] ?? 'Pendiente',
+          invitedAt: item['invited_at'],
+          creditEarned: item['credit_earned']?.toString() ?? '0.00',
+        )).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting referral history: $e');
+      return [];
+    }
+  }
+
+  /// Validate a referral code
+  Future<Map<String, dynamic>> validateReferralCode(String code, int gymId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/referrals/validate/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'code': code,
+          'gym_id': gymId,
+        }),
+      );
+
+      return json.decode(response.body);
+    } catch (e) {
+      print('Error validating referral code: $e');
+      return {'valid': false, 'error': 'Error de conexión'};
+    }
+  }
+
+  Map<String, String> get _authHeaders => {
+    'Authorization': 'Token $_token',
+    'Content-Type': 'application/json',
+  };
 }
+
+// Helper classes for referral data (to avoid importing models here)
+class _ReferralShareData {
+  final String code;
+  final String link;
+  final String shareMessage;
+  final String gymName;
+  final _ReferralProgram? program;
+
+  _ReferralShareData({
+    required this.code,
+    required this.link,
+    required this.shareMessage,
+    required this.gymName,
+    this.program,
+  });
+}
+
+class _ReferralProgram {
+  final String name;
+  final String referrerReward;
+  final String referredReward;
+
+  _ReferralProgram({
+    required this.name,
+    required this.referrerReward,
+    required this.referredReward,
+  });
+}
+
+class _ReferralStats {
+  final int totalInvited;
+  final int pending;
+  final int registered;
+  final int completed;
+  final String totalCreditEarned;
+
+  _ReferralStats({
+    required this.totalInvited,
+    required this.pending,
+    required this.registered,
+    required this.completed,
+    required this.totalCreditEarned,
+  });
+}
+
+class _ReferralHistory {
+  final int id;
+  final String referredName;
+  final String status;
+  final String statusDisplay;
+  final String? invitedAt;
+  final String creditEarned;
+
+  _ReferralHistory({
+    required this.id,
+    required this.referredName,
+    required this.status,
+    required this.statusDisplay,
+    this.invitedAt,
+    required this.creditEarned,
+  });
+}
+

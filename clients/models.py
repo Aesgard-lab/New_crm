@@ -132,6 +132,29 @@ class Client(models.Model):
     last_app_access = models.DateTimeField(null=True, blank=True, help_text="Última vez que accedió a la app o portal")
     app_access_count = models.IntegerField(default=0, help_text="Número de veces que ha accedido")
 
+    # Referral System
+    referral_code = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="Código único de referido del cliente"
+    )
+    referred_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referrals_direct',
+        help_text="Cliente que refirió a este cliente"
+    )
+    referral_credit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Crédito acumulado por referidos"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

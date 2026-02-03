@@ -420,6 +420,19 @@ class PublicPortalSettings(models.Model):
         help_text="Dominios permitidos para embeber (uno por línea). Dejar vacío para permitir todos."
     )
     
+    # ===== PROGRAMA DE REFERIDOS =====
+    referral_program_enabled = models.BooleanField(
+        default=False,
+        verbose_name="Habilitar Programa de Referidos",
+        help_text="Permite a los clientes invitar amigos y obtener recompensas"
+    )
+    referral_share_message = models.TextField(
+        blank=True,
+        default="¡Únete a mi gimnasio! Usa mi código de referido y ambos obtendremos descuentos.",
+        verbose_name="Mensaje para Compartir",
+        help_text="Mensaje predeterminado cuando el cliente comparte su código"
+    )
+    
     # ===== TRACKING =====
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

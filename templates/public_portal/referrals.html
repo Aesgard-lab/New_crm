@@ -1,0 +1,380 @@
+{% extends 'public_portal/base.html' %}
+
+{% block title %}Invitar Amigos - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .referral-header {
+        background: linear-gradient(135deg, var(--brand-color) 0%, color-mix(in srgb, var(--brand-color) 70%, black) 100%);
+    }
+    
+    .referral-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        overflow: hidden;
+    }
+    
+    .code-box {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 2px dashed #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .code-text {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        color: var(--brand-color);
+    }
+    
+    .share-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.875rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        flex: 1;
+    }
+    
+    .share-whatsapp {
+        background: #25D366;
+        color: white;
+    }
+    .share-whatsapp:hover {
+        background: #20b858;
+    }
+    
+    .share-email {
+        background: #6366f1;
+        color: white;
+    }
+    .share-email:hover {
+        background: #4f46e5;
+    }
+    
+    .share-copy {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+    .share-copy:hover {
+        background: #e2e8f0;
+    }
+    
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        background: #f8fafc;
+    }
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--brand-color);
+    }
+    .stat-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
+    
+    .reward-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .history-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        gap: 1rem;
+    }
+    .history-item:last-child {
+        border-bottom: none;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-registered { background: #dbeafe; color: #1e40af; }
+    .status-completed { background: #d1fae5; color: #065f46; }
+    .status-rewarded { background: #d1fae5; color: #065f46; }
+    
+    .tooltip {
+        position: relative;
+    }
+    .tooltip-text {
+        visibility: hidden;
+        background-color: #1e293b;
+        color: white;
+        text-align: center;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        position: absolute;
+        z-index: 10;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    .tooltip:hover .tooltip-text,
+    .tooltip.show .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="referral-header -mx-4 sm:-mx-6 lg:-mx-8 -mt-8 px-4 sm:px-6 lg:px-8 pt-8 pb-20 text-white relative">
+    <div class="absolute top-0 right-0 w-64 h-64 opacity-10">
+        <svg viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="80" fill="white"/>
+        </svg>
+    </div>
+    
+    <div class="relative z-10">
+        <div class="flex items-center gap-4 mb-6">
+            <a href="{% url 'public_client_profile' slug=settings.public_slug %}" class="w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold">Invitar Amigos</h1>
+                <p class="text-white/70 text-sm">Comparte tu código y gana recompensas</p>
+            </div>
+        </div>
+        
+        <!-- Recompensas -->
+        {% if program %}
+        <div class="flex flex-wrap gap-3">
+            <div class="reward-badge">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span>Tú ganas: {{ program.get_referrer_reward_display }}</span>
+            </div>
+            <div class="reward-badge">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                </svg>
+                <span>Tu amigo gana: {{ program.get_referred_reward_display }}</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Contenido principal -->
+<div class="-mt-12 relative z-10 space-y-4 pb-20">
+    
+    <!-- Código de Referido -->
+    <div class="referral-card">
+        <div class="p-6">
+            <h2 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                Tu Código Personal
+            </h2>
+            
+            <div class="code-box mb-4">
+                <div class="code-text" id="referral-code">{{ share_data.code }}</div>
+                <p class="text-sm text-gray-500 mt-2">Comparte este código con tus amigos</p>
+            </div>
+            
+            <!-- Botones de compartir -->
+            <div class="flex flex-wrap gap-3">
+                <a href="https://wa.me/?text={{ share_data.share_message|urlencode }}%20%0A%0AUsa%20mi%20código%3A%20{{ share_data.code }}%0A%0ARegístrate%20aquí%3A%20{{ share_data.link|urlencode }}" 
+                   target="_blank"
+                   class="share-btn share-whatsapp">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    WhatsApp
+                </a>
+                
+                <a href="mailto:?subject=¡Únete%20a%20{{ gym.commercial_name|default:gym.name|urlencode }}!&body={{ share_data.share_message|urlencode }}%0A%0AUsa%20mi%20código%3A%20{{ share_data.code }}%0A%0ARegístrate%20aquí%3A%20{{ share_data.link|urlencode }}"
+                   class="share-btn share-email">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    Email
+                </a>
+                
+                <button onclick="copyCode()" class="share-btn share-copy tooltip" id="copy-btn">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                    </svg>
+                    Copiar
+                    <span class="tooltip-text">¡Copiado!</span>
+                </button>
+            </div>
+            
+            <!-- Link completo -->
+            <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                <label class="text-xs text-gray-500 font-medium">Link de invitación:</label>
+                <div class="flex items-center gap-2 mt-1">
+                    <input type="text" readonly value="{{ share_data.link }}" 
+                           class="flex-1 text-sm text-gray-600 bg-transparent border-none focus:outline-none truncate"
+                           id="referral-link">
+                    <button onclick="copyLink()" class="text-brand-color hover:text-brand-color/80 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estadísticas -->
+    <div class="referral-card">
+        <div class="p-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Tus Estadísticas</h2>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_invited }}</div>
+                    <div class="stat-label">Invitados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.completed }}</div>
+                    <div class="stat-label">Completados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_credit_earned }}€</div>
+                    <div class="stat-label">Crédito Ganado</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historial -->
+    {% if history %}
+    <div class="referral-card">
+        <div class="p-6 pb-2">
+            <h2 class="font-semibold text-gray-900 mb-4">Historial de Invitaciones</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+            {% for referral in history %}
+            <div class="history-item">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-color/10 to-brand-color/5 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-brand-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-gray-900 truncate">
+                        {% if referral.referred %}
+                            {{ referral.referred.first_name }} {{ referral.referred.last_name }}
+                        {% elif referral.referred_name %}
+                            {{ referral.referred_name }}
+                        {% else %}
+                            {{ referral.referred_email|default:"Invitado" }}
+                        {% endif %}
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        {{ referral.created_at|date:"d M Y" }}
+                        {% if referral.referrer_credit_given > 0 %}
+                         · +{{ referral.referrer_credit_given }}€
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="status-badge status-{{ referral.status|lower }}">
+                    {{ referral.get_status_display }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Cómo funciona -->
+    <div class="referral-card">
+        <div class="p-6">
+            <h2 class="font-semibold text-gray-900 mb-4">¿Cómo funciona?</h2>
+            <div class="space-y-4">
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-color/10 flex items-center justify-center flex-shrink-0">
+                        <span class="text-brand-color font-bold text-sm">1</span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-900">Comparte tu código</p>
+                        <p class="text-sm text-gray-500">Envía tu código personal o link a tus amigos</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-color/10 flex items-center justify-center flex-shrink-0">
+                        <span class="text-brand-color font-bold text-sm">2</span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-900">Tu amigo se registra</p>
+                        <p class="text-sm text-gray-500">Debe usar tu código al crear su cuenta</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-color/10 flex items-center justify-center flex-shrink-0">
+                        <span class="text-brand-color font-bold text-sm">3</span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-900">¡Ambos ganan!</p>
+                        <p class="text-sm text-gray-500">Recibís las recompensas automáticamente</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyCode() {
+    const code = document.getElementById('referral-code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.classList.add('show');
+        setTimeout(() => btn.classList.remove('show'), 2000);
+    });
+}
+
+function copyLink() {
+    const link = document.getElementById('referral-link').value;
+    navigator.clipboard.writeText(link).then(() => {
+        // Mostrar feedback visual
+        const input = document.getElementById('referral-link');
+        input.style.background = '#d1fae5';
+        setTimeout(() => input.style.background = 'transparent', 1000);
+    });
+}
+
+// Compartir nativo si está disponible
+if (navigator.share) {
+    // Podríamos añadir un botón de compartir nativo
+}
+</script>
+{% endblock %}

@@ -286,11 +286,26 @@ class ReferralProgram(models.Model):
     """
     Programa de referidos - el cliente refiere a otros y ambos ganan
     """
+    
+    class RewardType(models.TextChoices):
+        DISCOUNT = "DISCOUNT", "Descuento"
+        CREDIT = "CREDIT", "Crédito en Cuenta"
+        FREE_DAYS = "FREE_DAYS", "Días Gratis"
+        BOTH = "BOTH", "Descuento + Crédito"
+    
     gym = models.ForeignKey("organizations.Gym", on_delete=models.CASCADE, related_name="referral_programs")
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     
-    # Recompensas
+    # Tipo de recompensa
+    reward_type = models.CharField(
+        max_length=20,
+        choices=RewardType.choices,
+        default=RewardType.DISCOUNT,
+        help_text="Tipo de recompensa para el programa"
+    )
+    
+    # Recompensas para quien REFIERE
     referrer_discount = models.ForeignKey(
         Discount,
         on_delete=models.SET_NULL,
@@ -303,9 +318,14 @@ class ReferralProgram(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Crédito en cuenta para quien refiere"
+        help_text="Crédito en cuenta para quien refiere (€)"
+    )
+    referrer_free_days = models.IntegerField(
+        default=0,
+        help_text="Días gratis de membresía para quien refiere"
     )
     
+    # Recompensas para el REFERIDO (nuevo cliente)
     referred_discount = models.ForeignKey(
         Discount,
         on_delete=models.SET_NULL,
@@ -314,8 +334,30 @@ class ReferralProgram(models.Model):
         related_name="referred_programs",
         help_text="Descuento para el referido"
     )
+    referred_credit_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Crédito en cuenta para el referido (€)"
+    )
+    referred_free_days = models.IntegerField(
+        default=0,
+        help_text="Días gratis de membresía para el referido"
+    )
     
     # Condiciones
+    require_membership_purchase = models.BooleanField(
+        default=True,
+        help_text="El referido debe comprar una membresía para que se active la recompensa"
+    )
+    min_membership_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Valor mínimo de la membresía del referido para activar recompensa"
+    )
+    
+    # Bonus por múltiples referidos
     min_referrals_for_bonus = models.IntegerField(
         default=3,
         help_text="Mínimo de referidos para obtener bonus adicional"
@@ -328,15 +370,72 @@ class ReferralProgram(models.Model):
         related_name="bonus_programs",
         help_text="Bonus al alcanzar el mínimo de referidos"
     )
+    bonus_credit_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Crédito bonus al alcanzar el mínimo de referidos"
+    )
+    
+    # Límites
+    max_referrals_per_client = models.IntegerField(
+        default=0,
+        help_text="Máximo de referidos por cliente (0 = ilimitado)"
+    )
+    max_total_referrals = models.IntegerField(
+        default=0,
+        help_text="Máximo total de referidos del programa (0 = ilimitado)"
+    )
+    current_total_referrals = models.IntegerField(default=0)
+    
+    # Vigencia
+    valid_from = models.DateTimeField(null=True, blank=True)
+    valid_until = models.DateTimeField(null=True, blank=True)
     
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-created_at']
     
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.gym.name})"
+    
+    def is_valid(self):
+        """Verifica si el programa está activo y vigente"""
+        if not self.is_active:
+            return False
+        now = timezone.now()
+        if self.valid_from and now < self.valid_from:
+            return False
+        if self.valid_until and now > self.valid_until:
+            return False
+        if self.max_total_referrals > 0 and self.current_total_referrals >= self.max_total_referrals:
+            return False
+        return True
+    
+    def get_referrer_reward_display(self):
+        """Retorna una descripción legible de la recompensa para quien refiere"""
+        rewards = []
+        if self.referrer_discount:
+            rewards.append(f"{self.referrer_discount.get_display_value()} de descuento")
+        if self.referrer_credit_amount > 0:
+            rewards.append(f"{self.referrer_credit_amount}€ de crédito")
+        if self.referrer_free_days > 0:
+            rewards.append(f"{self.referrer_free_days} días gratis")
+        return " + ".join(rewards) if rewards else "Sin recompensa"
+    
+    def get_referred_reward_display(self):
+        """Retorna una descripción legible de la recompensa para el referido"""
+        rewards = []
+        if self.referred_discount:
+            rewards.append(f"{self.referred_discount.get_display_value()} de descuento")
+        if self.referred_credit_amount > 0:
+            rewards.append(f"{self.referred_credit_amount}€ de crédito")
+        if self.referred_free_days > 0:
+            rewards.append(f"{self.referred_free_days} días gratis")
+        return " + ".join(rewards) if rewards else "Sin recompensa"
 
 
 class Referral(models.Model):
@@ -345,8 +444,10 @@ class Referral(models.Model):
     """
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pendiente"
+        REGISTERED = "REGISTERED", "Registrado"
         COMPLETED = "COMPLETED", "Completado"
         REWARDED = "REWARDED", "Recompensado"
+        EXPIRED = "EXPIRED", "Expirado"
     
     program = models.ForeignKey(ReferralProgram, on_delete=models.CASCADE, related_name="referrals")
     referrer = models.ForeignKey(
@@ -357,23 +458,68 @@ class Referral(models.Model):
     )
     referred = models.ForeignKey(
         "clients.Client",
-        on_delete=models.CASCADE,
-        related_name="referred_by",
-        help_text="Cliente referido"
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="referral_record",
+        help_text="Cliente referido (una vez registrado)"
     )
+    
+    # Datos del invitado (antes de registrarse)
+    referred_email = models.EmailField(blank=True, help_text="Email del invitado")
+    referred_name = models.CharField(max_length=200, blank=True, help_text="Nombre del invitado")
     
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     
     # Tracking
-    referral_code = models.CharField(max_length=50, unique=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    rewarded_at = models.DateTimeField(null=True, blank=True)
+    referral_code = models.CharField(max_length=50, db_index=True)
+    
+    # Fechas de seguimiento
+    invited_at = models.DateTimeField(default=timezone.now, help_text="Cuándo se envió la invitación")
+    registered_at = models.DateTimeField(null=True, blank=True, help_text="Cuándo se registró")
+    completed_at = models.DateTimeField(null=True, blank=True, help_text="Cuándo completó la condición")
+    rewarded_at = models.DateTimeField(null=True, blank=True, help_text="Cuándo se otorgó la recompensa")
+    
+    # Recompensas otorgadas
+    referrer_reward_given = models.BooleanField(default=False)
+    referred_reward_given = models.BooleanField(default=False)
+    referrer_credit_given = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    referred_credit_given = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Notas
+    notes = models.TextField(blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = ('referrer', 'referred')
+        indexes = [
+            models.Index(fields=['referral_code']),
+            models.Index(fields=['referrer', 'status']),
+        ]
     
     def __str__(self):
-        return f"{self.referrer} → {self.referred} ({self.status})"
+        referred_name = self.referred.first_name if self.referred else self.referred_name or self.referred_email
+        return f"{self.referrer.first_name} → {referred_name} ({self.get_status_display()})"
+    
+    def mark_registered(self, client):
+        """Marca el referido como registrado"""
+        self.referred = client
+        self.status = self.Status.REGISTERED
+        self.registered_at = timezone.now()
+        self.save()
+    
+    def mark_completed(self):
+        """Marca el referido como completado (compró membresía)"""
+        self.status = self.Status.COMPLETED
+        self.completed_at = timezone.now()
+        self.save()
+    
+    def mark_rewarded(self):
+        """Marca que las recompensas fueron otorgadas"""
+        self.status = self.Status.REWARDED
+        self.rewarded_at = timezone.now()
+        self.referrer_reward_given = True
+        self.referred_reward_given = True
+        self.save()

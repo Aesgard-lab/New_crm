@@ -3,9 +3,44 @@ import 'package:provider/provider.dart';
 import '../api/api_service.dart';
 import '../widgets/promo_section.dart';
 import 'gamification_screen.dart';
+import 'referrals_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _referralEnabled = false;
+  bool _checkingReferral = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkReferralStatus();
+  }
+
+  Future<void> _checkReferralStatus() async {
+    final api = Provider.of<ApiService>(context, listen: false);
+    try {
+      final status = await api.getReferralStatus();
+      if (mounted) {
+        setState(() {
+          _referralEnabled = status['enabled'] ?? false;
+          _checkingReferral = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _referralEnabled = false;
+          _checkingReferral = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +227,23 @@ class ProfileScreen extends StatelessWidget {
                           );
                         },
                       ),
+                      // Referrals - only show if enabled
+                      if (_referralEnabled) ...[
+                        const Divider(height: 24),
+                        _SettingsRow(
+                          icon: Icons.card_giftcard_outlined,
+                          label: 'Invitar Amigos',
+                          subtitle: 'Comparte y gana recompensas',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ReferralsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                       const Divider(height: 24),
                       _SettingsRow(
                         icon: Icons.chat_bubble_outline,

@@ -248,6 +248,19 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                 </svg>
             </a>
+            
+            {% if referral_enabled %}
+            <a href="{% url 'public_referrals' slug=settings.public_slug %}" class="menu-item">
+                <div class="menu-icon bg-pink-100 text-pink-600">🎁</div>
+                <div class="flex-1">
+                    <div class="font-semibold text-slate-900">Invitar Amigos</div>
+                    <div class="text-sm text-slate-500">Comparte y gana recompensas</div>
+                </div>
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
+            {% endif %}
         </div>
     </div>
     

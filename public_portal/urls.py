@@ -85,6 +85,10 @@ urlpatterns = [
     path('gym/<slug:slug>/calendar/regenerate-token/', views.public_calendar_regenerate, name='public_calendar_regenerate'),
     path('gym/<slug:slug>/calendar/booking/<int:booking_id>/download/', views.public_download_booking_ics, name='public_download_booking_ics'),
     
+    # Programa de Referidos
+    path('gym/<slug:slug>/referrals/', views.public_referrals, name='public_referrals'),
+    path('gym/<slug:slug>/api/referrals/share-data/', views.api_referral_share_data, name='api_referral_share_data'),
+    
     # Autenticación de clientes
     path('gym/<slug:slug>/login/', views.public_login, name='public_login'),
     path('gym/<slug:slug>/logout/', views.public_logout, name='public_logout'),
