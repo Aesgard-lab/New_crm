@@ -55,23 +55,68 @@ PERMISSION_STRUCTURE = {
         ("delete_emailworkflow", "Eliminar Automatizaciones"),
     ],
     "Staff (Equipo)": [
+        # CRUD Empleados
         ("view_staffprofile", "Ver Equipo"),
         ("add_staffprofile", "Crear Empleados"),
-        ("change_staffprofile", "Editar Equipo"),
+        ("change_staffprofile", "Editar Empleados"),
         ("delete_staffprofile", "Eliminar Empleados"),
-        ("view_workshift", "Ver Turnos"),
-        ("add_workshift", "Crear Turnos"),
+        
+        # Turnos y Fichajes
+        ("view_workshift", "Ver Turnos/Fichajes"),
+        ("add_workshift", "Crear Turnos Manuales"),
         ("change_workshift", "Editar Turnos"),
         ("delete_workshift", "Eliminar Turnos"),
+        ("view_shift_report", "Ver Informe de Fichajes"),
+        ("export_shift_report", "Exportar Informe de Fichajes"),
+        
+        # Horarios Esperados
+        ("view_expectedschedule", "Ver Horarios Esperados"),
+        ("change_expectedschedule", "Configurar Horarios Esperados"),
+        
+        # Alertas de Fichaje
+        ("view_checkinalert", "Ver Alertas de Fichaje"),
+        ("resolve_checkinalert", "Resolver Alertas de Fichaje"),
+        
+        # Kiosco de Fichaje
         ("view_staffkiosk", "Ver Kiosco de Fichaje"),
         ("access_staffkiosk", "Acceder al Kiosco de Fichaje"),
+        
+        # Roles y Permisos
         ("manage_roles", "Gestionar Roles y Permisos"),
+        ("view_auditlog", "Ver Registro de Auditoría"),
+        
+        # Incentivos y Comisiones
         ("view_incentive", "Ver Incentivos y Comisiones"),
-        ("add_incentiverule", "Crear Incentivos"),
-        ("change_incentiverule", "Editar Incentivos"),
-        ("delete_incentiverule", "Eliminar Incentivos"),
+        ("add_incentiverule", "Crear Reglas de Incentivos"),
+        ("change_incentiverule", "Editar Reglas de Incentivos"),
+        ("delete_incentiverule", "Eliminar Reglas de Incentivos"),
         ("view_all_incentives", "Ver Incentivos de Todo el Staff"),
         ("view_own_incentives", "Ver Solo Incentivos Propios"),
+        
+        # Rating Incentives
+        ("view_ratingincentive", "Ver Incentivos por Rating"),
+        ("add_ratingincentive", "Crear Incentivos por Rating"),
+        ("change_ratingincentive", "Editar Incentivos por Rating"),
+        ("delete_ratingincentive", "Eliminar Incentivos por Rating"),
+        
+        # Salarios
+        ("view_salaryconfig", "Ver Configuración Salarial"),
+        ("change_salaryconfig", "Editar Configuración Salarial"),
+        
+        # Tareas
+        ("view_stafftask", "Ver Tareas de Empleados"),
+        ("add_stafftask", "Crear Tareas"),
+        ("change_stafftask", "Editar Tareas"),
+        ("delete_stafftask", "Eliminar Tareas"),
+        ("complete_stafftask", "Marcar Tareas Completadas"),
+        
+        # Vacaciones y Ausencias
+        ("view_vacation", "Ver Vacaciones/Ausencias"),
+        ("add_vacation", "Solicitar Vacaciones"),
+        ("approve_vacation", "Aprobar/Rechazar Vacaciones"),
+        ("view_vacation_balance", "Ver Balance de Vacaciones"),
+        ("change_vacation_balance", "Ajustar Balance de Vacaciones"),
+        ("manage_blocked_periods", "Gestionar Periodos Bloqueados"),
     ],
     "Servicios & Productos": [
         ("view_service", "Ver Servicios"),

@@ -55,9 +55,33 @@
             
             <!-- Botón Horario Esperado -->
             <a href="{% url 'staff_schedule_edit' profile.id %}"
-                class="block w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm text-center border border-blue-200 mb-4">
+                class="block w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm text-center border border-blue-200 mb-3">
                 📅 Configurar Horario
             </a>
+            
+            <!-- Botones de Gestión -->
+            <div class="flex gap-2">
+                <!-- Activar/Desactivar -->
+                <form action="{% url 'staff_toggle_active' profile.id %}" method="post" class="flex-1">
+                    {% csrf_token %}
+                    {% if profile.is_active %}
+                    <button type="submit" class="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl font-medium transition-colors text-sm border border-amber-200"
+                        onclick="return confirm('¿Desactivar este empleado?')">
+                        ⏸️ Desactivar
+                    </button>
+                    {% else %}
+                    <button type="submit" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl font-medium transition-colors text-sm border border-emerald-200">
+                        ▶️ Activar
+                    </button>
+                    {% endif %}
+                </form>
+                
+                <!-- Eliminar -->
+                <button type="button" onclick="document.getElementById('deleteModal').classList.remove('hidden')"
+                    class="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm border border-red-200">
+                    🗑️ Eliminar
+                </button>
+            </div>
         </div>
 
         <!-- KPIs Mensuales -->
@@ -406,6 +430,48 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- Modal de Eliminación -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+        <div class="px-6 py-4 bg-red-50 border-b border-red-100">
+            <h3 class="text-lg font-bold text-red-700">⚠️ Eliminar Empleado</h3>
+        </div>
+        <div class="p-6">
+            <p class="text-slate-600 mb-4">
+                ¿Estás seguro de que deseas eliminar a <strong>{{ profile.user.first_name }} {{ profile.user.last_name }}</strong>?
+            </p>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <p class="text-sm text-amber-700">
+                    <strong>Desactivar:</strong> El empleado no podrá acceder pero se conservan sus datos históricos (fichajes, comisiones, etc.)
+                </p>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                <p class="text-sm text-red-700">
+                    <strong>Eliminar permanentemente:</strong> Se perderán todos los registros asociados. Esta acción no se puede deshacer.
+                </p>
+            </div>
+            
+            <form action="{% url 'staff_delete' profile.id %}" method="post">
+                {% csrf_token %}
+                <div class="flex gap-3">
+                    <button type="button" onclick="document.getElementById('deleteModal').classList.add('hidden')"
+                        class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" name="force_delete" value="0"
+                        class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-colors">
+                        Desactivar
+                    </button>
+                    <button type="submit" name="force_delete" value="1"
+                        class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors">
+                        Eliminar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

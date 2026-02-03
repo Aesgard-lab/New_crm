@@ -15,6 +15,8 @@ urlpatterns = [
     path("detail/<int:pk>/task/add/", views.staff_task_add, name="staff_task_add"),
     path("detail/<int:pk>/shift/toggle/", views.staff_toggle_shift, name="staff_toggle_shift"),
     path("detail/<int:pk>/schedule/", views.staff_schedule_edit, name="staff_schedule_edit"),
+    path("detail/<int:pk>/toggle-active/", views.staff_toggle_active, name="staff_toggle_active"),
+    path("detail/<int:pk>/delete/", views.staff_delete, name="staff_delete"),
     
     # Shift Reports & Alerts (Informe de Fichajes)
     path("shifts/", views.shift_report, name="shift_report"),

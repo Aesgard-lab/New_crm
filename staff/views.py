@@ -416,6 +416,52 @@ def staff_detail(request, pk):
     }
     return render(request, "backoffice/staff/detail.html", context)
 
+
+@login_required
+@require_gym_permission("staff.change_staffprofile")
+def staff_toggle_active(request, pk):
+    """Activa/desactiva un empleado"""
+    profile = get_object_or_404(StaffProfile, pk=pk, gym=request.gym)
+    
+    if request.method == "POST":
+        profile.is_active = not profile.is_active
+        profile.save()
+        
+        status = "activado" if profile.is_active else "desactivado"
+        messages.success(request, f"Empleado {profile.user.get_full_name()} {status}.")
+    
+    return redirect("staff_list")
+
+
+@login_required
+@require_gym_permission("staff.delete_staffprofile")
+def staff_delete(request, pk):
+    """Elimina un empleado (soft delete: desactiva)"""
+    profile = get_object_or_404(StaffProfile, pk=pk, gym=request.gym)
+    
+    if request.method == "POST":
+        # Soft delete - desactivar
+        force_delete = request.POST.get('force_delete') == '1'
+        
+        if force_delete:
+            # Hard delete - eliminar completamente
+            name = profile.user.get_full_name()
+            user = profile.user
+            profile.delete()
+            # Verificar si el usuario tiene otros perfiles antes de eliminarlo
+            if not StaffProfile.objects.filter(user=user).exists():
+                user.is_active = False
+                user.save()
+            messages.success(request, f"Empleado {name} eliminado permanentemente.")
+        else:
+            # Soft delete - solo desactivar
+            profile.is_active = False
+            profile.save()
+            messages.success(request, f"Empleado {profile.user.get_full_name()} desactivado.")
+    
+    return redirect("staff_list")
+
+
 @login_required
 @require_gym_permission("staff.change_staffprofile")
 def staff_detail_salary(request, pk):
@@ -1047,7 +1093,7 @@ from calendar import monthrange
 
 
 @login_required
-@require_gym_permission("vacations.view")
+@require_gym_permission("staff.view_vacation")
 def vacation_calendar(request):
     """Vista de calendario de vacaciones del equipo"""
     gym = request.gym
@@ -1096,7 +1142,7 @@ def vacation_calendar(request):
 
 
 @login_required
-@require_gym_permission("vacations.view")
+@require_gym_permission("staff.view_vacation")
 def vacation_calendar_data(request):
     """API para datos del calendario (JSON para FullCalendar)"""
     gym = request.gym
@@ -1318,7 +1364,7 @@ def vacation_request_cancel(request, pk):
 
 
 @login_required
-@require_gym_permission("vacations.approve")
+@require_gym_permission("staff.approve_vacation")
 def vacation_pending_list(request):
     """Lista de solicitudes pendientes de aprobar"""
     gym = request.gym
@@ -1336,7 +1382,7 @@ def vacation_pending_list(request):
 
 
 @login_required
-@require_gym_permission("vacations.approve")
+@require_gym_permission("staff.approve_vacation")
 def vacation_request_approve(request, pk):
     """Aprobar solicitud de vacaciones"""
     vacation = get_object_or_404(VacationRequest, pk=pk, staff__gym=request.gym)
@@ -1352,7 +1398,7 @@ def vacation_request_approve(request, pk):
 
 
 @login_required
-@require_gym_permission("vacations.approve")
+@require_gym_permission("staff.approve_vacation")
 def vacation_request_reject(request, pk):
     """Rechazar solicitud de vacaciones"""
     vacation = get_object_or_404(VacationRequest, pk=pk, staff__gym=request.gym)
@@ -1370,7 +1416,7 @@ def vacation_request_reject(request, pk):
 
 
 @login_required
-@require_gym_permission("vacations.manage_balances")
+@require_gym_permission("staff.view_vacation_balance")
 def vacation_balances(request):
     """Vista de balances de todos los empleados"""
     gym = request.gym
@@ -1402,7 +1448,7 @@ def vacation_balances(request):
 
 
 @login_required
-@require_gym_permission("vacations.manage_balances")
+@require_gym_permission("staff.change_vacation_balance")
 def vacation_balance_adjust(request, pk):
     """Ajustar balance de un empleado"""
     balance = get_object_or_404(StaffVacationBalance, pk=pk, staff__gym=request.gym)
@@ -1425,7 +1471,7 @@ def vacation_balance_adjust(request, pk):
 
 
 @login_required
-@require_gym_permission("vacations.settings")
+@require_gym_permission("staff.manage_blocked_periods")
 def vacation_settings(request):
     """Configuración de política de vacaciones"""
     gym = request.gym
@@ -1464,7 +1510,7 @@ def vacation_settings(request):
 
 
 @login_required
-@require_gym_permission("vacations.blocked_periods")
+@require_gym_permission("staff.manage_blocked_periods")
 def blocked_periods_list(request):
     """Lista de periodos bloqueados"""
     gym = request.gym
@@ -1479,7 +1525,7 @@ def blocked_periods_list(request):
 
 
 @login_required
-@require_gym_permission("vacations.blocked_periods")
+@require_gym_permission("staff.manage_blocked_periods")
 def blocked_period_create(request):
     """Crear periodo bloqueado"""
     gym = request.gym
@@ -1503,7 +1549,7 @@ def blocked_period_create(request):
 
 
 @login_required
-@require_gym_permission("vacations.blocked_periods")
+@require_gym_permission("staff.manage_blocked_periods")
 def blocked_period_delete(request, pk):
     """Eliminar periodo bloqueado"""
     period = get_object_or_404(BlockedVacationPeriod, pk=pk, gym=request.gym)
@@ -1523,7 +1569,7 @@ from .models import StaffExpectedSchedule, MissingCheckinAlert
 
 
 @login_required
-@require_gym_permission("staff.view_workshift")
+@require_gym_permission("staff.view_shift_report")
 def shift_report(request):
     """Vista principal del informe de fichajes con alertas"""
     gym = request.gym
@@ -1654,7 +1700,7 @@ def _calculate_minutes_late(expected_time, grace_minutes):
 
 
 @login_required
-@require_gym_permission("staff.change_workshift")
+@require_gym_permission("staff.resolve_checkinalert")
 def resolve_alert(request, pk):
     """Resolver/justificar una alerta de fichaje"""
     alert = get_object_or_404(MissingCheckinAlert, pk=pk, staff__gym=request.gym)
@@ -1672,7 +1718,7 @@ def resolve_alert(request, pk):
 
 
 @login_required
-@require_gym_permission("staff.view_workshift")
+@require_gym_permission("staff.export_shift_report")
 def shift_export_excel(request):
     """Exporta informe de fichajes a Excel"""
     gym = request.gym
@@ -1723,7 +1769,7 @@ def shift_export_excel(request):
 
 
 @login_required
-@require_gym_permission("staff.view_workshift")
+@require_gym_permission("staff.export_shift_report")
 def shift_export_pdf(request):
     """Exporta informe de fichajes a PDF"""
     gym = request.gym
@@ -1770,7 +1816,7 @@ def shift_export_pdf(request):
 
 
 @login_required
-@require_gym_permission("staff.change_staffprofile")
+@require_gym_permission("staff.change_expectedschedule")
 def staff_schedule_edit(request, pk):
     """Editar horario esperado de un empleado"""
     profile = get_object_or_404(StaffProfile, pk=pk, gym=request.gym)
