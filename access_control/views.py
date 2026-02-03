@@ -750,7 +750,7 @@ def device_create(request):
         from django.shortcuts import redirect
         from django.contrib import messages
         messages.success(request, f'Dispositivo "{device.name}" creado correctamente.')
-        return redirect('backoffice:access_device_list')
+        return redirect('access_control:device_list')
     
     return render(request, 'backoffice/access_control/device_form.html', {
         'zones': zones,
@@ -791,7 +791,7 @@ def device_edit(request, device_id):
         from django.shortcuts import redirect
         from django.contrib import messages
         messages.success(request, f'Dispositivo "{device.name}" actualizado.')
-        return redirect('backoffice:access_device_list')
+        return redirect('access_control:device_list')
     
     # Create form data from device
     form = {

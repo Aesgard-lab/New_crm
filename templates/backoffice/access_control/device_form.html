@@ -8,9 +8,9 @@
     <!-- Breadcrumb -->
     <nav class="text-sm">
         <ol class="flex items-center space-x-2 text-gray-500">
-            <li><a href="{% url 'backoffice:dashboard' %}" class="hover:text-[var(--brand-color)]">{% trans "Dashboard" %}</a></li>
+            <li><a href="{% url 'home' %}" class="hover:text-[var(--brand-color)]">{% trans "Dashboard" %}</a></li>
             <li><span class="mx-2">/</span></li>
-            <li><a href="{% url 'backoffice:access_device_list' %}" class="hover:text-[var(--brand-color)]">{% trans "Access Devices" %}</a></li>
+            <li><a href="{% url 'access_control:device_list' %}" class="hover:text-[var(--brand-color)]">{% trans "Access Devices" %}</a></li>
             <li><span class="mx-2">/</span></li>
             <li class="text-gray-900 dark:text-white">{% if device %}{{ device.name }}{% else %}{% trans "New Device" %}{% endif %}</li>
         </ol>
@@ -447,7 +447,7 @@
                         <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Let technicians scan a QR code to auto-configure the device" %}</p>
                     </div>
                 </div>
-                <button type="button" @click="showQrModal = true"
+                <button type="button" @click="showQrModal = true; $nextTick(() => generateQrCode())"
                         class="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-color)] text-white rounded-lg 
                                hover:opacity-90 transition-opacity">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -460,7 +460,7 @@
 
         <!-- Form Actions -->
         <div class="flex items-center justify-between pt-4">
-            <a href="{% url 'backoffice:access_device_list' %}" 
+            <a href="{% url 'access_control:device_list' %}" 
                class="px-5 py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {% trans "Cancel" %}
             </a>
@@ -491,11 +491,9 @@
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{% trans "Configuration QR Code" %}</h3>
                 <p class="text-sm text-gray-500 mb-6">{% trans "Scan this QR code from your device's configuration app" %}</p>
                 
-                <!-- QR Code placeholder -->
-                <div class="bg-white p-4 rounded-xl inline-block mb-4">
-                    <div id="qrcode" class="w-48 h-48 bg-gray-100 flex items-center justify-center">
-                        <span class="text-xs text-gray-400">{% trans "QR Code" %}</span>
-                    </div>
+                <!-- QR Code -->
+                <div class="bg-white p-4 rounded-xl inline-block mb-4 shadow-inner">
+                    <div id="qrcode" class="w-48 h-48 flex items-center justify-center"></div>
                 </div>
                 
                 <p class="text-xs text-gray-400 mb-6">{% trans "This QR contains: Server URL, Device ID, and API Key" %}</p>
@@ -521,6 +519,9 @@
     </div>
 </div>
 
+<!-- QRCode.js library (simple browser version) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
 <script>
 function deviceForm() {
     return {
@@ -535,6 +536,39 @@ function deviceForm() {
         testing: false,
         connectionResult: null,
         webhookUrl: window.location.origin + '/api/access/webhook/',
+        qrInstance: null,
+        
+        generateQrCode() {
+            const container = document.getElementById('qrcode');
+            if (!container) return;
+            
+            // Clear previous QR
+            container.innerHTML = '';
+            
+            // Config data to encode
+            const config = {
+                server: window.location.origin,
+                webhook: this.webhookUrl,
+                device_id: this.deviceId || 'PENDING',
+                api_key: this.apiKey || 'PENDING',
+                provider: this.provider
+            };
+            
+            // Generate QR using qrcodejs
+            try {
+                this.qrInstance = new QRCode(container, {
+                    text: JSON.stringify(config),
+                    width: 180,
+                    height: 180,
+                    colorDark: '#1a1a2e',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch (error) {
+                console.error('QR Error:', error);
+                container.innerHTML = '<span class="text-xs text-red-500">Error al generar QR</span>';
+            }
+        },
         
         generateDeviceId() {
             const prefixes = {
