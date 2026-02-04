@@ -167,7 +167,8 @@ def order_delete(request, order_id):
     order = get_object_or_404(Order, id=order_id, gym=gym)
     
     # Guardar información para el log antes de eliminar
-    order_info = f"Ticket #{order.id} - Cliente: {order.client.get_full_name() if order.client else 'Sin cliente'} - Total: {order.total_amount}€"
+    client_name = f"{order.client.first_name} {order.client.last_name}".strip() if order.client else 'Sin cliente'
+    order_info = f"Ticket #{order.id} - Cliente: {client_name} - Total: {order.total_amount}€"
     
     # No permitir eliminar si tiene pagos con transacciones externas activas
     has_external_payments = order.payments.filter(

@@ -716,6 +716,31 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal (Minimalista) -->
+    <div x-show="deleteConfirm.open"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak
+        x-transition.opacity>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-150 p-6 text-center">
+            <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">¿Eliminar ticket?</h3>
+            <p class="text-slate-500 text-sm mb-6">Esta acción no se puede deshacer.</p>
+            <div class="flex gap-3">
+                <button @click="deleteConfirm.open = false"
+                    class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors">
+                    Cancelar
+                </button>
+                <button @click="confirmDelete()"
+                    class="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors">
+                    Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Refund Modal (Devolución) -->
     <div x-show="refundModal.open"
         class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak
@@ -1620,10 +1645,22 @@
                 }
             },
 
-            async deleteOrder(orderId) {
-                if (!confirm('¿Estás seguro de que quieres ELIMINAR este ticket? Esta acción no se puede deshacer.')) {
-                    return;
-                }
+            // Delete Confirmation Modal
+            deleteConfirm: {
+                open: false,
+                orderId: null,
+                ticketNumber: null
+            },
+
+            openDeleteConfirm(orderId) {
+                this.deleteConfirm.orderId = orderId;
+                this.deleteConfirm.ticketNumber = this.editModal.orderId;
+                this.deleteConfirm.open = true;
+            },
+
+            async confirmDelete() {
+                const orderId = this.deleteConfirm.orderId;
+                this.deleteConfirm.open = false;
                 
                 try {
                     const res = await fetch(`/sales/api/order/${orderId}/delete/`, {
@@ -1636,15 +1673,19 @@
                     const data = await res.json();
 
                     if (res.ok) {
-                        this.showToast('Ticket eliminado correctamente', 'success');
+                        this.showToast('Ticket eliminado', 'success');
                         this.editModal.open = false;
-                        setTimeout(() => window.location.reload(), 1500);
+                        setTimeout(() => window.location.reload(), 1000);
                     } else {
-                        this.showToast("Error: " + (data.error || 'No se pudo eliminar'), 'error');
+                        this.showToast(data.error || 'No se pudo eliminar', 'error');
                     }
                 } catch (e) {
-                    this.showToast("Error de conexión", 'error');
+                    this.showToast('Error de conexión', 'error');
                 }
+            },
+
+            async deleteOrder(orderId) {
+                this.openDeleteConfirm(orderId);
             },
 
             // Refund Modal Logic
