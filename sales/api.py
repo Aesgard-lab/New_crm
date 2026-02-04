@@ -615,10 +615,47 @@ def search_products(request):
     gym = request.gym
     results = []
 
-    # Search Products
+    # Search Products - Incluye búsqueda por código de barras y SKU
     products = Product.objects.filter(gym=gym, is_active=True)
     if query:
-        products = products.filter(name__icontains=query)
+        # Búsqueda por barcode exacto (escaneo)
+        barcode_match = products.filter(barcode=query).first()
+        if barcode_match:
+            # Si hay coincidencia exacta por barcode, retornar solo ese producto
+            return JsonResponse({'results': [{
+                'type': 'product',
+                'id': barcode_match.id,
+                'name': barcode_match.name,
+                'price': float(barcode_match.final_price),
+                'image': barcode_match.image.url if barcode_match.image else None,
+                'category': barcode_match.category.name if barcode_match.category else 'Sin Categoría',
+                'barcode': barcode_match.barcode,
+                'sku': barcode_match.sku,
+                'exact_match': True
+            }]})
+        
+        # Búsqueda por SKU exacto
+        sku_match = products.filter(sku__iexact=query).first()
+        if sku_match:
+            return JsonResponse({'results': [{
+                'type': 'product',
+                'id': sku_match.id,
+                'name': sku_match.name,
+                'price': float(sku_match.final_price),
+                'image': sku_match.image.url if sku_match.image else None,
+                'category': sku_match.category.name if sku_match.category else 'Sin Categoría',
+                'barcode': sku_match.barcode,
+                'sku': sku_match.sku,
+                'exact_match': True
+            }]})
+        
+        # Búsqueda por nombre (parcial)
+        from django.db.models import Q
+        products = products.filter(
+            Q(name__icontains=query) |
+            Q(barcode__icontains=query) |
+            Q(sku__icontains=query)
+        )
     
     for p in products[:10]:
         try:
@@ -628,7 +665,9 @@ def search_products(request):
                 'name': p.name,
                 'price': float(p.final_price),
                 'image': p.image.url if p.image else None,
-                'category': p.category.name if p.category else 'Sin Categoría'
+                'category': p.category.name if p.category else 'Sin Categoría',
+                'barcode': p.barcode or '',
+                'sku': p.sku or ''
             })
         except Exception as e:
             print(f"Error prod {p.id}: {e}")

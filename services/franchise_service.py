@@ -118,10 +118,13 @@ class FranchisePropagationService:
                             'description': source_product.description,
                             'price_strategy': source_product.price_strategy,
                             'tax_rate': tax_rate,
-                            'sku': source_product.sku,
+                            'barcode': source_product.barcode,  # Código de barras del fabricante (compartido)
+                            'barcode_type': source_product.barcode_type,
+                            # SKU se genera automáticamente por gym, no se copia
                             'cost_price': source_product.cost_price,
                             'base_price': source_product.base_price,
                             'supplier_name': source_product.supplier_name,
+                            'supplier_reference': source_product.supplier_reference,
                             'is_visible_online': source_product.is_visible_online,
                             # Note: Stock is NOT copied as it is local physics
                         }

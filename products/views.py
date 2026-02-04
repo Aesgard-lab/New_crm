@@ -142,17 +142,18 @@ def product_export_excel(request):
     
     config = ExportConfig(
         title="Listado de Productos",
-        headers=['ID', 'Código', 'Nombre', 'Categoría', 'Precio', 'Stock', 'Estado'],
+        headers=['ID', 'Código Barras', 'SKU', 'Nombre', 'Categoría', 'Precio', 'Stock', 'Estado'],
         data_extractor=lambda p: [
             p.id,
+            p.barcode or '-',
             p.sku or '-',
             p.name,
             p.category.name if p.category else '-',
-            p.price,
-            p.stock if hasattr(p, 'stock') else '-',
+            float(p.final_price),
+            p.stock_quantity if p.track_stock else '-',
             'Activo' if p.is_active else 'Inactivo',
         ],
-        column_widths=[8, 12, 28, 18, 12, 10, 10]
+        column_widths=[8, 15, 15, 28, 18, 12, 10, 10]
     )
     
     excel_file = GenericExportService.export_to_excel(products.order_by('name'), config, gym.name)
@@ -174,16 +175,17 @@ def product_export_pdf(request):
     
     config = ExportConfig(
         title="Listado de Productos",
-        headers=['Código', 'Nombre', 'Categoría', 'Precio', 'Stock', 'Estado'],
+        headers=['Código', 'SKU', 'Nombre', 'Categoría', 'Precio', 'Stock', 'Estado'],
         data_extractor=lambda p: [
+            p.barcode or '-',
             p.sku or '-',
             p.name,
             p.category.name if p.category else '-',
-            p.price,
-            p.stock if hasattr(p, 'stock') else '-',
+            float(p.final_price),
+            p.stock_quantity if p.track_stock else '-',
             'Activo' if p.is_active else 'Inactivo',
         ],
-        column_widths=[12, 28, 18, 12, 10, 10]
+        column_widths=[14, 14, 26, 16, 10, 10, 10]
     )
     
     pdf_file = GenericExportService.export_to_pdf(products.order_by('name'), config, gym.name)
