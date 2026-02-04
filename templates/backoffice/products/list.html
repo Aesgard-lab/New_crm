@@ -42,7 +42,8 @@
         {% has_gym_perm 'products.add_product' as can_add %}
         {% if can_add %}
         <a href="{% url 'product_create' %}"
-            class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20 hover:opacity-90 transition-opacity flex items-center gap-2">
+            style="background-color: var(--brand-color);"
+            class="text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg hover:opacity-90 transition-opacity flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>

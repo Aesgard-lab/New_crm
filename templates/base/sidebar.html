@@ -12,7 +12,7 @@
     </div>
     {% endif %}
     <div>
-      <div class="text-lg font-semibold leading-tight">{{ system_name|default:'New CRM' }}</div>
+      <div class="text-lg font-semibold leading-tight">{{ request.gym.name|default:'Gimnasio' }}</div>
       <div class="text-xs text-slate-500">Backoffice</div>
     </div>
 
