@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from accounts.decorators import require_gym_permission
+from core.audit_decorators import log_action
 from organizations.models import Gym
 from .forms import ClientDocumentForm, ClientFieldForm, ClientForm, ClientGroupForm, ClientNoteForm, ClientTagForm, ClientHealthRecordForm, ClientHealthDocumentForm
 from .models import Client, ClientDocument, ClientField, ClientFieldOption, ClientGroup, ClientNote, ClientTag, ClientHealthRecord, ClientHealthDocument, DocumentTemplate
@@ -641,6 +642,7 @@ def client_update_preferred_gateway(request, client_id):
 
 @login_required
 @require_gym_permission("clients.change")
+@log_action("UPDATE", "Clientes", get_target=lambda req, args, kwargs: f"Cliente #{kwargs.get('client_id')}")
 def client_edit(request, client_id):
     gym = getattr(request, "gym", None)
     if not gym:
@@ -736,6 +738,7 @@ def client_add_document(request, client_id):
 
 @login_required
 @require_gym_permission("clients.create")
+@log_action("CREATE", "Clientes")
 def client_create(request):
     gym = getattr(request, "gym", None)
     if not gym:

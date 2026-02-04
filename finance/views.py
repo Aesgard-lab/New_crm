@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from accounts.decorators import require_gym_permission
+from core.audit_decorators import log_action
 from .models import TaxRate, PaymentMethod, FinanceSettings, Supplier, ExpenseCategory, Expense
 from providers.models import Provider
 from .forms import (
@@ -634,6 +635,7 @@ def expense_list(request):
 
 @login_required
 @require_gym_permission('finance.view_finance')
+@log_action("CREATE", "Gastos")
 def expense_create(request):
     """Crear nuevo gasto"""
     gym = request.gym
@@ -662,6 +664,7 @@ def expense_create(request):
 
 @login_required
 @require_gym_permission('finance.view_finance')
+@log_action("UPDATE", "Gastos", get_target=lambda req, args, kwargs: f"Gasto #{kwargs.get('pk')}")
 def expense_edit(request, pk):
     """Editar gasto existente"""
     gym = request.gym
@@ -687,6 +690,7 @@ def expense_edit(request, pk):
 
 @login_required
 @require_gym_permission('finance.view_finance')
+@log_action("DELETE", "Gastos", get_target=lambda req, args, kwargs: f"Gasto #{kwargs.get('pk')}")
 def expense_delete(request, pk):
     """Eliminar gasto"""
     gym = request.gym

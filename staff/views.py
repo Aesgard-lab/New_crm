@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import models
 from accounts.decorators import require_gym_permission
+from core.audit_decorators import log_action
 from .models import StaffProfile, WorkShift, IncentiveRule, SalaryConfig, RatingIncentive
 from .forms import IncentiveRuleForm
 
@@ -349,6 +350,7 @@ def staff_list(request):
 
 @login_required
 @require_gym_permission("staff.add_staffprofile")
+@log_action("CREATE", "Empleados")
 def staff_create(request):
     gym = request.gym
     if request.method == "POST":
@@ -400,6 +402,7 @@ def staff_create(request):
 
 @login_required
 @require_gym_permission("staff.change_staffprofile")
+@log_action("UPDATE", "Empleados", get_target=lambda req, args, kwargs: f"Staff #{kwargs.get('pk')}")
 def staff_edit(request, pk):
     profile = get_object_or_404(StaffProfile, pk=pk, gym=request.gym)
     user = profile.user
@@ -784,7 +787,7 @@ def role_create(request):
 # AUDIT LOGS
 # -----------------------------------------------------
 @login_required
-@require_gym_permission("staff.view_staffprofile") # Or a specific permission
+@require_gym_permission("staff.view_auditlog")
 def audit_log_list(request):
     """Lists system audit logs"""
     from .models import AuditLog
