@@ -309,6 +309,16 @@ def clients_list(request):
         clients = clients.annotate(
             noshow_count=Count('visits', filter=Q(visits__status='NOSHOW'))
         ).filter(noshow_count__gte=min_count)
+    
+    # === FILTRO TIENE APP (basado en app_access_count > 0) ===
+    has_app_filter = request.GET.getlist('has_app')
+    if has_app_filter and 'all' not in has_app_filter:
+        app_q = Q()
+        if 'yes' in has_app_filter:
+            app_q |= Q(app_access_count__gt=0)
+        if 'no' in has_app_filter:
+            app_q |= Q(app_access_count=0) | Q(app_access_count__isnull=True)
+        clients = clients.filter(app_q)
 
     custom_fields = list(
         ClientField.objects.filter(gym=gym, is_active=True)
@@ -439,6 +449,8 @@ def clients_list(request):
             "has_active_pause": has_active_pause,
             # No-shows
             "min_no_shows": min_no_shows,
+            # App
+            "has_app": has_app_filter or [],
             # Ordenación
             "sort": sort_by,
         },
