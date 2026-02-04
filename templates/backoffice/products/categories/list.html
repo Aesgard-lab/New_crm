@@ -28,6 +28,7 @@
         <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
             <tr>
                 <th class="px-6 py-4">Nombre</th>
+                <th class="px-6 py-4">Código</th>
                 <th class="px-6 py-4">Parent</th>
                 <th class="px-6 py-4 text-right">Acciones</th>
             </tr>
@@ -49,6 +50,13 @@
                     {{ category.name }}
                 </td>
                 <td class="px-6 py-4 text-slate-500 text-sm">
+                    {% if category.code %}
+                    <span class="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-lg">{{ category.code }}</span>
+                    {% else %}
+                    <span class="text-slate-300">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-slate-500 text-sm">
                     {% if category.parent %}
                     <span
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
@@ -67,7 +75,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="3" class="px-6 py-12 text-center text-slate-400">
+                <td colspan="4" class="px-6 py-12 text-center text-slate-400">
                     No hay categorías de producto.
                 </td>
             </tr>

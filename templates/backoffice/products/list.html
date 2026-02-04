@@ -83,12 +83,17 @@
                 <h3 class="font-bold text-slate-900 pr-6">{{ product.name }}</h3>
                 <div class="flex flex-wrap gap-2 mt-1">
                     {% if product.category %}
-                    <span class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">{{ product.category.name
-                        }}</span>
+                    <span class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">{{ product.category.name }}</span>
                     {% endif %}
-                    {% if product.sku %}
-                    <span class="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">{{ product.sku
-                        }}</span>
+                    {% if product.barcode %}
+                    <span class="text-xs font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1" title="Código de barras">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                        </svg>
+                        {{ product.barcode }}
+                    </span>
+                    {% elif product.sku %}
+                    <span class="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full" title="SKU interno">{{ product.sku }}</span>
                     {% endif %}
                 </div>
 

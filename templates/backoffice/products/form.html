@@ -23,10 +23,41 @@
                     {{ form.name.errors }}
                 </div>
 
+                <!-- Código de Barras Section -->
+                <div class="p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-slate-800 text-white p-1.5 rounded-lg">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                            </svg>
+                        </span>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800">Código de Barras</h4>
+                            <p class="text-[10px] text-slate-500">EAN-13, EAN-8 o código interno</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Código de Barras</label>
+                            {{ form.barcode }}
+                            {{ form.barcode.errors }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
+                            {{ form.barcode_type }}
+                        </div>
+                    </div>
+                    <div id="barcodePreview" class="hidden bg-white rounded-lg p-3 text-center border border-slate-200">
+                        <div id="barcodeDisplay" class="font-mono text-2xl tracking-[0.3em] text-slate-800"></div>
+                        <div id="barcodeStatus" class="text-xs mt-1"></div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">SKU / Código Barras</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">SKU Interno</label>
                         {{ form.sku }}
+                        <p class="text-[10px] text-slate-400 mt-1">Se auto-genera si lo dejas vacío</p>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría</label>
@@ -263,6 +294,92 @@
         }
         stockToggle.addEventListener('change', toggleStock);
         toggleStock();
+
+        // Barcode validation preview
+        const barcodeInput = document.querySelector('[name="barcode"]');
+        const barcodeTypeSelect = document.querySelector('[name="barcode_type"]');
+        const barcodePreview = document.getElementById('barcodePreview');
+        const barcodeDisplay = document.getElementById('barcodeDisplay');
+        const barcodeStatus = document.getElementById('barcodeStatus');
+
+        function validateEAN13(code) {
+            if (!/^\d{13}$/.test(code)) return false;
+            let sum = 0;
+            for (let i = 0; i < 12; i++) {
+                sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
+            }
+            const checkDigit = (10 - (sum % 10)) % 10;
+            return checkDigit === parseInt(code[12]);
+        }
+
+        function validateEAN8(code) {
+            if (!/^\d{8}$/.test(code)) return false;
+            let sum = 0;
+            for (let i = 0; i < 7; i++) {
+                sum += parseInt(code[i]) * (i % 2 === 0 ? 3 : 1);
+            }
+            const checkDigit = (10 - (sum % 10)) % 10;
+            return checkDigit === parseInt(code[7]);
+        }
+
+        function detectBarcodeType(code) {
+            if (!code) return null;
+            if (/^\d{13}$/.test(code)) return validateEAN13(code) ? 'EAN13' : 'INVALID_EAN13';
+            if (/^\d{8}$/.test(code)) return validateEAN8(code) ? 'EAN8' : 'INVALID_EAN8';
+            if (/^\d{12}$/.test(code)) return 'UPC';
+            if (/^[A-Za-z0-9\-\.\$\/\+\%\s]+$/.test(code)) return 'CODE128';
+            return 'UNKNOWN';
+        }
+
+        function updateBarcodePreview() {
+            const code = barcodeInput.value.trim();
+            
+            if (!code) {
+                barcodePreview.classList.add('hidden');
+                return;
+            }
+
+            barcodePreview.classList.remove('hidden');
+            const detected = detectBarcodeType(code);
+            
+            // Format display
+            if (detected === 'EAN13') {
+                barcodeDisplay.textContent = code.slice(0,1) + ' ' + code.slice(1,7) + ' ' + code.slice(7,13);
+            } else if (detected === 'EAN8') {
+                barcodeDisplay.textContent = code.slice(0,4) + ' ' + code.slice(4,8);
+            } else {
+                barcodeDisplay.textContent = code;
+            }
+
+            // Status message
+            const statusMessages = {
+                'EAN13': { text: '✓ EAN-13 válido', class: 'text-green-600' },
+                'EAN8': { text: '✓ EAN-8 válido', class: 'text-green-600' },
+                'UPC': { text: '✓ UPC-A detectado', class: 'text-blue-600' },
+                'CODE128': { text: '✓ Código alfanumérico (CODE128)', class: 'text-blue-600' },
+                'INVALID_EAN13': { text: '✗ EAN-13 inválido (dígito de control)', class: 'text-red-600' },
+                'INVALID_EAN8': { text: '✗ EAN-8 inválido (dígito de control)', class: 'text-red-600' },
+                'UNKNOWN': { text: '? Formato no reconocido', class: 'text-orange-600' }
+            };
+
+            const status = statusMessages[detected] || { text: '', class: '' };
+            barcodeStatus.textContent = status.text;
+            barcodeStatus.className = 'text-xs mt-1 font-medium ' + status.class;
+
+            // Auto-select barcode type
+            if (barcodeTypeSelect && detected) {
+                const typeMap = { 'EAN13': 'EAN13', 'EAN8': 'EAN8', 'UPC': 'UPC', 'CODE128': 'CODE128', 'INVALID_EAN13': 'EAN13', 'INVALID_EAN8': 'EAN8' };
+                if (typeMap[detected]) {
+                    barcodeTypeSelect.value = typeMap[detected];
+                }
+            }
+        }
+
+        if (barcodeInput) {
+            barcodeInput.addEventListener('input', updateBarcodePreview);
+            barcodeInput.addEventListener('paste', () => setTimeout(updateBarcodePreview, 10));
+            updateBarcodePreview(); // Initial check
+        }
     });
 </script>
 {% endblock %}

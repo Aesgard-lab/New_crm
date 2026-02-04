@@ -13,6 +13,13 @@
 </div>
 
 <div>
+    <label for="id_code" class="block text-xs font-bold text-slate-500 uppercase mb-1">Código</label>
+    {{ form.code }}
+    <p class="text-[10px] text-slate-400 mt-1">Código corto (3-5 letras) para generar SKUs automáticos. Ej: BEB, SUP, ROA</p>
+    {{ form.code.errors }}
+</div>
+
+<div>
     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría Padre (Opcional)</label>
     {{ form.parent }}
     <p class="text-[10px] text-slate-400 mt-1">Selecciona si esta es una subcategoría.</p>
