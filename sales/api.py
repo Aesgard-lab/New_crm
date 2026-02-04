@@ -156,6 +156,41 @@ def order_cancel(request, order_id):
     return JsonResponse({'success': True, 'message': 'Venta cancelada. ' + ', '.join(refund_notes)})
 
 
+@require_http_methods(["POST", "DELETE"])
+@require_gym_permission('sales.delete_sale')
+def order_delete(request, order_id):
+    """
+    Elimina definitivamente una orden/ticket.
+    Solo disponible para usuarios con permiso delete_sale.
+    """
+    gym = request.gym
+    order = get_object_or_404(Order, id=order_id, gym=gym)
+    
+    # Guardar información para el log antes de eliminar
+    order_info = f"Ticket #{order.id} - Cliente: {order.client.get_full_name() if order.client else 'Sin cliente'} - Total: {order.total_amount}€"
+    
+    # No permitir eliminar si tiene pagos con transacciones externas activas
+    has_external_payments = order.payments.filter(
+        transaction_id__isnull=False
+    ).exclude(transaction_id='').exists()
+    
+    if has_external_payments and order.status == 'PAID':
+        return JsonResponse({
+            'error': 'No se puede eliminar un ticket con pagos externos procesados. Usa la opción de devolución primero.'
+        }, status=400)
+    
+    try:
+        order.delete()
+        return JsonResponse({
+            'success': True, 
+            'message': f'Ticket eliminado correctamente: {order_info}'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'error': f'Error al eliminar: {str(e)}'
+        }, status=500)
+
+
 # ============================================
 # REFUND ENDPOINTS (Devoluciones)
 # ============================================

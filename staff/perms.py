@@ -99,6 +99,22 @@ PERMISSION_STRUCTURE = {
     ],
     
     # ==========================================
+    # VENTAS (TPV)
+    # ==========================================
+    "Ventas (TPV)": [
+        # Ventas
+        ("view_sale", "Ver Ventas/Tickets"),
+        ("add_sale", "Crear Ventas"),
+        ("change_sale", "Editar Ventas"),
+        ("delete_sale", "Eliminar/Cancelar Ventas"),
+        ("refund_sale", "Procesar Devoluciones"),
+        ("export_sale", "Exportar Ventas"),
+        
+        # Acceso al TPV
+        ("access_pos", "Acceder al TPV/Punto de Venta"),
+    ],
+    
+    # ==========================================
     # PROVEEDORES Y COMPRAS
     # ==========================================
     "Proveedores": [

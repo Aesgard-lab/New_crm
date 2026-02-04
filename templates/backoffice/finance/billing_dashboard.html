@@ -684,13 +684,24 @@
 
             <!-- Footer -->
             <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between">
-                <button @click="openRefundModal(editModal.orderId); editModal.open = false;"
-                    class="px-4 py-2 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 border border-red-200 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
-                    </svg>
-                    Devolución
-                </button>
+                <div class="flex gap-2">
+                    <button @click="openRefundModal(editModal.orderId); editModal.open = false;"
+                        class="px-4 py-2 rounded-lg bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 border border-red-200 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                        </svg>
+                        Devolución
+                    </button>
+                    {% if perms.sales.delete_sale %}
+                    <button @click="deleteOrder(editModal.orderId)"
+                        class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Eliminar
+                    </button>
+                    {% endif %}
+                </div>
                 <div class="flex gap-2">
                     <button @click="editModal.open = false"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-bold hover:bg-slate-100">
@@ -1603,6 +1614,33 @@
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
                         this.showToast("Error: " + (data.error || 'No se pudo actualizar'), 'error');
+                    }
+                } catch (e) {
+                    this.showToast("Error de conexión", 'error');
+                }
+            },
+
+            async deleteOrder(orderId) {
+                if (!confirm('¿Estás seguro de que quieres ELIMINAR este ticket? Esta acción no se puede deshacer.')) {
+                    return;
+                }
+                
+                try {
+                    const res = await fetch(`/sales/api/order/${orderId}/delete/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': BILLING_CONFIG.csrfToken,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        this.showToast('Ticket eliminado correctamente', 'success');
+                        this.editModal.open = false;
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        this.showToast("Error: " + (data.error || 'No se pudo eliminar'), 'error');
                     }
                 } catch (e) {
                     this.showToast("Error de conexión", 'error');
