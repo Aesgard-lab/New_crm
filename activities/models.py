@@ -84,13 +84,38 @@ class ActivityPolicy(models.Model):
     ]
 
     WINDOW_MODE_CHOICES = [
+        ('OPEN', _("Abierto (Sin restricción)")),
         ('RELATIVE_START', _("Horas antes del inicio")),
         ('FIXED_TIME', _("Días antes (hora fija)")),
+        ('WEEKLY_FIXED', _("Día de la semana (hora fija)")),
+    ]
+    
+    WEEKDAY_CHOICES = [
+        (0, _("Lunes")),
+        (1, _("Martes")),
+        (2, _("Miércoles")),
+        (3, _("Jueves")),
+        (4, _("Viernes")),
+        (5, _("Sábado")),
+        (6, _("Domingo")),
+    ]
+    
+    CANCELLATION_UNIT_CHOICES = [
+        ('MINUTES', _("Minutos")),
+        ('HOURS', _("Horas")),
+        ('DAYS', _("Días")),
     ]
 
     WAITLIST_MODE_CHOICES = [
         ('AUTO_PROMOTE', _("Auto-Promoción (Automático)")),
-        ('BROADCAST', _("Broadcast (Primero en llegar)")),
+        ('BROADCAST', _("Broadcast (Notifica a varios)")),
+        ('FIRST_CLAIM', _("Primero que Reclama (Competición)")),
+    ]
+    
+    MEMBERSHIP_REQUIREMENT_CHOICES = [
+        (None, _("Heredar de configuración general")),
+        (True, _("Sí, requerir")),
+        (False, _("No, permitir sin membresía")),
     ]
     
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='activity_policies')
@@ -100,12 +125,41 @@ class ActivityPolicy(models.Model):
     booking_window_mode = models.CharField(_("Modo de Apertura"), max_length=20, choices=WINDOW_MODE_CHOICES, default='RELATIVE_START')
     booking_window_value = models.PositiveIntegerField(_("Valor Antelación"), default=48, help_text=_("Horas (si es relativo) o Días (si es fijo)"))
     booking_time_release = models.TimeField(_("Hora de Apertura"), null=True, blank=True, help_text=_("Solo si el modo es Hora Fija (ej: 00:00)"))
+    booking_weekday_release = models.IntegerField(
+        _("Día de Apertura"), 
+        choices=WEEKDAY_CHOICES, 
+        null=True, 
+        blank=True,
+        help_text=_("Solo para modo 'Día de la semana'")
+    )
+    
+    # Restricción de reserva por membresía (None = heredar de gym, True = requerir, False = no requerir)
+    require_active_membership = models.BooleanField(
+        _("Requiere Membresía Activa"),
+        null=True,
+        blank=True,
+        default=None,
+        help_text=_("Dejar vacío para usar la configuración general del gimnasio")
+    )
+    require_paid_membership = models.BooleanField(
+        _("Requiere Membresía Pagada"),
+        null=True,
+        blank=True,
+        default=None,
+        help_text=_("Dejar vacío para usar la configuración general del gimnasio")
+    )
 
     # Cancellation Configuration
-    cancellation_window_hours = models.PositiveIntegerField(
-        _("Ventana de Cancelación (Horas)"), 
+    cancellation_window_value = models.PositiveIntegerField(
+        _("Ventana de Cancelación"), 
         default=2,
-        help_text=_("Horas antes de la clase para cancelar sin penalización")
+        help_text=_("Tiempo antes de la clase para cancelar sin penalización")
+    )
+    cancellation_window_unit = models.CharField(
+        _("Unidad de Tiempo"),
+        max_length=10,
+        choices=CANCELLATION_UNIT_CHOICES,
+        default='HOURS'
     )
     penalty_type = models.CharField(_("Tipo de Penalización"), max_length=20, choices=PENALTY_CHOICES, default='FORFEIT')
     fee_amount = models.DecimalField(_("Monto de Multa"), max_digits=6, decimal_places=2, null=True, blank=True, help_text=_("Solo si el tipo es Cobro Monetario"))
@@ -115,6 +169,167 @@ class ActivityPolicy(models.Model):
     waitlist_mode = models.CharField(_("Modo de Lista"), max_length=20, choices=WAITLIST_MODE_CHOICES, default='AUTO_PROMOTE')
     waitlist_limit = models.PositiveIntegerField(_("Límite Lista Espera"), default=0, help_text=_("0 = Sin límite"))
     auto_promote_cutoff_hours = models.PositiveIntegerField(_("Cierre Auto-Promoción (Horas)"), default=1, help_text=_("Horas antes donde la lista deja de correr sola"))
+    
+    # Claim Timeout (para modos BROADCAST y FIRST_CLAIM)
+    waitlist_claim_timeout_minutes = models.PositiveIntegerField(
+        _("Timeout para Reclamar (Minutos)"), 
+        default=30,
+        help_text=_("Minutos que tienen los clientes para reclamar. Tras esto, se auto-promociona al primero.")
+    )
+    
+    # VIP Configuration - Grupos y Planes que tienen prioridad
+    vip_groups = models.ManyToManyField(
+        'clients.ClientGroup',
+        blank=True,
+        related_name='vip_policies',
+        verbose_name=_("Grupos VIP"),
+        help_text=_("Clientes en estos grupos tienen prioridad absoluta en lista de espera")
+    )
+    vip_membership_plans = models.ManyToManyField(
+        'memberships.MembershipPlan',
+        blank=True,
+        related_name='vip_policies',
+        verbose_name=_("Planes VIP"),
+        help_text=_("Clientes con estos planes tienen prioridad absoluta en lista de espera")
+    )
+    
+    def clean(self):
+        """Validación para evitar configuraciones contradictorias"""
+        from django.core.exceptions import ValidationError
+        errors = {}
+        
+        # Validar modo FIXED_TIME y WEEKLY_FIXED requieren hora
+        if self.booking_window_mode in ('FIXED_TIME', 'WEEKLY_FIXED') and not self.booking_time_release:
+            errors['booking_time_release'] = _("Debes especificar la hora de apertura para este modo")
+        
+        # Validar modo WEEKLY_FIXED requiere día de la semana
+        if self.booking_window_mode == 'WEEKLY_FIXED' and self.booking_weekday_release is None:
+            errors['booking_weekday_release'] = _("Debes especificar el día de la semana para este modo")
+        
+        # Validar que require_paid implica require_active (solo si ambos tienen valores explícitos)
+        if self.require_paid_membership is True and self.require_active_membership is False:
+            errors['require_active_membership'] = _("Si requieres membresía pagada, no puedes desactivar membresía activa")
+        
+        # Validar penalty FEE requiere monto
+        if self.penalty_type == 'FEE' and not self.fee_amount:
+            errors['fee_amount'] = _("Debes especificar el monto de la multa")
+        
+        if errors:
+            raise ValidationError(errors)
+    
+    def get_cancellation_window_timedelta(self):
+        """Retorna el timedelta de la ventana de cancelación"""
+        from datetime import timedelta
+        value = self.cancellation_window_value
+        if self.cancellation_window_unit == 'MINUTES':
+            return timedelta(minutes=value)
+        elif self.cancellation_window_unit == 'HOURS':
+            return timedelta(hours=value)
+        else:  # DAYS
+            return timedelta(days=value)
+    
+    def get_booking_opens_at(self, session_datetime):
+        """
+        Calcula cuándo se abren las reservas para una sesión específica.
+        Retorna None si el modo es OPEN (siempre abierto).
+        """
+        from datetime import timedelta, datetime
+        from django.utils import timezone
+        
+        if self.booking_window_mode == 'OPEN':
+            return None  # Siempre abierto
+        
+        elif self.booking_window_mode == 'RELATIVE_START':
+            # X horas antes del inicio
+            return session_datetime - timedelta(hours=self.booking_window_value)
+        
+        elif self.booking_window_mode == 'FIXED_TIME':
+            # X días antes a una hora específica
+            release_date = session_datetime.date() - timedelta(days=self.booking_window_value)
+            release_time = self.booking_time_release or datetime.min.time()
+            return timezone.make_aware(datetime.combine(release_date, release_time))
+        
+        elif self.booking_window_mode == 'WEEKLY_FIXED':
+            # El día de la semana específico a una hora específica
+            # Encontrar el día de la semana anterior más cercano
+            session_date = session_datetime.date()
+            target_weekday = self.booking_weekday_release or 0
+            
+            # Calcular días hacia atrás hasta el día objetivo
+            days_back = (session_date.weekday() - target_weekday) % 7
+            if days_back == 0:
+                days_back = 7  # Si es el mismo día, ir a la semana anterior
+            
+            release_date = session_date - timedelta(days=days_back)
+            release_time = self.booking_time_release or datetime.min.time()
+            return timezone.make_aware(datetime.combine(release_date, release_time))
+        
+        return None
+    
+    def is_booking_open(self, session_datetime):
+        """Verifica si las reservas están abiertas para una sesión"""
+        from django.utils import timezone
+        
+        opens_at = self.get_booking_opens_at(session_datetime)
+        if opens_at is None:
+            return True  # Modo OPEN
+        return timezone.now() >= opens_at
+    
+    def get_effective_require_active_membership(self):
+        """
+        Retorna si se requiere membresía activa, considerando la jerarquía:
+        1. Si la política tiene un valor explícito (True/False), lo usa
+        2. Si es None, hereda de la configuración general del gimnasio
+        """
+        if self.require_active_membership is not None:
+            return self.require_active_membership
+        # Heredar del gimnasio - por defecto True si no hay config
+        return True  # Por defecto requerimos membresía activa
+    
+    def get_effective_require_paid_membership(self):
+        """
+        Retorna si se requiere membresía pagada, considerando la jerarquía:
+        1. Si la política tiene un valor explícito (True/False), lo usa
+        2. Si es None, hereda de la configuración general del gimnasio
+        """
+        if self.require_paid_membership is not None:
+            return self.require_paid_membership
+        # Heredar del gimnasio - usa allow_booking_with_pending_payment (invertido)
+        # Si allow_booking_with_pending_payment = True, entonces require_paid = False
+        return not self.gym.allow_booking_with_pending_payment
+    
+    def can_client_book(self, client):
+        """
+        Verifica si un cliente puede reservar según los requisitos de membresía.
+        Retorna (can_book: bool, reason: str|None)
+        """
+        from clients.models import ClientMembership
+        from django.utils import timezone
+        
+        require_active = self.get_effective_require_active_membership()
+        require_paid = self.get_effective_require_paid_membership()
+        
+        # Si no requiere membresía activa, puede reservar
+        if not require_active:
+            return True, None
+        
+        # Verificar membresía activa
+        active_membership = ClientMembership.objects.filter(
+            client=client,
+            status='ACTIVE',
+            end_date__gte=timezone.now().date()
+        ).first()
+        
+        if not active_membership:
+            return False, "Necesitas una membresía activa para reservar esta clase"
+        
+        # Si requiere pago al día
+        if require_paid:
+            # Verificar si tiene pagos pendientes
+            if hasattr(active_membership, 'has_pending_payment') and active_membership.has_pending_payment():
+                return False, "Tienes pagos pendientes. Regulariza tu situación para reservar."
+        
+        return True, None
     
     def __str__(self):
         return f"{self.name}"
@@ -275,6 +490,7 @@ class ActivitySessionBooking(models.Model):
 class WaitlistEntry(models.Model):
     STATUS_CHOICES = [
         ('WAITING', _("En espera")),
+        ('NOTIFIED', _("Notificado (Esperando claim)")),
         ('PROMOTED', _("Promovido (Dentro)")),
         ('EXPIRED', _("Expirado")),
         ('CANCELLED', _("Cancelado")),
@@ -282,13 +498,23 @@ class WaitlistEntry(models.Model):
 
     session = models.ForeignKey(ActivitySession, on_delete=models.CASCADE, related_name='waitlist_entries')
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='waitlist_entries')
+    gym = models.ForeignKey('organizations.Gym', on_delete=models.CASCADE, related_name='waitlist_entries', null=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='WAITING')
     promoted_at = models.DateTimeField(null=True, blank=True)
     
+    # VIP Priority
+    is_vip = models.BooleanField(default=False, help_text=_("Cliente tiene prioridad VIP"))
+    
+    # Claim tracking (para modos FIRST_CLAIM y BROADCAST)
+    notified_at = models.DateTimeField(null=True, blank=True, help_text=_("Cuándo se notificó que hay plaza"))
+    claim_expires_at = models.DateTimeField(null=True, blank=True, help_text=_("Cuándo expira el tiempo para reclamar"))
+    claimed_at = models.DateTimeField(null=True, blank=True, help_text=_("Cuándo reclamó la plaza"))
+    note = models.TextField(blank=True, default='')
+    
     class Meta:
         unique_together = ('session', 'client')
-        ordering = ['joined_at']
+        ordering = ['-is_vip', 'joined_at']  # VIPs primero, luego por orden de llegada
 
     def __str__(self):
         return f"{self.client} in waitlist for {self.session} ({self.status})"

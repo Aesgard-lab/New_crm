@@ -201,13 +201,14 @@ class ActivitySessionSerializer(serializers.ModelSerializer):
     available_spots = serializers.SerializerMethodField()
     is_booked = serializers.SerializerMethodField()
     gym = serializers.SerializerMethodField()
+    waitlist_info = serializers.SerializerMethodField()
     
     class Meta:
         from activities.models import ActivitySession
         model = ActivitySession
         fields = [
             'id', 'activity', 'instructor', 'start_datetime', 'end_datetime',
-            'max_capacity', 'available_spots', 'is_booked', 'gym'
+            'max_capacity', 'available_spots', 'is_booked', 'gym', 'waitlist_info'
         ]
     
     def get_available_spots(self, obj):
@@ -245,6 +246,72 @@ class ActivitySessionSerializer(serializers.ModelSerializer):
             'name': gym.commercial_name or gym.name,
             'city': gym.city
         }
+    
+    def get_waitlist_info(self, obj):
+        """Return waitlist information for this session"""
+        from activities.models import ActivityPolicy, WaitlistEntry
+        from clients.models import Client
+        
+        request = self.context.get('request')
+        result = {
+            'enabled': False,
+            'mode': None,
+            'is_in_waitlist': False,
+            'waitlist_position': None,
+            'waitlist_entry_id': None,
+            'waitlist_status': None,
+            'can_claim': False,
+            'claim_expires_at': None,
+            'waitlist_count': 0,
+        }
+        
+        # Get policy for this session's activity
+        policy = ActivityPolicy.objects.filter(activity=obj.activity).first()
+        if not policy or not policy.waitlist_enabled:
+            return result
+        
+        result['enabled'] = True
+        result['mode'] = policy.waitlist_mode
+        
+        # Count waitlist entries
+        result['waitlist_count'] = WaitlistEntry.objects.filter(
+            session=obj,
+            status__in=['WAITING', 'NOTIFIED']
+        ).count()
+        
+        # Check if current user is in waitlist
+        if request and request.user.is_authenticated:
+            try:
+                client = Client.objects.get(user=request.user)
+                entry = WaitlistEntry.objects.filter(
+                    session=obj,
+                    client=client,
+                    status__in=['WAITING', 'NOTIFIED']
+                ).first()
+                
+                if entry:
+                    result['is_in_waitlist'] = True
+                    result['waitlist_entry_id'] = entry.id
+                    result['waitlist_status'] = entry.status
+                    
+                    # Calculate position
+                    if entry.status == 'WAITING':
+                        result['waitlist_position'] = WaitlistEntry.objects.filter(
+                            session=obj,
+                            status='WAITING',
+                            joined_at__lt=entry.joined_at
+                        ).count() + 1
+                    
+                    # Check if can claim (NOTIFIED status)
+                    if entry.status == 'NOTIFIED' and entry.claim_expires_at:
+                        from django.utils import timezone
+                        if entry.claim_expires_at > timezone.now():
+                            result['can_claim'] = True
+                            result['claim_expires_at'] = entry.claim_expires_at.isoformat()
+            except Client.DoesNotExist:
+                pass
+        
+        return result
 
 
 class BookingSerializer(serializers.ModelSerializer):

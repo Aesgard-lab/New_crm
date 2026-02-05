@@ -1,0 +1,195 @@
+{% extends "backoffice/base.html" %}
+{% load i18n %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="{% url 'settings_dashboard' %}"
+        class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+    </a>
+    <div>
+        <div class="font-bold text-xl">{% trans "Sistema" %}</div>
+        <div class="text-sm font-normal text-slate-500 mt-1">{% trans "Integraciones y configuración avanzada" %}</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Logs de Auditoría -->
+        <a href="{% url 'audit_log_list' %}" 
+           class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-orange-300 hover:shadow-lg transition-all group">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 group-hover:bg-orange-200 transition-colors">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg group-hover:text-orange-600 transition-colors">
+                        {% trans "Logs de Auditoría" %}
+                    </h3>
+                    <p class="text-sm text-slate-500">{% trans "Historial de acciones" %}</p>
+                </div>
+            </div>
+            <p class="text-slate-600 text-sm">
+                {% trans "Revisa todas las acciones realizadas por los usuarios en el sistema." %}
+            </p>
+            <div class="mt-4 flex items-center text-orange-600 text-sm font-medium">
+                <span>{% trans "Ver logs" %}</span>
+                <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Hardware TPV -->
+        <a href="{% url 'finance_hardware_settings' %}" 
+           class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-lg transition-all group">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg group-hover:text-blue-600 transition-colors">
+                        {% trans "Hardware TPV" %}
+                    </h3>
+                    <p class="text-sm text-slate-500">{% trans "Terminales de pago" %}</p>
+                </div>
+            </div>
+            <p class="text-slate-600 text-sm">
+                {% trans "Terminales Stripe, impresoras de tickets y dispositivos de cobro." %}
+            </p>
+            <div class="mt-4 flex items-center text-blue-600 text-sm font-medium">
+                <span>{% trans "Gestionar TPV" %}</span>
+                <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Control de Acceso / Dispositivos -->
+        <a href="{% url 'access_control:device_list' %}" 
+           class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-emerald-300 hover:shadow-lg transition-all group">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-200 transition-colors">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg group-hover:text-emerald-600 transition-colors">
+                        {% trans "Dispositivos de Acceso" %}
+                    </h3>
+                    <p class="text-sm text-slate-500">{% trans "Tornos, puertas y lectores" %}</p>
+                </div>
+            </div>
+            <p class="text-slate-600 text-sm">
+                {% trans "Tornos, puertas automáticas, lectores RFID y escáneres biométricos." %}
+            </p>
+            <div class="mt-4 flex items-center text-emerald-600 text-sm font-medium">
+                <span>{% trans "Gestionar dispositivos" %}</span>
+                <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Zonas de Acceso -->
+        <a href="{% url 'access_control:zone_list' %}" 
+           class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-purple-300 hover:shadow-lg transition-all group">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg group-hover:text-purple-600 transition-colors">
+                        {% trans "Zonas de Acceso" %}
+                    </h3>
+                    <p class="text-sm text-slate-500">{% trans "Áreas restringidas" %}</p>
+                </div>
+            </div>
+            <p class="text-slate-600 text-sm">
+                {% trans "Define zonas del gimnasio y configura permisos de acceso por membresía." %}
+            </p>
+            <div class="mt-4 flex items-center text-purple-600 text-sm font-medium">
+                <span>{% trans "Configurar zonas" %}</span>
+                <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Integraciones (futuro) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 opacity-60 cursor-not-allowed">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-400 text-lg">
+                        {% trans "Integraciones" %}
+                    </h3>
+                    <p class="text-sm text-slate-400">{% trans "APIs externas" %}</p>
+                </div>
+            </div>
+            <p class="text-slate-400 text-sm">
+                {% trans "Conecta con otras plataformas y servicios externos." %}
+            </p>
+            <div class="mt-4">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                    {% trans "Próximamente" %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Webhooks (futuro) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 opacity-60 cursor-not-allowed">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-400 text-lg">
+                        {% trans "Webhooks" %}
+                    </h3>
+                    <p class="text-sm text-slate-400">{% trans "Notificaciones automáticas" %}</p>
+                </div>
+            </div>
+            <p class="text-slate-400 text-sm">
+                {% trans "Configura webhooks para eventos en tiempo real." %}
+            </p>
+            <div class="mt-4">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                    {% trans "Próximamente" %}
+                </span>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

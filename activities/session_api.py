@@ -459,21 +459,43 @@ def add_to_waitlist(request, session_id):
         return JsonResponse({'error': 'Cliente ya está en la clase'}, status=400)
 
     # Already in waitlist
-    if session.waitlist_entries.filter(client=client, status='WAITING').exists():
+    if session.waitlist_entries.filter(client=client, status__in=['WAITING', 'NOTIFIED']).exists():
         return JsonResponse({'error': 'Cliente ya está en lista de espera'}, status=400)
 
+    # Verificar si es VIP
+    client_is_vip = is_client_vip(client, policy)
+    
     entry = WaitlistEntry.objects.create(
         session=session,
         client=client,
         gym=gym,
         status='WAITING',
-        joined_at=timezone.now()
+        joined_at=timezone.now(),
+        is_vip=client_is_vip
     )
+    
+    # Calcular posición en la lista
+    position = session.waitlist_entries.filter(
+        status__in=['WAITING', 'NOTIFIED']
+    ).filter(
+        Q(is_vip=True, joined_at__lt=entry.joined_at) |  # VIPs que llegaron antes
+        Q(is_vip=False, joined_at__lt=entry.joined_at) if not client_is_vip else Q()  # No-VIPs si no soy VIP
+    ).count() + 1
+    
+    if client_is_vip:
+        # Si es VIP, la posición es solo entre VIPs
+        position = session.waitlist_entries.filter(
+            status__in=['WAITING', 'NOTIFIED'],
+            is_vip=True,
+            joined_at__lt=entry.joined_at
+        ).count() + 1
 
     return JsonResponse({
         'status': 'ok',
         'entry_id': entry.id,
-        'waitlist_count': session.waitlist_entries.filter(status='WAITING').count()
+        'is_vip': client_is_vip,
+        'position': position,
+        'waitlist_count': session.waitlist_entries.filter(status__in=['WAITING', 'NOTIFIED']).count()
     })
 
 
@@ -543,8 +565,8 @@ def remove_attendee(request, session_id, client_id):
             late_ids = _get_cancelled_late_ids(sess)
             active_count = sess.attendees.count() - len(late_ids)
             if active_count < sess.max_capacity:
-                # Get first person in line (excluding the one we just added)
-                first_in_line = sess.waitlist_entries.filter(status='WAITING').exclude(client=client).order_by('joined_at').first()
+                # Get first person in line (excluding the one we just added) - VIPs primero
+                first_in_line = sess.waitlist_entries.filter(status='WAITING').exclude(client=client).order_by('-is_vip', 'joined_at').first()
                 if first_in_line:
                     sess.attendees.add(first_in_line.client)
                     first_in_line.status = 'PROMOTED'
@@ -560,6 +582,8 @@ def remove_attendee(request, session_id, client_id):
     # Standard cancellation flow (EARLY or LATE)
     removed_count = 0
     promoted_count = 0
+    notified_info = None
+    
     for sess in sessions_to_update:
         # Create or update the ClientVisit as cancelled
         visit, created = ClientVisit.objects.get_or_create(
@@ -586,22 +610,48 @@ def remove_attendee(request, session_id, client_id):
             # Count as removed for messaging but keep visible
             removed_count += 1
 
-        # Auto-promote from waitlist if activity allows it and there's space (using active attendees count)
+        # Procesar lista de espera según el modo configurado
         late_ids = _get_cancelled_late_ids(sess)
         active_count = sess.attendees.count() - len(late_ids)
         sess_policy = sess.activity.policy
+        
         if sess_policy and sess_policy.waitlist_enabled and active_count < sess.max_capacity:
-            first_in_line = sess.waitlist_entries.filter(status='WAITING').order_by('joined_at').first()
-            if first_in_line:
-                sess.attendees.add(first_in_line.client)
-                first_in_line.status = 'PROMOTED'
-                first_in_line.promoted_at = timezone.now()
-                first_in_line.save()
-                promoted_count += 1
-            else:
-                # No hay nadie en auto-promoción, notificar a los primeros X (Broadcast Mode)
-                from marketing.signals import notify_waitlist_spot_available
-                notify_waitlist_spot_available(sess)
+            waitlist_mode = sess_policy.waitlist_mode
+            
+            if waitlist_mode == 'AUTO_PROMOTE':
+                # Modo tradicional: promoción automática al primero (VIPs primero)
+                first_in_line = sess.waitlist_entries.filter(status='WAITING').order_by('-is_vip', 'joined_at').first()
+                if first_in_line:
+                    sess.attendees.add(first_in_line.client)
+                    first_in_line.status = 'PROMOTED'
+                    first_in_line.promoted_at = timezone.now()
+                    first_in_line.save()
+                    promoted_count += 1
+                    
+                    # Crear booking
+                    from .models import ActivitySessionBooking
+                    ActivitySessionBooking.objects.get_or_create(
+                        session=sess,
+                        client=first_in_line.client,
+                        defaults={'status': 'BOOKED', 'attendance_status': 'PENDING'}
+                    )
+                    
+                    # Notificar
+                    try:
+                        from marketing.signals import send_class_notification
+                        send_class_notification(
+                            client=first_in_line.client,
+                            event_type='WAITLIST_PROMOTED',
+                            session=sess
+                        )
+                    except Exception as e:
+                        print(f"Error sending promotion notification: {e}")
+            
+            elif waitlist_mode in ['BROADCAST', 'FIRST_CLAIM']:
+                # Nuevos modos: notificar para que reclamen (VIPs se auto-promocionan)
+                notified_info = notify_waitlist_for_claim(sess, exclude_client_id=client.id)
+                if notified_info and notified_info.get('promoted'):
+                    promoted_count += 1
 
     active_attendee_count = session.attendees.count() - len(_get_cancelled_late_ids(session))
     response_data = {
@@ -909,6 +959,208 @@ def mark_attendance(request, session_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+def is_client_vip(client, policy):
+    """
+    Verifica si un cliente es VIP según la política.
+    Un cliente es VIP si:
+    - Pertenece a un grupo VIP configurado en la política
+    - Tiene una membresía activa de un plan VIP configurado en la política
+    """
+    if not policy:
+        return False
+    
+    # Verificar grupos VIP
+    vip_group_ids = list(policy.vip_groups.values_list('id', flat=True))
+    if vip_group_ids and client.groups.filter(id__in=vip_group_ids).exists():
+        return True
+    
+    # Verificar planes VIP
+    vip_plan_ids = list(policy.vip_membership_plans.values_list('id', flat=True))
+    if vip_plan_ids:
+        active_membership = client.memberships.filter(
+            status='ACTIVE',
+            plan_id__in=vip_plan_ids
+        ).exists()
+        if active_membership:
+            return True
+    
+    return False
+
+
+@login_required
+@require_POST
+def claim_waitlist_spot(request, session_id):
+    """
+    Endpoint para que un cliente reclame una plaza disponible desde la lista de espera.
+    Usado en modos BROADCAST y FIRST_CLAIM.
+    
+    El cliente debe estar en estado NOTIFIED (ya fue notificado de que hay plaza).
+    """
+    gym = request.gym
+    session = get_object_or_404(ActivitySession, pk=session_id, gym=gym)
+    
+    try:
+        data = json.loads(request.body)
+        client_id = data.get('client_id')
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    
+    if not client_id:
+        return JsonResponse({'error': 'client_id requerido'}, status=400)
+    
+    client = get_object_or_404(Client, pk=client_id, gym=gym)
+    policy = session.activity.policy
+    
+    # Buscar la entrada en lista de espera
+    entry = WaitlistEntry.objects.filter(
+        session=session,
+        client=client,
+        status__in=['WAITING', 'NOTIFIED']
+    ).first()
+    
+    if not entry:
+        return JsonResponse({'error': 'No estás en la lista de espera de esta clase'}, status=400)
+    
+    # Verificar si hay plaza disponible
+    late_ids = _get_cancelled_late_ids(session)
+    active_count = session.attendees.count() - len(late_ids)
+    
+    if active_count >= session.max_capacity:
+        return JsonResponse({
+            'error': 'Lo sentimos, la plaza ya fue reclamada por otro cliente',
+            'code': 'SPOT_TAKEN'
+        }, status=409)
+    
+    # Verificar timeout si aplica
+    if entry.claim_expires_at and timezone.now() > entry.claim_expires_at:
+        entry.status = 'EXPIRED'
+        entry.save()
+        return JsonResponse({
+            'error': 'El tiempo para reclamar la plaza ha expirado',
+            'code': 'CLAIM_EXPIRED'
+        }, status=400)
+    
+    # Añadir a la clase
+    session.attendees.add(client)
+    
+    # Actualizar entrada de lista de espera
+    entry.status = 'PROMOTED'
+    entry.promoted_at = timezone.now()
+    entry.claimed_at = timezone.now()
+    entry.save()
+    
+    # Crear booking record
+    from .models import ActivitySessionBooking
+    ActivitySessionBooking.objects.get_or_create(
+        session=session,
+        client=client,
+        defaults={'status': 'BOOKED', 'attendance_status': 'PENDING'}
+    )
+    
+    # Notificar al cliente
+    try:
+        from marketing.signals import send_class_notification
+        send_class_notification(
+            client=client,
+            event_type='WAITLIST_PROMOTED',
+            session=session
+        )
+    except Exception as e:
+        print(f"Error sending claim notification: {e}")
+    
+    return JsonResponse({
+        'status': 'ok',
+        'message': '¡Plaza reclamada con éxito! Ya estás en la clase.',
+        'attendee_count': session.attendees.count() - len(_get_cancelled_late_ids(session))
+    })
+
+
+def notify_waitlist_for_claim(session, exclude_client_id=None):
+    """
+    Notifica a la lista de espera que hay una plaza disponible para reclamar.
+    Usado en modos BROADCAST y FIRST_CLAIM.
+    
+    - VIPs: Se promocionan automáticamente (siempre ganan)
+    - No-VIPs: Se les notifica y compiten por reclamar
+    """
+    from marketing.signals import send_class_notification
+    from datetime import timedelta
+    
+    policy = session.activity.policy
+    if not policy or not policy.waitlist_enabled:
+        return None
+    
+    # Obtener lista de espera ordenada (VIPs primero, luego por orden de llegada)
+    waitlist = WaitlistEntry.objects.filter(
+        session=session,
+        status='WAITING'
+    ).order_by('-is_vip', 'joined_at')
+    
+    if exclude_client_id:
+        waitlist = waitlist.exclude(client_id=exclude_client_id)
+    
+    if not waitlist.exists():
+        return None
+    
+    # El primero de la lista
+    first_entry = waitlist.first()
+    
+    # Si es VIP, promoción automática
+    if first_entry.is_vip:
+        session.attendees.add(first_entry.client)
+        first_entry.status = 'PROMOTED'
+        first_entry.promoted_at = timezone.now()
+        first_entry.save()
+        
+        # Crear booking
+        from .models import ActivitySessionBooking
+        ActivitySessionBooking.objects.get_or_create(
+            session=session,
+            client=first_entry.client,
+            defaults={'status': 'BOOKED', 'attendance_status': 'PENDING'}
+        )
+        
+        # Notificar promoción VIP
+        send_class_notification(
+            client=first_entry.client,
+            event_type='WAITLIST_PROMOTED',
+            session=session
+        )
+        
+        return {'promoted': first_entry.client.id, 'is_vip': True}
+    
+    # Si no es VIP, depende del modo
+    timeout_minutes = policy.waitlist_claim_timeout_minutes or 30
+    claim_expires = timezone.now() + timedelta(minutes=timeout_minutes)
+    
+    if policy.waitlist_mode == 'FIRST_CLAIM':
+        # Notificar a TODOS en la lista
+        entries_to_notify = waitlist
+    else:
+        # BROADCAST: Notificar solo a los primeros X
+        from marketing.models import ClassNotificationSettings
+        settings, _ = ClassNotificationSettings.objects.get_or_create(gym=session.gym)
+        entries_to_notify = waitlist[:settings.waitlist_broadcast_count]
+    
+    notified_ids = []
+    for entry in entries_to_notify:
+        entry.status = 'NOTIFIED'
+        entry.notified_at = timezone.now()
+        entry.claim_expires_at = claim_expires
+        entry.save()
+        notified_ids.append(entry.client.id)
+        
+        # Enviar notificación
+        send_class_notification(
+            client=entry.client,
+            event_type='WAITLIST_SPOT_AVAILABLE',
+            session=session,
+            timeout_minutes=timeout_minutes
+        )
+    
+    return {'notified': notified_ids, 'expires_at': claim_expires.isoformat()}
+
+
 @login_required
 @require_GET
 def get_attendance_status(request, session_id):
@@ -939,3 +1191,4 @@ def get_attendance_status(request, session_id):
         'session_id': session_id,
         'attendance': attendance_list
     })
+

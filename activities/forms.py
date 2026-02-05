@@ -91,20 +91,109 @@ class ActivityForm(forms.ModelForm):
                 del self.fields['propagate_to_gyms']
 
 class ActivityPolicyForm(forms.ModelForm):
+    MEMBERSHIP_CHOICES = [
+        ('', 'Heredar de configuración general'),
+        ('true', 'Sí, requerir'),
+        ('false', 'No, permitir sin esto'),
+    ]
+    
+    require_active_membership_choice = forms.ChoiceField(
+        choices=MEMBERSHIP_CHOICES,
+        required=False,
+        label="Requiere Membresía Activa",
+        widget=forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'})
+    )
+    
+    require_paid_membership_choice = forms.ChoiceField(
+        choices=MEMBERSHIP_CHOICES,
+        required=False,
+        label="Requiere Membresía Pagada",
+        widget=forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'})
+    )
+    
     class Meta:
         model = ActivityPolicy
         fields = ['name', 'booking_window_mode', 'booking_window_value', 'booking_time_release', 
+                  'booking_weekday_release',
                   'waitlist_enabled', 'waitlist_mode', 'waitlist_limit', 'auto_promote_cutoff_hours',
-                  'cancellation_window_hours', 'penalty_type', 'fee_amount']
+                  'waitlist_claim_timeout_minutes', 'vip_groups', 'vip_membership_plans',
+                  'cancellation_window_value', 'cancellation_window_unit', 'penalty_type', 'fee_amount']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'booking_window_value': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'booking_time_release': forms.TimeInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'type': 'time'}),
             'booking_window_mode': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'booking_weekday_release': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'waitlist_mode': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'waitlist_limit': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'auto_promote_cutoff_hours': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
-            'cancellation_window_hours': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'waitlist_claim_timeout_minutes': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'vip_groups': forms.CheckboxSelectMultiple(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)]'}),
+            'vip_membership_plans': forms.CheckboxSelectMultiple(attrs={'class': 'rounded border-slate-300 text-[var(--brand-color)]'}),
+            'cancellation_window_value': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'cancellation_window_unit': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'penalty_type': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'fee_amount': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        gym = kwargs.pop('gym', None)
+        super().__init__(*args, **kwargs)
+        if gym:
+            from clients.models import ClientGroup
+            from memberships.models import MembershipPlan
+            self.fields['vip_groups'].queryset = ClientGroup.objects.filter(gym=gym)
+            self.fields['vip_membership_plans'].queryset = MembershipPlan.objects.filter(gym=gym, is_active=True)
+        
+        # Inicializar los campos de elección con los valores del modelo
+        if self.instance and self.instance.pk:
+            if self.instance.require_active_membership is None:
+                self.initial['require_active_membership_choice'] = ''
+            elif self.instance.require_active_membership:
+                self.initial['require_active_membership_choice'] = 'true'
+            else:
+                self.initial['require_active_membership_choice'] = 'false'
+                
+            if self.instance.require_paid_membership is None:
+                self.initial['require_paid_membership_choice'] = ''
+            elif self.instance.require_paid_membership:
+                self.initial['require_paid_membership_choice'] = 'true'
+            else:
+                self.initial['require_paid_membership_choice'] = 'false'
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Convertir los campos de elección a valores del modelo
+        active_choice = cleaned_data.get('require_active_membership_choice', '')
+        paid_choice = cleaned_data.get('require_paid_membership_choice', '')
+        
+        if active_choice == '':
+            cleaned_data['require_active_membership'] = None
+        elif active_choice == 'true':
+            cleaned_data['require_active_membership'] = True
+        else:
+            cleaned_data['require_active_membership'] = False
+            
+        if paid_choice == '':
+            cleaned_data['require_paid_membership'] = None
+        elif paid_choice == 'true':
+            cleaned_data['require_paid_membership'] = True
+        else:
+            cleaned_data['require_paid_membership'] = False
+        
+        # Validar coherencia
+        if cleaned_data.get('require_paid_membership') is True and cleaned_data.get('require_active_membership') is False:
+            raise forms.ValidationError("Si requieres membresía pagada, no puedes desactivar explícitamente membresía activa")
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Asignar los valores convertidos
+        instance.require_active_membership = self.cleaned_data.get('require_active_membership')
+        instance.require_paid_membership = self.cleaned_data.get('require_paid_membership')
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance

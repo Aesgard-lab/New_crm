@@ -237,15 +237,16 @@ def policy_list(request):
 def policy_create(request):
     gym = request.gym
     if request.method == 'POST':
-        form = ActivityPolicyForm(request.POST)
+        form = ActivityPolicyForm(request.POST, gym=gym)
         if form.is_valid():
             policy = form.save(commit=False)
             policy.gym = gym
             policy.save()
+            form.save_m2m()  # Guardar relaciones ManyToMany (vip_groups, vip_membership_plans)
             messages.success(request, 'Política creada correctamente.')
             return redirect('policy_list')
     else:
-        form = ActivityPolicyForm()
+        form = ActivityPolicyForm(gym=gym)
     
     return render(request, 'backoffice/activities/policies/form.html', {
         'form': form,
@@ -259,13 +260,13 @@ def policy_edit(request, pk):
     policy = get_object_or_404(ActivityPolicy, pk=pk, gym=gym)
     
     if request.method == 'POST':
-        form = ActivityPolicyForm(request.POST, instance=policy)
+        form = ActivityPolicyForm(request.POST, instance=policy, gym=gym)
         if form.is_valid():
             form.save()
             messages.success(request, 'Política actualizada.')
             return redirect('policy_list')
     else:
-        form = ActivityPolicyForm(instance=policy)
+        form = ActivityPolicyForm(instance=policy, gym=gym)
     
     return render(request, 'backoffice/activities/policies/form.html', {
         'form': form,

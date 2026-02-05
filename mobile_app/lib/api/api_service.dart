@@ -422,6 +422,138 @@ class ApiService extends ChangeNotifier {
     }
   }
 
+  // ===========================
+  // WAITLIST METHODS
+  // ===========================
+
+  /// Join the waitlist for a full session
+  Future<Map<String, dynamic>> joinWaitlist(int sessionId) async {
+    if (_token == null) {
+      return {'success': false, 'message': 'No autenticado'};
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/waitlist/join/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({'session_id': sessionId}),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'entry_id': data['entry_id'],
+          'position': data['position'],
+          'is_vip': data['is_vip'] ?? false,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error al unirse a la lista de espera'
+        };
+      }
+    } catch (e) {
+      print('Error joining waitlist: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  /// Leave the waitlist for a session
+  Future<Map<String, dynamic>> leaveWaitlist(int entryId) async {
+    if (_token == null) {
+      return {'success': false, 'message': 'No autenticado'};
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/waitlist/$entryId/leave/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message']};
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error al salir de la lista de espera'
+        };
+      }
+    } catch (e) {
+      print('Error leaving waitlist: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  /// Claim a waitlist spot (when notified in BROADCAST/FIRST_CLAIM mode)
+  Future<Map<String, dynamic>> claimWaitlistSpot(int entryId) async {
+    if (_token == null) {
+      return {'success': false, 'message': 'No autenticado'};
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/waitlist/$entryId/claim/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'booking_id': data['booking_id'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Error al reclamar plaza'
+        };
+      }
+    } catch (e) {
+      print('Error claiming waitlist spot: $e');
+      return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  /// Get my active waitlist entries
+  Future<List<dynamic>> getMyWaitlistEntries() async {
+    if (_token == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/waitlist/my-entries/'),
+        headers: {
+          'Authorization': 'Token $_token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['entries'] as List<dynamic>? ?? [];
+      }
+      return [];
+    } catch (e) {
+      print('Error getting waitlist entries: $e');
+      return [];
+    }
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');

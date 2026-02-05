@@ -25,6 +25,7 @@ urlpatterns = [
     
     # Settings (Organization)
     path("settings/", views.settings_dashboard, name="settings_dashboard"),
+    path("settings/system/", views.system_settings_dashboard, name="system_settings"),
     path("settings/gym/", gym_settings_view, name="gym_settings"),
     path("settings/clients/", client_settings, name="client_settings"),
     

@@ -1114,6 +1114,145 @@ def api_cancel_booking(request, slug, booking_id):
     })
 
 
+@login_required
+def api_claim_waitlist_spot(request, slug, entry_id):
+    """API para reclamar una plaza desde la lista de espera"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'success': False, 'error': 'Gym not found'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Not a client'}, status=403)
+    
+    from activities.models import WaitlistEntry, ActivitySessionBooking
+    
+    try:
+        entry = WaitlistEntry.objects.select_related(
+            'session', 'session__activity'
+        ).get(id=entry_id, client=client, status__in=['WAITING', 'NOTIFIED'])
+    except WaitlistEntry.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Entrada no encontrada o ya procesada'}, status=404)
+    
+    session = entry.session
+    
+    # Verificar si el tiempo para reclamar ha expirado
+    if entry.claim_expires_at and timezone.now() > entry.claim_expires_at:
+        entry.status = 'EXPIRED'
+        entry.save()
+        return JsonResponse({
+            'success': False,
+            'error': 'El tiempo para reclamar la plaza ha expirado'
+        }, status=400)
+    
+    # Verificar si hay plazas disponibles
+    confirmed_count = ActivitySessionBooking.objects.filter(
+        session=session,
+        status='CONFIRMED'
+    ).count()
+    
+    if confirmed_count >= session.max_capacity:
+        return JsonResponse({
+            'success': False,
+            'error': 'Lo sentimos, la plaza ya fue reclamada por otro cliente',
+            'code': 'SPOT_TAKEN'
+        }, status=409)
+    
+    # Añadir a la clase
+    session.attendees.add(client)
+    
+    # Actualizar entrada de waitlist
+    entry.status = 'PROMOTED'
+    entry.promoted_at = timezone.now()
+    entry.claimed_at = timezone.now()
+    entry.save()
+    
+    # Crear booking
+    booking = ActivitySessionBooking.objects.create(
+        session=session,
+        client=client,
+        status='CONFIRMED',
+        attendance_status='PENDING'
+    )
+    
+    # Enviar notificación
+    try:
+        from marketing.signals import send_class_notification
+        send_class_notification(
+            client=client,
+            event_type='WAITLIST_PROMOTED',
+            session=session
+        )
+    except Exception:
+        pass
+    
+    return JsonResponse({
+        'success': True,
+        'message': '¡Plaza reclamada con éxito! Ya estás en la clase.',
+        'booking_id': booking.id
+    })
+
+
+@login_required
+def api_my_waitlist_entries(request, slug):
+    """API para obtener las entradas de lista de espera del cliente"""
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'success': False, 'error': 'Gym not found'}, status=404)
+    
+    try:
+        client = Client.objects.get(user=request.user, gym=gym)
+    except Client.DoesNotExist:
+        return JsonResponse({'entries': []})
+    
+    from activities.models import WaitlistEntry
+    
+    entries = WaitlistEntry.objects.filter(
+        client=client,
+        gym=gym,
+        status__in=['WAITING', 'NOTIFIED'],
+        session__start_datetime__gte=timezone.now()
+    ).select_related('session', 'session__activity').order_by('session__start_datetime')
+    
+    result = []
+    for entry in entries:
+        session = entry.session
+        
+        # Calcular posición
+        position = WaitlistEntry.objects.filter(
+            session=session,
+            status__in=['WAITING', 'NOTIFIED'],
+            joined_at__lt=entry.joined_at
+        ).count() + 1
+        
+        if entry.is_vip:
+            position = WaitlistEntry.objects.filter(
+                session=session,
+                status__in=['WAITING', 'NOTIFIED'],
+                is_vip=True,
+                joined_at__lt=entry.joined_at
+            ).count() + 1
+        
+        result.append({
+            'id': entry.id,
+            'session_id': session.id,
+            'activity_name': session.activity.name,
+            'activity_color': session.activity.color,
+            'start_datetime': session.start_datetime.isoformat(),
+            'status': entry.status,
+            'position': position,
+            'is_vip': entry.is_vip,
+            'can_claim': entry.status == 'NOTIFIED',
+            'claim_expires_at': entry.claim_expires_at.isoformat() if entry.claim_expires_at else None,
+        })
+    
+    return JsonResponse({'entries': result})
+
+
 # ===========================
 # SERVICIOS
 # ===========================

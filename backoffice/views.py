@@ -222,6 +222,17 @@ def settings_dashboard(request):
 
 
 @login_required
+@require_gym
+def system_settings_dashboard(request):
+    """
+    System Settings - Logs, Hardware, Integrations.
+    """
+    return render(request, "backoffice/settings/system/dashboard.html", {
+        "title": "Sistema",
+    })
+
+
+@login_required
 def chat_list(request):
     """Lista de chats con clientes"""
     from clients.models import ChatRoom

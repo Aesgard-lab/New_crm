@@ -46,6 +46,46 @@ class Instructor {
   }
 }
 
+class WaitlistInfo {
+  final bool enabled;
+  final String? mode;
+  final bool isInWaitlist;
+  final int? waitlistPosition;
+  final int? waitlistEntryId;
+  final String? waitlistStatus;
+  final bool canClaim;
+  final DateTime? claimExpiresAt;
+  final int waitlistCount;
+
+  WaitlistInfo({
+    required this.enabled,
+    this.mode,
+    required this.isInWaitlist,
+    this.waitlistPosition,
+    this.waitlistEntryId,
+    this.waitlistStatus,
+    required this.canClaim,
+    this.claimExpiresAt,
+    required this.waitlistCount,
+  });
+
+  factory WaitlistInfo.fromJson(Map<String, dynamic> json) {
+    return WaitlistInfo(
+      enabled: json['enabled'] ?? false,
+      mode: json['mode'],
+      isInWaitlist: json['is_in_waitlist'] ?? false,
+      waitlistPosition: json['waitlist_position'],
+      waitlistEntryId: json['waitlist_entry_id'],
+      waitlistStatus: json['waitlist_status'],
+      canClaim: json['can_claim'] ?? false,
+      claimExpiresAt: json['claim_expires_at'] != null
+          ? DateTime.parse(json['claim_expires_at'])
+          : null,
+      waitlistCount: json['waitlist_count'] ?? 0,
+    );
+  }
+}
+
 class ActivitySession {
   final int id;
   final Activity activity;
@@ -56,6 +96,7 @@ class ActivitySession {
   final int availableSpots;
   final bool isBooked;
   final String location;
+  final WaitlistInfo waitlistInfo;
 
   ActivitySession({
     required this.id,
@@ -67,6 +108,7 @@ class ActivitySession {
     required this.availableSpots,
     required this.isBooked,
     required this.location,
+    required this.waitlistInfo,
   });
 
   factory ActivitySession.fromJson(Map<String, dynamic> json) {
@@ -82,6 +124,9 @@ class ActivitySession {
       availableSpots: json['available_spots'] ?? 0,
       isBooked: json['is_booked'] ?? false,
       location: json['location'] ?? '',
+      waitlistInfo: json['waitlist_info'] != null
+          ? WaitlistInfo.fromJson(json['waitlist_info'])
+          : WaitlistInfo(enabled: false, isInWaitlist: false, canClaim: false, waitlistCount: 0),
     );
   }
 

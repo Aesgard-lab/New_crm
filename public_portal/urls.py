@@ -79,6 +79,10 @@ urlpatterns = [
     path('gym/<slug:slug>/api/bookings/book/', views.api_book_session, name='api_book_session'),
     path('gym/<slug:slug>/api/bookings/<int:booking_id>/cancel/', views.api_cancel_booking, name='api_cancel_booking'),
     
+    # API para lista de espera
+    path('gym/<slug:slug>/api/waitlist/<int:entry_id>/claim/', views.api_claim_waitlist_spot, name='api_claim_waitlist_spot'),
+    path('gym/<slug:slug>/api/waitlist/my-entries/', views.api_my_waitlist_entries, name='api_my_waitlist_entries'),
+    
     # Calendar Sync (iCal)
     path('gym/<slug:slug>/calendar/', views.public_calendar_sync, name='public_calendar_sync'),
     path('gym/<slug:slug>/calendar/settings/', views.public_calendar_settings, name='public_calendar_settings'),

@@ -11,6 +11,13 @@
     .fc-event-main {
         padding: 4px;
     }
+    .claim-timer {
+        animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
 </style>
 {% endblock %}
 
@@ -27,6 +34,25 @@
         {% endif %}
     {% endif %}
 </div>
+
+<!-- Banner de Plaza Disponible para Reclamar -->
+{% if user.is_authenticated %}
+<div id="waitlistClaimBanner" style="display:none;" 
+     class="mb-6 p-4 bg-amber-50 border-2 border-amber-400 rounded-xl animate-pulse">
+    <div class="flex items-start gap-3">
+        <div class="text-2xl">🎉</div>
+        <div class="flex-1">
+            <h3 class="font-bold text-amber-800">¡Hay una plaza disponible para ti!</h3>
+            <p id="claimActivityName" class="text-sm text-amber-700 mt-1"></p>
+            <p class="text-xs text-amber-600 mt-2 claim-timer">⏱️ Tiempo restante: <span id="claimTimeRemaining"></span></p>
+        </div>
+        <button onclick="claimWaitlistSpot()" 
+                class="px-4 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap">
+            ¡Reclamar Plaza!
+        </button>
+    </div>
+</div>
+{% endif %}
 
 <!-- Filtros de Actividades -->
 {% if activities %}
@@ -109,6 +135,8 @@
     let calendar;
     let currentFilter = null;
     let currentSessionId = null;
+    let pendingClaim = null;  // Para guardar la entrada de waitlist pendiente de claim
+    let claimTimer = null;
     
     // Translation strings
     const t = {
@@ -117,7 +145,10 @@
         spots_available: '{{ t.spots_available }}',
         booking_in_progress: '{{ t.booking_in_progress }}',
         booking_error: '{{ t.booking_error }}',
-        could_not_complete: '{{ t.could_not_complete }}'
+        could_not_complete: '{{ t.could_not_complete }}',
+        join_waitlist: 'Unirse a Lista de Espera',
+        waitlist_position: 'Posición en lista de espera',
+        waitlist_vip: '⭐ Tienes prioridad VIP'
     };
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -149,7 +180,95 @@
         });
         
         calendar.render();
+        
+        // Comprobar si hay plazas pendientes de claim
+        {% if user.is_authenticated %}
+        checkPendingClaims();
+        {% endif %}
     });
+    
+    {% if user.is_authenticated %}
+    function checkPendingClaims() {
+        fetch('{% url "api_my_waitlist_entries" slug=settings.public_slug %}')
+        .then(r => r.json())
+        .then(data => {
+            const claimable = data.entries?.filter(e => e.can_claim) || [];
+            if (claimable.length > 0) {
+                showClaimBanner(claimable[0]);
+            }
+        })
+        .catch(console.error);
+    }
+    
+    function showClaimBanner(entry) {
+        pendingClaim = entry;
+        document.getElementById('claimActivityName').textContent = 
+            `${entry.activity_name} - ${new Date(entry.start_datetime).toLocaleString()}`;
+        document.getElementById('waitlistClaimBanner').style.display = 'block';
+        
+        // Iniciar timer
+        updateClaimTimer();
+        claimTimer = setInterval(updateClaimTimer, 1000);
+    }
+    
+    function updateClaimTimer() {
+        if (!pendingClaim?.claim_expires_at) return;
+        
+        const expires = new Date(pendingClaim.claim_expires_at);
+        const now = new Date();
+        const diff = expires - now;
+        
+        if (diff <= 0) {
+            clearInterval(claimTimer);
+            document.getElementById('waitlistClaimBanner').style.display = 'none';
+            alert('⏰ El tiempo para reclamar la plaza ha expirado.');
+            location.reload();
+            return;
+        }
+        
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        document.getElementById('claimTimeRemaining').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    function claimWaitlistSpot() {
+        if (!pendingClaim) return;
+        
+        const button = document.querySelector('#waitlistClaimBanner button');
+        button.disabled = true;
+        button.textContent = '⏳ Reclamando...';
+        
+        fetch(`{% url "api_claim_waitlist_spot" slug=settings.public_slug entry_id=0 %}`.replace('/0/', `/${pendingClaim.id}/`), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('🎉 ¡Plaza reclamada con éxito! Ya estás en la clase.');
+                clearInterval(claimTimer);
+                document.getElementById('waitlistClaimBanner').style.display = 'none';
+                calendar.refetchEvents();
+            } else {
+                alert('❌ ' + (data.error || 'Error al reclamar la plaza'));
+                if (data.code === 'SPOT_TAKEN') {
+                    document.getElementById('waitlistClaimBanner').style.display = 'none';
+                }
+            }
+            button.disabled = false;
+            button.textContent = '¡Reclamar Plaza!';
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error al procesar la solicitud');
+            button.disabled = false;
+            button.textContent = '¡Reclamar Plaza!';
+        });
+    }
+    {% endif %}
     
     function filterByActivity(activityId) {
         currentFilter = activityId;

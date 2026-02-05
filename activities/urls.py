@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/session/<int:session_id>/waitlist/<int:entry_id>/promote/', session_api.promote_waitlist, name='api_session_promote_waitlist'),
     path('api/session/<int:session_id>/waitlist/<int:entry_id>/remove/', session_api.remove_from_waitlist, name='api_session_remove_waitlist'),
     path('api/session/<int:session_id>/waitlist/add/', session_api.add_to_waitlist, name='api_session_add_waitlist'),
+    path('api/session/<int:session_id>/waitlist/claim/', session_api.claim_waitlist_spot, name='api_session_claim_waitlist'),
     path('api/session/<int:session_id>/search-clients/', session_api.search_clients_for_session, name='api_session_search_clients'),
     path('api/quick-client/create/', quick_client_api.create_quick_client, name='api_quick_client_create'),
     

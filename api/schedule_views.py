@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.db.models import Q
 from datetime import datetime, timedelta
 
-from activities.models import Activity, ActivitySession, ActivitySessionBooking
+from activities.models import Activity, ActivitySession, ActivitySessionBooking, WaitlistEntry
 from clients.models import Client, ClientMembership
 from organizations.models import Gym
 from .serializers import (
@@ -365,3 +365,282 @@ class FranchiseGymsView(views.APIView):
                 'name': gym.commercial_name or gym.name
             }
         })
+
+
+class JoinWaitlistView(views.APIView):
+    """
+    Join the waitlist for a full class.
+    POST /api/waitlist/join/
+    Body: { "session_id": 123 }
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        from activities.session_api import is_client_vip
+        
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        session_id = request.data.get('session_id')
+        if not session_id:
+            return Response(
+                {'error': 'session_id es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            session = ActivitySession.objects.get(id=session_id)
+        except ActivitySession.DoesNotExist:
+            return Response(
+                {'error': 'Sesión no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Verify policy allows waitlist
+        policy = session.activity.policy
+        if not policy or not policy.waitlist_enabled:
+            return Response(
+                {'error': 'Esta clase no permite lista de espera'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if already in class
+        if session.attendees.filter(pk=client.pk).exists():
+            return Response(
+                {'error': 'Ya estás en esta clase'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if already in waitlist
+        if WaitlistEntry.objects.filter(session=session, client=client, status__in=['WAITING', 'NOTIFIED']).exists():
+            return Response(
+                {'error': 'Ya estás en la lista de espera'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check waitlist limit
+        if policy.waitlist_limit > 0:
+            current_count = WaitlistEntry.objects.filter(session=session, status__in=['WAITING', 'NOTIFIED']).count()
+            if current_count >= policy.waitlist_limit:
+                return Response(
+                    {'error': 'La lista de espera está llena'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Check if client is VIP
+        client_is_vip = is_client_vip(client, policy)
+        
+        # Create entry
+        entry = WaitlistEntry.objects.create(
+            session=session,
+            client=client,
+            gym=client.gym,
+            status='WAITING',
+            is_vip=client_is_vip
+        )
+        
+        # Calculate position
+        position = WaitlistEntry.objects.filter(
+            session=session,
+            status__in=['WAITING', 'NOTIFIED'],
+            joined_at__lt=entry.joined_at
+        ).count() + 1
+        
+        if client_is_vip:
+            # VIPs count position among VIPs only
+            position = WaitlistEntry.objects.filter(
+                session=session,
+                status__in=['WAITING', 'NOTIFIED'],
+                is_vip=True,
+                joined_at__lt=entry.joined_at
+            ).count() + 1
+        
+        return Response({
+            'message': 'Te has unido a la lista de espera',
+            'entry_id': entry.id,
+            'position': position,
+            'is_vip': client_is_vip,
+            'waitlist_mode': policy.waitlist_mode
+        }, status=status.HTTP_201_CREATED)
+
+
+class LeaveWaitlistView(views.APIView):
+    """
+    Leave the waitlist for a class.
+    DELETE /api/waitlist/<entry_id>/leave/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, entry_id):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            entry = WaitlistEntry.objects.get(id=entry_id, client=client, status__in=['WAITING', 'NOTIFIED'])
+        except WaitlistEntry.DoesNotExist:
+            return Response(
+                {'error': 'Entrada de lista de espera no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        entry.status = 'CANCELLED'
+        entry.save()
+        
+        return Response({
+            'message': 'Has salido de la lista de espera'
+        })
+
+
+class ClaimWaitlistSpotView(views.APIView):
+    """
+    Claim an available spot from the waitlist.
+    Used when in BROADCAST or FIRST_CLAIM mode after being notified.
+    POST /api/waitlist/<entry_id>/claim/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, entry_id):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no es un cliente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            entry = WaitlistEntry.objects.get(id=entry_id, client=client, status__in=['WAITING', 'NOTIFIED'])
+        except WaitlistEntry.DoesNotExist:
+            return Response(
+                {'error': 'Entrada de lista de espera no encontrada o ya procesada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        session = entry.session
+        
+        # Check if claim has expired
+        if entry.claim_expires_at and timezone.now() > entry.claim_expires_at:
+            entry.status = 'EXPIRED'
+            entry.save()
+            return Response(
+                {'error': 'El tiempo para reclamar la plaza ha expirado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if there's space
+        confirmed_count = ActivitySessionBooking.objects.filter(
+            session=session,
+            status='CONFIRMED'
+        ).count()
+        
+        if confirmed_count >= session.max_capacity:
+            return Response(
+                {'error': 'Lo sentimos, la plaza ya fue reclamada por otro cliente',
+                 'code': 'SPOT_TAKEN'},
+                status=status.HTTP_409_CONFLICT
+            )
+        
+        # Add to class
+        session.attendees.add(client)
+        
+        # Update waitlist entry
+        entry.status = 'PROMOTED'
+        entry.promoted_at = timezone.now()
+        entry.claimed_at = timezone.now()
+        entry.save()
+        
+        # Create booking
+        booking = ActivitySessionBooking.objects.create(
+            session=session,
+            client=client,
+            status='CONFIRMED',
+            attendance_status='PENDING'
+        )
+        
+        # Send notification
+        try:
+            from marketing.signals import send_class_notification
+            send_class_notification(
+                client=client,
+                event_type='WAITLIST_PROMOTED',
+                session=session
+            )
+        except Exception:
+            pass
+        
+        return Response({
+            'message': '¡Plaza reclamada con éxito! Ya estás en la clase.',
+            'booking_id': booking.id,
+            'session': {
+                'id': session.id,
+                'activity_name': session.activity.name,
+                'start_datetime': session.start_datetime.isoformat()
+            }
+        })
+
+
+class MyWaitlistEntriesView(views.APIView):
+    """
+    Get all waitlist entries for the current client.
+    Includes pending claims that need action.
+    GET /api/waitlist/my-entries/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            return Response({'entries': []})
+        
+        entries = WaitlistEntry.objects.filter(
+            client=client,
+            status__in=['WAITING', 'NOTIFIED'],
+            session__start_datetime__gte=timezone.now()
+        ).select_related('session', 'session__activity').order_by('session__start_datetime')
+        
+        result = []
+        for entry in entries:
+            session = entry.session
+            
+            # Calculate position
+            position = WaitlistEntry.objects.filter(
+                session=session,
+                status__in=['WAITING', 'NOTIFIED'],
+                joined_at__lt=entry.joined_at
+            ).count() + 1
+            
+            if entry.is_vip:
+                position = WaitlistEntry.objects.filter(
+                    session=session,
+                    status__in=['WAITING', 'NOTIFIED'],
+                    is_vip=True,
+                    joined_at__lt=entry.joined_at
+                ).count() + 1
+            
+            result.append({
+                'id': entry.id,
+                'session_id': session.id,
+                'activity_name': session.activity.name,
+                'activity_color': session.activity.color,
+                'start_datetime': session.start_datetime.isoformat(),
+                'status': entry.status,
+                'position': position,
+                'is_vip': entry.is_vip,
+                'can_claim': entry.status == 'NOTIFIED',
+                'claim_expires_at': entry.claim_expires_at.isoformat() if entry.claim_expires_at else None,
+                'notified_at': entry.notified_at.isoformat() if entry.notified_at else None,
+            })
+        
+        return Response({'entries': result})
+
