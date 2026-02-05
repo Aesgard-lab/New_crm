@@ -18,6 +18,12 @@ class ActivityCategoryForm(forms.ModelForm):
     class Meta:
         model = ActivityCategory
         fields = ['name', 'parent', 'icon']
+        labels = {
+            'parent': 'Categoría Padre',
+        }
+        help_texts = {
+            'parent': 'Selecciona una categoría principal para crear una subcategoría',
+        }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
             'parent': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
@@ -27,7 +33,9 @@ class ActivityCategoryForm(forms.ModelForm):
         gym = kwargs.pop('gym', None)
         super().__init__(*args, **kwargs)
         if gym:
-            self.fields['parent'].queryset = ActivityCategory.objects.filter(gym=gym)
+            # Solo mostrar categorías principales (sin padre) como opciones de categoría padre
+            self.fields['parent'].queryset = ActivityCategory.objects.filter(gym=gym, parent__isnull=True)
+            self.fields['parent'].empty_label = "-- Ninguna (es categoría principal) --"
 
 
 class ActivityForm(forms.ModelForm):

@@ -1,19 +1,23 @@
 {% extends "backoffice/base.html" %}
 
 {% block page_title %}
-<div>Categorías</div>
-<div class="text-sm font-normal text-slate-500 mt-1">Organización de actividades y servicios</div>
+<div>Categorías de Actividades</div>
+<div class="text-sm font-normal text-slate-500 mt-1">Organiza tus clases en categorías y subcategorías</div>
 {% endblock %}
 
 {% block content %}
 {% include "backoffice/activities/tabs.html" %}
 
 <div class="mb-6 flex justify-between items-center">
-    <div class="flex gap-2"></div>
+    <div class="flex gap-2">
+        <p class="text-sm text-slate-500">
+            <span class="font-medium text-slate-700">{{ categories.count }}</span> categorías
+        </p>
+    </div>
     {% load gym_tags %}
     {% has_gym_perm 'activities.add_activitycategory' as can_add %}
     {% if can_add %}
-    <a href="{% url 'category_create' %}"
+    <a href="{% url 'activity_category_create' %}"
         class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -23,57 +27,104 @@
     {% endif %}
 </div>
 
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-    <table class="w-full text-left border-collapse">
-        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
-            <tr>
-                <th class="px-6 py-4">Nombre</th>
-                <th class="px-6 py-4">Parent</th>
-                <th class="px-6 py-4 text-right">Acciones</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-            {% for category in categories %}
-            <tr class="hover:bg-slate-50/50 transition-colors group">
-                <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
+<!-- Vista de categorías jerárquica -->
+<div class="space-y-4">
+    {% for category in categories %}
+        {% if not category.parent %}
+        <!-- Categoría Principal -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 flex items-center justify-between bg-slate-50 border-b border-slate-100">
+                <div class="flex items-center gap-3">
                     {% if category.icon %}
-                    <img src="{{ category.icon.url }}" class="w-8 h-8 rounded-lg object-cover bg-slate-100">
+                    <img src="{{ category.icon.url }}" class="w-10 h-10 rounded-xl object-cover bg-slate-100">
                     {% else %}
-                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-xl bg-[var(--brand-color)]/10 flex items-center justify-center text-[var(--brand-color)]">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
                             </path>
                         </svg>
                     </div>
                     {% endif %}
-                    {{ category.name }}
-                </td>
-                <td class="px-6 py-4 text-slate-500 text-sm">
-                    {% if category.parent %}
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                        {{ category.parent.name }}
-                    </span>
-                    {% else %}
-                    <span class="text-slate-300">-</span>
-                    {% endif %}
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <a href="{% url 'category_edit' category.pk %}"
-                        class="text-slate-400 hover:text-[var(--brand-color)] opacity-0 group-hover:opacity-100 transition-all">
+                    <div>
+                        <h3 class="font-semibold text-slate-900">{{ category.name }}</h3>
+                        <p class="text-xs text-slate-500">
+                            {{ category.subcategories.count }} subcategoría{{ category.subcategories.count|pluralize:"s" }}
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'activity_category_edit' category.pk %}"
+                        class="px-3 py-1.5 text-sm text-slate-600 hover:text-[var(--brand-color)] hover:bg-slate-100 rounded-lg transition">
                         Editar
                     </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3" class="px-6 py-12 text-center text-slate-400">
-                    No hay categorías definidas.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </div>
+            </div>
+            
+            <!-- Subcategorías -->
+            {% if category.subcategories.exists %}
+            <div class="divide-y divide-slate-100">
+                {% for sub in category.subcategories.all %}
+                <div class="px-6 py-3 flex items-center justify-between hover:bg-slate-50/50 transition group">
+                    <div class="flex items-center gap-3 pl-6">
+                        <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                        {% if sub.icon %}
+                        <img src="{{ sub.icon.url }}" class="w-7 h-7 rounded-lg object-cover bg-slate-100">
+                        {% else %}
+                        <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                                </path>
+                            </svg>
+                        </div>
+                        {% endif %}
+                        <span class="text-slate-700">{{ sub.name }}</span>
+                    </div>
+                    <a href="{% url 'activity_category_edit' sub.pk %}"
+                        class="text-slate-400 hover:text-[var(--brand-color)] opacity-0 group-hover:opacity-100 transition text-sm">
+                        Editar
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="px-6 py-4 text-center">
+                <p class="text-sm text-slate-400">Sin subcategorías</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% empty %}
+    <!-- Estado vacío -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-100 flex items-center justify-center">
+            <svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                </path>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-700 mb-2">No hay categorías registradas</h3>
+        <p class="text-slate-500 mb-6">Las categorías te ayudan a organizar tus actividades.</p>
+        {% if can_add %}
+        <a href="{% url 'activity_category_create' %}"
+            class="inline-flex items-center gap-2 bg-[var(--brand-color)] hover:bg-[var(--brand-color-dark)] text-white px-5 py-2.5 rounded-xl font-medium transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Crear Primera Categoría
+        </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Tip informativo -->
+<div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+    <p class="text-sm text-blue-700">
+        <strong>💡 Consejo:</strong> Crea categorías principales (ej: "Fitness", "Bienestar") y luego añade subcategorías 
+        (ej: "Cardio", "Fuerza") seleccionando la categoría padre al crear una nueva.
+    </p>
 </div>
 {% endblock %}

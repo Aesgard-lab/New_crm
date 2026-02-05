@@ -24,6 +24,15 @@ class ActivityCategory(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subcategories')
     icon = models.ImageField(upload_to='activity_icons/', null=True, blank=True)
     
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Evitar que una categoría sea su propio padre
+        if self.parent_id and self.pk and self.parent_id == self.pk:
+            raise ValidationError({'parent': _('Una categoría no puede ser su propia categoría padre.')})
+        # Evitar subcategorías de subcategorías (máximo 2 niveles)
+        if self.parent and self.parent.parent:
+            raise ValidationError({'parent': _('No se permiten más de 2 niveles de anidación.')})
+    
     def __str__(self):
         if self.parent:
             return f"{self.parent.name} > {self.name}"

@@ -154,7 +154,7 @@ def category_create(request):
             category.gym = gym
             category.save()
             messages.success(request, 'Categoría creada correctamente.')
-            return redirect('category_list')
+            return redirect('activity_category_list')
     else:
         form = ActivityCategoryForm(gym=gym)
     
@@ -174,7 +174,7 @@ def category_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, 'Categoría actualizada.')
-            return redirect('category_list')
+            return redirect('activity_category_list')
     else:
         form = ActivityCategoryForm(instance=category, gym=gym)
     

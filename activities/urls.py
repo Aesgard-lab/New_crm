@@ -15,9 +15,9 @@ urlpatterns = [
     path('classes/export/excel/', views.activity_export_excel, name='activity_export_excel'),
     path('classes/export/pdf/', views.activity_export_pdf, name='activity_export_pdf'),
 
-    path('categories/', views.category_list, name='category_list'),
-    path('categories/create/', views.category_create, name='category_create'),
-    path('categories/<int:pk>/edit/', views.category_edit, name='category_edit'),
+    path('categories/', views.category_list, name='activity_category_list'),
+    path('categories/create/', views.category_create, name='activity_category_create'),
+    path('categories/<int:pk>/edit/', views.category_edit, name='activity_category_edit'),
 
     # Policies
     path('policies/', views.policy_list, name='policy_list'),

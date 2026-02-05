@@ -35,7 +35,7 @@
         </a>
 
         <!-- Categories Tab -->
-        <a href="{% url 'category_list' %}" class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
+        <a href="{% url 'activity_category_list' %}" class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors
                   {% if 'category' in request.resolver_match.url_name %}
                       border-[var(--brand-color)] text-[var(--brand-color)]
                   {% else %}
