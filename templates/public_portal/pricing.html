@@ -1,11 +1,11 @@
 {% extends 'public_portal/base.html' %}
 
-{% block title %}Precios y Planes - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+{% block title %}{{ t.plans_pricing }} - {{ gym.commercial_name|default:gym.name }}{% endblock %}
 
 {% block content %}
 <div class="mb-8">
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">Planes y Tarifas</h1>
-    <p class="text-slate-600">Encuentra el plan perfecto para ti</p>
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">{{ t.plans_pricing }}</h1>
+    <p class="text-slate-600">{{ t.find_perfect_plan }}</p>
 </div>
 
 {% if plans %}
@@ -39,7 +39,7 @@
             {% else %}
             <div class="flex items-baseline gap-2">
                 <span class="text-4xl font-bold text-slate-900">{{ plan.final_price|floatformat:2 }}€</span>
-                <span class="text-sm text-slate-600">Bono</span>
+                <span class="text-sm text-slate-600">{{ t.bonus }}</span>
             </div>
             {% endif %}
         </div>
@@ -57,14 +57,14 @@
                     <svg class="w-5 h-5 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    <span>Renovación automática cada {{ plan.get_frequency_display_custom }}</span>
+                    <span>{{ t.automatic_renewal }} {{ plan.get_frequency_display_custom }}</span>
                 </div>
                 {% else %}
                 <div class="flex items-start gap-2 text-sm">
                     <svg class="w-5 h-5 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    <span>Válido por {{ plan.pack_validity_days }} días</span>
+                    <span>{{ t.valid_for }} {{ plan.pack_validity_days }} {{ t.days }}</span>
                 </div>
                 {% endif %}
                 
@@ -73,7 +73,7 @@
                     <svg class="w-5 h-5 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    <span>Pausas permitidas ({{ plan.pause_min_days }}-{{ plan.pause_max_days }} días)</span>
+                    <span>{{ t.pauses_allowed }} ({{ plan.pause_min_days }}-{{ plan.pause_max_days }} {{ t.days }})</span>
                 </div>
                 {% endif %}
                 
@@ -85,9 +85,9 @@
                     </svg>
                     <span>
                         {% if rule.quantity == 0 %}
-                            Acceso ilimitado
+                            {{ t.unlimited_access }}
                         {% else %}
-                            {{ rule.quantity }} sesiones
+                            {{ rule.quantity }} {{ t.sessions_count }}
                         {% endif %}
                         {% if rule.activity %}
                             - {{ rule.activity.name }}
@@ -111,25 +111,25 @@
                     <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                     </svg>
-                    No Disponible
+                    {{ t.not_available }}
                 </button>
                 <p class="text-xs text-amber-600 mt-2 font-medium">{{ ineligible_reason }}</p>
             </div>
             {% elif user.is_authenticated %}
             <a href="{% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}" 
                class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
-                Comprar Plan
+                {{ t.buy_plan }}
             </a>
             {% else %}
             <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}" 
                class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
-                Comprar Plan
+                {{ t.buy_plan }}
             </a>
             {% endif %}
             
             {% if plan.contract_required %}
             <p class="text-xs text-slate-500 mt-2 text-center">
-                📋 Requiere firma de contrato
+                📋 {{ t.contract_required }}
             </p>
             {% endif %}
         </div>
@@ -140,13 +140,13 @@
 {% else %}
 <div class="text-center py-12">
     <div class="text-6xl mb-4">💳</div>
-    <h3 class="text-xl font-bold text-slate-900 mb-2">No hay planes disponibles</h3>
-    <p class="text-slate-600">Contacta con el gimnasio para más información</p>
+    <h3 class="text-xl font-bold text-slate-900 mb-2">{{ t.no_plans_available }}</h3>
+    <p class="text-slate-600">{{ t.contact_gym_info }}</p>
     
     {% if gym.phone %}
     <a href="tel:{{ gym.phone }}" 
        class="inline-block mt-6 brand-bg text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity">
-        📞 Llamar al {{ gym.phone }}
+        📞 {{ t.call_to }} {{ gym.phone }}
     </a>
     {% endif %}
 </div>
@@ -154,21 +154,21 @@
 
 <!-- FAQs o Información Adicional -->
 <div class="mt-16 bg-slate-50 rounded-2xl p-8 border border-slate-100">
-    <h2 class="text-2xl font-bold text-slate-900 mb-6">¿Tienes dudas?</h2>
+    <h2 class="text-2xl font-bold text-slate-900 mb-6">{{ t.have_questions }}</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-            <h3 class="font-bold text-slate-900 mb-2">💳 Métodos de pago</h3>
-            <p class="text-sm text-slate-600">Aceptamos tarjeta de crédito/débito. Pago seguro con cifrado SSL.</p>
+            <h3 class="font-bold text-slate-900 mb-2">💳 {{ t.payment_methods }}</h3>
+            <p class="text-sm text-slate-600">{{ t.payment_secure }}</p>
         </div>
         
         <div>
-            <h3 class="font-bold text-slate-900 mb-2">🔄 Cancelaciones</h3>
-            <p class="text-sm text-slate-600">Puedes cancelar tu membresía en cualquier momento desde tu perfil.</p>
+            <h3 class="font-bold text-slate-900 mb-2">🔄 {{ t.cancellations_title }}</h3>
+            <p class="text-sm text-slate-600">{{ t.cancellations_desc }}</p>
         </div>
         
         <div>
-            <h3 class="font-bold text-slate-900 mb-2">📞 Contacto</h3>
+            <h3 class="font-bold text-slate-900 mb-2">📞 {{ t.contact }}</h3>
             <p class="text-sm text-slate-600">
                 {% if gym.phone %}Tel: {{ gym.phone }}<br>{% endif %}
                 {% if gym.email %}Email: {{ gym.email }}{% endif %}
@@ -176,7 +176,7 @@
         </div>
         
         <div>
-            <h3 class="font-bold text-slate-900 mb-2">📍 Ubicación</h3>
+            <h3 class="font-bold text-slate-900 mb-2">📍 {{ t.location }}</h3>
             <p class="text-sm text-slate-600">
                 {% if gym.address %}{{ gym.address }}, {{ gym.city }}{% endif %}
             </p>

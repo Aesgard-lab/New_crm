@@ -1,6 +1,6 @@
 {% extends 'public_portal/base.html' %}
 
-{% block title %}Horario - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+{% block title %}{{ t.class_schedule }} - {{ gym.commercial_name|default:gym.name }}{% endblock %}
 
 {% block extra_css %}
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
@@ -16,13 +16,13 @@
 
 {% block content %}
 <div class="mb-6">
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">Horario de Clases</h1>
-    <p class="text-slate-600">Consulta nuestras clases y disponibilidad en tiempo real</p>
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">{{ t.class_schedule }}</h1>
+    <p class="text-slate-600">{{ t.check_classes_availability }}</p>
     
     {% if can_book %}
         {% if requires_login and not user.is_authenticated %}
         <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm">
-            <strong>💡 Tip:</strong> <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_schedule' slug=settings.public_slug %}" class="brand-text font-bold hover:underline">Inicia sesión</a> para reservar clases
+            <strong>💡 Tip:</strong> <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_schedule' slug=settings.public_slug %}" class="brand-text font-bold hover:underline">{{ t.login_to_book }}</a>
         </div>
         {% endif %}
     {% endif %}
@@ -31,7 +31,7 @@
 <!-- Filtros de Actividades -->
 {% if activities %}
 <div class="mb-6 flex flex-wrap gap-2">
-    <span class="text-sm font-medium text-slate-700">Filtrar por actividad:</span>
+    <span class="text-sm font-medium text-slate-700">{{ t.filter_by_activity }}:</span>
     {% for activity in activities %}
     <button onclick="filterByActivity('{{ activity.id }}')" 
             class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-400 transition-colors"
@@ -41,7 +41,7 @@
     {% endfor %}
     <button onclick="filterByActivity(null)" 
             class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-100 hover:bg-slate-200 transition-colors">
-        Ver Todas
+        {{ t.view_all }}
     </button>
 </div>
 {% endif %}
@@ -66,17 +66,17 @@
         
         <div class="space-y-3">
             <div id="modalStaff" class="flex items-center gap-2 text-sm">
-                <span class="font-medium">👤 Instructor:</span>
+                <span class="font-medium">👤 {{ t.instructor }}:</span>
                 <span id="modalStaffName"></span>
             </div>
             
             <div id="modalRoom" class="flex items-center gap-2 text-sm">
-                <span class="font-medium">📍 Sala:</span>
+                <span class="font-medium">📍 {{ t.room }}:</span>
                 <span id="modalRoomName"></span>
             </div>
             
             <div class="flex items-center gap-2 text-sm">
-                <span class="font-medium">👥 Disponibilidad:</span>
+                <span class="font-medium">👥 {{ t.availability }}:</span>
                 <span id="modalCapacity"></span>
             </div>
             
@@ -87,14 +87,14 @@
         <div class="mt-6">
             <button onclick="bookClass()" 
                     class="w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
-                Reservar Plaza
+                {{ t.book_spot }}
             </button>
         </div>
         {% elif can_book and not user.is_authenticated %}
         <div class="mt-6">
             <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_schedule' slug=settings.public_slug %}" 
                class="block w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity text-center">
-                Inicia Sesión para Reservar
+                {{ t.login_to_book_btn }}
             </a>
         </div>
         {% endif %}
@@ -110,12 +110,23 @@
     let currentFilter = null;
     let currentSessionId = null;
     
+    // Translation strings
+    const t = {
+        spots_occupied: '{{ t.spots_occupied }}',
+        class_full: '{{ t.class_full }}',
+        spots_available: '{{ t.spots_available }}',
+        booking_in_progress: '{{ t.booking_in_progress }}',
+        booking_error: '{{ t.booking_error }}',
+        could_not_complete: '{{ t.could_not_complete }}'
+    };
+    
     document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
+        const locale = '{{ current_language|default:"es" }}';
         
         calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'timeGridWeek',
-            locale: 'es',
+            locale: locale,
             firstDay: 1,
             slotMinTime: '06:00:00',
             slotMaxTime: '23:00:00',
@@ -156,9 +167,11 @@
     
     function showSessionDetail(event) {
         const props = event.extendedProps;
+        const locale = '{{ current_language|default:"es" }}';
+        const localeMap = {'es': 'es-ES', 'en': 'en-US'};
         
         document.getElementById('modalTitle').textContent = event.title;
-        document.getElementById('modalTime').textContent = event.start.toLocaleString('es-ES', {
+        document.getElementById('modalTime').textContent = event.start.toLocaleString(localeMap[locale] || 'es-ES', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
@@ -184,14 +197,14 @@
         
         // Capacity
         document.getElementById('modalCapacity').textContent = 
-            `${props.attendees}/${props.max_capacity} plazas ocupadas`;
+            `${props.attendees}/${props.max_capacity} ${t.spots_occupied}`;
         
         // Availability
         const availDiv = document.getElementById('modalAvailability');
         if (props.is_full) {
-            availDiv.innerHTML = '<div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800"><strong>❌ Clase Completa</strong></div>';
+            availDiv.innerHTML = `<div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800"><strong>❌ ${t.class_full}</strong></div>`;
         } else {
-            availDiv.innerHTML = `<div class="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800"><strong>✅ ${props.spots_available} plazas disponibles</strong></div>`;
+            availDiv.innerHTML = `<div class="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800"><strong>✅ ${props.spots_available} ${t.spots_available}</strong></div>`;
         }
         
         currentSessionId = event.id.replace('sess_', '');
@@ -207,7 +220,7 @@
         const button = document.querySelector('.brand-bg[onclick="bookClass()"]');
         const originalText = button.textContent;
         button.disabled = true;
-        button.textContent = '⏳ Reservando...';
+        button.textContent = '⏳ ' + t.booking_in_progress;
         
         fetch('{% url "api_book_session" slug=settings.public_slug %}', {
             method: 'POST',
@@ -224,21 +237,20 @@
             if (data.success) {
                 alert('✅ ' + data.message);
                 closeModal();
-                calendar.refetchEvents(); // Recargar eventos
+                calendar.refetchEvents();
             } else {
-                alert('❌ ' + (data.error || 'No se pudo completar la reserva'));
+                alert('❌ ' + (data.error || t.could_not_complete));
                 button.disabled = false;
                 button.textContent = originalText;
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error al realizar la reserva');
+            alert(t.booking_error);
             button.disabled = false;
             button.textContent = originalText;
         });
         {% else %}
-        // Redirigir a login
         window.location.href = '{% url "public_login" slug=settings.public_slug %}?next={% url "public_schedule" slug=settings.public_slug %}';
         {% endif %}
     }
