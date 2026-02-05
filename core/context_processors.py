@@ -265,6 +265,84 @@ def translations(request):
             'success': 'Éxito',
             'warning': 'Advertencia',
             'info': 'Información',
+            
+            # Dashboard - Sidebar submenu
+            'summary': 'Resumen',
+            'comparative_analytics': 'Analítica Comparativa',
+            
+            # Comparative Analytics Dashboard
+            'comparative_analytics_title': 'Analíticas Comparativas',
+            'year_vs_year_comparison': 'Comparativa año vs año de todas las métricas clave',
+            'years': 'Años',
+            'vs_previous_year': 'vs año anterior',
+            'monthly_billing': 'Facturación Mensual',
+            'revenue_comparison_by_month': 'Comparativa de ingresos por mes y año',
+            'bar_chart': 'Barras',
+            'line_chart': 'Líneas',
+            'month': 'Mes',
+            'change_variation': 'Var.',
+            'total': 'TOTAL',
+            'yoy_growth': 'Crecimiento YoY',
+            
+            # Memberships section
+            'membership_evolution': 'Evolución de Membresías',
+            'signups_cancellations_churn': 'Altas, bajas y tasa de cancelación',
+            'signups': 'Altas',
+            'cancellations': 'Bajas',
+            'churn_rate': 'Tasa Churn',
+            'net': 'Neto',
+            'annual_summary': 'Resumen Anual',
+            'avg_churn': 'Churn promedio',
+            
+            # Attendance section
+            'attendance': 'Asistencia',
+            'checkins_unique_clients': 'Check-ins y clientes únicos',
+            'checkins': 'Check-ins',
+            'unique_clients': 'Clientes únicos',
+            'avg_per_client': 'Promedio por cliente',
+            'total_checkins': 'Total check-ins',
+            
+            # Class occupancy
+            'class_occupancy': 'Ocupación de Clases',
+            'average_occupancy_per_session': 'Ocupación promedio por sesión',
+            'occupancy': 'Ocupación',
+            'sessions': 'Sesiones',
+            'annual_avg_occupancy': 'Ocupación promedio anual',
+            
+            # Products section
+            'product_sales': 'Ventas de Productos',
+            'top_products_by_quantity': 'Top productos por cantidad vendida',
+            'product': 'Producto',
+            'quantity': 'Cantidad',
+            'income': 'Ingresos',
+            'no_data': 'Sin datos',
+            
+            # Peak hours
+            'peak_hours': 'Horas Pico',
+            'more_attendance': 'Más asistencia',
+            'less_attendance': 'Menos asistencia',
+            'busiest_hours': 'Horas más concurridas',
+            'busiest_days': 'Días más concurridos',
+            'no_enough_data': 'Sin datos suficientes',
+            
+            # MRR section
+            'mrr_title': 'MRR (Ingresos Recurrentes Mensuales)',
+            'mrr_description': 'Ingresos recurrentes mensuales',
+            'revenue_by_category': 'Ingresos por Categoría',
+            'revenue_distribution': 'Distribución de facturación',
+            
+            # LTV section
+            'ltv_metrics': 'Métricas LTV',
+            'customer_lifetime_value': 'Valor del cliente en el tiempo',
+            'ltv': 'LTV',
+            'avg_customer_lifespan': 'Vida promedio cliente',
+            'monthly_arpc': 'ARPC Mensual',
+            
+            # Export
+            'export': 'Exportar',
+            'export_excel': 'Exportar Excel',
+            'export_csv': 'Exportar CSV',
+            'export_pdf': 'Exportar PDF',
         },
         'en': {
             # Gym Settings - Brand
@@ -528,6 +606,84 @@ def translations(request):
             'success': 'Success',
             'warning': 'Warning',
             'info': 'Information',
+            
+            # Dashboard - Sidebar submenu
+            'summary': 'Summary',
+            'comparative_analytics': 'Comparative Analytics',
+            
+            # Comparative Analytics Dashboard
+            'comparative_analytics_title': 'Comparative Analytics',
+            'year_vs_year_comparison': 'Year vs year comparison of all key metrics',
+            'years': 'Years',
+            'vs_previous_year': 'vs previous year',
+            'monthly_billing': 'Monthly Billing',
+            'revenue_comparison_by_month': 'Revenue comparison by month and year',
+            'bar_chart': 'Bar',
+            'line_chart': 'Line',
+            'month': 'Month',
+            'change_variation': 'Var.',
+            'total': 'TOTAL',
+            'yoy_growth': 'YoY Growth',
+            
+            # Memberships section
+            'membership_evolution': 'Membership Evolution',
+            'signups_cancellations_churn': 'Sign-ups, cancellations and churn rate',
+            'signups': 'Sign-ups',
+            'cancellations': 'Cancellations',
+            'churn_rate': 'Churn Rate',
+            'net': 'Net',
+            'annual_summary': 'Annual Summary',
+            'avg_churn': 'Avg churn',
+            
+            # Attendance section
+            'attendance': 'Attendance',
+            'checkins_unique_clients': 'Check-ins and unique clients',
+            'checkins': 'Check-ins',
+            'unique_clients': 'Unique clients',
+            'avg_per_client': 'Avg per client',
+            'total_checkins': 'Total check-ins',
+            
+            # Class occupancy
+            'class_occupancy': 'Class Occupancy',
+            'average_occupancy_per_session': 'Average occupancy per session',
+            'occupancy': 'Occupancy',
+            'sessions': 'Sessions',
+            'annual_avg_occupancy': 'Annual avg occupancy',
+            
+            # Products section
+            'product_sales': 'Product Sales',
+            'top_products_by_quantity': 'Top products by quantity sold',
+            'product': 'Product',
+            'quantity': 'Quantity',
+            'income': 'Revenue',
+            'no_data': 'No data',
+            
+            # Peak hours
+            'peak_hours': 'Peak Hours',
+            'more_attendance': 'More attendance',
+            'less_attendance': 'Less attendance',
+            'busiest_hours': 'Busiest hours',
+            'busiest_days': 'Busiest days',
+            'no_enough_data': 'No enough data',
+            
+            # MRR section
+            'mrr_title': 'MRR (Monthly Recurring Revenue)',
+            'mrr_description': 'Monthly recurring revenue',
+            'revenue_by_category': 'Revenue by Category',
+            'revenue_distribution': 'Revenue distribution',
+            
+            # LTV section
+            'ltv_metrics': 'LTV Metrics',
+            'customer_lifetime_value': 'Customer lifetime value',
+            'ltv': 'LTV',
+            'avg_customer_lifespan': 'Avg customer lifespan',
+            'monthly_arpc': 'Monthly ARPC',
+            
+            # Export
+            'export': 'Export',
+            'export_excel': 'Export Excel',
+            'export_csv': 'Export CSV',
+            'export_pdf': 'Export PDF',
         }
     }
     

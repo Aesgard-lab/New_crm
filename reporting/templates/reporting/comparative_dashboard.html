@@ -8,14 +8,14 @@
     <div class="bg-white border-b border-gray-200 px-6 py-4">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold title-brand">📊 Analíticas Comparativas</h1>
-                <p class="text-gray-500 text-sm mt-1">Comparativa año vs año de todas las métricas clave</p>
+                <h1 class="text-2xl font-bold title-brand">📊 {{ t.comparative_analytics_title }}</h1>
+                <p class="text-gray-500 text-sm mt-1">{{ t.year_vs_year_comparison }}</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-3">
                 <!-- Selector de años -->
                 <div class="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
-                    <span class="text-sm font-medium text-gray-600">Años:</span>
+                    <span class="text-sm font-medium text-gray-600">{{ t.years }}:</span>
                     {% for year in years %}
                     <label class="flex items-center gap-1">
                         <input type="checkbox" 
@@ -80,7 +80,7 @@
                         = 0%
                     </span>
                     {% endif %}
-                    <span class="text-xs text-gray-400">vs año anterior</span>
+                    <span class="text-xs text-gray-400">{{ t.vs_previous_year }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -93,19 +93,19 @@
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-semibold section-title">💰 Facturación Mensual</h2>
-                    <p class="text-sm text-gray-500">Comparativa de ingresos por mes y año</p>
+                    <h2 class="text-lg font-semibold section-title">💰 {{ t.monthly_billing }}</h2>
+                    <p class="text-sm text-gray-500">{{ t.revenue_comparison_by_month }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button @click="chartType.revenue = 'bar'" 
                             :class="chartType.revenue === 'bar' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
                             class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">
-                        Barras
+                        {{ t.bar_chart }}
                     </button>
                     <button @click="chartType.revenue = 'line'" 
                             :class="chartType.revenue === 'line' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
                             class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">
-                        Líneas
+                        {{ t.line_chart }}
                     </button>
                 </div>
             </div>
@@ -118,11 +118,11 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-200">
-                                <th class="text-left py-2 px-3 font-semibold text-gray-600">Mes</th>
+                                <th class="text-left py-2 px-3 font-semibold text-gray-600">{{ t.month }}</th>
                                 {% for year in years %}
                                 <th class="text-right py-2 px-3 font-semibold text-gray-600">{{ year }}</th>
                                 {% endfor %}
-                                <th class="text-right py-2 px-3 font-semibold text-gray-600">Variación</th>
+                                <th class="text-right py-2 px-3 font-semibold text-gray-600">{{ t.change_variation }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -149,7 +149,7 @@
                             </tr>
                             {% endfor %}
                             <tr class="bg-gray-50 font-bold">
-                                <td class="py-2 px-3">TOTAL</td>
+                                <td class="py-2 px-3">{{ t.total }}</td>
                                 {% for year in years %}
                                 <td class="text-right py-2 px-3 font-mono">
                                     {{ report_data.revenue.totals|get_item:year|floatformat:2 }}€
@@ -180,8 +180,8 @@
             <!-- MRR Chart -->
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100">
-                    <h2 class="text-lg font-semibold section-title">📈 MRR (Monthly Recurring Revenue)</h2>
-                    <p class="text-sm text-gray-500">Ingresos recurrentes mensuales</p>
+                    <h2 class="text-lg font-semibold section-title">📈 {{ t.mrr_title }}</h2>
+                    <p class="text-sm text-gray-500">{{ t.mrr_description }}</p>
                 </div>
                 <div class="p-6">
                     <canvas id="mrrChart" height="250"></canvas>
@@ -191,8 +191,8 @@
             <!-- Revenue by Category -->
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100">
-                    <h2 class="text-lg font-semibold section-title">🎯 Ingresos por Categoría</h2>
-                    <p class="text-sm text-gray-500">Distribución de facturación</p>
+                    <h2 class="text-lg font-semibold section-title">🎯 {{ t.revenue_by_category }}</h2>
+                    <p class="text-sm text-gray-500">{{ t.revenue_distribution }}</p>
                 </div>
                 <div class="p-6">
                     <canvas id="categoryChart" height="250"></canvas>
@@ -203,8 +203,8 @@
         <!-- Memberships Chart -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100">
-                <h2 class="text-lg font-semibold section-title">👥 Membresías: Altas vs Bajas</h2>
-                <p class="text-sm text-gray-500">Evolución de altas y cancelaciones</p>
+                <h2 class="text-lg font-semibold section-title">👥 {{ t.membership_evolution }}</h2>
+                <p class="text-sm text-gray-500">{{ t.signups_cancellations_churn }}</p>
             </div>
             <div class="p-6">
                 <canvas id="membershipChart" height="300"></canvas>
@@ -216,15 +216,15 @@
                     <p class="text-xs text-gray-500 font-medium">{{ year }}</p>
                     <div class="mt-2 space-y-1">
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Altas:</span>
+                            <span class="text-sm text-gray-600">{{ t.signups }}:</span>
                             <span class="font-semibold text-green-600">+{{ report_data.memberships.yearly_totals|get_item:year|get_item:'new' }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Bajas:</span>
+                            <span class="text-sm text-gray-600">{{ t.cancellations }}:</span>
                             <span class="font-semibold text-red-600">-{{ report_data.memberships.yearly_totals|get_item:year|get_item:'cancelled' }}</span>
                         </div>
                         <div class="flex justify-between border-t pt-1">
-                            <span class="text-sm text-gray-600">Neto:</span>
+                            <span class="text-sm text-gray-600">{{ t.net }}:</span>
                             <span class="font-bold {% if report_data.memberships.yearly_totals|get_item:year|get_item:'net' >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                                 {{ report_data.memberships.yearly_totals|get_item:year|get_item:'net'|default:0 }}
                             </span>
@@ -240,8 +240,8 @@
             <!-- Attendance Chart -->
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100">
-                    <h2 class="text-lg font-semibold section-title">🏃 Check-ins Mensuales</h2>
-                    <p class="text-sm text-gray-500">Total de asistencias registradas</p>
+                    <h2 class="text-lg font-semibold section-title">🏃 {{ t.checkins }}</h2>
+                    <p class="text-sm text-gray-500">{{ t.total_checkins }}</p>
                 </div>
                 <div class="p-6">
                     <canvas id="attendanceChart" height="250"></canvas>
@@ -251,8 +251,8 @@
             <!-- Churn Rate Chart -->
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100">
-                    <h2 class="text-lg font-semibold section-title">📉 Churn Rate Mensual</h2>
-                    <p class="text-sm text-gray-500">Tasa de cancelación (menor es mejor)</p>
+                    <h2 class="text-lg font-semibold section-title">📉 {{ t.churn_rate }}</h2>
+                    <p class="text-sm text-gray-500">{{ t.cancellations }}</p>
                 </div>
                 <div class="p-6">
                     <canvas id="churnChart" height="250"></canvas>
@@ -263,8 +263,8 @@
         <!-- Peak Hours Heatmap -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100">
-                <h2 class="text-lg font-semibold section-title">🔥 Horas Pico de Asistencia</h2>
-                <p class="text-sm text-gray-500">Mapa de calor de visitas por día y hora ({{ current_year }})</p>
+                <h2 class="text-lg font-semibold section-title">🔥 {{ t.peak_hours }}</h2>
+                <p class="text-sm text-gray-500">{{ t.more_attendance }} ({{ current_year }})</p>
             </div>
             <div class="p-6">
                 <div id="heatmapContainer" class="overflow-x-auto">
@@ -274,7 +274,7 @@
             <div class="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Top Horas -->
                 <div>
-                    <h3 class="font-semibold text-gray-700 mb-3">⏰ Horas más concurridas</h3>
+                    <h3 class="font-semibold text-gray-700 mb-3">⏰ {{ t.busiest_hours }}</h3>
                     <div class="space-y-2">
                         {% for hour in report_data.peak_hours.peak_hours %}
                         <div class="flex items-center gap-3">
@@ -285,13 +285,13 @@
                             <span class="text-sm font-semibold text-gray-600">{{ hour.visits }}</span>
                         </div>
                         {% empty %}
-                        <p class="text-gray-500 text-sm">Sin datos suficientes</p>
+                        <p class="text-gray-500 text-sm">{{ t.no_enough_data }}</p>
                         {% endfor %}
                     </div>
                 </div>
                 <!-- Top Días -->
                 <div>
-                    <h3 class="font-semibold text-gray-700 mb-3">📅 Días más concurridos</h3>
+                    <h3 class="font-semibold text-gray-700 mb-3">📅 {{ t.busiest_days }}</h3>
                     <div class="space-y-2">
                         {% for day in report_data.peak_hours.peak_days %}
                         <div class="flex items-center gap-3">
@@ -302,7 +302,7 @@
                             <span class="text-sm font-semibold text-gray-600">{{ day.visits }}</span>
                         </div>
                         {% empty %}
-                        <p class="text-gray-500 text-sm">Sin datos suficientes</p>
+                        <p class="text-gray-500 text-sm">{{ t.no_enough_data }}</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -312,8 +312,8 @@
         <!-- Products Chart -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100">
-                <h2 class="text-lg font-semibold section-title">🛒 Top Productos Vendidos</h2>
-                <p class="text-sm text-gray-500">Productos con mayor facturación</p>
+                <h2 class="text-lg font-semibold section-title">🛍️ {{ t.product_sales }}</h2>
+                <p class="text-sm text-gray-500">{{ t.top_products_by_quantity }}</p>
             </div>
             <div class="p-6">
                 <canvas id="productsChart" height="300"></canvas>
