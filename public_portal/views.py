@@ -306,6 +306,7 @@ def api_public_schedule_events(request, slug):
                 'staff': staff_name,
                 'staff_photo': staff_photo,
                 'room': session.room.name if session.room else None,
+                'room_id': session.room.id if session.room else None,
                 'attendees': attendee_count,
                 'max_capacity': session.max_capacity,
                 'spots_available': spots_available,
@@ -318,6 +319,7 @@ def api_public_schedule_events(request, slug):
                 'can_book': can_book,
                 'booking_message': booking_message,
                 'membership_name': active_membership.name if active_membership else None,
+                'allow_spot_booking': session.activity.allow_spot_booking,
             }
         })
     
@@ -963,13 +965,14 @@ def api_book_session(request, slug):
     
     session_id = data.get('session_id')
     join_waitlist = data.get('join_waitlist', False)
+    spot_number = data.get('spot_number')  # Nuevo: puesto seleccionado
     
     if not session_id:
         return JsonResponse({'success': False, 'error': 'Session ID required'}, status=400)
     
     # Obtener la sesión
     try:
-        session = ActivitySession.objects.select_related('activity', 'activity__policy').get(
+        session = ActivitySession.objects.select_related('activity', 'activity__policy', 'room').get(
             id=session_id,
             gym=gym
         )
@@ -1005,12 +1008,37 @@ def api_book_session(request, slug):
     if not active_membership and settings.booking_requires_login:
         return JsonResponse({'success': False, 'error': 'Necesitas una membresía activa'}, status=400)
     
-    # Crear la reserva
+    # Si se especificó spot_number, validar que esté disponible
     from activities.models import ActivitySessionBooking
+    
+    if spot_number:
+        # Verificar que la actividad permite spot booking
+        if not session.activity.allow_spot_booking:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Esta actividad no permite selección de puesto'
+            }, status=400)
+        
+        # Verificar que el puesto no esté ocupado
+        existing_spot = ActivitySessionBooking.objects.filter(
+            session=session,
+            spot_number=spot_number,
+            status__in=['CONFIRMED', 'PENDING']
+        ).exists()
+        
+        if existing_spot:
+            return JsonResponse({
+                'success': False,
+                'error': f'El puesto #{spot_number} ya está ocupado',
+                'code': 'SPOT_TAKEN'
+            }, status=409)
+    
+    # Crear la reserva
     booking = ActivitySessionBooking.objects.create(
         session=session,
         client=client,
-        status='CONFIRMED'
+        status='CONFIRMED',
+        spot_number=spot_number  # Guardar el puesto si se seleccionó
     )
     
     # Disparar notificaciones y workflows de marketing
@@ -1021,12 +1049,18 @@ def api_book_session(request, slug):
         import logging
         logging.getLogger(__name__).warning(f"Error triggering booking notification: {e}")
     
-    return JsonResponse({
+    response_data = {
         'success': True,
         'booking_id': booking.id,
         'message': 'Reserva confirmada',
         'spots_available': validation.data.get('spots_available')
-    })
+    }
+    
+    if spot_number:
+        response_data['spot_number'] = spot_number
+        response_data['message'] = f'Reserva confirmada - Puesto #{spot_number}'
+    
+    return JsonResponse(response_data)
 
 
 @login_required
@@ -3124,3 +3158,120 @@ def public_wallet(request, slug):
     }
     
     return render(request, 'public_portal/wallet.html', context)
+
+
+# ===========================
+# SPOT BOOKING API
+# ===========================
+
+def api_session_spots(request, slug, session_id):
+    """
+    API pública para obtener los puestos disponibles de una sesión.
+    No requiere login para poder mostrar el layout antes de reservar.
+    """
+    import json
+    from activities.models import ActivitySession, ActivitySessionBooking
+    
+    gym, settings = get_gym_by_slug(slug)
+    if not gym:
+        return JsonResponse({'error': 'Gym not found'}, status=404)
+    
+    try:
+        session = ActivitySession.objects.select_related('activity', 'room').get(
+            id=session_id,
+            gym=gym
+        )
+    except ActivitySession.DoesNotExist:
+        return JsonResponse({'error': 'Session not found'}, status=404)
+    
+    activity = session.activity
+    room = session.room
+    
+    # Verificar si la actividad permite spot booking
+    if not activity.allow_spot_booking:
+        return JsonResponse({
+            'allow_spot_booking': False,
+            'message': 'Esta actividad no permite selección de puesto'
+        })
+    
+    # Verificar si la sala tiene layout configurado
+    if not room or not room.layout_configuration:
+        return JsonResponse({
+            'allow_spot_booking': True,
+            'has_layout': False,
+            'message': 'La sala no tiene un layout configurado'
+        })
+    
+    # Obtener el layout
+    try:
+        layout_items = room.layout_configuration if isinstance(room.layout_configuration, list) else json.loads(room.layout_configuration)
+    except (json.JSONDecodeError, TypeError):
+        layout_items = []
+    
+    # Obtener los puestos ocupados
+    occupied_spots = set(
+        ActivitySessionBooking.objects.filter(
+            session=session,
+            status__in=['CONFIRMED', 'PENDING'],
+            spot_number__isnull=False
+        ).values_list('spot_number', flat=True)
+    )
+    
+    # El puesto del usuario actual (si está logueado y tiene reserva)
+    my_spot = None
+    if request.user.is_authenticated:
+        try:
+            client = Client.objects.get(user=request.user, gym=gym)
+            my_booking = ActivitySessionBooking.objects.filter(
+                session=session,
+                client=client,
+                status__in=['CONFIRMED', 'PENDING']
+            ).first()
+            if my_booking and my_booking.spot_number:
+                my_spot = my_booking.spot_number
+        except Client.DoesNotExist:
+            pass
+    
+    # Construir lista de puestos con estado
+    spots = []
+    for item in layout_items:
+        if item.get('type') == 'spot':
+            spot_number = item.get('number')
+            status = 'available'
+            if spot_number in occupied_spots:
+                status = 'mine' if spot_number == my_spot else 'occupied'
+            
+            spots.append({
+                'number': spot_number,
+                'x': item.get('x'),
+                'y': item.get('y'),
+                'status': status
+            })
+    
+    # Obtener obstáculos también
+    obstacles = [
+        {'x': item.get('x'), 'y': item.get('y')}
+        for item in layout_items if item.get('type') == 'obstacle'
+    ]
+    
+    # Calcular dimensiones del layout basado en los items
+    max_x = max((item.get('x', 0) + 50 for item in layout_items), default=400)
+    max_y = max((item.get('y', 0) + 50 for item in layout_items), default=300)
+    
+    return JsonResponse({
+        'allow_spot_booking': True,
+        'has_layout': True,
+        'layout': {
+            'width': max_x,
+            'height': max_y
+        },
+        'session_id': session_id,
+        'room_name': room.name,
+        'activity_name': activity.name,
+        'spots': spots,
+        'obstacles': obstacles,
+        'total_spots': len(spots),
+        'available_spots': len([s for s in spots if s['status'] == 'available']),
+        'occupied_spots': len([s for s in spots if s['status'] == 'occupied']),
+        'my_spot': my_spot
+    })

@@ -97,6 +97,8 @@ class ActivitySession {
   final bool isBooked;
   final String location;
   final WaitlistInfo waitlistInfo;
+  final bool allowSpotBooking;
+  final int? mySpotNumber;
 
   ActivitySession({
     required this.id,
@@ -109,6 +111,8 @@ class ActivitySession {
     required this.isBooked,
     required this.location,
     required this.waitlistInfo,
+    this.allowSpotBooking = false,
+    this.mySpotNumber,
   });
 
   factory ActivitySession.fromJson(Map<String, dynamic> json) {
@@ -127,6 +131,8 @@ class ActivitySession {
       waitlistInfo: json['waitlist_info'] != null
           ? WaitlistInfo.fromJson(json['waitlist_info'])
           : WaitlistInfo(enabled: false, isInWaitlist: false, canClaim: false, waitlistCount: 0),
+      allowSpotBooking: json['allow_spot_booking'] ?? false,
+      mySpotNumber: json['my_spot_number'],
     );
   }
 

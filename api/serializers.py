@@ -202,13 +202,17 @@ class ActivitySessionSerializer(serializers.ModelSerializer):
     is_booked = serializers.SerializerMethodField()
     gym = serializers.SerializerMethodField()
     waitlist_info = serializers.SerializerMethodField()
+    allow_spot_booking = serializers.SerializerMethodField()
+    my_spot_number = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
     
     class Meta:
         from activities.models import ActivitySession
         model = ActivitySession
         fields = [
             'id', 'activity', 'instructor', 'start_datetime', 'end_datetime',
-            'max_capacity', 'available_spots', 'is_booked', 'gym', 'waitlist_info'
+            'max_capacity', 'available_spots', 'is_booked', 'gym', 'waitlist_info',
+            'allow_spot_booking', 'my_spot_number', 'location'
         ]
     
     def get_available_spots(self, obj):
@@ -246,6 +250,34 @@ class ActivitySessionSerializer(serializers.ModelSerializer):
             'name': gym.commercial_name or gym.name,
             'city': gym.city
         }
+    
+    def get_allow_spot_booking(self, obj):
+        """Return if the activity allows spot booking"""
+        return obj.activity.allow_spot_booking
+    
+    def get_my_spot_number(self, obj):
+        """Return the spot number if user has booked with a spot"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        try:
+            from clients.models import Client
+            from activities.models import ActivitySessionBooking
+            client = Client.objects.get(user=request.user)
+            booking = ActivitySessionBooking.objects.filter(
+                session=obj,
+                client=client,
+                status='CONFIRMED',
+                spot_number__isnull=False
+            ).first()
+            return booking.spot_number if booking else None
+        except Client.DoesNotExist:
+            return None
+    
+    def get_location(self, obj):
+        """Return the room name if exists"""
+        return obj.room.name if obj.room else ''
     
     def get_waitlist_info(self, obj):
         """Return waitlist information for this session"""

@@ -77,7 +77,7 @@
 
 <!-- Modal de Detalle de Clase -->
 <div id="sessionModal" style="display:none;" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-start justify-between mb-4">
             <div>
                 <h3 id="modalTitle" class="text-xl font-bold text-slate-900"></h3>
@@ -107,11 +107,39 @@
             </div>
             
             <div id="modalAvailability" class="mt-4"></div>
+            
+            <!-- Selector de Puestos -->
+            <div id="spotSelectorContainer" style="display: none;" class="mt-4 border-t border-slate-200 pt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-slate-900">🪑 Selecciona tu puesto</h4>
+                    <span id="selectedSpotLabel" class="text-sm text-slate-600"></span>
+                </div>
+                <div id="spotSelectorGrid" class="relative bg-slate-100 rounded-lg border-2 border-slate-300" style="min-height: 200px;">
+                    <!-- Los puestos se cargan dinámicamente -->
+                    <div id="spotSelectorLoading" class="absolute inset-0 flex items-center justify-center">
+                        <svg class="animate-spin h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-2 flex gap-4 text-xs text-slate-500">
+                    <span class="flex items-center gap-1">
+                        <span class="w-4 h-4 rounded bg-emerald-500"></span> Disponible
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="w-4 h-4 rounded bg-slate-400"></span> Ocupado
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="w-4 h-4 rounded bg-blue-500"></span> Tu selección
+                    </span>
+                </div>
+            </div>
         </div>
         
         {% if can_book and user.is_authenticated %}
         <div class="mt-6">
-            <button onclick="bookClass()" 
+            <button id="bookButton" onclick="bookClass()" 
                     class="w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
                 {{ t.book_spot }}
             </button>
@@ -137,6 +165,8 @@
     let currentSessionId = null;
     let pendingClaim = null;  // Para guardar la entrada de waitlist pendiente de claim
     let claimTimer = null;
+    let selectedSpotNumber = null;  // Puesto seleccionado
+    let spotsData = null;  // Datos de puestos de la sesión actual
     
     // Translation strings
     const t = {
@@ -148,7 +178,9 @@
         could_not_complete: '{{ t.could_not_complete }}',
         join_waitlist: 'Unirse a Lista de Espera',
         waitlist_position: 'Posición en lista de espera',
-        waitlist_vip: '⭐ Tienes prioridad VIP'
+        waitlist_vip: '⭐ Tienes prioridad VIP',
+        select_spot: 'Selecciona un puesto',
+        spot_selected: 'Puesto seleccionado'
     };
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -328,18 +360,156 @@
         
         currentSessionId = event.id.replace('sess_', '');
         document.getElementById('sessionModal').style.display = 'flex';
+        
+        // Cargar puestos si la actividad lo permite
+        selectedSpotNumber = null;
+        spotsData = null;
+        document.getElementById('selectedSpotLabel').textContent = '';
+        loadSessionSpots(currentSessionId, props.allow_spot_booking);
+    }
+    
+    function loadSessionSpots(sessionId, allowSpotBooking) {
+        const container = document.getElementById('spotSelectorContainer');
+        const grid = document.getElementById('spotSelectorGrid');
+        const loading = document.getElementById('spotSelectorLoading');
+        
+        // Si no permite reserva de puestos, ocultar
+        if (!allowSpotBooking) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        loading.style.display = 'flex';
+        
+        fetch(`/portal/gym/{{ settings.public_slug }}/api/session/${sessionId}/spots/`)
+        .then(r => r.json())
+        .then(data => {
+            loading.style.display = 'none';
+            spotsData = data;
+            
+            // Ocultar si no hay layout o no hay puestos configurados
+            if (!data.has_layout || !data.spots || data.spots.length === 0) {
+                container.style.display = 'none';
+                spotsData = null;
+                return;
+            }
+            
+            renderSpotSelector(data);
+        })
+        .catch(err => {
+            console.error('Error loading spots:', err);
+            loading.style.display = 'none';
+            grid.innerHTML = '<div class="p-4 text-center text-red-500">Error al cargar los puestos</div>';
+        });
+    }
+    
+    function renderSpotSelector(data) {
+        const grid = document.getElementById('spotSelectorGrid');
+        const layout = data.layout;
+        
+        // Calcular dimensiones del layout
+        const maxX = Math.max(...data.spots.map(s => s.x), ...data.obstacles.map(o => o.x)) + 60;
+        const maxY = Math.max(...data.spots.map(s => s.y), ...data.obstacles.map(o => o.y)) + 60;
+        
+        // Calcular escala para ajustar al contenedor
+        const containerWidth = grid.clientWidth || 400;
+        const containerHeight = 250;
+        const scale = Math.min(containerWidth / maxX, containerHeight / maxY, 1);
+        
+        grid.style.height = `${Math.max(containerHeight, maxY * scale + 20)}px`;
+        grid.innerHTML = '';
+        
+        // Renderizar obstáculos
+        data.obstacles.forEach(obs => {
+            const el = document.createElement('div');
+            el.className = 'absolute rounded bg-slate-300 border border-slate-400';
+            el.style.left = `${obs.x * scale}px`;
+            el.style.top = `${obs.y * scale}px`;
+            el.style.width = `${40 * scale}px`;
+            el.style.height = `${40 * scale}px`;
+            el.title = obs.type || 'Obstáculo';
+            grid.appendChild(el);
+        });
+        
+        // Renderizar puestos
+        data.spots.forEach(spot => {
+            const el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'absolute rounded-lg flex items-center justify-center font-bold text-white shadow transition-all transform hover:scale-105';
+            el.style.left = `${spot.x * scale}px`;
+            el.style.top = `${spot.y * scale}px`;
+            el.style.width = `${40 * scale}px`;
+            el.style.height = `${40 * scale}px`;
+            el.style.fontSize = `${12 * scale}px`;
+            el.textContent = spot.number;
+            el.dataset.spotNumber = spot.number;
+            
+            if (spot.status === 'occupied') {
+                el.className += ' bg-slate-400 cursor-not-allowed';
+                el.disabled = true;
+                el.title = 'Puesto ocupado';
+            } else if (spot.status === 'mine') {
+                el.className += ' bg-blue-500 ring-2 ring-blue-300';
+                el.title = 'Tu puesto reservado';
+                selectedSpotNumber = spot.number;
+                document.getElementById('selectedSpotLabel').textContent = `#${spot.number}`;
+            } else {
+                el.className += ' bg-emerald-500 hover:bg-emerald-600 cursor-pointer';
+                el.title = `Puesto ${spot.number} - Disponible`;
+                el.onclick = () => selectSpot(spot.number);
+            }
+            
+            grid.appendChild(el);
+        });
+    }
+    
+    function selectSpot(spotNumber) {
+        selectedSpotNumber = spotNumber;
+        document.getElementById('selectedSpotLabel').textContent = `#${spotNumber}`;
+        
+        // Actualizar visualización
+        const grid = document.getElementById('spotSelectorGrid');
+        grid.querySelectorAll('button').forEach(btn => {
+            const num = parseInt(btn.dataset.spotNumber);
+            if (btn.disabled) return; // No cambiar ocupados
+            
+            if (num === spotNumber) {
+                btn.className = btn.className.replace('bg-emerald-500 hover:bg-emerald-600', 'bg-blue-500 ring-2 ring-blue-300');
+            } else {
+                btn.className = btn.className.replace('bg-blue-500 ring-2 ring-blue-300', 'bg-emerald-500 hover:bg-emerald-600');
+            }
+        });
     }
     
     function closeModal() {
         document.getElementById('sessionModal').style.display = 'none';
+        selectedSpotNumber = null;
+        spotsData = null;
     }
     
     function bookClass() {
         {% if user.is_authenticated %}
-        const button = document.querySelector('.brand-bg[onclick="bookClass()"]');
+        // Verificar si requiere puesto y no se ha seleccionado
+        const spotContainer = document.getElementById('spotSelectorContainer');
+        if (spotContainer.style.display !== 'none' && spotsData && spotsData.spots.length > 0 && !selectedSpotNumber) {
+            alert('⚠️ Por favor, selecciona un puesto antes de reservar');
+            return;
+        }
+        
+        const button = document.getElementById('bookButton');
         const originalText = button.textContent;
         button.disabled = true;
         button.textContent = '⏳ ' + t.booking_in_progress;
+        
+        const bookingData = {
+            session_id: currentSessionId
+        };
+        
+        // Agregar puesto si se seleccionó
+        if (selectedSpotNumber) {
+            bookingData.spot_number = selectedSpotNumber;
+        }
         
         fetch('{% url "api_book_session" slug=settings.public_slug %}', {
             method: 'POST',
@@ -347,9 +517,7 @@
                 'X-CSRFToken': '{{ csrf_token }}',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                session_id: currentSessionId
-            })
+            body: JSON.stringify(bookingData)
         })
         .then(response => response.json())
         .then(data => {

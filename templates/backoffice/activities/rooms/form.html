@@ -67,8 +67,9 @@
                 <!-- Items will be placed here -->
             </div>
         </div>
-        <div class="mt-2 text-xs text-slate-400 text-right">
-            Lienzo virtual. Arrastra elementos para posicionarlos.
+        <div class="mt-2 text-xs text-slate-400 text-right flex justify-between items-center">
+            <span id="spot-count" class="text-indigo-600 font-medium">0 puestos</span>
+            <span>Lienzo virtual. Arrastra elementos para posicionarlos. Clic derecho para eliminar.</span>
         </div>
     </div>
 
@@ -80,6 +81,7 @@
         const canvas = document.getElementById('editor-canvas');
         const input = document.getElementById('id_layout_configuration');
         const sources = document.querySelectorAll('.draggable-source');
+        const spotCountEl = document.getElementById('spot-count');
 
         let items = [];
 
@@ -87,6 +89,7 @@
         try {
             if (input.value) {
                 items = JSON.parse(input.value);
+                renumberSpots();
                 renderItems();
             }
         } catch (e) { console.error("Invalid JSON layout", e); }
@@ -112,13 +115,15 @@
             const id = e.dataTransfer.getData('id');
 
             if (isNew === 'true') {
-                // Create new item
-                items.push({
+                // Create new item with spot number
+                const newItem = {
                     id: Date.now(),
                     type: type,
                     x: Math.round(x / 20) * 20, // Snap to grid (20px)
                     y: Math.round(y / 20) * 20
-                });
+                };
+                items.push(newItem);
+                renumberSpots();
             } else {
                 // Move existing
                 const idx = items.findIndex(i => i.id == id);
@@ -131,19 +136,40 @@
             updateInput();
         });
 
+        // Renumber spots sequentially (top-to-bottom, left-to-right)
+        function renumberSpots() {
+            const spots = items.filter(i => i.type === 'spot');
+            // Sort by Y first, then X (top-to-bottom, left-to-right)
+            spots.sort((a, b) => {
+                if (Math.abs(a.y - b.y) < 20) return a.x - b.x; // Same row
+                return a.y - b.y;
+            });
+            spots.forEach((spot, index) => {
+                spot.number = index + 1;
+            });
+            updateSpotCount();
+        }
+
+        function updateSpotCount() {
+            const count = items.filter(i => i.type === 'spot').length;
+            spotCountEl.textContent = `${count} puesto${count !== 1 ? 's' : ''}`;
+        }
+
         function renderItems() {
             canvas.innerHTML = '';
-            items.forEach((item, index) => {
+            items.forEach((item) => {
                 const el = document.createElement('div');
                 el.draggable = true;
                 el.className = `absolute flex items-center justify-center font-bold text-xs select-none shadow-sm cursor-move transition-transform active:scale-105`;
 
                 // Styles per type
                 if (item.type === 'spot') {
-                    el.className += ' w-10 h-10 bg-indigo-500 text-white rounded-md';
-                    el.innerText = index + 1; // Numbering based on actual index logic? or stored number? For now index.
+                    el.className += ' w-10 h-10 bg-indigo-500 text-white rounded-md hover:bg-indigo-600';
+                    el.innerText = item.number || '?';
+                    el.title = `Puesto #${item.number} - Clic derecho para eliminar`;
                 } else {
-                    el.className += ' w-20 h-4 bg-slate-800 rounded-sm'; // Wall
+                    el.className += ' w-20 h-4 bg-slate-800 rounded-sm hover:bg-slate-700';
+                    el.title = 'Obstáculo - Clic derecho para eliminar';
                 }
 
                 el.style.left = item.x + 'px';
@@ -159,6 +185,7 @@
                 el.addEventListener('contextmenu', e => {
                     e.preventDefault();
                     items = items.filter(i => i.id !== item.id);
+                    renumberSpots();
                     renderItems();
                     updateInput();
                 });
@@ -174,6 +201,7 @@
         document.getElementById('clear-canvas').addEventListener('click', () => {
             if (confirm('¿Borrar todo el diseño?')) {
                 items = [];
+                updateSpotCount();
                 renderItems();
                 updateInput();
             }

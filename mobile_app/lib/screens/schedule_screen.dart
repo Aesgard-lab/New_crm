@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../api/api_service.dart';
 import '../models/schedule_models.dart';
 import '../widgets/promo_section.dart';
+import '../widgets/spot_selector.dart';
 import 'package:intl/intl.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -57,23 +58,66 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _bookSession(ActivitySession session) async {
     final api = Provider.of<ApiService>(context, listen: false);
+    int? selectedSpot;
     
-    // Show loading
+    // Check if activity allows spot booking
+    if (session.allowSpotBooking) {
+      // Show loading while fetching spots
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      final spotsData = await api.getSessionSpots(session.id);
+      
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        
+        // Show spot selector if there are spots available
+        if (spotsData['allow_spot_booking'] == true && 
+            spotsData['has_layout'] == true &&
+            (spotsData['spots'] as List?)?.isNotEmpty == true) {
+          
+          final result = await showDialog<int>(
+            context: context,
+            builder: (context) => SpotSelectionDialog(
+              spotsData: spotsData,
+              brandColor: api.brandColor,
+            ),
+          );
+          
+          if (result == null) {
+            // User cancelled
+            return;
+          }
+          selectedSpot = result;
+        }
+      } else {
+        return;
+      }
+    }
+    
+    // Show loading for booking
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
     
-    final result = await api.bookSession(session.id);
+    final result = await api.bookSession(session.id, spotNumber: selectedSpot);
     
     if (mounted) {
       Navigator.pop(context); // Close loading
       
       if (result['success']) {
+        String message = result['message'];
+        if (selectedSpot != null) {
+          message = '$message (Puesto #$selectedSpot)';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message']),
+            content: Text(message),
             backgroundColor: Colors.green,
           ),
         );

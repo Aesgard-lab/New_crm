@@ -12,7 +12,8 @@ from .schedule_views import (
     JoinWaitlistView,
     LeaveWaitlistView,
     ClaimWaitlistSpotView,
-    MyWaitlistEntriesView
+    MyWaitlistEntriesView,
+    SessionSpotsView
 )
 from .routine_views import (
     ClientRoutinesListView,
@@ -113,6 +114,7 @@ urlpatterns = [
     path('activities/', ActivitiesView.as_view(), name='api_activities'),
     path('bookings/book/', BookSessionView.as_view(), name='api_book_session'),
     path('bookings/<int:booking_id>/cancel/', CancelBookingView.as_view(), name='api_cancel_booking'),
+    path('bookings/session/<int:session_id>/spots/', SessionSpotsView.as_view(), name='api_session_spots'),
     path('bookings/my-bookings/', MyBookingsView.as_view(), name='api_my_bookings'),
     path('franchise/gyms/', FranchiseGymsView.as_view(), name='api_franchise_gyms'),
     

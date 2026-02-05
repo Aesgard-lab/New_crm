@@ -218,12 +218,28 @@ class BookSessionView(views.APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        # Handle spot booking if requested
+        spot_number = request.data.get('spot_number')
+        if spot_number:
+            # Verify spot is available
+            spot_taken = ActivitySessionBooking.objects.filter(
+                session=session,
+                spot_number=spot_number,
+                status__in=['CONFIRMED', 'PENDING']
+            ).exists()
+            if spot_taken:
+                return Response(
+                    {'error': f'El puesto {spot_number} ya está ocupado'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
         # Create booking
         booking = ActivitySessionBooking.objects.create(
             session=session,
             client=client,
             status='CONFIRMED',
-            booked_at=timezone.now()
+            booked_at=timezone.now(),
+            spot_number=spot_number
         )
         
         serializer = BookingSerializer(booking)
@@ -644,3 +660,111 @@ class MyWaitlistEntriesView(views.APIView):
         
         return Response({'entries': result})
 
+
+class SessionSpotsView(views.APIView):
+    """
+    Get available spots for a session.
+    GET /api/bookings/session/<session_id>/spots/
+    Returns layout with spots (available/occupied/mine status) for spot booking.
+    """
+    permission_classes = []  # Allow unauthenticated access to see layout
+    
+    def get(self, request, session_id):
+        import json
+        
+        try:
+            session = ActivitySession.objects.select_related('activity', 'room').get(id=session_id)
+        except ActivitySession.DoesNotExist:
+            return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+        
+        activity = session.activity
+        room = session.room
+        
+        # Check if activity allows spot booking
+        if not activity.allow_spot_booking:
+            return Response({
+                'allow_spot_booking': False,
+                'message': 'Esta actividad no permite selección de puesto'
+            })
+        
+        # Check if room has layout
+        if not room or not room.layout_configuration:
+            return Response({
+                'allow_spot_booking': True,
+                'has_layout': False,
+                'message': 'La sala no tiene un layout configurado'
+            })
+        
+        # Parse layout
+        try:
+            layout_items = room.layout_configuration if isinstance(room.layout_configuration, list) else json.loads(room.layout_configuration)
+        except (json.JSONDecodeError, TypeError):
+            layout_items = []
+        
+        # Get occupied spots
+        occupied_spots = set(
+            ActivitySessionBooking.objects.filter(
+                session=session,
+                status__in=['CONFIRMED', 'PENDING'],
+                spot_number__isnull=False
+            ).values_list('spot_number', flat=True)
+        )
+        
+        # Get user's spot if authenticated
+        my_spot = None
+        if request.user.is_authenticated:
+            try:
+                client = Client.objects.get(user=request.user)
+                my_booking = ActivitySessionBooking.objects.filter(
+                    session=session,
+                    client=client,
+                    status__in=['CONFIRMED', 'PENDING']
+                ).first()
+                if my_booking and my_booking.spot_number:
+                    my_spot = my_booking.spot_number
+            except Client.DoesNotExist:
+                pass
+        
+        # Build spots list with status
+        spots = []
+        for item in layout_items:
+            if item.get('type') == 'spot':
+                spot_number = item.get('number')
+                spot_status = 'available'
+                if spot_number in occupied_spots:
+                    spot_status = 'mine' if spot_number == my_spot else 'occupied'
+                
+                spots.append({
+                    'number': spot_number,
+                    'x': item.get('x'),
+                    'y': item.get('y'),
+                    'status': spot_status
+                })
+        
+        # Get obstacles
+        obstacles = [
+            {'x': item.get('x'), 'y': item.get('y')}
+            for item in layout_items if item.get('type') == 'obstacle'
+        ]
+        
+        # Calculate layout dimensions
+        max_x = max((item.get('x', 0) + 50 for item in layout_items), default=400)
+        max_y = max((item.get('y', 0) + 50 for item in layout_items), default=300)
+        
+        return Response({
+            'allow_spot_booking': True,
+            'has_layout': True,
+            'layout': {
+                'width': max_x,
+                'height': max_y
+            },
+            'session_id': session_id,
+            'room_name': room.name,
+            'activity_name': activity.name,
+            'spots': spots,
+            'obstacles': obstacles,
+            'total_spots': len(spots),
+            'available_spots': len([s for s in spots if s['status'] == 'available']),
+            'occupied_spots': len([s for s in spots if s['status'] == 'occupied']),
+            'my_spot': my_spot
+        })

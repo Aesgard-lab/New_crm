@@ -46,6 +46,11 @@ urlpatterns = [
     path('api/session/<int:session_id>/waitlist/add/', session_api.add_to_waitlist, name='api_session_add_waitlist'),
     path('api/session/<int:session_id>/waitlist/claim/', session_api.claim_waitlist_spot, name='api_session_claim_waitlist'),
     path('api/session/<int:session_id>/search-clients/', session_api.search_clients_for_session, name='api_session_search_clients'),
+    
+    # Spot Booking API
+    path('api/session/<int:session_id>/spots/', session_api.get_session_spots, name='api_session_spots'),
+    path('api/session/<int:session_id>/spots/reserve/', session_api.reserve_spot, name='api_session_reserve_spot'),
+    
     path('api/quick-client/create/', quick_client_api.create_quick_client, name='api_quick_client_create'),
     
     # Check-in QR System

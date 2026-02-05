@@ -1192,3 +1192,182 @@ def get_attendance_status(request, session_id):
         'attendance': attendance_list
     })
 
+
+@require_GET
+def get_session_spots(request, session_id):
+    """
+    API para obtener el layout de la sala y los puestos disponibles/ocupados de una sesión.
+    Usado para el selector visual de puestos.
+    
+    Returns:
+        - layout: Configuración del layout de la sala
+        - spots: Lista de puestos con su estado (available/occupied)
+        - allow_spot_booking: Si la actividad permite reserva de puesto
+    """
+    from .models import ActivitySessionBooking
+    
+    session = get_object_or_404(ActivitySession, pk=session_id)
+    activity = session.activity
+    room = session.room
+    
+    # Verificar si la actividad permite spot booking
+    if not activity.allow_spot_booking:
+        return JsonResponse({
+            'allow_spot_booking': False,
+            'message': 'Esta actividad no permite selección de puesto'
+        })
+    
+    # Verificar si la sala tiene layout configurado
+    if not room or not room.layout_configuration:
+        return JsonResponse({
+            'allow_spot_booking': True,
+            'has_layout': False,
+            'message': 'La sala no tiene un layout configurado'
+        })
+    
+    # Obtener el layout
+    try:
+        layout_items = room.layout_configuration if isinstance(room.layout_configuration, list) else json.loads(room.layout_configuration)
+    except (json.JSONDecodeError, TypeError):
+        layout_items = []
+    
+    # Obtener los puestos ocupados
+    occupied_spots = set(
+        ActivitySessionBooking.objects.filter(
+            session=session,
+            status__in=['CONFIRMED', 'PENDING'],
+            spot_number__isnull=False
+        ).values_list('spot_number', flat=True)
+    )
+    
+    # Construir lista de puestos con estado
+    spots = []
+    for item in layout_items:
+        if item.get('type') == 'spot':
+            spot_number = item.get('number')
+            spots.append({
+                'number': spot_number,
+                'x': item.get('x'),
+                'y': item.get('y'),
+                'status': 'occupied' if spot_number in occupied_spots else 'available'
+            })
+    
+    # Obtener obstáculos también (para renderizar el layout completo)
+    obstacles = [
+        {'x': item.get('x'), 'y': item.get('y')}
+        for item in layout_items if item.get('type') == 'obstacle'
+    ]
+    
+    return JsonResponse({
+        'allow_spot_booking': True,
+        'has_layout': True,
+        'session_id': session_id,
+        'room_name': room.name,
+        'activity_name': activity.name,
+        'spots': spots,
+        'obstacles': obstacles,
+        'total_spots': len(spots),
+        'available_spots': len([s for s in spots if s['status'] == 'available']),
+        'occupied_spots': len(occupied_spots)
+    })
+
+
+@require_POST
+def reserve_spot(request, session_id):
+    """
+    API para reservar un puesto específico en una sesión.
+    Si el cliente ya tiene una reserva sin puesto, actualiza el puesto.
+    Si no tiene reserva, crea una nueva con el puesto.
+    
+    Body:
+        - client_id: ID del cliente
+        - spot_number: Número de puesto a reservar
+    """
+    from .models import ActivitySessionBooking
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+    
+    client_id = data.get('client_id')
+    spot_number = data.get('spot_number')
+    
+    if not client_id or not spot_number:
+        return JsonResponse({'success': False, 'error': 'Faltan parámetros'}, status=400)
+    
+    session = get_object_or_404(ActivitySession, pk=session_id)
+    client = get_object_or_404(Client, pk=client_id)
+    
+    # Verificar que la actividad permite spot booking
+    if not session.activity.allow_spot_booking:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Esta actividad no permite selección de puesto'
+        }, status=400)
+    
+    # Verificar que el puesto no esté ocupado
+    existing_booking = ActivitySessionBooking.objects.filter(
+        session=session,
+        spot_number=spot_number,
+        status__in=['CONFIRMED', 'PENDING']
+    ).exclude(client=client).first()
+    
+    if existing_booking:
+        return JsonResponse({
+            'success': False,
+            'error': f'El puesto #{spot_number} ya está ocupado',
+            'code': 'SPOT_TAKEN'
+        }, status=409)
+    
+    # Verificar si el cliente ya tiene una reserva
+    booking = ActivitySessionBooking.objects.filter(
+        session=session,
+        client=client,
+        status__in=['CONFIRMED', 'PENDING']
+    ).first()
+    
+    if booking:
+        # Actualizar el puesto de la reserva existente
+        old_spot = booking.spot_number
+        booking.spot_number = spot_number
+        booking.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Puesto actualizado de #{old_spot or "ninguno"} a #{spot_number}',
+            'booking_id': booking.id,
+            'spot_number': spot_number
+        })
+    else:
+        # Crear nueva reserva con el puesto
+        # Primero verificar que haya capacidad
+        current_count = session.attendee_count
+        max_capacity = session.max_capacity or session.activity.base_capacity
+        
+        if current_count >= max_capacity:
+            return JsonResponse({
+                'success': False,
+                'error': 'La sesión está llena',
+                'code': 'SESSION_FULL'
+            }, status=409)
+        
+        # Crear la reserva
+        booking = ActivitySessionBooking.objects.create(
+            session=session,
+            client=client,
+            spot_number=spot_number,
+            status='CONFIRMED'
+        )
+        
+        # Añadir al M2M de attendees
+        session.attendees.add(client)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Reserva creada con puesto #{spot_number}',
+            'booking_id': booking.id,
+            'spot_number': spot_number
+        })
+
+

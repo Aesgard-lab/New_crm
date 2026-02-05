@@ -335,19 +335,24 @@ class ApiService extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> bookSession(int sessionId) async {
+  Future<Map<String, dynamic>> bookSession(int sessionId, {int? spotNumber}) async {
     if (_token == null) {
       return {'success': false, 'message': 'No autenticado'};
     }
 
     try {
+      final Map<String, dynamic> body = {'session_id': sessionId};
+      if (spotNumber != null) {
+        body['spot_number'] = spotNumber;
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl/bookings/book/'),
         headers: {
           'Authorization': 'Token $_token',
           'Content-Type': 'application/json'
         },
-        body: json.encode({'session_id': sessionId}),
+        body: json.encode(body),
       );
 
       final data = json.decode(response.body);
@@ -367,6 +372,38 @@ class ApiService extends ChangeNotifier {
     } catch (e) {
       print('Error booking session: $e');
       return {'success': false, 'message': 'Error de conexión'};
+    }
+  }
+
+  /// Obtiene los puestos disponibles para una sesión
+  Future<Map<String, dynamic>> getSessionSpots(int sessionId) async {
+    try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+      if (_token != null) {
+        headers['Authorization'] = 'Token $_token';
+      }
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/bookings/session/$sessionId/spots/'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        return {
+          'allow_spot_booking': false,
+          'error': 'Error al obtener puestos'
+        };
+      }
+    } catch (e) {
+      print('Error getting session spots: $e');
+      return {
+        'allow_spot_booking': false,
+        'error': 'Error de conexión'
+      };
     }
   }
 
