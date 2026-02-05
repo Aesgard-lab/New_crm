@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_GET
 from accounts.decorators import require_gym_permission
 from organizations.models import Gym
 from clients.models import Client, ClientField, ClientTag, ClientGroup, DocumentTemplate
@@ -8,8 +9,12 @@ from memberships.models import MembershipPlan
 from services.models import Service
 from products.models import Product
 from django.db.models import Q, Sum, Count, Exists, OuterRef
+from django.utils import timezone
 from datetime import timedelta, date
 import csv
+import json
+
+from .services import ComparativeAnalyticsService, ExportService
 
 def _get_filtered_clients(request):
     """Helper to get filtered clients queryset based on request params."""
@@ -301,3 +306,251 @@ def export_clients_csv(request):
         ])
     
     return response
+
+
+# =============================================================================
+# DASHBOARD ANALÍTICO COMPARATIVO
+# =============================================================================
+
+@login_required
+@require_gym_permission("clients.view")
+def comparative_dashboard(request):
+    """
+    Dashboard de analíticas comparativas año vs año.
+    Incluye métricas de facturación, membresías, asistencias, etc.
+    """
+    gym_id = request.session.get("current_gym_id")
+    if not gym_id:
+        return render(request, "reporting/no_gym.html")
+    
+    gym = Gym.objects.get(id=gym_id)
+    
+    # Años a comparar (por defecto: últimos 3 años)
+    current_year = timezone.now().year
+    years_param = request.GET.get('years', '')
+    
+    if years_param:
+        try:
+            years = [int(y.strip()) for y in years_param.split(',')]
+        except:
+            years = [current_year - 2, current_year - 1, current_year]
+    else:
+        years = [current_year - 2, current_year - 1, current_year]
+    
+    # Filtrar años válidos (no más de 5, no futuros)
+    years = [y for y in years if y <= current_year][:5]
+    years = sorted(years)
+    
+    # Inicializar servicio de analíticas
+    analytics = ComparativeAnalyticsService(gym)
+    
+    # Obtener datos (el servicio tiene caché interno)
+    report_data = analytics.get_full_comparative_report(years)
+    kpi_summary = analytics.get_kpi_summary()
+    
+    context = {
+        'gym': gym,
+        'years': years,
+        'current_year': current_year,
+        'report_data': report_data,
+        'kpi_summary': kpi_summary,
+        'report_data_json': json.dumps(report_data, default=str),
+    }
+    
+    return render(request, "reporting/comparative_dashboard.html", context)
+
+
+@login_required
+@require_gym_permission("clients.view")
+@require_GET
+def analytics_api(request):
+    """
+    API para obtener datos de analíticas en formato JSON.
+    Útil para actualizar gráficas dinámicamente.
+    """
+    gym_id = request.session.get("current_gym_id")
+    if not gym_id:
+        return JsonResponse({'error': 'No gym selected'}, status=400)
+    
+    gym = Gym.objects.get(id=gym_id)
+    
+    # Parámetros
+    section = request.GET.get('section', 'all')
+    years_param = request.GET.get('years', '')
+    
+    current_year = timezone.now().year
+    if years_param:
+        try:
+            years = [int(y.strip()) for y in years_param.split(',')]
+        except:
+            years = [current_year - 1, current_year]
+    else:
+        years = [current_year - 1, current_year]
+    
+    analytics = ComparativeAnalyticsService(gym)
+    
+    # Devolver sección específica o todo
+    if section == 'revenue':
+        data = analytics.get_revenue_by_month(years)
+    elif section == 'mrr':
+        data = analytics.get_mrr_arr(years)
+    elif section == 'memberships':
+        data = analytics.get_membership_metrics(years)
+    elif section == 'attendance':
+        data = analytics.get_attendance_metrics(years)
+    elif section == 'products':
+        data = analytics.get_product_sales(years)
+    elif section == 'kpis':
+        data = analytics.get_kpi_summary()
+    elif section == 'peak_hours':
+        data = analytics.get_peak_hours_analysis()
+    else:
+        data = analytics.get_full_comparative_report(years)
+    
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+@require_gym_permission("clients.view")
+def export_report(request):
+    """
+    Exporta el reporte analítico a Excel, PDF o CSV.
+    """
+    gym_id = request.session.get("current_gym_id")
+    if not gym_id:
+        return HttpResponse("No gym selected", status=400)
+    
+    gym = Gym.objects.get(id=gym_id)
+    
+    # Parámetros
+    format_type = request.GET.get('format', 'excel')
+    section = request.GET.get('section', 'all')
+    years_param = request.GET.get('years', '')
+    
+    current_year = timezone.now().year
+    if years_param:
+        try:
+            years = [int(y.strip()) for y in years_param.split(',')]
+        except:
+            years = [current_year - 1, current_year]
+    else:
+        years = [current_year - 1, current_year]
+    
+    # Generar datos
+    analytics = ComparativeAnalyticsService(gym)
+    report_data = analytics.get_full_comparative_report(years)
+    
+    # Crear servicio de exportación
+    export_service = ExportService(gym, report_data)
+    
+    # Exportar según formato
+    if format_type == 'excel':
+        try:
+            return export_service.get_excel_response()
+        except ImportError:
+            return JsonResponse({
+                'error': 'Excel export requires openpyxl',
+                'hint': 'pip install openpyxl'
+            }, status=501)
+    
+    elif format_type == 'pdf':
+        try:
+            return export_service.get_pdf_response()
+        except ImportError:
+            return JsonResponse({
+                'error': 'PDF export requires weasyprint',
+                'hint': 'pip install weasyprint'
+            }, status=501)
+    
+    elif format_type == 'csv':
+        return export_service.get_csv_response(section=section)
+    
+    else:
+        return JsonResponse({'error': 'Invalid format'}, status=400)
+
+
+@login_required
+@require_gym_permission("clients.view")
+def revenue_detail(request):
+    """
+    Vista detallada de facturación.
+    """
+    gym_id = request.session.get("current_gym_id")
+    if not gym_id:
+        return render(request, "reporting/no_gym.html")
+    
+    gym = Gym.objects.get(id=gym_id)
+    
+    current_year = timezone.now().year
+    years = [current_year - 2, current_year - 1, current_year]
+    
+    analytics = ComparativeAnalyticsService(gym)
+    
+    context = {
+        'gym': gym,
+        'years': years,
+        'revenue': analytics.get_revenue_by_month(years),
+        'revenue_by_category': analytics.get_revenue_by_category(years),
+        'mrr_arr': analytics.get_mrr_arr(years),
+        'arpc': analytics.get_arpc(years),
+        'payment_methods': analytics.get_payment_method_breakdown(years),
+    }
+    
+    return render(request, "reporting/revenue_detail.html", context)
+
+
+@login_required
+@require_gym_permission("clients.view")
+def membership_detail(request):
+    """
+    Vista detallada de membresías.
+    """
+    gym_id = request.session.get("current_gym_id")
+    if not gym_id:
+        return render(request, "reporting/no_gym.html")
+    
+    gym = Gym.objects.get(id=gym_id)
+    
+    current_year = timezone.now().year
+    years = [current_year - 2, current_year - 1, current_year]
+    
+    analytics = ComparativeAnalyticsService(gym)
+    
+    context = {
+        'gym': gym,
+        'years': years,
+        'memberships': analytics.get_membership_metrics(years),
+        'clients': analytics.get_client_metrics(years),
+        'ltv': analytics.get_ltv_metrics(years),
+    }
+    
+    return render(request, "reporting/membership_detail.html", context)
+
+
+@login_required
+@require_gym_permission("clients.view")
+def attendance_detail(request):
+    """
+    Vista detallada de asistencias.
+    """
+    gym_id = request.session.get("current_gym_id")
+    if not gym_id:
+        return render(request, "reporting/no_gym.html")
+    
+    gym = Gym.objects.get(id=gym_id)
+    
+    current_year = timezone.now().year
+    years = [current_year - 2, current_year - 1, current_year]
+    
+    analytics = ComparativeAnalyticsService(gym)
+    
+    context = {
+        'gym': gym,
+        'years': years,
+        'attendance': analytics.get_attendance_metrics(years),
+        'class_occupancy': analytics.get_class_occupancy(years),
+        'peak_hours': analytics.get_peak_hours_analysis(),
+    }
+    
+    return render(request, "reporting/attendance_detail.html", context)
+

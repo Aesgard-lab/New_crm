@@ -1021,16 +1021,26 @@ def stripe_migration(request):
             
             from clients.models import Client
             
+            # Normalizar headers a minúsculas para evitar problemas con mayúsculas
+            def get_field(row, *keys):
+                """Busca un campo en el row probando diferentes variantes (mayúsculas/minúsculas)"""
+                for key in keys:
+                    # Probar key original, minúsculas y capitalizado
+                    for variant in [key, key.lower(), key.capitalize(), key.upper()]:
+                        if variant in row and row[variant]:
+                            return row[variant].strip()
+                return ''
+            
             for row in reader:
                 results['total'] += 1
                 
                 # Mapear campos según el formato detectado
                 if is_stripe_native:
-                    # Formato nativo de Stripe: id, email, name, phone, created, etc.
-                    stripe_customer_id = row.get('id', '').strip()
-                    email = row.get('email', '').strip()
-                    full_name = row.get('name', '').strip()
-                    phone = row.get('phone', '').strip()
+                    # Formato nativo de Stripe: id, Email, Name, etc. (pueden venir en mayúsculas)
+                    stripe_customer_id = get_field(row, 'id', 'ID', 'Id')
+                    email = get_field(row, 'email', 'Email', 'EMAIL')
+                    full_name = get_field(row, 'name', 'Name', 'NAME', 'Description')
+                    phone = get_field(row, 'phone', 'Phone', 'PHONE')
                     
                     # Separar nombre completo
                     name_parts = full_name.split() if full_name else []
@@ -1038,11 +1048,11 @@ def stripe_migration(request):
                     last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
                 else:
                     # Formato personalizado
-                    email = row.get('email', '').strip()
-                    first_name = row.get('nombre', row.get('first_name', '')).strip()
-                    last_name = row.get('apellidos', row.get('last_name', '')).strip()
-                    stripe_customer_id = row.get('stripe_customer_id', row.get('stripe_id', row.get('id', ''))).strip()
-                    phone = row.get('telefono', row.get('phone', '')).strip()
+                    email = get_field(row, 'email', 'Email')
+                    first_name = get_field(row, 'nombre', 'first_name', 'Nombre')
+                    last_name = get_field(row, 'apellidos', 'last_name', 'Apellidos')
+                    stripe_customer_id = get_field(row, 'stripe_customer_id', 'stripe_id', 'id')
+                    phone = get_field(row, 'telefono', 'phone', 'Telefono', 'Phone')
                 
                 if not email:
                     results['errors'].append(f"Fila {results['total']}: Email vacío")

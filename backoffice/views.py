@@ -49,17 +49,18 @@ def login_view(request):
             # Log exitoso en auditoría
             try:
                 from staff.models import AuditLog
-                from core.audit_decorators import get_client_ip
+                from core.ratelimit import get_client_ip
                 gym_id = request.session.get("current_gym_id")
                 gym = Gym.objects.get(pk=gym_id) if gym_id else None
-                AuditLog.objects.create(
-                    gym=gym,
-                    user=user,
-                    action='LOGIN',
-                    module='Auth',
-                    target=email,
-                    ip_address=get_client_ip(request),
-                )
+                if gym:
+                    AuditLog.objects.create(
+                        gym=gym,
+                        user=user,
+                        action='LOGIN',
+                        module='Auth',
+                        target=email,
+                        ip_address=get_client_ip(request),
+                    )
             except Exception:
                 pass
             

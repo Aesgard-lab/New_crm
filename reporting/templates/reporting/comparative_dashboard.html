@@ -1,0 +1,705 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% load reporting_tags %}
+
+{% block backoffice_content %}
+<div class="min-h-screen bg-gray-50" x-data="analyticsApp()">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold title-brand">📊 Analíticas Comparativas</h1>
+                <p class="text-gray-500 text-sm mt-1">Comparativa año vs año de todas las métricas clave</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Selector de años -->
+                <div class="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
+                    <span class="text-sm font-medium text-gray-600">Años:</span>
+                    {% for year in years %}
+                    <label class="flex items-center gap-1">
+                        <input type="checkbox" 
+                               value="{{ year }}" 
+                               checked
+                               @change="toggleYear({{ year }})"
+                               class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium">{{ year }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                
+                <!-- Botones de exportación -->
+                <div class="flex items-center gap-2">
+                    <button @click="exportReport('excel')" 
+                            class="btn-brand-outline px-4 py-2 text-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Excel
+                    </button>
+                    <button @click="exportReport('csv')" 
+                            class="btn-brand-outline px-4 py-2 text-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- KPIs Summary -->
+    <div class="px-6 py-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            {% for key, kpi in kpi_summary.kpis.items %}
+            <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">{{ kpi.label }}</p>
+                <p class="text-2xl font-bold kpi-brand mt-1">
+                    {% if key == 'revenue' or key == 'mrr' or key == 'arr' or key == 'ltv' %}
+                        {{ kpi.current|floatformat:0 }}€
+                    {% elif key == 'churn_rate' %}
+                        {{ kpi.current|floatformat:1 }}%
+                    {% else %}
+                        {{ kpi.current|floatformat:0 }}
+                    {% endif %}
+                </p>
+                <div class="flex items-center gap-1 mt-2">
+                    {% if kpi.growth > 0 %}
+                    <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                        ↑ {{ kpi.growth|floatformat:1 }}%
+                    </span>
+                    {% elif kpi.growth < 0 %}
+                    <span class="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
+                        ↓ {{ kpi.growth|floatformat:1 }}%
+                    </span>
+                    {% else %}
+                    <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium">
+                        = 0%
+                    </span>
+                    {% endif %}
+                    <span class="text-xs text-gray-400">vs año anterior</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Gráficas principales -->
+    <div class="px-6 pb-6 space-y-6">
+        <!-- Revenue Chart -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold section-title">💰 Facturación Mensual</h2>
+                    <p class="text-sm text-gray-500">Comparativa de ingresos por mes y año</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click="chartType.revenue = 'bar'" 
+                            :class="chartType.revenue === 'bar' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+                            class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">
+                        Barras
+                    </button>
+                    <button @click="chartType.revenue = 'line'" 
+                            :class="chartType.revenue === 'line' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+                            class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">
+                        Líneas
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <canvas id="revenueChart" height="300"></canvas>
+            </div>
+            <!-- Tabla de datos -->
+            <div class="px-6 pb-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-2 px-3 font-semibold text-gray-600">Mes</th>
+                                {% for year in years %}
+                                <th class="text-right py-2 px-3 font-semibold text-gray-600">{{ year }}</th>
+                                {% endfor %}
+                                <th class="text-right py-2 px-3 font-semibold text-gray-600">Variación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for month in report_data.revenue.months %}
+                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                <td class="py-2 px-3 font-medium">{{ month }}</td>
+                                {% for year in years %}
+                                <td class="text-right py-2 px-3 font-mono">
+                                    {{ report_data.revenue.data|get_item:year|get_index:forloop.parentloop.counter0|floatformat:2 }}€
+                                </td>
+                                {% endfor %}
+                                <td class="text-right py-2 px-3">
+                                    {% with year_current=years|last year_previous=years|first %}
+                                    {% with current=report_data.revenue.data|get_item:year_current|get_index:forloop.counter0 previous=report_data.revenue.data|get_item:year_previous|get_index:forloop.counter0 %}
+                                    {% if previous and previous > 0 %}
+                                        {% widthratio current previous 100 as growth %}
+                                        <span class="{% if growth > 100 %}text-green-600{% elif growth < 100 %}text-red-600{% else %}text-gray-600{% endif %}">
+                                            {% if growth > 100 %}↑{% elif growth < 100 %}↓{% endif %}
+                                        </span>
+                                    {% endif %}
+                                    {% endwith %}
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="bg-gray-50 font-bold">
+                                <td class="py-2 px-3">TOTAL</td>
+                                {% for year in years %}
+                                <td class="text-right py-2 px-3 font-mono">
+                                    {{ report_data.revenue.totals|get_item:year|floatformat:2 }}€
+                                </td>
+                                {% endfor %}
+                                <td class="text-right py-2 px-3">
+                                    {% if report_data.revenue.growth_yoy %}
+                                        {% with year_key=years|last %}
+                                        {% with growth=report_data.revenue.growth_yoy|get_item:year_key %}
+                                        {% if growth %}
+                                        <span class="{% if growth > 0 %}text-green-600{% elif growth < 0 %}text-red-600{% else %}text-gray-600{% endif %}">
+                                            {% if growth > 0 %}↑{% elif growth < 0 %}↓{% endif %} {{ growth|floatformat:1 }}%
+                                        </span>
+                                        {% endif %}
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Row: MRR + Revenue by Category -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- MRR Chart -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold section-title">📈 MRR (Monthly Recurring Revenue)</h2>
+                    <p class="text-sm text-gray-500">Ingresos recurrentes mensuales</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="mrrChart" height="250"></canvas>
+                </div>
+            </div>
+            
+            <!-- Revenue by Category -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold section-title">🎯 Ingresos por Categoría</h2>
+                    <p class="text-sm text-gray-500">Distribución de facturación</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="categoryChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Memberships Chart -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h2 class="text-lg font-semibold section-title">👥 Membresías: Altas vs Bajas</h2>
+                <p class="text-sm text-gray-500">Evolución de altas y cancelaciones</p>
+            </div>
+            <div class="p-6">
+                <canvas id="membershipChart" height="300"></canvas>
+            </div>
+            <!-- KPIs de membresía -->
+            <div class="px-6 pb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for year in years %}
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <p class="text-xs text-gray-500 font-medium">{{ year }}</p>
+                    <div class="mt-2 space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Altas:</span>
+                            <span class="font-semibold text-green-600">+{{ report_data.memberships.yearly_totals|get_item:year|get_item:'new' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Bajas:</span>
+                            <span class="font-semibold text-red-600">-{{ report_data.memberships.yearly_totals|get_item:year|get_item:'cancelled' }}</span>
+                        </div>
+                        <div class="flex justify-between border-t pt-1">
+                            <span class="text-sm text-gray-600">Neto:</span>
+                            <span class="font-bold {% if report_data.memberships.yearly_totals|get_item:year|get_item:'net' >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ report_data.memberships.yearly_totals|get_item:year|get_item:'net'|default:0 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Row: Attendance + Churn -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Attendance Chart -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold section-title">🏃 Check-ins Mensuales</h2>
+                    <p class="text-sm text-gray-500">Total de asistencias registradas</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="attendanceChart" height="250"></canvas>
+                </div>
+            </div>
+            
+            <!-- Churn Rate Chart -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold section-title">📉 Churn Rate Mensual</h2>
+                    <p class="text-sm text-gray-500">Tasa de cancelación (menor es mejor)</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="churnChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Peak Hours Heatmap -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h2 class="text-lg font-semibold section-title">🔥 Horas Pico de Asistencia</h2>
+                <p class="text-sm text-gray-500">Mapa de calor de visitas por día y hora ({{ current_year }})</p>
+            </div>
+            <div class="p-6">
+                <div id="heatmapContainer" class="overflow-x-auto">
+                    <!-- Heatmap generado por JS -->
+                </div>
+            </div>
+            <div class="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Top Horas -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-3">⏰ Horas más concurridas</h3>
+                    <div class="space-y-2">
+                        {% for hour in report_data.peak_hours.peak_hours %}
+                        <div class="flex items-center gap-3">
+                            <span class="w-16 text-sm font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded">{{ hour.hour }}</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-3">
+                                <div class="bg-blue-500 h-3 rounded-full" style="width: {% widthratio hour.visits report_data.peak_hours.peak_hours.0.visits 100 %}%"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">{{ hour.visits }}</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-gray-500 text-sm">Sin datos suficientes</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- Top Días -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-3">📅 Días más concurridos</h3>
+                    <div class="space-y-2">
+                        {% for day in report_data.peak_hours.peak_days %}
+                        <div class="flex items-center gap-3">
+                            <span class="w-24 text-sm font-medium">{{ day.day }}</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-3">
+                                <div class="bg-green-500 h-3 rounded-full" style="width: {% widthratio day.visits report_data.peak_hours.peak_days.0.visits 100 %}%"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">{{ day.visits }}</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-gray-500 text-sm">Sin datos suficientes</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Products Chart -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h2 class="text-lg font-semibold section-title">🛒 Top Productos Vendidos</h2>
+                <p class="text-sm text-gray-500">Productos con mayor facturación</p>
+            </div>
+            <div class="p-6">
+                <canvas id="productsChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script de gráficas -->
+<script>
+function analyticsApp() {
+    return {
+        reportData: {{ report_data_json|safe }},
+        selectedYears: {{ years|safe }},
+        chartType: {
+            revenue: 'bar',
+            membership: 'bar'
+        },
+        charts: {},
+        
+        init() {
+            this.$nextTick(() => {
+                this.initCharts();
+                this.renderHeatmap();
+            });
+        },
+        
+        toggleYear(year) {
+            const idx = this.selectedYears.indexOf(year);
+            if (idx > -1) {
+                this.selectedYears.splice(idx, 1);
+            } else {
+                this.selectedYears.push(year);
+                this.selectedYears.sort();
+            }
+            this.updateCharts();
+        },
+        
+        getYearColor(year, alpha = 1) {
+            const colors = {
+                2024: `rgba(59, 130, 246, ${alpha})`,   // Blue
+                2025: `rgba(16, 185, 129, ${alpha})`,   // Green
+                2026: `rgba(139, 92, 246, ${alpha})`,   // Purple
+                2027: `rgba(245, 158, 11, ${alpha})`,   // Amber
+                2028: `rgba(239, 68, 68, ${alpha})`,    // Red
+            };
+            return colors[year] || `rgba(107, 114, 128, ${alpha})`;
+        },
+        
+        initCharts() {
+            this.initRevenueChart();
+            this.initMrrChart();
+            this.initCategoryChart();
+            this.initMembershipChart();
+            this.initAttendanceChart();
+            this.initChurnChart();
+            this.initProductsChart();
+        },
+        
+        initRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            const datasets = this.selectedYears.map(year => ({
+                label: year.toString(),
+                data: this.reportData.revenue.data[year] || [],
+                backgroundColor: this.getYearColor(year, 0.7),
+                borderColor: this.getYearColor(year),
+                borderWidth: 2,
+            }));
+            
+            this.charts.revenue = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: this.reportData.revenue.months,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.raw.toLocaleString('es-ES')}€`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString('es-ES') + '€'
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        
+        initMrrChart() {
+            const ctx = document.getElementById('mrrChart').getContext('2d');
+            const datasets = this.selectedYears.map(year => ({
+                label: year.toString(),
+                data: this.reportData.mrr_arr.mrr[year] || [],
+                borderColor: this.getYearColor(year),
+                backgroundColor: this.getYearColor(year, 0.1),
+                fill: true,
+                tension: 0.4,
+            }));
+            
+            this.charts.mrr = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: this.reportData.revenue.months,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString('es-ES') + '€'
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        
+        initCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            const categories = this.reportData.revenue_by_category.categories;
+            const datasets = this.selectedYears.map(year => ({
+                label: year.toString(),
+                data: categories.map(cat => this.reportData.revenue_by_category.data[year]?.[cat] || 0),
+                backgroundColor: this.getYearColor(year, 0.7),
+                borderColor: this.getYearColor(year),
+                borderWidth: 2,
+            }));
+            
+            this.charts.category = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString('es-ES') + '€'
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        
+        initMembershipChart() {
+            const ctx = document.getElementById('membershipChart').getContext('2d');
+            const datasets = [];
+            
+            this.selectedYears.forEach(year => {
+                // Altas
+                datasets.push({
+                    label: `Altas ${year}`,
+                    data: this.reportData.memberships.new_memberships[year] || [],
+                    backgroundColor: this.getYearColor(year, 0.7),
+                    borderColor: this.getYearColor(year),
+                    borderWidth: 2,
+                    stack: `stack${year}`
+                });
+                // Bajas (negativo para visualización)
+                datasets.push({
+                    label: `Bajas ${year}`,
+                    data: (this.reportData.memberships.cancellations[year] || []).map(v => -v),
+                    backgroundColor: this.getYearColor(year, 0.3),
+                    borderColor: this.getYearColor(year),
+                    borderWidth: 2,
+                    stack: `stack${year}`
+                });
+            });
+            
+            this.charts.membership = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: this.reportData.revenue.months,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        },
+        
+        initAttendanceChart() {
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            const datasets = this.selectedYears.map(year => ({
+                label: year.toString(),
+                data: this.reportData.attendance.total_checkins[year] || [],
+                borderColor: this.getYearColor(year),
+                backgroundColor: this.getYearColor(year, 0.1),
+                fill: true,
+                tension: 0.4,
+            }));
+            
+            this.charts.attendance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: this.reportData.revenue.months,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        },
+        
+        initChurnChart() {
+            const ctx = document.getElementById('churnChart').getContext('2d');
+            const datasets = this.selectedYears.map(year => ({
+                label: year.toString(),
+                data: this.reportData.memberships.churn_rate[year] || [],
+                borderColor: this.getYearColor(year),
+                backgroundColor: 'transparent',
+                tension: 0.4,
+                pointBackgroundColor: this.getYearColor(year),
+            }));
+            
+            this.charts.churn = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: this.reportData.revenue.months,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value + '%'
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        
+        initProductsChart() {
+            const ctx = document.getElementById('productsChart').getContext('2d');
+            
+            // Obtener todos los productos únicos
+            const allProducts = new Set();
+            this.selectedYears.forEach(year => {
+                (this.reportData.products.top_products[year] || []).forEach(p => {
+                    allProducts.add(p.name);
+                });
+            });
+            
+            const productNames = Array.from(allProducts).slice(0, 10);
+            
+            const datasets = this.selectedYears.map(year => {
+                const yearProducts = this.reportData.products.top_products[year] || [];
+                const productMap = {};
+                yearProducts.forEach(p => productMap[p.name] = p.revenue);
+                
+                return {
+                    label: year.toString(),
+                    data: productNames.map(name => productMap[name] || 0),
+                    backgroundColor: this.getYearColor(year, 0.7),
+                    borderColor: this.getYearColor(year),
+                    borderWidth: 2,
+                };
+            });
+            
+            this.charts.products = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: productNames,
+                    datasets: datasets
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString('es-ES') + '€'
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        
+        renderHeatmap() {
+            const container = document.getElementById('heatmapContainer');
+            const heatmap = this.reportData.peak_hours.heatmap || {};
+            const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const hours = Array.from({length: 17}, (_, i) => i + 6); // 6:00 - 22:00
+            
+            // Encontrar máximo para escala de colores
+            let maxValue = 0;
+            days.forEach(day => {
+                hours.forEach(hour => {
+                    const val = heatmap[day]?.[hour] || 0;
+                    if (val > maxValue) maxValue = val;
+                });
+            });
+            
+            let html = '<table class="w-full text-xs"><thead><tr><th class="p-1"></th>';
+            hours.forEach(h => {
+                html += `<th class="p-1 text-center font-mono">${h}:00</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            days.forEach(day => {
+                html += `<tr><td class="p-1 font-medium text-right pr-2">${day}</td>`;
+                hours.forEach(hour => {
+                    const val = heatmap[day]?.[hour] || 0;
+                    const intensity = maxValue > 0 ? (val / maxValue) : 0;
+                    const bgColor = val === 0 ? '#f3f4f6' : 
+                        intensity < 0.25 ? '#bfdbfe' :
+                        intensity < 0.5 ? '#60a5fa' :
+                        intensity < 0.75 ? '#2563eb' : '#1d4ed8';
+                    const textColor = intensity > 0.5 ? 'white' : '#374151';
+                    
+                    html += `<td class="p-1 text-center rounded" style="background-color: ${bgColor}; color: ${textColor}">${val || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        },
+        
+        updateCharts() {
+            // Destruir y recrear gráficas con nuevos años seleccionados
+            Object.values(this.charts).forEach(chart => chart.destroy());
+            this.initCharts();
+        },
+        
+        exportReport(format) {
+            const years = this.selectedYears.join(',');
+            window.location.href = `{% url 'export_report' %}?format=${format}&years=${years}`;
+        }
+    }
+}
+</script>
+{% endblock %}
