@@ -475,50 +475,63 @@ class AdvancedAnalytics:
             'advance_bookings': len([lt for lt in lead_times if lt > 0]),
             'distribution': {
                 'same_day': lead_times.count(0),
-                '1-3_days': len([lt for lt in lead_times if 1 <= lt <= 3]),
-                '4-7_days': len([lt for lt in lead_times if 4 <= lt <= 7]),
-                '8+_days': len([lt for lt in lead_times if lt > 7])
+                'days_1_3': len([lt for lt in lead_times if 1 <= lt <= 3]),
+                'days_4_7': len([lt for lt in lead_times if 4 <= lt <= 7]),
+                'days_8_plus': len([lt for lt in lead_times if lt > 7])
             }
         }
     
     def get_seasonal_patterns(self):
         """
         Patrones estacionales: qué días de la semana y meses son más populares.
+        Calcula correctamente el promedio de asistencia por día de la semana.
         """
-        day_of_week_stats = ActivitySession.objects.filter(
+        # Primero obtenemos cada sesión con su día de semana y cuenta de asistentes
+        sessions_with_attendance = ActivitySession.objects.filter(
             gym=self.gym,
             start_datetime__gte=self.start_date,
             start_datetime__lte=self.end_date,
             status='COMPLETED'
         ).annotate(
-            day_of_week=ExtractWeekDay('start_datetime')
-        ).values('day_of_week').annotate(
-            sessions=Count('id'),
-            attendance=Count('attendees'),
-            avg_attendance=Avg('attendees__id', output_field=FloatField())
-        ).order_by('day_of_week')
+            day_of_week=ExtractWeekDay('start_datetime'),
+            attendance_count=Count('attendees')
+        ).values('day_of_week', 'attendance_count')
+        
+        # Agrupar por día de la semana
+        from collections import defaultdict
+        day_stats = defaultdict(lambda: {'sessions': 0, 'total_attendance': 0})
+        
+        for session in sessions_with_attendance:
+            dow = session['day_of_week']
+            day_stats[dow]['sessions'] += 1
+            day_stats[dow]['total_attendance'] += session['attendance_count']
         
         day_names = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
         
         results = []
-        for stat in day_of_week_stats:
-            day_num = stat['day_of_week']
+        for day_num in sorted(day_stats.keys()):
+            stats = day_stats[day_num]
+            avg = stats['total_attendance'] / stats['sessions'] if stats['sessions'] > 0 else 0
             results.append({
                 'day_of_week': day_num,
                 'day_name': day_names[day_num - 1] if 1 <= day_num <= 7 else 'Unknown',
-                'sessions': stat['sessions'],
-                'attendance': stat['attendance'],
-                'avg_attendance': stat['avg_attendance']
+                'sessions': stats['sessions'],
+                'attendance': stats['total_attendance'],
+                'avg_attendance': round(avg, 1)
             })
+        
+        # Ordenar por promedio de asistencia descendente para mostrar el mejor día primero
+        results.sort(key=lambda x: x['avg_attendance'], reverse=True)
         
         return results
     
     def predict_attendance(self, activity_id, day_of_week, hour):
         """
-        Predicción simple de asistencia basada en históricos.
-        ML básico: promedio histórico con mismas condiciones.
+        Predicción de asistencia basada en históricos.
+        Usa el promedio de sesiones con condiciones similares (misma actividad, día, hora).
         """
-        historical_avg = ActivitySession.objects.filter(
+        # Obtener sesiones similares con su conteo de asistentes
+        similar_sessions = ActivitySession.objects.filter(
             gym=self.gym,
             activity_id=activity_id,
             start_datetime__gte=self.start_date,
@@ -526,23 +539,58 @@ class AdvancedAnalytics:
             status='COMPLETED'
         ).annotate(
             dow=ExtractWeekDay('start_datetime'),
-            hr=ExtractHour('start_datetime')
+            hr=ExtractHour('start_datetime'),
+            attendance_count=Count('attendees')
         ).filter(
             dow=day_of_week,
             hr=hour
-        ).annotate(
-            attendance_count=Count('attendees')
-        ).aggregate(
-            avg=Avg('attendance_count'),
-            min_val=Min('attendance_count'),
-            max_val=Max('attendance_count')
-        )
+        ).values('attendance_count')
+        
+        attendance_values = [s['attendance_count'] for s in similar_sessions]
+        
+        if not attendance_values:
+            # Si no hay datos exactos, buscar con condiciones más amplias
+            # Solo por actividad y día de la semana
+            broader_sessions = ActivitySession.objects.filter(
+                gym=self.gym,
+                activity_id=activity_id,
+                start_datetime__gte=self.start_date,
+                start_datetime__lte=self.end_date,
+                status='COMPLETED'
+            ).annotate(
+                dow=ExtractWeekDay('start_datetime'),
+                attendance_count=Count('attendees')
+            ).filter(
+                dow=day_of_week
+            ).values('attendance_count')
+            
+            attendance_values = [s['attendance_count'] for s in broader_sessions]
+        
+        if not attendance_values:
+            return {
+                'predicted_attendance': 0,
+                'min_expected': 0,
+                'max_expected': 0,
+                'confidence': 'low'
+            }
+        
+        avg_attendance = sum(attendance_values) / len(attendance_values)
+        min_attendance = min(attendance_values)
+        max_attendance = max(attendance_values)
+        
+        # Calcular confianza basada en la variabilidad y cantidad de datos
+        variance = max_attendance - min_attendance
+        confidence = 'low'
+        if len(attendance_values) >= 10 and variance <= 5:
+            confidence = 'high'
+        elif len(attendance_values) >= 5 and variance <= 8:
+            confidence = 'medium'
         
         return {
-            'predicted_attendance': round(historical_avg['avg'] or 0, 0),
-            'min_expected': historical_avg['min_val'] or 0,
-            'max_expected': historical_avg['max_val'] or 0,
-            'confidence': 'low' if (historical_avg['max_val'] or 0) - (historical_avg['min_val'] or 0) > 10 else 'high'
+            'predicted_attendance': round(avg_attendance, 1),
+            'min_expected': min_attendance,
+            'max_expected': max_attendance,
+            'confidence': confidence
         }
     
     def get_member_retention_by_class(self):
@@ -550,9 +598,6 @@ class AdvancedAnalytics:
         Retención de clientes por tipo de clase.
         ¿Qué clases tienen clientes más fieles?
         """
-        from django.db.models import Window
-        from django.db.models.functions import DenseRank
-        
         # Clientes que han asistido más de una vez a cada actividad
         repeat_attendance = ClientVisit.objects.filter(
             client__gym=self.gym,
@@ -587,14 +632,14 @@ class AdvancedAnalytics:
         # Calcular tasas de retención
         results = []
         for concept, stats in retention_by_activity.items():
-            if stats['total_clients'] > 0:
+            if stats['total_clients'] > 0 and concept:  # Ignorar conceptos vacíos
                 retention_rate = (stats['repeat_clients'] / stats['total_clients']) * 100
                 results.append({
-                    'activity': concept,
+                    'activity__name': concept,  # Nombre esperado por el template
                     'total_clients': stats['total_clients'],
                     'repeat_clients': stats['repeat_clients'],
-                    'retention_rate': round(retention_rate, 2)
+                    'repeat_rate': round(retention_rate, 2)  # Nombre esperado por el template
                 })
         
-        results.sort(key=lambda x: x['retention_rate'], reverse=True)
+        results.sort(key=lambda x: x['repeat_rate'], reverse=True)
         return results

@@ -326,6 +326,7 @@ def api_attendance_trends(request):
 def api_predict_attendance(request):
     """
     API endpoint para predicción de asistencia.
+    Usa datos históricos de sesiones similares (misma actividad, día, hora).
     """
     gym = request.gym
     
@@ -336,11 +337,55 @@ def api_predict_attendance(request):
     if not activity_id:
         return JsonResponse({'error': 'activity_id required'}, status=400)
     
+    # Obtener nombre de la actividad
+    try:
+        activity = Activity.objects.get(id=activity_id, gym=gym)
+        activity_name = activity.name
+    except Activity.DoesNotExist:
+        return JsonResponse({'error': 'Activity not found'}, status=404)
+    
     end_date = timezone.now()
     start_date = end_date - timedelta(days=90)
     
     analytics = AdvancedAnalytics(gym, start_date, end_date)
     prediction = analytics.predict_attendance(activity_id, day_of_week, hour)
+    
+    # Agregar información adicional
+    prediction['activity_name'] = activity_name
+    prediction['day_of_week'] = day_of_week
+    prediction['hour'] = hour
+    
+    # Contar sesiones históricas usadas para la predicción
+    from activities.models import ActivitySession
+    from django.db.models.functions import ExtractWeekDay, ExtractHour
+    
+    historical_count = ActivitySession.objects.filter(
+        gym=gym,
+        activity_id=activity_id,
+        start_datetime__gte=start_date,
+        start_datetime__lte=end_date,
+        status='COMPLETED'
+    ).annotate(
+        dow=ExtractWeekDay('start_datetime'),
+        hr=ExtractHour('start_datetime')
+    ).filter(
+        dow=day_of_week,
+        hr=hour
+    ).count()
+    
+    prediction['historical_sessions'] = historical_count
+    
+    # Ajustar confianza basado en cantidad de datos
+    if historical_count >= 10:
+        prediction['confidence'] = 'high'
+    elif historical_count >= 5:
+        prediction['confidence'] = 'medium'
+    else:
+        prediction['confidence'] = 'low'
+    
+    # Renombrar campos para el frontend
+    prediction['min_attendance'] = prediction.pop('min_expected', 0)
+    prediction['max_attendance'] = prediction.pop('max_expected', 0)
     
     return JsonResponse(prediction)
 

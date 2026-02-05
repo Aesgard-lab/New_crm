@@ -2,7 +2,7 @@
 <aside
   class="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white transition-transform duration-300 ease-in-out lg:translate-x-0"
   :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'" @click.outside="sidebarOpen = false">
-  <div class="flex h-full flex-col overflow-y-auto bg-white px-3 py-4">
+  <div id="sidebar-scroll-container" class="flex h-full flex-col overflow-y-auto bg-white px-3 py-4">
     {% if request.gym.logo %}
     <img src="{{ request.gym.logo.url }}" alt="{{ request.gym.name }}"
       class="h-12 w-auto object-contain rounded-xl bg-white mb-2">
@@ -62,7 +62,7 @@
 
 
       <!-- Dashboard Section with Submenu -->
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname === '/' || window.location.pathname.includes('/dashboard') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -143,7 +143,7 @@
       {% has_gym_perm 'services.view_service' as can_view_services %}
       {% has_gym_perm 'products.view_product' as can_view_products %}
       {% if can_view_plans or can_view_services or can_view_products %}
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname.includes('/memberships/') || window.location.pathname.includes('/services/') || window.location.pathname.includes('/products/') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -209,7 +209,7 @@
       <!-- Activities Section with Submenu -->
       {% has_gym_perm 'activities.view_room' as can_view_activities_sidebar %}
       {% if can_view_activities_sidebar %}
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname.includes('/activities/') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -321,7 +321,7 @@
       {% endif %}
 
       <!-- Finance Section with Submenu -->
-      <div x-data="{ open: false }" class="pt-4 mt-4 border-t border-slate-100">
+      <div x-data="{ open: window.location.pathname.includes('/finance/') || window.location.pathname.includes('/expenses/') || window.location.pathname.includes('/providers/') }" class="pt-4 mt-4 border-t border-slate-100">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -424,7 +424,7 @@
       {% endif %}
 
       <!-- Reporting Section with Submenu -->
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname.includes('/clients/settings') || window.location.pathname.includes('/clients/duplicates') || window.location.pathname.includes('/clients/explorer') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -486,7 +486,7 @@
 
       <!-- Gamificación -->
       {% if request.gym %}
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname.includes('/gamification/') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -548,7 +548,7 @@
       {% endif %}
 
       <!-- Marketing Section with Submenu -->
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname.includes('/marketing/') || window.location.pathname.includes('/automations/') || window.location.pathname.includes('/leads/') || window.location.pathname.includes('/chat/') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -687,7 +687,7 @@
       <!-- Staff Section with Submenu -->
       {% has_gym_perm 'staff.view_staffprofile' as can_view_staff %}
       {% if can_view_staff %}
-      <div x-data="{ open: false }">
+      <div x-data="{ open: window.location.pathname.includes('/staff/') || window.location.pathname.includes('/commissions/') || window.location.pathname.includes('/vacations/') || window.location.pathname.includes('/roles/') || window.location.pathname.includes('/incentives/') || window.location.pathname.includes('/audit/') }">
         <button @click="open = !open"
           class="w-full flex items-center justify-between gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
           <div class="flex items-center gap-3">
@@ -937,3 +937,26 @@
     </div>
   </div>
 </aside>
+
+<script>
+(function() {
+  const sidebar = document.getElementById('sidebar-scroll-container');
+  const STORAGE_KEY = 'sidebar-scroll-position';
+  
+  // Restaurar posición al cargar
+  const savedPosition = sessionStorage.getItem(STORAGE_KEY);
+  if (savedPosition && sidebar) {
+    sidebar.scrollTop = parseInt(savedPosition, 10);
+  }
+  
+  // Guardar posición antes de navegar
+  if (sidebar) {
+    sidebar.addEventListener('click', function(e) {
+      const link = e.target.closest('a');
+      if (link && link.href && !link.target) {
+        sessionStorage.setItem(STORAGE_KEY, sidebar.scrollTop);
+      }
+    });
+  }
+})();
+</script>
