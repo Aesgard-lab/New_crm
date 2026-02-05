@@ -1,19 +1,19 @@
 {% extends 'public_portal/base.html' %}
 
-{% block title %}Iniciar Sesión - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+{% block title %}{{ t.enter }} - {{ gym.commercial_name|default:gym.name }}{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto">
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8">
-        <h1 class="text-2xl font-bold text-slate-900 mb-2">Iniciar Sesión</h1>
-        <p class="text-slate-600 mb-6">Accede a tu cuenta de {{ gym.commercial_name|default:gym.name }}</p>
+        <h1 class="text-2xl font-bold text-slate-900 mb-2">{{ t.enter }}</h1>
+        <p class="text-slate-600 mb-6">{{ t.my_account }} - {{ gym.commercial_name|default:gym.name }}</p>
         
         <form method="post" class="space-y-4">
             {% csrf_token %}
             
             <!-- Email -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.email }}</label>
                 <input type="email" name="email" required autofocus
                        class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
                        placeholder="tu@email.com">
@@ -21,23 +21,23 @@
             
             <!-- Contraseña -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.password }}</label>
                 <input type="password" name="password" required 
                        class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
-                       placeholder="Tu contraseña">
+                       placeholder="">
             </div>
             
             <!-- Botón -->
             <div class="flex flex-col gap-3 pt-4">
                 <button type="submit" 
                         class="w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
-                    Entrar
+                    {{ t.enter }}
                 </button>
                 
                 {% if can_register %}
                 <a href="{% url 'public_register' slug=settings.public_slug %}" 
                    class="text-center text-sm text-slate-600 hover:text-[var(--brand-color)]">
-                    ¿No tienes cuenta? Regístrate
+                    {{ t.no_account_register }}
                 </a>
                 {% endif %}
             </div>

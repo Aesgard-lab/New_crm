@@ -1,11 +1,11 @@
 {% extends 'public_portal/base.html' %}
 
-{% block title %}Tienda - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+{% block title %}{{ t.shop }} - {{ gym.commercial_name|default:gym.name }}{% endblock %}
 
 {% block content %}
 <div class="mb-8">
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">Tienda</h1>
-    <p class="text-slate-600">Productos y merchandising disponible</p>
+    <h1 class="text-3xl font-bold text-slate-900 mb-2">{{ t.shop }}</h1>
+    <p class="text-slate-600">{{ t.products_supplements }}</p>
 </div>
 
 {% if products %}
@@ -17,7 +17,7 @@
             <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-contain p-4">
             {% if product.stock_quantity and product.stock_quantity < 5 %}
             <div class="absolute top-2 right-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
-                ¡Últimas {{ product.stock_quantity }} unidades!
+                {{ t.low_stock }}!
             </div>
             {% endif %}
         </div>
@@ -50,12 +50,12 @@
             {% if user.is_authenticated %}
             <button onclick="addToCart({{ product.id }})" 
                     class="w-full brand-bg text-white font-bold py-2 px-4 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                🛒 Añadir al Carrito
+                🛒 {{ t.add }}
             </button>
             {% else %}
             <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_shop' slug=settings.public_slug %}" 
                class="block w-full text-center brand-bg text-white font-bold py-2 px-4 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                🛒 Añadir al Carrito
+                🛒 {{ t.add }}
             </a>
             {% endif %}
         </div>
@@ -65,8 +65,8 @@
 {% else %}
 <div class="text-center py-12">
     <div class="text-6xl mb-4">🛍️</div>
-    <h3 class="text-xl font-bold text-slate-900 mb-2">Tienda no disponible</h3>
-    <p class="text-slate-600">Próximamente dispondremos de productos</p>
+    <h3 class="text-xl font-bold text-slate-900 mb-2">{{ t.no_products_available }}</h3>
+    <p class="text-slate-600">{{ t.check_back_later }}</p>
 </div>
 {% endif %}
 

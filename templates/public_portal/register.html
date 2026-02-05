@@ -1,12 +1,12 @@
 {% extends 'public_portal/base.html' %}
 
-{% block title %}Registro - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+{% block title %}{{ t.create_account }} - {{ gym.commercial_name|default:gym.name }}{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto">
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8">
-        <h1 class="text-2xl font-bold text-slate-900 mb-2">Crear Cuenta</h1>
-        <p class="text-slate-600 mb-6">Únete a {{ gym.commercial_name|default:gym.name }}</p>
+        <h1 class="text-2xl font-bold text-slate-900 mb-2">{{ t.create_account }}</h1>
+        <p class="text-slate-600 mb-6">{{ t.join_us }} {{ gym.commercial_name|default:gym.name }}</p>
         
         <form method="post" class="space-y-4">
             {% csrf_token %}
@@ -14,10 +14,10 @@
             <!-- Selector de Gimnasio (si hay franquicia) -->
             {% if show_gym_selector %}
             <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <label class="block text-sm font-bold text-blue-900 mb-2">Selecciona tu Sede *</label>
+                <label class="block text-sm font-bold text-blue-900 mb-2">{{ t.select_gym }} *</label>
                 <select name="gym_id" required 
                         class="w-full rounded-xl border-blue-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                    <option value="">-- Elige un gimnasio --</option>
+                    <option value="">-- {{ t.choose_gym }} --</option>
                     {% for franchise_gym in franchise_gyms %}
                     <option value="{{ franchise_gym.id }}" {% if franchise_gym.id == gym.id %}selected{% endif %}>
                         {{ franchise_gym.commercial_name|default:franchise_gym.name }}
@@ -25,29 +25,29 @@
                     </option>
                     {% endfor %}
                 </select>
-                <p class="text-xs text-blue-700 mt-2">💡 Selecciona el gimnasio al que quieres apuntarte</p>
+                <p class="text-xs text-blue-700 mt-2">💡 {{ t.select_gym_desc }}</p>
             </div>
             {% endif %}
             
             <!-- Nombre -->
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.first_name }} *</label>
                     <input type="text" name="first_name" required 
                            class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
-                           placeholder="Juan">
+                           placeholder="">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Apellidos *</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.last_name }} *</label>
                     <input type="text" name="last_name" required 
                            class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
-                           placeholder="García">
+                           placeholder="">
                 </div>
             </div>
             
             <!-- Email -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.email }} *</label>
                 <input type="email" name="email" required 
                        class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
                        placeholder="tu@email.com">
@@ -55,7 +55,7 @@
             
             <!-- Teléfono -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.phone }}</label>
                 <input type="tel" name="phone_number" 
                        class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
                        placeholder="+34 666 777 888">
@@ -64,7 +64,7 @@
             <!-- Campos Custom del Gimnasio -->
             {% if custom_fields %}
             <div class="pt-4 border-t border-slate-200">
-                <h3 class="text-sm font-bold text-slate-700 mb-3">Información Adicional</h3>
+                <h3 class="text-sm font-bold text-slate-700 mb-3">{{ t.additional_info }}</h3>
                 <div class="space-y-4">
                     {% for field in custom_fields %}
                     <div>
@@ -76,7 +76,7 @@
                         <select name="cf_{{ field.slug }}" 
                                 {% if field.is_required %}required{% endif %}
                                 class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                            <option value="">-- Selecciona --</option>
+                            <option value="">-- {{ t.select_option }} --</option>
                             {% for option in field.options.all %}
                             <option value="{{ option.value }}">{{ option.label }}</option>
                             {% endfor %}
@@ -86,7 +86,7 @@
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" name="cf_{{ field.slug }}" value="yes"
                                    class="rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
-                            <span class="text-sm text-slate-600">Sí</span>
+                            <span class="text-sm text-slate-600">{{ t.yes }}</span>
                         </label>
                         
                         {% endif %}
@@ -98,20 +98,20 @@
             
             <!-- Contraseña -->
             <div class="pt-4 border-t border-slate-200">
-                <h3 class="text-sm font-bold text-slate-700 mb-3">Seguridad</h3>
+                <h3 class="text-sm font-bold text-slate-700 mb-3">{{ t.security }}</h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña *</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.password }} *</label>
                         <input type="password" name="password" required 
                                class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
-                               placeholder="Mínimo 8 caracteres">
+                               placeholder="{{ t.min_characters }}">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar Contraseña *</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.confirm_password }} *</label>
                         <input type="password" name="password_confirm" required 
                                class="w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)] focus:ring-[var(--brand-color)]"
-                               placeholder="Repite la contraseña">
+                               placeholder="{{ t.repeat_password }}">
                     </div>
                 </div>
             </div>
@@ -121,7 +121,7 @@
                 <input type="checkbox" required 
                        class="mt-1 rounded border-slate-300 text-[var(--brand-color)] focus:ring-[var(--brand-color)]">
                 <label class="text-sm text-slate-600">
-                    Acepto los términos y condiciones de {{ gym.commercial_name|default:gym.name }}
+                    {{ t.accept_terms }} - {{ gym.commercial_name|default:gym.name }}
                 </label>
             </div>
             
@@ -129,18 +129,18 @@
             <div class="flex flex-col gap-3 pt-4">
                 <button type="submit" 
                         class="w-full brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
-                    Crear Cuenta
+                    {{ t.create_account }}
                 </button>
                 <a href="{% url 'public_login' slug=settings.public_slug %}" 
                    class="text-center text-sm text-slate-600 hover:text-[var(--brand-color)]">
-                    ¿Ya tienes cuenta? Inicia sesión
+                    {{ t.already_have_account }}
                 </a>
             </div>
         </form>
         
         {% if settings.require_staff_approval %}
         <div class="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-800">
-            <strong>📋 Nota:</strong> Tu cuenta será revisada por nuestro equipo antes de activarse.
+            <strong>📋 </strong> {{ t.account_pending_review }}
         </div>
         {% endif %}
     </div>

@@ -19,7 +19,7 @@
       </div>
       {% endif %}
       <div>
-        <div class="text-xl font-semibold leading-tight">Accede al backoffice</div>
+        <div class="text-xl font-semibold leading-tight">{{ t.login_title }}</div>
         <div class="text-sm text-slate-500">{{ system_name }}</div>
       </div>
     </div>
@@ -34,13 +34,13 @@
       {% csrf_token %}
 
       <div>
-        <label class="text-sm text-slate-700">Email</label>
+        <label class="text-sm text-slate-700">{{ t.email }}</label>
         <input name="email" type="email" required
           class="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300">
       </div>
 
       <div>
-        <label class="text-sm text-slate-700">Contraseña</label>
+        <label class="text-sm text-slate-700">{{ t.password }}</label>
         <div class="relative mt-1">
           <input name="password" type="password" id="backoffice-password" required
             class="w-full rounded-2xl border border-slate-300 px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-slate-300">
@@ -82,12 +82,12 @@
       </script>
 
       <button class="w-full rounded-2xl bg-slate-900 text-white py-2 font-medium hover:bg-slate-800">
-        Entrar
+        {{ t.enter }}
       </button>
     </form>
 
     <div class="mt-5 text-xs text-slate-500">
-      Si no tienes acceso, pídeselo al administrador del gimnasio.
+      {{ t.login_no_access }}
     </div>
   </div>
 </body>

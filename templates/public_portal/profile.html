@@ -1,6 +1,6 @@
 {% extends 'public_portal/base.html' %}
 
-{% block title %}Mi Perfil - {{ gym.commercial_name|default:gym.name }}{% endblock %}
+{% block title %}{{ t.my_profile }} - {{ gym.commercial_name|default:gym.name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -90,7 +90,7 @@
     
     <div class="relative z-10">
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-bold">Mi Perfil</h1>
+            <h1 class="text-2xl font-bold">{{ t.my_profile }}</h1>
             <a href="{% url 'public_logout' slug=settings.public_slug %}" class="w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -112,7 +112,7 @@
                 <h2 class="text-xl font-bold">{{ client.first_name }} {{ client.last_name }}</h2>
                 <p class="text-white/80">{{ client.email }}</p>
                 {% if client.status == 'ACTIVE' %}
-                <span class="inline-block mt-1 px-2 py-0.5 bg-green-400/30 text-green-100 text-xs font-bold rounded-full">✓ Activo</span>
+                <span class="inline-block mt-1 px-2 py-0.5 bg-green-400/30 text-green-100 text-xs font-bold rounded-full">✓ {{ t.active_status }}</span>
                 {% endif %}
             </div>
         </div>
@@ -128,7 +128,7 @@
         <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
                 <div>
-                    <p class="text-white/70 text-sm">Tu membresía</p>
+                    <p class="text-white/70 text-sm">{{ t.your_membership }}</p>
                     <h3 class="text-xl font-bold">{{ active_membership.plan.name }}</h3>
                 </div>
                 <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur">
@@ -141,14 +141,14 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
-                <span>Válida hasta {{ active_membership.end_date|date:"d M, Y" }}</span>
+                <span>{{ t.valid_until }} {{ active_membership.end_date|date:"d M, Y" }}</span>
             </div>
             {% endif %}
             
             {% if active_membership.sessions_remaining != None %}
             <div class="mt-4">
                 <div class="flex items-center justify-between text-sm mb-2">
-                    <span>Sesiones restantes</span>
+                    <span>{{ t.sessions_remaining }}</span>
                     <span class="font-bold">{{ active_membership.sessions_remaining }}/{{ active_membership.sessions_total }}</span>
                 </div>
                 <div class="w-full h-2 bg-white/20 rounded-full overflow-hidden">
@@ -161,10 +161,10 @@
     {% else %}
     <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
         <div class="text-4xl mb-3">💳</div>
-        <h3 class="font-bold text-slate-900 mb-1">Sin membresía activa</h3>
-        <p class="text-slate-500 text-sm mb-4">Adquiere un plan para empezar</p>
+        <h3 class="font-bold text-slate-900 mb-1">{{ t.no_active_membership }}</h3>
+        <p class="text-slate-500 text-sm mb-4">{{ t.get_a_plan }}</p>
         <a href="{% url 'public_pricing' slug=settings.public_slug %}" class="inline-block brand-bg text-white font-bold px-6 py-3 rounded-xl">
-            Ver Planes
+            {{ t.view_plans }}
         </a>
     </div>
     {% endif %}
@@ -173,30 +173,30 @@
     <div class="flex gap-3">
         <div class="stat-card shadow-lg border border-slate-100">
             <div class="text-2xl font-bold text-slate-900">{{ stats.total_visits }}</div>
-            <div class="text-xs text-slate-500">Visitas</div>
+            <div class="text-xs text-slate-500">{{ t.visits }}</div>
         </div>
         <div class="stat-card shadow-lg border border-slate-100">
             <div class="text-2xl font-bold text-slate-900">{{ stats.current_streak }}</div>
-            <div class="text-xs text-slate-500">🔥 Racha</div>
+            <div class="text-xs text-slate-500">🔥 {{ t.streak }}</div>
         </div>
         <div class="stat-card shadow-lg border border-slate-100">
             <div class="text-2xl font-bold text-slate-900">{{ stats.bookings_this_month }}</div>
-            <div class="text-xs text-slate-500">Reservas mes</div>
+            <div class="text-xs text-slate-500">{{ t.bookings_month }}</div>
         </div>
     </div>
     
     <!-- Sección: Mi Cuenta -->
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">Mi Cuenta</h3>
+            <h3 class="font-bold text-slate-900">{{ t.my_account }}</h3>
         </div>
         
         <div class="divide-y divide-slate-100">
             <a href="{% url 'public_client_dashboard' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-blue-100 text-blue-600">📊</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Panel de Control</div>
-                    <div class="text-sm text-slate-500">Reservas, membresías, actividad</div>
+                    <div class="font-semibold text-slate-900">{{ t.control_panel }}</div>
+                    <div class="text-sm text-slate-500">{{ t.bookings_reservations_activity }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -206,8 +206,8 @@
             <a href="#" onclick="openEditProfile()" class="menu-item">
                 <div class="menu-icon bg-purple-100 text-purple-600">👤</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Datos Personales</div>
-                    <div class="text-sm text-slate-500">Nombre, email, teléfono, foto</div>
+                    <div class="font-semibold text-slate-900">{{ t.personal_data }}</div>
+                    <div class="text-sm text-slate-500">{{ t.name_email_phone_photo }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -218,8 +218,8 @@
             <a href="{% url 'public_my_memberships' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-green-100 text-green-600">💳</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Mis Membresías</div>
-                    <div class="text-sm text-slate-500">Planes activos y renovaciones</div>
+                    <div class="font-semibold text-slate-900">{{ t.my_memberships }}</div>
+                    <div class="text-sm text-slate-500">{{ t.active_plans_renewals }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -230,8 +230,8 @@
             <a href="{% url 'public_chat' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-amber-100 text-amber-600">💬</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Chat con {{ gym.commercial_name|default:gym.name }}</div>
-                    <div class="text-sm text-slate-500">Mensajes y consultas</div>
+                    <div class="font-semibold text-slate-900">{{ t.chat_with }} {{ gym.commercial_name|default:gym.name }}</div>
+                    <div class="text-sm text-slate-500">{{ t.messages_inquiries }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -241,8 +241,8 @@
             <a href="{% url 'public_routines' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-teal-100 text-teal-600">💪</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Mis Rutinas</div>
-                    <div class="text-sm text-slate-500">Tu plan de entrenamiento</div>
+                    <div class="font-semibold text-slate-900">{{ t.my_routines }}</div>
+                    <div class="text-sm text-slate-500">{{ t.your_training_plan }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -253,8 +253,8 @@
             <a href="{% url 'public_wallet' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-emerald-100 text-emerald-600">💰</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Mi Monedero</div>
-                    <div class="text-sm text-slate-500">Saldo de tu cuenta</div>
+                    <div class="font-semibold text-slate-900">{{ t.my_wallet }}</div>
+                    <div class="text-sm text-slate-500">{{ t.account_balance }}</div>
                 </div>
                 {% if wallet_balance and wallet_balance > 0 %}
                 <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">{{ wallet_balance|floatformat:2 }}€</span>
@@ -269,8 +269,8 @@
             <a href="{% url 'public_referrals' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-pink-100 text-pink-600">🎁</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Invitar Amigos</div>
-                    <div class="text-sm text-slate-500">Comparte y gana recompensas</div>
+                    <div class="font-semibold text-slate-900">{{ t.invite_friends }}</div>
+                    <div class="text-sm text-slate-500">{{ t.share_earn_rewards }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -283,15 +283,15 @@
     <!-- Sección: Actividad -->
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">Actividad</h3>
+            <h3 class="font-bold text-slate-900">{{ t.activity }}</h3>
         </div>
         
         <div class="divide-y divide-slate-100">
             <a href="{% url 'public_schedule' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-indigo-100 text-indigo-600">📅</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Reservar Clases</div>
-                    <div class="text-sm text-slate-500">Horario y disponibilidad</div>
+                    <div class="font-semibold text-slate-900">{{ t.book_classes }}</div>
+                    <div class="text-sm text-slate-500">{{ t.schedule_availability }}</div>
                 </div>
                 {% if upcoming_bookings_count > 0 %}
                 <span class="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg">{{ upcoming_bookings_count }}</span>
@@ -304,8 +304,8 @@
             <a href="{% url 'public_attendance_history' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-teal-100 text-teal-600">📜</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Historial de Asistencia</div>
-                    <div class="text-sm text-slate-500">Clases a las que has asistido</div>
+                    <div class="font-semibold text-slate-900">{{ t.attendance_history }}</div>
+                    <div class="text-sm text-slate-500">{{ t.classes_attended }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -316,8 +316,8 @@
             <a href="{% url 'public_achievements' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-yellow-100 text-yellow-600">🏆</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Mis Logros</div>
-                    <div class="text-sm text-slate-500">{{ achievements_unlocked }}/{{ achievements_total }} desbloqueados</div>
+                    <div class="font-semibold text-slate-900">{{ t.my_achievements }}</div>
+                    <div class="text-sm text-slate-500">{{ achievements_unlocked }}/{{ achievements_total }} {{ t.unlocked }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -327,8 +327,8 @@
             <a href="{% url 'public_leaderboard' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-orange-100 text-orange-600">🥇</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Ranking</div>
-                    <div class="text-sm text-slate-500">Tu posición: #{{ rank_position }}</div>
+                    <div class="font-semibold text-slate-900">{{ t.ranking }}</div>
+                    <div class="text-sm text-slate-500">{{ t.your_position }}: #{{ rank_position }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -342,15 +342,15 @@
     {% if settings.show_shop %}
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">Comprar</h3>
+            <h3 class="font-bold text-slate-900">{{ t.buying }}</h3>
         </div>
         
         <div class="divide-y divide-slate-100">
             <a href="{% url 'public_shop' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-pink-100 text-pink-600">🛒</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Tienda</div>
-                    <div class="text-sm text-slate-500">Productos y suplementos</div>
+                    <div class="font-semibold text-slate-900">{{ t.shop }}</div>
+                    <div class="text-sm text-slate-500">{{ t.products_supplements }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -360,8 +360,8 @@
             <a href="{% url 'public_orders_history' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-rose-100 text-rose-600">📦</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Mis Compras</div>
-                    <div class="text-sm text-slate-500">Historial de pedidos</div>
+                    <div class="font-semibold text-slate-900">{{ t.my_purchases }}</div>
+                    <div class="text-sm text-slate-500">{{ t.order_history }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -374,15 +374,15 @@
     <!-- Sección: Pagos -->
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">Pagos</h3>
+            <h3 class="font-bold text-slate-900">{{ t.payments }}</h3>
         </div>
         
         <div class="divide-y divide-slate-100">
             <a href="{% url 'public_payment_history' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-emerald-100 text-emerald-600">💰</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Historial de Pagos</div>
-                    <div class="text-sm text-slate-500">Facturas y recibos</div>
+                    <div class="font-semibold text-slate-900">{{ t.payment_history }}</div>
+                    <div class="text-sm text-slate-500">{{ t.invoices_receipts }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -392,8 +392,8 @@
             <a href="{% url 'public_payment_methods' slug=settings.public_slug %}" class="menu-item">
                 <div class="menu-icon bg-cyan-100 text-cyan-600">💳</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Métodos de Pago</div>
-                    <div class="text-sm text-slate-500">Tarjetas guardadas</div>
+                    <div class="font-semibold text-slate-900">{{ t.payment_methods }}</div>
+                    <div class="text-sm text-slate-500">{{ t.saved_cards }}</div>
                 </div>
                 {% if has_saved_card %}
                 <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">•••• {{ last_card_digits }}</span>
@@ -408,15 +408,15 @@
     <!-- Sección: Soporte -->
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">Soporte</h3>
+            <h3 class="font-bold text-slate-900">{{ t.support }}</h3>
         </div>
         
         <div class="divide-y divide-slate-100">
             <a href="#" class="menu-item">
                 <div class="menu-icon bg-slate-100 text-slate-600">❓</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Ayuda y FAQ</div>
-                    <div class="text-sm text-slate-500">Preguntas frecuentes</div>
+                    <div class="font-semibold text-slate-900">{{ t.help_faq }}</div>
+                    <div class="text-sm text-slate-500">{{ t.frequently_asked_questions }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -427,7 +427,7 @@
             <a href="tel:{{ gym.phone }}" class="menu-item">
                 <div class="menu-icon bg-blue-100 text-blue-600">📞</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Contactar</div>
+                    <div class="font-semibold text-slate-900">{{ t.contact }}</div>
                     <div class="text-sm text-slate-500">{{ gym.phone }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,8 +439,8 @@
             <a href="#" class="menu-item">
                 <div class="menu-icon bg-gray-100 text-gray-600">📋</div>
                 <div class="flex-1">
-                    <div class="font-semibold text-slate-900">Términos y Condiciones</div>
-                    <div class="text-sm text-slate-500">Política de privacidad</div>
+                    <div class="font-semibold text-slate-900">{{ t.terms_conditions }}</div>
+                    <div class="text-sm text-slate-500">{{ t.privacy_policy }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -451,7 +451,7 @@
     
     <!-- Cerrar Sesión -->
     <a href="{% url 'public_logout' slug=settings.public_slug %}" class="block bg-white rounded-2xl shadow-lg border border-slate-100 p-4 text-center">
-        <span class="text-red-600 font-semibold">🚪 Cerrar Sesión</span>
+        <span class="text-red-600 font-semibold">🚪 {{ t.logout }}</span>
     </a>
     
     <!-- Versión -->
@@ -464,7 +464,7 @@
 <div id="editProfileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" style="display: none;">
     <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <div class="sticky top-0 bg-white border-b border-slate-100 p-4 flex items-center justify-between">
-            <h3 class="text-lg font-bold">Editar Perfil</h3>
+            <h3 class="text-lg font-bold">{{ t.edit_profile }}</h3>
             <button onclick="closeEditProfile()" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors">
                 <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -486,43 +486,43 @@
                     {% endif %}
                 </div>
                 <label class="inline-block cursor-pointer">
-                    <span class="brand-text font-semibold text-sm">Cambiar foto</span>
+                    <span class="brand-text font-semibold text-sm">{{ t.change_photo }}</span>
                     <input type="file" name="photo" accept="image/*" class="hidden" onchange="previewPhoto(this)">
                 </label>
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.first_name }}</label>
                 <input type="text" name="first_name" value="{{ client.first_name }}" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[var(--brand-color)] focus:ring-2 focus:ring-[var(--brand-color)]/20 outline-none">
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Apellidos</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.last_name }}</label>
                 <input type="text" name="last_name" value="{{ client.last_name }}" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[var(--brand-color)] focus:ring-2 focus:ring-[var(--brand-color)]/20 outline-none">
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.email }}</label>
                 <input type="email" name="email" value="{{ client.email }}" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[var(--brand-color)] focus:ring-2 focus:ring-[var(--brand-color)]/20 outline-none">
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.phone }}</label>
                 <input type="tel" name="phone" value="{{ client.phone_number }}" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[var(--brand-color)] focus:ring-2 focus:ring-[var(--brand-color)]/20 outline-none">
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de nacimiento</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t.birth_date }}</label>
                 <input type="date" name="birth_date" value="{{ client.birth_date|date:'Y-m-d' }}" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[var(--brand-color)] focus:ring-2 focus:ring-[var(--brand-color)]/20 outline-none">
             </div>
             
             <button type="submit" class="w-full brand-bg text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity mt-6">
-                Guardar Cambios
+                {{ t.save_changes }}
             </button>
         </form>
     </div>
