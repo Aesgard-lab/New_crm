@@ -48,6 +48,25 @@ class SubscriptionPlan(models.Model):
     module_routines = models.BooleanField(default=False, verbose_name=_("Rutinas de Entrenamiento"))
     module_gamification = models.BooleanField(default=False, verbose_name=_("Gamificación"))
     module_verifactu = models.BooleanField(default=False, verbose_name=_("Verifactu (España)"))
+    module_transactional_email = models.BooleanField(
+        default=False, 
+        verbose_name=_("Email Transaccional"),
+        help_text=_("Permite usar el servicio de email transaccional de la plataforma (Mailrelay)")
+    )
+    
+    # Transactional Email Limits
+    transactional_email_limit_daily = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Límite diario de emails"),
+        help_text=_("Máximo de emails transaccionales por día (vacío = ilimitado)")
+    )
+    transactional_email_limit_monthly = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Límite mensual de emails"),
+        help_text=_("Máximo de emails transaccionales por mes (vacío = ilimitado)")
+    )
     
     # Limits (null = unlimited)
     max_members = models.PositiveIntegerField(
@@ -158,6 +177,7 @@ class SubscriptionPlan(models.Model):
         if self.module_routines: modules.append("Rutinas")
         if self.module_gamification: modules.append("Gamificación")
         if self.module_verifactu: modules.append("Verifactu")
+        if self.module_transactional_email: modules.append("Email Transaccional")
         return modules
     
     def calculate_transaction_fee(self, amount, source='POS', is_cash=False):
@@ -511,6 +531,87 @@ class PaymentAttempt(models.Model):
         return f"{self.invoice.invoice_number} - {self.get_status_display()} - {self.attempted_at}"
 
 
+class GymEmailUsage(models.Model):
+    """
+    Tracks transactional email usage per gym per day.
+    Used for enforcing daily/monthly limits and billing.
+    """
+    gym = models.ForeignKey(
+        'organizations.Gym',
+        on_delete=models.CASCADE,
+        related_name='email_usage'
+    )
+    date = models.DateField(
+        verbose_name=_("Fecha"),
+        help_text=_("Día del registro")
+    )
+    emails_sent = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Emails enviados"),
+        help_text=_("Número de emails transaccionales enviados este día")
+    )
+    
+    class Meta:
+        verbose_name = _("Uso de Email Transaccional")
+        verbose_name_plural = _("Uso de Emails Transaccionales")
+        unique_together = ['gym', 'date']
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['gym', 'date']),
+            models.Index(fields=['date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.gym.name} - {self.date} - {self.emails_sent} emails"
+    
+    @classmethod
+    def increment_usage(cls, gym):
+        """
+        Incrementa el contador de emails para hoy.
+        Returns: (usage_record, was_created)
+        """
+        from django.utils import timezone
+        today = timezone.now().date()
+        usage, created = cls.objects.get_or_create(
+            gym=gym,
+            date=today,
+            defaults={'emails_sent': 0}
+        )
+        usage.emails_sent += 1
+        usage.save(update_fields=['emails_sent'])
+        return usage, created
+    
+    @classmethod
+    def get_daily_count(cls, gym, date=None):
+        """Obtiene el conteo de emails para un día específico"""
+        from django.utils import timezone
+        if date is None:
+            date = timezone.now().date()
+        try:
+            return cls.objects.get(gym=gym, date=date).emails_sent
+        except cls.DoesNotExist:
+            return 0
+    
+    @classmethod
+    def get_monthly_count(cls, gym, year=None, month=None):
+        """Obtiene el conteo de emails para un mes específico"""
+        from django.utils import timezone
+        from django.db.models import Sum
+        
+        if year is None or month is None:
+            now = timezone.now()
+            year = now.year
+            month = now.month
+        
+        result = cls.objects.filter(
+            gym=gym,
+            date__year=year,
+            date__month=month
+        ).aggregate(total=Sum('emails_sent'))
+        
+        return result['total'] or 0
+
+
 class BillingConfig(models.Model):
     """
     Singleton model for superadmin billing configuration.
@@ -574,6 +675,43 @@ class BillingConfig(models.Model):
         max_length=200,
         blank=True,
         help_text=_("Secret del webhook de Stripe (whsec_...)")
+    )
+    
+    # Mailrelay Configuration (Transactional Email Service)
+    mailrelay_enabled = models.BooleanField(
+        default=False,
+        verbose_name=_("Mailrelay habilitado"),
+        help_text=_("Activa el servicio de email transaccional para gimnasios sin SMTP propio")
+    )
+    mailrelay_api_key = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name=_("API Key de Mailrelay"),
+        help_text=_("Clave API de tu cuenta de Mailrelay")
+    )
+    mailrelay_api_url = models.URLField(
+        default='https://api.mailrelay.com/v1/',
+        blank=True,
+        verbose_name=_("URL de API Mailrelay"),
+        help_text=_("URL base de la API de Mailrelay")
+    )
+    mailrelay_sender_email = models.EmailField(
+        blank=True,
+        verbose_name=_("Email remitente Mailrelay"),
+        help_text=_("Email verificado en Mailrelay para enviar (ej: noreply@tudominio.com)")
+    )
+    mailrelay_sender_name = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Nombre remitente Mailrelay"),
+        help_text=_("Nombre que aparecerá como remitente (ej: Tu Plataforma)")
+    )
+    mailrelay_noreply_message = models.CharField(
+        max_length=200,
+        default='Este es un email automático, por favor no responda a esta dirección.',
+        blank=True,
+        verbose_name=_("Mensaje no-reply"),
+        help_text=_("Mensaje que se añade cuando el gimnasio no tiene email configurado")
     )
     
     # Grace Period Settings

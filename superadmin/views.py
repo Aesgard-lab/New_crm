@@ -167,6 +167,14 @@ def gym_detail(request, gym_id):
     total_members = Client.objects.filter(gym=gym, status='ACTIVE').count()
     total_staff = gym.staff.count()
     
+    # Email usage stats
+    from core.email_service import get_email_usage_stats, can_send_email
+    email_stats = get_email_usage_stats(gym)
+    can_send, email_method, email_message = can_send_email(gym)
+    email_stats['can_send'] = can_send
+    email_stats['method_display'] = 'SMTP Propio' if email_method == 'smtp' else 'Mailrelay' if email_method == 'mailrelay' else 'No disponible'
+    email_stats['status_message'] = email_message
+    
     # Invoices
     invoices = Invoice.objects.filter(gym=gym).order_by('-created_at')[:10]
     
@@ -178,6 +186,7 @@ def gym_detail(request, gym_id):
         'subscription': subscription,
         'total_members': total_members,
         'total_staff': total_staff,
+        'email_stats': email_stats,
         'invoices': invoices,
         'logs': logs,
     }
@@ -370,6 +379,11 @@ def plan_create(request):
             module_routines=request.POST.get('module_routines') == 'on',
             module_gamification=request.POST.get('module_gamification') == 'on',
             module_verifactu=request.POST.get('module_verifactu') == 'on',
+            module_transactional_email=request.POST.get('module_transactional_email') == 'on',
+            
+            # Transactional Email Limits
+            transactional_email_limit_daily=int(request.POST.get('transactional_email_limit_daily')) if request.POST.get('transactional_email_limit_daily') else None,
+            transactional_email_limit_monthly=int(request.POST.get('transactional_email_limit_monthly')) if request.POST.get('transactional_email_limit_monthly') else None,
             
             # Limits
             max_members=int(request.POST.get('max_members')) if request.POST.get('max_members') else None,
@@ -421,6 +435,11 @@ def plan_edit(request, plan_id):
         plan.module_routines = request.POST.get('module_routines') == 'on'
         plan.module_gamification = request.POST.get('module_gamification') == 'on'
         plan.module_verifactu = request.POST.get('module_verifactu') == 'on'
+        plan.module_transactional_email = request.POST.get('module_transactional_email') == 'on'
+        
+        # Transactional Email Limits
+        plan.transactional_email_limit_daily = int(request.POST.get('transactional_email_limit_daily')) if request.POST.get('transactional_email_limit_daily') else None
+        plan.transactional_email_limit_monthly = int(request.POST.get('transactional_email_limit_monthly')) if request.POST.get('transactional_email_limit_monthly') else None
         
         # Limits
         plan.max_members = int(request.POST.get('max_members')) if request.POST.get('max_members') else None
@@ -489,6 +508,16 @@ def billing_config(request):
             config.stripe_secret_key = request.POST.get('stripe_secret_key')
         if request.POST.get('stripe_webhook_secret'):
             config.stripe_webhook_secret = request.POST.get('stripe_webhook_secret')
+        
+        # Mailrelay configuration
+        config.mailrelay_enabled = request.POST.get('mailrelay_enabled') == 'on'
+        if request.POST.get('mailrelay_api_key'):
+            config.mailrelay_api_key = request.POST.get('mailrelay_api_key')
+        if request.POST.get('mailrelay_api_url'):
+            config.mailrelay_api_url = request.POST.get('mailrelay_api_url')
+        config.mailrelay_sender_email = request.POST.get('mailrelay_sender_email', '')
+        config.mailrelay_sender_name = request.POST.get('mailrelay_sender_name', '')
+        config.mailrelay_noreply_message = request.POST.get('mailrelay_noreply_message', '')
         
         config.grace_period_days = int(request.POST.get('grace_period_days', 15))
         config.enable_auto_suspension = request.POST.get('enable_auto_suspension') == 'on'

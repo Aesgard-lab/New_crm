@@ -219,7 +219,7 @@ def process_email_workflows():
     Ejecutar diariamente via Celery Beat.
     """
     from .models import EmailWorkflowExecution, EmailWorkflowStepLog, EmailWorkflowStep
-    from django.core.mail import send_mail
+    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
     from django.conf import settings
     
     today = timezone.now()
@@ -288,19 +288,15 @@ def process_email_workflows():
                 # Personalizar con datos del cliente
                 email_html = email_html.replace('{{client_name}}', execution.client.first_name or execution.client.email)
                 
-                # Enviar email
+                # Enviar email usando servicio unificado
                 gym = execution.workflow.gym
-                settings_obj = gym.marketing_settings if hasattr(gym, 'marketing_settings') else None
                 
-                from_email = settings_obj.default_sender_email if settings_obj else settings.DEFAULT_FROM_EMAIL
-                
-                send_mail(
+                send_email(
+                    gym=gym,
+                    to=execution.client.email,
                     subject=next_step.subject,
-                    message='',
-                    html_message=email_html,
-                    from_email=from_email,
-                    recipient_list=[execution.client.email],
-                    fail_silently=False,
+                    body=next_step.subject,  # Fallback texto plano
+                    html_body=email_html,
                 )
                 
                 # Registrar envío exitoso
@@ -317,6 +313,15 @@ def process_email_workflows():
                 
                 processed_count += 1
                 
+            except (NoEmailConfigurationError, EmailLimitExceededError) as e:
+                # Registrar error de configuración
+                EmailWorkflowStepLog.objects.create(
+                    execution=execution,
+                    step=next_step,
+                    scheduled_for=scheduled_for,
+                    success=False,
+                    error_message=f"Configuración de email: {str(e)}"
+                )
             except Exception as e:
                 # Registrar error
                 EmailWorkflowStepLog.objects.create(
@@ -576,7 +581,7 @@ def send_retention_notifications():
     Envía notificaciones al staff sobre alertas de retención nuevas.
     """
     from .models import RetentionAlert
-    from django.core.mail import send_mail
+    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
     from django.conf import settings
     
     # Alertas abiertas de las últimas 24h
@@ -614,14 +619,15 @@ def send_retention_notifications():
         message += f"\nRevisa el panel de retención para tomar acción.\n\nSaludos,\n{gym.name}"
         
         try:
-            send_mail(
+            send_email(
+                gym=gym,
+                to=staff.user.email,
                 subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[staff.user.email],
-                fail_silently=False,
+                body=message,
             )
             sent_count += 1
+        except (NoEmailConfigurationError, EmailLimitExceededError) as e:
+            print(f"Email no enviado (configuración): {e}")
         except Exception as e:
             print(f"Error sending notification: {e}")
     

@@ -12,7 +12,7 @@ def send_review_request_notification(request_id):
     """
     from activities.models import ReviewRequest, ReviewSettings
     from marketing.models import Popup
-    from django.core.mail import send_mail
+    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
     from django.template.loader import render_to_string
     
     try:
@@ -59,7 +59,7 @@ def send_review_request_notification(request_id):
         except Exception as e:
             print(f"Error creando popup de review: {e}")
     
-    # Enviar email
+    # Enviar email usando el servicio unificado
     if not request_obj.email_sent and client.email:
         try:
             instructor_name = f"{session.staff.user.first_name} {session.staff.user.last_name}"
@@ -80,16 +80,17 @@ Tu opinión es muy importante para nosotros. Por favor, tómate un momento para 
 Equipo de {gym.name}
             """
             
-            send_mail(
+            send_email(
+                gym=gym,
+                to=client.email,
                 subject=subject,
-                message=message,
-                from_email=gym.email or 'noreply@gym.com',
-                recipient_list=[client.email],
-                fail_silently=True,
+                body=message,
             )
             
             request_obj.email_sent = True
             request_obj.save()
+        except (NoEmailConfigurationError, EmailLimitExceededError) as e:
+            print(f"Email no enviado (configuración): {e}")
         except Exception as e:
             print(f"Error enviando email de review: {e}")
 

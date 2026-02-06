@@ -38,7 +38,7 @@ def send_class_notification(client, event_type, session=None, **context):
     """
     from .models import ClassNotificationSettings, Popup
     from django.template.loader import render_to_string
-    from django.core.mail import send_mail
+    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
     
     gym = client.gym
     
@@ -137,17 +137,17 @@ def send_class_notification(client, event_type, session=None, **context):
         except Exception as e:
             print("Error creando popup:", str(e))
     
-    # Enviar Email
+    # Enviar Email usando servicio unificado
     if config.get('email_enabled') and client.email:
         try:
-            # Por ahora un email simple, luego se puede usar template
-            send_mail(
+            send_email(
+                gym=gym,
+                to=client.email,
                 subject=config['email_subject'],
-                message=config['popup_content'],
-                from_email=gym.email or 'noreply@mygym.com',
-                recipient_list=[client.email],
-                fail_silently=True,
+                body=config['popup_content'],
             )
+        except (NoEmailConfigurationError, EmailLimitExceededError) as e:
+            print("Email no enviado (configuración):", str(e))
         except Exception as e:
             print("Error enviando email:", str(e))
 

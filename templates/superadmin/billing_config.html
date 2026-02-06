@@ -171,6 +171,86 @@
             </div>
         </div>
 
+        <!-- Mailrelay Configuration (Transactional Email) -->
+        <div class="glass-panel p-6 rounded-xl border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+            <div class="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
+                <h3 class="text-lg font-semibold text-white flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Servicio Email Transaccional (Mailrelay)
+                </h3>
+                <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded">Email</span>
+            </div>
+            <p class="text-sm text-gray-400 mb-6">Configura el servicio de email transaccional para gimnasios que no tengan SMTP propio. Solo disponible para planes que lo incluyan.</p>
+            
+            <!-- Enable/Disable Toggle -->
+            <div class="flex items-center justify-between mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                <div>
+                    <h4 class="text-sm font-medium text-white mb-1">Habilitar Mailrelay</h4>
+                    <p class="text-xs text-gray-400">Activa el servicio de email transaccional para gimnasios sin SMTP propio.</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="mailrelay_enabled" id="mailrelay_enabled" class="sr-only peer" {% if config.mailrelay_enabled %}checked{% endif %} onchange="toggleMailrelayFields()">
+                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+            </div>
+            
+            <!-- Mailrelay Fields (shown/hidden based on toggle) -->
+            <div id="mailrelay_fields" class="space-y-6 {% if not config.mailrelay_enabled %}opacity-50 pointer-events-none{% endif %}">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-400 mb-2">API Key de Mailrelay</label>
+                        <input type="password" name="mailrelay_api_key" value="{{ config.mailrelay_api_key }}" placeholder="Tu API key de Mailrelay" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Obtén tu API key desde el panel de Mailrelay</p>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-400 mb-2">URL de API Mailrelay</label>
+                        <input type="url" name="mailrelay_api_url" value="{{ config.mailrelay_api_url|default:'https://api.mailrelay.com/v1/' }}" placeholder="https://api.mailrelay.com/v1/" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm">
+                        <p class="text-xs text-gray-500 mt-1">URL base de la API (normalmente no necesitas cambiar esto)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Email Remitente</label>
+                        <input type="email" name="mailrelay_sender_email" value="{{ config.mailrelay_sender_email }}" placeholder="noreply@tudominio.com" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500">
+                        <p class="text-xs text-gray-500 mt-1">Email verificado en Mailrelay para envío</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Nombre Remitente</label>
+                        <input type="text" name="mailrelay_sender_name" value="{{ config.mailrelay_sender_name }}" placeholder="Tu Plataforma" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500">
+                        <p class="text-xs text-gray-500 mt-1">Nombre que verán los destinatarios</p>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Mensaje No-Reply</label>
+                        <input type="text" name="mailrelay_noreply_message" value="{{ config.mailrelay_noreply_message }}" placeholder="Este es un email automático, por favor no responda a esta dirección." class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500">
+                        <p class="text-xs text-gray-500 mt-1">Se añade cuando el gimnasio no tiene email de contacto configurado</p>
+                    </div>
+                </div>
+                
+                <!-- Info box -->
+                <div class="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <h5 class="text-sm font-medium text-emerald-400 mb-2">¿Cómo funciona?</h5>
+                    <ul class="text-xs text-gray-400 space-y-1">
+                        <li>• Si el gimnasio tiene SMTP propio configurado → Se usa su SMTP</li>
+                        <li>• Si no tiene SMTP y su plan incluye email transaccional → Se usa Mailrelay</li>
+                        <li>• El "Reply-To" usa el email del gimnasio si lo tiene configurado</li>
+                        <li>• Puedes configurar límites diarios/mensuales por plan</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        function toggleMailrelayFields() {
+            const enabled = document.getElementById('mailrelay_enabled').checked;
+            const fields = document.getElementById('mailrelay_fields');
+            if (enabled) {
+                fields.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                fields.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+        </script>
+
         <!-- Billing Policies -->
         <div class="glass-panel p-6 rounded-xl">
             <h3 class="text-lg font-semibold text-white mb-4 border-b border-gray-800 pb-2">Politicas de Cobro</h3>

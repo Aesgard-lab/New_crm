@@ -228,6 +228,65 @@
             </div>
         </div>
 
+        <!-- Email Service Status -->
+        <div class="glass-panel p-6 rounded-xl border-l-4 {% if email_stats.can_send %}border-l-emerald-500{% else %}border-l-gray-500{% endif %}">
+            <h3 class="text-sm uppercase tracking-wide text-gray-400 font-semibold mb-4">📧 Servicio de Email</h3>
+            
+            <div class="space-y-3">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">Método</span>
+                    <span class="font-medium {% if email_stats.method == 'smtp' %}text-blue-400{% elif email_stats.method == 'mailrelay' %}text-emerald-400{% else %}text-gray-500{% endif %}">
+                        {% if email_stats.method == 'smtp' %}
+                        🔧 SMTP Propio
+                        {% elif email_stats.method == 'mailrelay' %}
+                        ✉️ Mailrelay
+                        {% else %}
+                        ❌ No disponible
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">Estado</span>
+                    <span class="{% if email_stats.can_send %}text-emerald-400{% else %}text-red-400{% endif %}">
+                        {% if email_stats.can_send %}✅ Operativo{% else %}❌ {{ email_stats.status_message }}{% endif %}
+                    </span>
+                </div>
+                
+                {% if email_stats.method == 'mailrelay' %}
+                <div class="pt-3 border-t border-gray-700">
+                    <p class="text-xs text-gray-500 mb-2">Uso Email Transaccional</p>
+                    
+                    <!-- Daily -->
+                    <div class="mb-2">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-400">Hoy</span>
+                            <span class="text-white">{{ email_stats.daily_sent }} / {{ email_stats.daily_limit|default:"∞" }}</span>
+                        </div>
+                        {% if email_stats.daily_limit %}
+                        <div class="w-full bg-gray-700 rounded-full h-1.5">
+                            <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {% widthratio email_stats.daily_sent email_stats.daily_limit 100 %}%"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Monthly -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-400">Este mes</span>
+                            <span class="text-white">{{ email_stats.monthly_sent }} / {{ email_stats.monthly_limit|default:"∞" }}</span>
+                        </div>
+                        {% if email_stats.monthly_limit %}
+                        <div class="w-full bg-gray-700 rounded-full h-1.5">
+                            <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {% widthratio email_stats.monthly_sent email_stats.monthly_limit 100 %}%"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Enabled Modules -->
         {% if subscription %}
         <div class="glass-panel p-6 rounded-xl">

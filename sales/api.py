@@ -2,7 +2,6 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
-from django.core.mail import EmailMessage
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 from datetime import timedelta, date
@@ -611,7 +610,10 @@ def order_generate_invoice(request, order_id):
 def order_send_ticket(request, order_id):
     """
     Sends ticket/receipt via email to client.
+    Uses the unified email service.
     """
+    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
+    
     gym = request.gym
     order = get_object_or_404(Order, id=order_id, gym=gym)
     
@@ -630,16 +632,17 @@ def order_send_ticket(request, order_id):
             'payments': order.payments.all()
         })
         
-        email_msg = EmailMessage(
+        send_email(
+            gym=gym,
+            to=email,
             subject=f'Tu ticket de compra - {gym.name} #{order.id}',
-            body=html_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[email]
+            body=f'Gracias por tu compra en {gym.name}. Adjuntamos tu ticket.',
+            html_body=html_content,
         )
-        email_msg.content_subtype = 'html'
-        email_msg.send()
         
         return JsonResponse({'success': True, 'message': f'Ticket enviado a {email}'})
+    except (NoEmailConfigurationError, EmailLimitExceededError) as e:
+        return JsonResponse({'error': f'No se puede enviar email: {str(e)}'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -1064,7 +1067,10 @@ def process_sale(request):
 def send_invoice_email(order, email):
     """
     Generates PDF invoice and sends it via email.
+    Uses the unified email service.
     """
+    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
+    
     try:
         # 1. Render HTML
         html_content = render_to_string('emails/invoice.html', {
@@ -1074,22 +1080,18 @@ def send_invoice_email(order, email):
             'payments': order.payments.all()
         })
         
-        # 2. Send Email
-        email_msg = EmailMessage(
+        # 2. Send Email using unified service
+        send_email(
+            gym=order.gym,
+            to=email,
             subject=f'Factura {order.invoice_number} - {order.gym.name}',
             body=f"Adjuntamos su factura {order.invoice_number}.\n\nGracias por su confianza.",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[email]
+            html_body=html_content,
         )
         
-        # In a real app we'd attach a PDF. For now, we'll send the HTML as body.
-        # Or attach HTML.
-        # Let's send HTML body for simplicity.
-        email_msg.content_subtype = 'html' 
-        email_msg.body = html_content 
-        email_msg.send()
-        
         print(f"Invoice {order.invoice_number} sent to {email}")
+    except (NoEmailConfigurationError, EmailLimitExceededError) as e:
+        print(f"Email no enviado (configuración): {e}")
     except Exception as e:
         print(f"Error sending invoice email: {e}")
 

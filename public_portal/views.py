@@ -2498,16 +2498,17 @@ def public_forgot_password(request, slug):
                     f"/public/gym/{slug}/reset-password/{token}/"
                 )
                 
-                # TODO: Enviar email real
+                # Enviar email usando servicio unificado
                 try:
-                    from django.core.mail import send_mail
-                    send_mail(
+                    from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
+                    send_email(
+                        gym=gym,
+                        to=email,
                         subject=f'Recuperar contraseña - {gym.name}',
-                        message=f'Haz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expirará en 1 hora.',
-                        from_email=None,
-                        recipient_list=[email],
-                        fail_silently=True,
+                        body=f'Haz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expirará en 1 hora.',
                     )
+                except (NoEmailConfigurationError, EmailLimitExceededError):
+                    pass  # Silenciosamente fallar si no hay configuración
                 except:
                     pass
                 

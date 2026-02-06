@@ -6,14 +6,15 @@ from .models import (
     Invoice,
     PaymentAttempt,
     BillingConfig,
-    AuditLog
+    AuditLog,
+    GymEmailUsage
 )
 
 
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price_monthly', 'is_demo', 'is_active']
-    list_filter = ['is_demo', 'is_active']
+    list_display = ['name', 'price_monthly', 'is_demo', 'is_active', 'module_transactional_email']
+    list_filter = ['is_demo', 'is_active', 'module_transactional_email']
     search_fields = ['name']
     
     fieldsets = (
@@ -27,10 +28,16 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
             'fields': (
                 'module_pos', 'module_calendar', 'module_marketing',
                 'module_reporting', 'module_client_portal', 'module_public_portal',
-                'module_automations', 'module_routines', 'module_gamification'
+                'module_automations', 'module_routines', 'module_gamification',
+                'module_verifactu', 'module_transactional_email'
             )
         }),
-        ('Límites', {
+        ('Límites de Email Transaccional', {
+            'fields': ('transactional_email_limit_daily', 'transactional_email_limit_monthly'),
+            'classes': ('collapse',),
+            'description': 'Configura límites de envío para gimnasios que usen el servicio de email de la plataforma'
+        }),
+        ('Límites Generales', {
             'fields': ('max_members', 'max_staff', 'max_locations')
         }),
         ('Estado', {
@@ -89,6 +96,21 @@ class AuditLogAdmin(admin.ModelAdmin):
     search_fields = ['superadmin__email', 'target_gym__name', 'target_franchise__name', 'description']
     readonly_fields = ['action', 'superadmin', 'target_gym', 'target_franchise', 'description', 'ip_address', 'user_agent', 'created_at']
     date_hierarchy = 'created_at'
+    
+    def has_add_permission(self, request):
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(GymEmailUsage)
+class GymEmailUsageAdmin(admin.ModelAdmin):
+    list_display = ['gym', 'date', 'emails_sent']
+    list_filter = ['date', 'gym']
+    search_fields = ['gym__name']
+    date_hierarchy = 'date'
+    readonly_fields = ['gym', 'date', 'emails_sent']
     
     def has_add_permission(self, request):
         return False
