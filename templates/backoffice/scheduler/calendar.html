@@ -11,15 +11,33 @@
         staffSidebar: true, 
         selectedStaffIds: [], 
         viewMode: 'calendar',
+        listViewMode: 'day',
         listDate: new Date().toISOString().split('T')[0],
+        listWeekStart: null,
         listSessions: [],
         listStats: { total: 0, attended: 0, percentage: 0 },
         listLoading: false,
         selectedInstructor: '',
+        showDatePicker: false,
+        init() {
+            this.setWeekStart();
+        },
+        setWeekStart() {
+            const d = new Date(this.listDate);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff);
+            this.listWeekStart = d.toISOString().split('T')[0];
+        },
         async loadListSessions() {
             this.listLoading = true;
             try {
-                let url = `/activities/api/sessions/?date=${this.listDate}`;
+                let url;
+                if (this.listViewMode === 'week') {
+                    url = `/activities/api/sessions/?week_start=${this.listWeekStart}`;
+                } else {
+                    url = `/activities/api/sessions/?date=${this.listDate}`;
+                }
                 if (this.selectedInstructor) url += `&staff=${this.selectedInstructor}`;
                 const res = await fetch(url);
                 const data = await res.json();
@@ -35,20 +53,58 @@
             const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
             return date.toLocaleDateString('es-ES', options);
         },
+        formatWeekRange() {
+            const start = new Date(this.listWeekStart + 'T00:00:00');
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            const optStart = { day: 'numeric', month: 'short' };
+            const optEnd = { day: 'numeric', month: 'short', year: 'numeric' };
+            return start.toLocaleDateString('es-ES', optStart) + ' - ' + end.toLocaleDateString('es-ES', optEnd);
+        },
         prevDay() {
             const d = new Date(this.listDate);
             d.setDate(d.getDate() - 1);
             this.listDate = d.toISOString().split('T')[0];
+            this.setWeekStart();
             this.loadListSessions();
         },
         nextDay() {
             const d = new Date(this.listDate);
             d.setDate(d.getDate() + 1);
             this.listDate = d.toISOString().split('T')[0];
+            this.setWeekStart();
+            this.loadListSessions();
+        },
+        prevWeek() {
+            const d = new Date(this.listWeekStart);
+            d.setDate(d.getDate() - 7);
+            this.listWeekStart = d.toISOString().split('T')[0];
+            this.listDate = this.listWeekStart;
+            this.loadListSessions();
+        },
+        nextWeek() {
+            const d = new Date(this.listWeekStart);
+            d.setDate(d.getDate() + 7);
+            this.listWeekStart = d.toISOString().split('T')[0];
+            this.listDate = this.listWeekStart;
             this.loadListSessions();
         },
         today() {
             this.listDate = new Date().toISOString().split('T')[0];
+            this.setWeekStart();
+            this.loadListSessions();
+        },
+        setListViewMode(mode) {
+            this.listViewMode = mode;
+            if (mode === 'week') {
+                this.setWeekStart();
+            }
+            this.loadListSessions();
+        },
+        selectDateFromPicker(dateStr) {
+            this.listDate = dateStr;
+            this.setWeekStart();
+            this.showDatePicker = false;
             this.loadListSessions();
         },
         openSessionDetail(sessionId) {
@@ -168,8 +224,25 @@
                 <!-- List-specific controls -->
                 <template x-if="viewMode === 'list'">
                     <div class="flex items-center gap-2">
-                        <input type="date" x-model="listDate" @change="loadListSessions()"
-                            class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                        <!-- Date picker con calendario -->
+                        <div class="relative">
+                            <button @click="showDatePicker = !showDatePicker" 
+                                class="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-200 hover:border-slate-300 bg-white transition-colors">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span x-text="new Date(listDate + 'T00:00:00').toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit', year: 'numeric'})"></span>
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <!-- Dropdown calendario -->
+                            <div x-show="showDatePicker" @click.away="showDatePicker = false" x-transition
+                                class="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 p-3 z-50 min-w-[280px]">
+                                <input type="date" :value="listDate" @change="selectDateFromPicker($event.target.value)"
+                                    class="w-full text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
                         <select x-model="selectedInstructor" @change="loadListSessions()"
                             class="text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Todos los instructores</option>
@@ -199,19 +272,47 @@
                 <template x-if="viewMode === 'list'">
                     <div class="flex items-center gap-2">
                         <button @click="today()" class="text-sm px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200 transition-colors">Hoy</button>
-                        <div class="flex items-center bg-slate-100 rounded-lg">
+                        
+                        <!-- Navegación por Día -->
+                        <div class="flex items-center bg-slate-100 rounded-lg"
+                             :class="listViewMode === 'day' ? 'ring-2 ring-blue-400' : ''">
                             <button @click="prevDay()" class="p-1.5 hover:bg-slate-200 rounded-l-lg transition-colors">
                                 <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                                 </svg>
                             </button>
-                            <span class="px-3 text-sm font-medium text-slate-700">Día</span>
+                            <button @click="setListViewMode('day')" 
+                                    class="px-3 py-1 text-sm font-medium transition-colors"
+                                    :class="listViewMode === 'day' ? 'text-blue-700 bg-blue-50' : 'text-slate-700 hover:bg-slate-200'">
+                                Día
+                            </button>
                             <button @click="nextDay()" class="p-1.5 hover:bg-slate-200 rounded-r-lg transition-colors">
                                 <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
                             </button>
                         </div>
+
+                        <!-- Navegación por Semana -->
+                        <div class="flex items-center bg-slate-100 rounded-lg"
+                             :class="listViewMode === 'week' ? 'ring-2 ring-blue-400' : ''">
+                            <button @click="prevWeek()" class="p-1.5 hover:bg-slate-200 rounded-l-lg transition-colors">
+                                <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                            </button>
+                            <button @click="setListViewMode('week')" 
+                                    class="px-3 py-1 text-sm font-medium transition-colors"
+                                    :class="listViewMode === 'week' ? 'text-blue-700 bg-blue-50' : 'text-slate-700 hover:bg-slate-200'">
+                                Semana
+                            </button>
+                            <button @click="nextWeek()" class="p-1.5 hover:bg-slate-200 rounded-r-lg transition-colors">
+                                <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
                         <div class="h-6 w-px bg-slate-200 mx-1"></div>
                     </div>
                 </template>
@@ -246,7 +347,15 @@
             <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
                 <div class="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                        <h2 class="text-xl font-bold text-slate-800 capitalize" x-text="formatListDate(listDate)"></h2>
+                        <template x-if="listViewMode === 'day'">
+                            <h2 class="text-xl font-bold text-slate-800 capitalize" x-text="formatListDate(listDate)"></h2>
+                        </template>
+                        <template x-if="listViewMode === 'week'">
+                            <h2 class="text-xl font-bold text-slate-800">
+                                <span class="text-slate-500 font-normal">Semana:</span> 
+                                <span x-text="formatWeekRange()"></span>
+                            </h2>
+                        </template>
                         <p class="text-sm text-slate-500 mt-1">
                             Se ha(n) presentado <span class="font-semibold text-slate-700" x-text="listStats.attended"></span>
                             <span class="text-slate-400">(<span x-text="listStats.percentage.toFixed(2)"></span>%)</span>
@@ -276,11 +385,13 @@
             <div class="flex-1 list-scroll-container">
                 <div class="list-table-content">
                     <!-- Table Header -->
-                    <div class="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-0 left-0 z-10">
+                    <div class="grid gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-0 left-0 z-10"
+                         :class="listViewMode === 'week' ? 'grid-cols-13' : 'grid-cols-12'">
+                        <div x-show="listViewMode === 'week'" class="col-span-1 whitespace-nowrap">Fecha</div>
                         <div class="col-span-2 whitespace-nowrap">Horario</div>
                         <div class="col-span-2 text-center whitespace-nowrap">Registrar</div>
                         <div class="col-span-4 whitespace-nowrap">Clases <span class="text-slate-400 font-normal">(Haga clic para detalles)</span></div>
-                        <div class="col-span-3 whitespace-nowrap">Instructor <span class="text-slate-400 font-normal">(Marque la casilla)</span></div>
+                        <div class="col-span-2 whitespace-nowrap">Instructor</div>
                         <div class="col-span-1 text-center whitespace-nowrap">Estado</div>
                     </div>
 
@@ -294,7 +405,7 @@
                         <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
-                        <p class="text-slate-500 font-medium">No hay clases programadas para este día</p>
+                        <p class="text-slate-500 font-medium" x-text="listViewMode === 'week' ? 'No hay clases programadas para esta semana' : 'No hay clases programadas para este día'"></p>
                         <button @click="triggerNewClassModal()" class="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium">
                             + Crear una clase
                         </button>
@@ -302,11 +413,23 @@
 
                     <!-- Sessions Table Rows -->
                     <div x-show="!listLoading && listSessions.length > 0" class="divide-y divide-slate-100">
-                        <template x-for="session in listSessions" :key="session.id">
-                            <div @click="openSessionDetail(session.id)"
-                                class="grid grid-cols-12 gap-2 px-4 py-3 cursor-pointer transition-all duration-200 hover:shadow-md group"
-                                :class="getRowBgClass(session)">
+                        <template x-for="(session, index) in listSessions" :key="session.id">
+                            <div>
+                                <!-- Separador de día para vista semanal -->
+                                <template x-if="listViewMode === 'week' && (index === 0 || session.date !== listSessions[index-1].date)">
+                                    <div class="bg-slate-100 px-4 py-2 border-b border-slate-200">
+                                        <span class="text-sm font-semibold text-slate-700 capitalize" x-text="formatListDate(session.date)"></span>
+                                    </div>
+                                </template>
+                                <div @click="openSessionDetail(session.id)"
+                                    class="grid gap-2 px-4 py-3 cursor-pointer transition-all duration-200 hover:shadow-md group"
+                                    :class="[getRowBgClass(session), listViewMode === 'week' ? 'grid-cols-13' : 'grid-cols-12']">
                                 
+                                <!-- Fecha (solo vista semanal) -->
+                                <div x-show="listViewMode === 'week'" class="col-span-1 flex items-center">
+                                    <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded" x-text="session.date_formatted"></span>
+                                </div>
+
                                 <!-- Horario -->
                                 <div class="col-span-2 flex items-center gap-3">
                                     <div class="text-center">
@@ -346,7 +469,7 @@
                                 </div>
 
                                 <!-- Instructor -->
-                                <div class="col-span-3 flex items-center gap-2">
+                                <div class="col-span-2 flex items-center gap-2">
                                     <input type="checkbox" 
                                            class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                            @click.stop
@@ -366,6 +489,7 @@
                                         <span class="text-[10px] text-slate-400 mt-0.5" x-text="session.booked + '/' + session.capacity"></span>
                                     </div>
                                 </div>
+                            </div>
                             </div>
                         </template>
                     </div>

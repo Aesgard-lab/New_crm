@@ -20,11 +20,12 @@ from clients.models import Client
 @require_GET
 def get_sessions_list(request):
     """
-    API para obtener sesiones de un día específico en formato lista.
+    API para obtener sesiones de un día o semana específica en formato lista.
     Usado por la vista de listado del calendario.
     
     Query params:
-        - date: YYYY-MM-DD (requerido)
+        - date: YYYY-MM-DD (para vista de día)
+        - week_start: YYYY-MM-DD (para vista de semana, fecha del lunes)
         - staff: ID del instructor (opcional)
         - room: ID de la sala (opcional)
     """
@@ -32,21 +33,35 @@ def get_sessions_list(request):
     
     gym = request.gym
     date_str = request.GET.get('date')
+    week_start_str = request.GET.get('week_start')
     staff_id = request.GET.get('staff')
     room_id = request.GET.get('room')
     
-    if not date_str:
-        return JsonResponse({'error': 'Se requiere el parámetro date'}, status=400)
+    if not date_str and not week_start_str:
+        return JsonResponse({'error': 'Se requiere el parámetro date o week_start'}, status=400)
     
     try:
-        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        if week_start_str:
+            # Vista de semana
+            week_start = datetime.strptime(week_start_str, '%Y-%m-%d').date()
+            week_end = week_start + timedelta(days=6)
+            start_date = week_start
+            end_date = week_end
+            is_week_view = True
+        else:
+            # Vista de día
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            start_date = target_date
+            end_date = target_date
+            is_week_view = False
     except ValueError:
         return JsonResponse({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'}, status=400)
     
     # Base query
     sessions = ActivitySession.objects.filter(
         gym=gym,
-        start_datetime__date=target_date
+        start_datetime__date__gte=start_date,
+        start_datetime__date__lte=end_date
     ).select_related(
         'activity', 'room', 'staff', 'staff__user'
     ).prefetch_related(
@@ -95,6 +110,8 @@ def get_sessions_list(request):
             'activity_name': session.activity.name,
             'activity_id': session.activity.id,
             'color': session.activity.color or '#3B82F6',
+            'date': session.start_datetime.strftime('%Y-%m-%d'),
+            'date_formatted': session.start_datetime.strftime('%a %d/%m'),
             'start_time': session.start_datetime.strftime('%H:%M'),
             'end_time': end_datetime.strftime('%H:%M'),
             'duration': duration,
@@ -115,8 +132,7 @@ def get_sessions_list(request):
     if total_attendees > 0:
         attendance_percentage = (total_checked_in / total_attendees) * 100
     
-    return JsonResponse({
-        'date': date_str,
+    response_data = {
         'sessions': sessions_data,
         'stats': {
             'total': total_attendees,
@@ -124,7 +140,15 @@ def get_sessions_list(request):
             'percentage': attendance_percentage,
             'sessions_count': len(sessions_data),
         }
-    })
+    }
+    
+    if is_week_view:
+        response_data['week_start'] = week_start_str
+        response_data['week_end'] = end_date.strftime('%Y-%m-%d')
+    else:
+        response_data['date'] = date_str
+    
+    return JsonResponse(response_data)
 
 
 def _get_cancelled_late_ids(session):
