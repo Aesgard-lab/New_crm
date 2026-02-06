@@ -437,6 +437,164 @@
                         </button>
                     </div>
                 </form>
+
+                {% if is_franchise_owner and franchise_gyms %}
+                <!-- Franchise Propagation Section -->
+                <div class="mt-8 pt-8 border-t-2 border-dashed border-indigo-200" x-data="{ expanded: false }">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="propagate_settings" value="1">
+                        
+                        <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-200">
+                            <div class="flex items-center justify-between cursor-pointer" @click="expanded = !expanded">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-indigo-600 p-3 rounded-xl text-white">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-indigo-900 text-lg">🌐 Propagar a Franquicia</h4>
+                                        <p class="text-sm text-indigo-700">Sincroniza la configuración financiera con otros gimnasios de tu red</p>
+                                    </div>
+                                    <span class="bg-indigo-200 text-indigo-800 px-3 py-1 rounded-full text-sm font-bold">
+                                        {{ franchise_gyms|length }} gimnasio{{ franchise_gyms|length|pluralize:"s" }}
+                                    </span>
+                                </div>
+                                <svg class="w-6 h-6 text-indigo-600 transition-transform" :class="{'rotate-180': expanded}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            
+                            <div x-show="expanded" x-collapse class="mt-6 space-y-6">
+                                <!-- What to propagate -->
+                                <div class="bg-white rounded-xl p-5 border border-indigo-100">
+                                    <h5 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        ¿Qué configuración propagar?
+                                    </h5>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        <label class="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg border border-indigo-100 hover:border-indigo-300 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_stripe" value="1" checked
+                                                class="rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Stripe</span>
+                                                <p class="text-xs text-slate-500">Claves API</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-100 hover:border-red-300 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_redsys" value="1" checked
+                                                class="rounded text-red-600 focus:ring-red-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Redsys</span>
+                                                <p class="text-xs text-slate-500">TPV Virtual</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 bg-amber-50 rounded-lg border border-amber-100 hover:border-amber-300 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_auto_charge" value="1" checked
+                                                class="rounded text-amber-600 focus:ring-amber-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Cobro Automático</span>
+                                                <p class="text-xs text-slate-500">Horario y reintentos</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100 hover:border-emerald-300 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_currency" value="1" checked
+                                                class="rounded text-emerald-600 focus:ring-emerald-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Moneda</span>
+                                                <p class="text-xs text-slate-500">{{ settings_form.instance.currency|default:"EUR" }}</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100 hover:border-purple-300 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_gateway_strategy" value="1" checked
+                                                class="rounded text-purple-600 focus:ring-purple-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Estrategia Pasarela</span>
+                                                <p class="text-xs text-slate-500">App y POS</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 bg-cyan-50 rounded-lg border border-cyan-100 hover:border-cyan-300 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_app_permissions" value="1"
+                                                class="rounded text-cyan-600 focus:ring-cyan-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Permisos App</span>
+                                                <p class="text-xs text-slate-500">Eliminar tarjeta, pagar cuota</p>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-400 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_payment_methods" value="1"
+                                                class="rounded text-slate-600 focus:ring-slate-500 h-5 w-5">
+                                            <div>
+                                                <span class="font-medium text-slate-800">Métodos de Pago</span>
+                                                <p class="text-xs text-slate-500">Efectivo, tarjeta, etc.</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Target gyms -->
+                                <div class="bg-white rounded-xl p-5 border border-indigo-100">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h5 class="font-bold text-slate-800 flex items-center gap-2">
+                                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                            </svg>
+                                            Gimnasios destino
+                                        </h5>
+                                        <div class="flex gap-2">
+                                            <button type="button" onclick="document.querySelectorAll('input[name=propagate_to_gyms]').forEach(c => c.checked = true)"
+                                                class="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg hover:bg-indigo-200 transition-colors">
+                                                Seleccionar todos
+                                            </button>
+                                            <button type="button" onclick="document.querySelectorAll('input[name=propagate_to_gyms]').forEach(c => c.checked = false)"
+                                                class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-lg hover:bg-slate-200 transition-colors">
+                                                Ninguno
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {% for fgym in franchise_gyms %}
+                                        <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-colors">
+                                            <input type="checkbox" name="propagate_to_gyms" value="{{ fgym.id }}"
+                                                class="rounded text-indigo-600 focus:ring-indigo-500 h-5 w-5">
+                                            <div class="flex-1 min-w-0">
+                                                <span class="font-medium text-slate-800 block truncate">{{ fgym.commercial_name|default:fgym.name }}</span>
+                                                <span class="text-xs text-slate-500">{{ fgym.city|default:"Sin ciudad" }}</span>
+                                            </div>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Warning -->
+                                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                                    <svg class="w-6 h-6 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    <div>
+                                        <p class="font-medium text-amber-800">⚠️ Esta acción sobrescribirá la configuración</p>
+                                        <p class="text-sm text-amber-700 mt-1">La configuración actual de los gimnasios seleccionados será reemplazada. Asegúrate de que las claves de Stripe/Redsys son correctas.</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Submit button -->
+                                <div class="flex justify-end">
+                                    <button type="submit"
+                                        class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20 flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                        </svg>
+                                        Propagar Configuración
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </div>
 

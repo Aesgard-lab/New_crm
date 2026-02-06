@@ -26,11 +26,18 @@ from django.http import JsonResponse
 @require_gym_permission('finance.view_finance') 
 def settings_view(request):
     gym = request.gym
+    user = request.user
     tax_rates = TaxRate.objects.filter(gym=gym)
     payment_methods = PaymentMethod.objects.filter(gym=gym)
     
     # Get or create finance settings
     finance_settings, created = FinanceSettings.objects.get_or_create(gym=gym)
+    
+    # Check if user is franchise owner for propagation feature
+    is_franchise_owner = gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
+    franchise_gyms = []
+    if is_franchise_owner:
+        franchise_gyms = gym.franchise.gyms.exclude(pk=gym.pk)
     
     # Check if gym has Verifactu module enabled
     has_verifactu_module = False
@@ -42,24 +49,62 @@ def settings_view(request):
     except Exception:
         pass  # If no subscription system, default to False
     
-    if request.method == 'POST' and 'save_settings' in request.POST:
-        settings_form = FinanceSettingsForm(request.POST, instance=finance_settings)
-        if settings_form.is_valid():
-            s = settings_form.save(commit=False)
-            
-            # Validate Stripe Keys if present
-            if s.stripe_public_key and s.stripe_secret_key:
-                from .stripe_utils import validate_keys
-                try:
-                    validate_keys(s.stripe_public_key, s.stripe_secret_key)
-                    messages.success(request, 'Configuración actualizada y conexión a Stripe correcta ✅')
-                except Exception as e:
-                    messages.warning(request, f'Configuración guardada, pero error en Stripe: {str(e)}')
+    if request.method == 'POST':
+        # Handle finance settings propagation
+        if 'propagate_settings' in request.POST and is_franchise_owner:
+            propagate_gym_ids = request.POST.getlist('propagate_to_gyms')
+            if propagate_gym_ids:
+                from organizations.models import Gym
+                from services.franchise_service import FranchisePropagationService
+                
+                # Security check: only allow gyms from the same franchise
+                allowed_gym_ids = list(franchise_gyms.values_list('id', flat=True))
+                target_gym_ids = [int(gid) for gid in propagate_gym_ids if int(gid) in allowed_gym_ids]
+                target_gyms = Gym.objects.filter(id__in=target_gym_ids)
+                
+                # Build propagation options from checkboxes
+                propagate_options = {
+                    'stripe': 'propagate_stripe' in request.POST,
+                    'redsys': 'propagate_redsys' in request.POST,
+                    'auto_charge': 'propagate_auto_charge' in request.POST,
+                    'currency': 'propagate_currency' in request.POST,
+                    'gateway_strategy': 'propagate_gateway_strategy' in request.POST,
+                    'app_permissions': 'propagate_app_permissions' in request.POST,
+                    'payment_methods': 'propagate_payment_methods' in request.POST,
+                }
+                
+                results = FranchisePropagationService.propagate_finance_settings(
+                    finance_settings, target_gyms, propagate_options
+                )
+                
+                if results['updated']:
+                    messages.success(request, f'✅ Configuración propagada a {results["updated"]} gimnasios.')
+                if results['errors']:
+                    for error in results['errors']:
+                        messages.warning(request, error)
             else:
-                 messages.success(request, 'Configuración financiera actualizada.')
-            
-            s.save()
+                messages.warning(request, 'Selecciona al menos un gimnasio para propagar la configuración.')
             return redirect('finance_settings')
+        
+        # Handle regular settings save
+        elif 'save_settings' in request.POST:
+            settings_form = FinanceSettingsForm(request.POST, instance=finance_settings)
+            if settings_form.is_valid():
+                s = settings_form.save(commit=False)
+                
+                # Validate Stripe Keys if present
+                if s.stripe_public_key and s.stripe_secret_key:
+                    from .stripe_utils import validate_keys
+                    try:
+                        validate_keys(s.stripe_public_key, s.stripe_secret_key)
+                        messages.success(request, 'Configuración actualizada y conexión a Stripe correcta ✅')
+                    except Exception as e:
+                        messages.warning(request, f'Configuración guardada, pero error en Stripe: {str(e)}')
+                else:
+                     messages.success(request, 'Configuración financiera actualizada.')
+                
+                s.save()
+                return redirect('finance_settings')
     else:
         settings_form = FinanceSettingsForm(instance=finance_settings)
     
@@ -69,6 +114,8 @@ def settings_view(request):
         'payment_methods': payment_methods,
         'settings_form': settings_form,
         'has_verifactu_module': has_verifactu_module,
+        'is_franchise_owner': is_franchise_owner,
+        'franchise_gyms': franchise_gyms,
     }
     return render(request, 'backoffice/finance/settings.html', context)
 

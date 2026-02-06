@@ -6,7 +6,7 @@ from activities.models import Activity, ActivityCategory, ActivityPolicy
 from products.models import Product, ProductCategory
 from services.models import Service, ServiceCategory
 from memberships.models import MembershipPlan, PlanAccessRule
-from finance.models import TaxRate
+from finance.models import TaxRate, FinanceSettings, PaymentMethod
 from clients.models import DocumentTemplate
 
 class FranchisePropagationService:
@@ -337,6 +337,99 @@ class FranchisePropagationService:
                         results['created'] += 1
                     else:
                         results['updated'] += 1
+                        
+            except Exception as e:
+                results['errors'].append(f"Error propagando a {gym.name}: {str(e)}")
+        
+        return results
+
+    @staticmethod
+    def propagate_finance_settings(source_settings, target_gyms, propagate_options=None):
+        """
+        Propagates finance settings (Stripe, Redsys, auto-charge config) to target gyms.
+        
+        propagate_options is a dict with keys:
+            - 'stripe': bool - propagate Stripe keys
+            - 'redsys': bool - propagate Redsys configuration
+            - 'auto_charge': bool - propagate auto-charge settings
+            - 'currency': bool - propagate currency setting
+            - 'gateway_strategy': bool - propagate gateway strategy settings
+            - 'payment_methods': bool - propagate payment methods
+        """
+        if propagate_options is None:
+            propagate_options = {
+                'stripe': True,
+                'redsys': True,
+                'auto_charge': True,
+                'currency': True,
+                'gateway_strategy': True,
+                'payment_methods': False,  # Off by default as it's more invasive
+            }
+        
+        results = {'updated': 0, 'errors': []}
+
+        for gym in target_gyms:
+            if gym == source_settings.gym:
+                continue
+
+            try:
+                with transaction.atomic():
+                    # Get or create target finance settings
+                    target_settings, created = FinanceSettings.objects.get_or_create(gym=gym)
+                    
+                    # Propagate Stripe configuration
+                    if propagate_options.get('stripe'):
+                        target_settings.stripe_public_key = source_settings.stripe_public_key
+                        target_settings.stripe_secret_key = source_settings.stripe_secret_key
+                    
+                    # Propagate Redsys configuration
+                    if propagate_options.get('redsys'):
+                        target_settings.redsys_merchant_code = source_settings.redsys_merchant_code
+                        target_settings.redsys_merchant_terminal = source_settings.redsys_merchant_terminal
+                        target_settings.redsys_secret_key = source_settings.redsys_secret_key
+                        target_settings.redsys_environment = source_settings.redsys_environment
+                    
+                    # Propagate auto-charge settings
+                    if propagate_options.get('auto_charge'):
+                        target_settings.auto_charge_enabled = source_settings.auto_charge_enabled
+                        target_settings.auto_charge_time = source_settings.auto_charge_time
+                        target_settings.auto_charge_max_retries = source_settings.auto_charge_max_retries
+                        target_settings.auto_charge_retry_days = source_settings.auto_charge_retry_days
+                    
+                    # Propagate currency
+                    if propagate_options.get('currency'):
+                        target_settings.currency = source_settings.currency
+                    
+                    # Propagate gateway strategy
+                    if propagate_options.get('gateway_strategy'):
+                        target_settings.app_gateway_strategy = source_settings.app_gateway_strategy
+                        target_settings.pos_gateway_strategy = source_settings.pos_gateway_strategy
+                    
+                    # Propagate client app permissions
+                    if propagate_options.get('app_permissions'):
+                        target_settings.allow_client_delete_card = source_settings.allow_client_delete_card
+                        target_settings.allow_client_pay_next_fee = source_settings.allow_client_pay_next_fee
+                    
+                    target_settings.save()
+                    results['updated'] += 1
+                    
+                    # Propagate payment methods if requested
+                    if propagate_options.get('payment_methods'):
+                        source_methods = PaymentMethod.objects.filter(gym=source_settings.gym)
+                        for method in source_methods:
+                            PaymentMethod.objects.update_or_create(
+                                gym=gym,
+                                name=method.name,
+                                defaults={
+                                    'description': method.description,
+                                    'is_cash': method.is_cash,
+                                    'is_active': method.is_active,
+                                    'available_for_online': method.available_for_online,
+                                    'display_order': method.display_order,
+                                    'gateway': method.gateway,
+                                    'provider_code': method.provider_code,
+                                }
+                            )
                         
             except Exception as e:
                 results['errors'].append(f"Error propagando a {gym.name}: {str(e)}")
