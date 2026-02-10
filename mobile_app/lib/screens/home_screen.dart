@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../api/api_service.dart';
-import '../models/models.dart';
 import 'shop_screen.dart';
 import 'documents_screen.dart';
 import 'workout_tracking_screen.dart';
@@ -15,7 +14,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _activeWorkout;
-  bool _loadingWorkout = true;
 
   @override
   void initState() {
@@ -33,15 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _activeWorkout = workout;
-          _loadingWorkout = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loadingWorkout = false;
-        });
-      }
+      // Error silencioso - el widget manejará el estado null
     }
   }
 

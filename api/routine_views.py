@@ -1,10 +1,13 @@
 """
 API Views for Client Routines (Mobile App).
 Allows clients to view their assigned workout routines and exercises.
+
+OPTIMIZADO: Usa annotate para evitar N+1 queries
 """
 from rest_framework import views, generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Count
 
 from clients.models import Client
 from routines.models import ClientRoutine, WorkoutRoutine, RoutineDay, RoutineExercise, Exercise
@@ -14,6 +17,8 @@ class ClientRoutinesListView(generics.ListAPIView):
     """
     Get list of routines assigned to the authenticated client.
     Returns active routines with basic info.
+    
+    OPTIMIZADO: Usa annotate para contar ejercicios en una sola query
     """
     permission_classes = [IsAuthenticated]
     
@@ -27,19 +32,18 @@ class ClientRoutinesListView(generics.ListAPIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get client's active routines
+        # OPTIMIZACIÓN: Usar annotate para contar días y ejercicios
         assignments = ClientRoutine.objects.filter(
             client=client,
             is_active=True
-        ).select_related('routine').order_by('-start_date')
+        ).select_related('routine').annotate(
+            days_count=Count('routine__days', distinct=True),
+            exercises_count=Count('routine__days__exercises', distinct=True)
+        ).order_by('-start_date')
         
         routines_data = []
         for assignment in assignments:
             routine = assignment.routine
-            # Count total exercises across all days
-            total_exercises = RoutineExercise.objects.filter(
-                day__routine=routine
-            ).count()
             
             routines_data.append({
                 'id': routine.id,
@@ -50,8 +54,8 @@ class ClientRoutinesListView(generics.ListAPIView):
                 'goal_display': dict(WorkoutRoutine.GOALS).get(routine.goal, routine.goal),
                 'difficulty': routine.difficulty,
                 'difficulty_display': dict(WorkoutRoutine.DIFFICULTY).get(routine.difficulty, routine.difficulty),
-                'days_count': routine.days.count(),
-                'exercises_count': total_exercises,
+                'days_count': assignment.days_count,  # Desde annotate
+                'exercises_count': assignment.exercises_count,  # Desde annotate
                 'start_date': assignment.start_date.isoformat() if assignment.start_date else None,
                 'end_date': assignment.end_date.isoformat() if assignment.end_date else None,
             })

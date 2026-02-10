@@ -6,6 +6,7 @@ from rest_framework import views, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from django.db.models import Exists, OuterRef
 
 from clients.models import Client
 from activities.models import ActivitySessionBooking, ClassReview, ActivitySession
@@ -16,6 +17,8 @@ class ClassHistoryView(views.APIView):
     List past classes (attended or not).
     
     GET /api/history/classes/?limit=20&offset=0
+    
+    OPTIMIZADO: Usa annotate con Exists para evitar N+1 en has_review
     """
     permission_classes = [IsAuthenticated]
     
@@ -34,17 +37,27 @@ class ClassHistoryView(views.APIView):
         # Past bookings (session end_datetime < now)
         now = timezone.now()
         
+        # OPTIMIZACIÓN: Usar annotate con Exists para has_review
         bookings = ActivitySessionBooking.objects.filter(
             client=client,
             session__end_datetime__lt=now
-        ).select_related('session', 'session__activity', 'session__staff').order_by('-session__start_datetime')[offset:offset+limit]
+        ).select_related(
+            'session', 
+            'session__activity', 
+            'session__staff',
+            'session__staff__user'
+        ).annotate(
+            has_review=Exists(
+                ClassReview.objects.filter(
+                    client=client,
+                    session=OuterRef('session')
+                )
+            )
+        ).order_by('-session__start_datetime')[offset:offset+limit]
         
         data = []
         for booking in bookings:
             session = booking.session
-            
-            # Check if review exists
-            has_review = ClassReview.objects.filter(client=client, session=session).exists()
             
             data.append({
                 'booking_id': booking.id,
@@ -55,7 +68,7 @@ class ClassHistoryView(views.APIView):
                 'staff_name': session.staff.user.get_full_name() if session.staff else 'Staff',
                 'status': booking.status,
                 'attended': booking.attended,
-                'has_review': has_review
+                'has_review': booking.has_review  # Ahora viene del annotate
             })
             
         return Response({

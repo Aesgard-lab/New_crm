@@ -24,7 +24,7 @@ class StaffProfile(models.Model):
     class CheckinMethod(models.TextChoices):
         ANY = "ANY", "Cualquiera disponible"
         PIN = "PIN", "Solo PIN"
-        FACIAL = "FACIAL", "Reconocimiento facial"
+        # FACIAL = "FACIAL", "Reconocimiento facial"  # DESACTIVADO por consumo de recursos
         GEO = "GEO", "Geolocalización (móvil)"
         PHOTO = "PHOTO", "Selfie obligatorio"
 
@@ -357,7 +357,7 @@ class WorkShift(models.Model):
         TABLET = "TABLET", "Kiosco Tablet"
         MANUAL = "MANUAL", "Manual Manager"
         MOBILE = "MOBILE", "Móvil (GPS)"
-        FACIAL = "FACIAL", "Reconocimiento Facial"
+        # FACIAL = "FACIAL", "Reconocimiento Facial"  # DESACTIVADO por consumo de recursos
         AUTO = "AUTO", "Automático"
 
     staff = models.ForeignKey(StaffProfile, on_delete=models.CASCADE, related_name="shifts")

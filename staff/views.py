@@ -75,9 +75,9 @@ def staff_check_status(request):
     staff_photo = staff.photo.url if staff.photo else None
     
     # Determinar método de fichaje requerido
-    checkin_method = staff.checkin_method  # ANY, PIN, FACIAL, GEO, PHOTO
+    checkin_method = staff.checkin_method  # ANY, PIN, GEO, PHOTO
     require_photo = (
-        checkin_method in ['FACIAL', 'PHOTO'] or 
+        checkin_method == 'PHOTO' or 
         (gym and gym.require_checkin_photo)
     )
     require_geo = (
@@ -249,7 +249,7 @@ def staff_checkin(request):
         # Determinar método basado en lo que se envió
         method = WorkShift.Method.TABLET
         if photo_data:
-            method = WorkShift.Method.FACIAL
+            method = WorkShift.Method.TABLET  # Selfie via tablet (antes era FACIAL)
         elif latitude and longitude:
             method = WorkShift.Method.MOBILE
         
@@ -1035,10 +1035,13 @@ def staff_rating_performance(request):
     """
     Dashboard showing staff performance based on class reviews
     Shows current month ratings, bonuses, and performance levels
+    
+    OPTIMIZADO: Usa annotate para evitar N+1 queries
     """
     from activities.models import ClassReview
     from .models import RatingIncentive, SalaryConfig
-    from django.db.models import Avg, Count
+    from django.db.models import Avg, Count, Q, OuterRef, Subquery
+    from django.db.models.functions import Coalesce
     from datetime import timedelta
     
     gym = request.gym
@@ -1048,56 +1051,78 @@ def staff_rating_performance(request):
     period_days = int(request.GET.get('period', 30))
     start_date = now - timedelta(days=period_days)
     
-    # Get all active instructors
+    # OPTIMIZACIÓN: Usar annotate para calcular ratings en una sola query
     instructors = StaffProfile.objects.filter(
         gym=gym,
         is_active=True,
         role=StaffProfile.Role.TRAINER
-    ).select_related('user')
+    ).select_related('user').prefetch_related(
+        'salary_config'  # Prefetch salary config para evitar N+1
+    ).annotate(
+        total_reviews=Count(
+            'sessions__reviews',
+            filter=Q(
+                sessions__gym=gym,
+                sessions__reviews__created_at__gte=start_date
+            )
+        ),
+        avg_instructor_rating=Coalesce(
+            Avg(
+                'sessions__reviews__instructor_rating',
+                filter=Q(
+                    sessions__gym=gym,
+                    sessions__reviews__created_at__gte=start_date
+                )
+            ),
+            0.0
+        ),
+        avg_class_rating=Coalesce(
+            Avg(
+                'sessions__reviews__class_rating',
+                filter=Q(
+                    sessions__gym=gym,
+                    sessions__reviews__created_at__gte=start_date
+                )
+            ),
+            0.0
+        )
+    )
+    
+    # Pre-cargar incentivos para evitar queries por instructor
+    all_incentives = list(RatingIncentive.objects.filter(
+        gym=gym,
+        is_active=True,
+        period_days=period_days
+    ).order_by('-min_rating'))
     
     performance_data = []
     
     for instructor in instructors:
-        # Get reviews for this instructor in period
-        reviews = ClassReview.objects.filter(
-            session__staff=instructor,
-            session__gym=gym,
-            created_at__gte=start_date
-        )
+        total_reviews = instructor.total_reviews
+        avg_instructor_rating = instructor.avg_instructor_rating or 0
+        avg_class_rating = instructor.avg_class_rating or 0
         
-        total_reviews = reviews.count()
-        
-        if total_reviews > 0:
-            avg_instructor_rating = reviews.aggregate(avg=Avg('instructor_rating'))['avg']
-            avg_class_rating = reviews.aggregate(avg=Avg('class_rating'))['avg']
-        else:
-            avg_instructor_rating = 0
-            avg_class_rating = 0
-        
-        # Calculate applicable bonuses
-        applicable_incentives = RatingIncentive.objects.filter(
-            gym=gym,
-            is_active=True,
-            period_days=period_days
-        ).filter(
-            models.Q(staff=instructor) | models.Q(staff__isnull=True)
-        ).filter(
-            min_rating__lte=avg_instructor_rating,
-            min_reviews__lte=total_reviews
-        ).order_by('-min_rating')
+        # Filtrar incentivos aplicables desde la lista pre-cargada
+        applicable_incentives = [
+            inc for inc in all_incentives
+            if (inc.staff_id is None or inc.staff_id == instructor.id)
+            and inc.min_rating <= avg_instructor_rating
+            and inc.min_reviews <= total_reviews
+        ]
         
         # Get highest applicable incentive
-        best_incentive = applicable_incentives.first()
+        best_incentive = applicable_incentives[0] if applicable_incentives else None
         
         # Calculate bonus amount
         bonus_amount = 0
         level = None
         
         if best_incentive:
+            # Usar salary_config pre-cargado
             try:
-                salary_config = SalaryConfig.objects.get(staff=instructor)
+                salary_config = instructor.salary_config
                 base_salary = float(salary_config.base_amount)
-            except SalaryConfig.DoesNotExist:
+            except (SalaryConfig.DoesNotExist, AttributeError):
                 base_salary = 0
             
             bonus_amount = best_incentive.calculate_bonus(

@@ -428,25 +428,25 @@ PERMISSION_STRUCTURE = {
     ],
     
     # ==========================================
-    # RECONOCIMIENTO FACIAL
+    # RECONOCIMIENTO FACIAL - DESACTIVADO por consumo de recursos
     # ==========================================
-    "Reconocimiento Facial": [
-        # Configuración
-        ("view_facerecognitionsettings", "Ver Configuración Facial"),
-        ("change_facerecognitionsettings", "Editar Configuración Facial"),
-        
-        # Registros Faciales
-        ("view_clientfaceencoding", "Ver Registros Faciales"),
-        ("add_clientfaceencoding", "Registrar Cara de Cliente"),
-        ("delete_clientfaceencoding", "Eliminar Registro Facial"),
-        
-        # Logs
-        ("view_facerecognitionlog", "Ver Logs de Reconocimiento"),
-        ("export_facerecognitionlog", "Exportar Logs"),
-        
-        # Acceso al Terminal
-        ("access_facialcheckin", "Acceder al Terminal de Check-in Facial"),
-    ],
+    # "Reconocimiento Facial": [
+    #     # Configuración
+    #     ("view_facerecognitionsettings", "Ver Configuración Facial"),
+    #     ("change_facerecognitionsettings", "Editar Configuración Facial"),
+    #     
+    #     # Registros Faciales
+    #     ("view_clientfaceencoding", "Ver Registros Faciales"),
+    #     ("add_clientfaceencoding", "Registrar Cara de Cliente"),
+    #     ("delete_clientfaceencoding", "Eliminar Registro Facial"),
+    #     
+    #     # Logs
+    #     ("view_facerecognitionlog", "Ver Logs de Reconocimiento"),
+    #     ("export_facerecognitionlog", "Exportar Logs"),
+    #     
+    #     # Acceso al Terminal
+    #     ("access_facialcheckin", "Acceder al Terminal de Check-in Facial"),
+    # ],
     
     # ==========================================
     # DASHBOARDS Y ANALYTICS

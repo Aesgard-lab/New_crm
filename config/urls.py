@@ -58,7 +58,7 @@ urlpatterns = [
     path("providers/", include(("providers.urls", "providers"), namespace="providers")),
     path("access/", include(("access_control.urls", "access_control"), namespace="access_control")),
     path("lockers/", include(("lockers.urls", "lockers"), namespace="lockers")),
-    path("face-recognition/", include(("facial_checkin.urls", "facial_checkin"), namespace="facial_checkin")),
+    # path("face-recognition/", include(("facial_checkin.urls", "facial_checkin"), namespace="facial_checkin")),  # DESACTIVADO por consumo de recursos
 
     # Member Portal (App Socios)
     path("portal/", include("clients.urls")),

@@ -15,7 +15,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _referralEnabled = false;
-  bool _checkingReferral = true;
   Map<String, dynamic>? _walletBalance;
   bool _walletEnabled = false;
 
@@ -33,14 +32,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _referralEnabled = status['enabled'] ?? false;
-          _checkingReferral = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _referralEnabled = false;
-          _checkingReferral = false;
         });
       }
     }

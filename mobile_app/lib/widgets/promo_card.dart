@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/advertisement.dart';
-import '../api/api_service.dart';
 
 class PromoCard extends StatelessWidget {
   final Advertisement ad;

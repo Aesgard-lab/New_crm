@@ -114,6 +114,11 @@
                     <span id="method-text">Se requiere selfie</span>
                 </div>
                 
+                <!-- Advertencia módulo en pruebas -->
+                <div id="selfie-warning" class="hidden text-xs bg-amber-50 text-amber-700 px-3 py-2 rounded-lg mb-4">
+                    🧪 Módulo en pruebas - Foto guardada como evidencia
+                </div>
+                
                 <p class="text-slate-500 text-sm mb-6">¿Confirmar fichaje?</p>
                 
                 <div class="flex gap-4 w-full max-w-xs">
@@ -438,7 +443,8 @@
                 photoContainer.classList.add('hidden');
             }
             
-            // Mostrar requisitos de método
+            // Mostrar requisitos de método y advertencia de pruebas
+            const selfieWarning = document.getElementById('selfie-warning');
             if (data.require_photo || data.require_geo) {
                 methodRequired.classList.remove('hidden');
                 let reqText = [];
@@ -448,12 +454,15 @@
                 
                 if (data.require_photo) {
                     selfieBadge.classList.remove('hidden');
+                    selfieWarning.classList.remove('hidden');
                 } else {
                     selfieBadge.classList.add('hidden');
+                    selfieWarning.classList.add('hidden');
                 }
             } else {
                 methodRequired.classList.add('hidden');
                 selfieBadge.classList.add('hidden');
+                selfieWarning.classList.add('hidden');
             }
             
             // Configurar badge de acción

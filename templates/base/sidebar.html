@@ -827,7 +827,8 @@
         {{ t.access_control }}
       </a>
 
-      <!-- Face Recognition Link -->
+      {% comment %}
+      <!-- Face Recognition Link - DESACTIVADO por consumo de recursos -->
       <a href="{% url 'facial_checkin:settings' %}"
         class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-color)] rounded-xl transition-all group font-medium">
         <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor"
@@ -840,6 +841,7 @@
         </svg>
         {{ t.facial_recognition }}
       </a>
+      {% endcomment %}
 
       <!-- Lockers Link -->
       <a href="{% url 'lockers:dashboard' %}"

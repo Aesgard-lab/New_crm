@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../api/api_service.dart';
-import 'gym_search_screen.dart'; // For HexColor
 
 class ForgotPasswordScreen extends StatefulWidget {
   final Color? brandColor;

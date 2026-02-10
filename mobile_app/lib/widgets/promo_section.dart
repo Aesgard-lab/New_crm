@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/advertisement.dart';
-import '../api/api_service.dart';
 import 'promo_card.dart';
 
 class PromoSection extends StatefulWidget {
@@ -25,7 +23,6 @@ class PromoSection extends StatefulWidget {
 class _PromoSectionState extends State<PromoSection> {
   List<Advertisement> _ads = [];
   bool _isLoading = true;
-  bool _impressionsTracked = false;
 
   @override
   void initState() {
