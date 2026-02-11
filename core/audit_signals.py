@@ -12,6 +12,9 @@ Uso:
     class MyAppConfig(AppConfig):
         def ready(self):
             from core import audit_signals  # noqa: F401
+            
+NOTA: Para desactivar en servidores con pocos recursos, 
+      configurar DISABLE_AUDIT_SIGNALS = True en settings.py
 """
 import json
 import logging
@@ -23,6 +26,9 @@ from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 
 logger = logging.getLogger('audit')
+
+# Verificar si está desactivado para servidores con pocos recursos
+AUDIT_DISABLED = getattr(settings, 'DISABLE_AUDIT_SIGNALS', False)
 
 # Modelos a auditar automáticamente
 AUDITED_MODELS = [
@@ -198,6 +204,10 @@ def get_current_user():
 @receiver(pre_save)
 def capture_pre_save_state(sender, instance, **kwargs):
     """Captura el estado antes de guardar para detectar cambios."""
+    # Permitir desactivar para servidores con pocos recursos
+    if AUDIT_DISABLED:
+        return
+        
     model_label = f"{sender._meta.app_label}.{sender._meta.model_name}"
     
     if model_label not in AUDITED_MODELS:
@@ -213,6 +223,10 @@ def capture_pre_save_state(sender, instance, **kwargs):
 @receiver(post_save)
 def audit_post_save(sender, instance, created, **kwargs):
     """Registra creaciones y actualizaciones."""
+    # Permitir desactivar para servidores con pocos recursos
+    if AUDIT_DISABLED:
+        return
+        
     model_label = f"{sender._meta.app_label}.{sender._meta.model_name}"
     
     if model_label not in AUDITED_MODELS:
@@ -236,6 +250,10 @@ def audit_post_save(sender, instance, created, **kwargs):
 @receiver(post_delete)
 def audit_post_delete(sender, instance, **kwargs):
     """Registra eliminaciones."""
+    # Permitir desactivar para servidores con pocos recursos
+    if AUDIT_DISABLED:
+        return
+        
     model_label = f"{sender._meta.app_label}.{sender._meta.model_name}"
     
     if model_label not in AUDITED_MODELS:

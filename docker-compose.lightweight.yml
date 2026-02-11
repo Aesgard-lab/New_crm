@@ -1,0 +1,215 @@
+# ==============================================
+# DOCKER COMPOSE - PRODUCCIÓN LIGERA
+# ==============================================
+# Para servidores pequeños o virtualización anidada
+# Uso: docker-compose -f docker-compose.lightweight.yml up -d
+#
+# Requisitos mínimos: 2 CPU, 2GB RAM
+# Recomendado: 2 CPU, 4GB RAM
+#
+# Optimizaciones:
+# - Menos workers de Gunicorn
+# - Celery con un solo worker
+# - Límites de memoria en contenedores
+# - PostgreSQL con configuración ligera
+
+services:
+  # ----------------------------------------------
+  # PostgreSQL Database (Optimizado)
+  # ----------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: crm_db_light
+    restart: always
+    volumes:
+      - postgres_data_light:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Configuración ligera de PostgreSQL
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+      -c maintenance_work_mem=64MB
+      -c work_mem=4MB
+      -c max_connections=50
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=4MB
+      -c random_page_cost=1.1
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  # ----------------------------------------------
+  # Redis (Configuración mínima)
+  # ----------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: crm_redis_light
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 100mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --requirepass ${REDIS_PASSWORD:-}
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  # ----------------------------------------------
+  # Django Web Application (Gunicorn Ligero)
+  # ----------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crm_web_light
+    restart: always
+    # CRÍTICO: Solo 2 workers síncronos, sin threads extra
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 2
+      --worker-class sync
+      --timeout 120
+      --graceful-timeout 30
+      --max-requests 500
+      --max-requests-jitter 50
+      --keep-alive 5
+      --log-level warning
+    volumes:
+      - static_volume_light:/app/staticfiles
+      - media_volume_light:/app/media
+    ports:
+      - "80:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    environment:
+      - DJANGO_ENV=production
+      - DJANGO_DEBUG=False
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready/"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+    networks:
+      - backend
+
+  # ----------------------------------------------
+  # Celery Worker + Beat COMBINADOS (Ahorra recursos)
+  # ----------------------------------------------
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crm_celery_light
+    restart: always
+    # CRÍTICO: Un solo worker con concurrencia 1, incluyendo beat
+    command: >
+      celery -A config worker
+      --beat
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      --loglevel WARNING
+      --concurrency 1
+      --max-tasks-per-child 100
+      --without-gossip
+      --without-mingle
+      --without-heartbeat
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 192M
+    environment:
+      - DJANGO_ENV=production
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+# ----------------------------------------------
+# Volumes
+# ----------------------------------------------
+volumes:
+  postgres_data_light:
+  static_volume_light:
+  media_volume_light:
+
+# ----------------------------------------------
+# Networks
+# ----------------------------------------------
+networks:
+  backend:
+    name: crm_backend_light
