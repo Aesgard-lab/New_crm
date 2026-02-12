@@ -10,7 +10,7 @@
 # ----------------------------------------------
 # STAGE 1: Builder - Instalar dependencias
 # ----------------------------------------------
-FROM python:3.12-slim as builder
+FROM python:3.14-slim as builder
 
 # Evitar escritura de .pyc y buffering
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -37,7 +37,7 @@ RUN pip install --upgrade pip && \
 # ----------------------------------------------
 # STAGE 2: Runtime - Imagen final
 # ----------------------------------------------
-FROM python:3.12-slim as runtime
+FROM python:3.14-slim as runtime
 
 # Variables de entorno
 ENV PYTHONDONTWRITEBYTECODE=1
