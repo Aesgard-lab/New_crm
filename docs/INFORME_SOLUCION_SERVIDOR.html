@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Informe Técnico - Solución de Rendimiento del Servidor</title>
+    <style>
+        body { font-family: Calibri, Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1 { color: #1a5276; border-bottom: 3px solid #1a5276; padding-bottom: 10px; }
+        h2 { color: #2874a6; margin-top: 30px; }
+        h3 { color: #3498db; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #2874a6; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        code { background-color: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: Consolas, monospace; }
+        pre { background-color: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .highlight { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
+        .success { background-color: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 15px 0; }
+        .danger { background-color: #f8d7da; padding: 15px; border-left: 4px solid #dc3545; margin: 15px 0; }
+        .info { background-color: #d1ecf1; padding: 15px; border-left: 4px solid #17a2b8; margin: 15px 0; }
+        ul { margin: 10px 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+
+<h1>📋 Informe Técnico: Solución de Rendimiento del Servidor</h1>
+
+<p><strong>Proyecto:</strong> CRM Django<br>
+<strong>Fecha:</strong> 11 de Febrero de 2026<br>
+<strong>Repositorio:</strong> https://github.com/Aesgard-lab/New_crm</p>
+
+<hr>
+
+<h2>1. Diagnóstico del Problema</h2>
+
+<h3>1.1 Situación Actual</h3>
+<p>El servidor presenta un consumo excesivo de recursos:</p>
+<ul>
+    <li><strong>CPU:</strong> 97.70% de 20 CPUs</li>
+    <li><strong>Memoria:</strong> 99.84% (15.98 GiB de 16.00 GiB)</li>
+</ul>
+
+<h3>1.2 Causa Raíz Identificada</h3>
+<div class="danger">
+    <strong>⚠️ Problema Principal: Virtualización Anidada</strong><br>
+    El servidor está ejecutando una VM dentro de otra VM (nested virtualization), lo que causa:
+    <ul>
+        <li>Overhead de CPU del 30-50%</li>
+        <li>Penalización de memoria por capas de abstracción adicionales</li>
+        <li>Degradación de I/O por doble virtualización de disco</li>
+    </ul>
+</div>
+
+<h3>1.3 Configuración Original del Proyecto</h3>
+<table>
+    <tr>
+        <th>Componente</th>
+        <th>Cantidad</th>
+        <th>Consumo Estimado</th>
+    </tr>
+    <tr>
+        <td>Contenedores Docker</td>
+        <td>6 (PostgreSQL, Redis, Web, Celery, Celery Beat, Nginx)</td>
+        <td>Overhead ~300-600MB</td>
+    </tr>
+    <tr>
+        <td>Workers Gunicorn</td>
+        <td>4 workers × 2 threads = 8 procesos</td>
+        <td>~1.2 GB</td>
+    </tr>
+    <tr>
+        <td>Workers Celery</td>
+        <td>4 workers + 1 Beat</td>
+        <td>~800 MB</td>
+    </tr>
+    <tr>
+        <td>PostgreSQL</td>
+        <td>Sin límites configurados</td>
+        <td>~1-2 GB</td>
+    </tr>
+    <tr>
+        <td>Redis</td>
+        <td>Sin límites configurados</td>
+        <td>~256 MB</td>
+    </tr>
+    <tr>
+        <td><strong>TOTAL ESTIMADO</strong></td>
+        <td></td>
+        <td><strong>4-6 GB mínimo</strong></td>
+    </tr>
+</table>
+
+<hr>
+
+<h2>2. Soluciones Implementadas</h2>
+
+<div class="success">
+    <strong>✅ Ya están subidas al repositorio y listas para usar</strong>
+</div>
+
+<h3>2.1 Configuración Docker Optimizada</h3>
+<p><strong>Archivo:</strong> <code>docker-compose.lightweight.yml</code></p>
+
+<table>
+    <tr>
+        <th>Aspecto</th>
+        <th>Antes (prod.yml)</th>
+        <th>Después (lightweight.yml)</th>
+    </tr>
+    <tr>
+        <td>Contenedores</td>
+        <td>6</td>
+        <td>4</td>
+    </tr>
+    <tr>
+        <td>Workers Gunicorn</td>
+        <td>4 × 2 threads</td>
+        <td>2 síncronos</td>
+    </tr>
+    <tr>
+        <td>Workers Celery</td>
+        <td>4 + Beat separado</td>
+        <td>1 con Beat integrado</td>
+    </tr>
+    <tr>
+        <td>Límites de memoria</td>
+        <td>Sin límites</td>
+        <td>Configurados por contenedor</td>
+    </tr>
+    <tr>
+        <td><strong>RAM Total</strong></td>
+        <td><strong>4-6 GB</strong></td>
+        <td><strong>1.5-2 GB</strong></td>
+    </tr>
+</table>
+
+<h3>2.2 Límites de Memoria por Contenedor</h3>
+<table>
+    <tr>
+        <th>Contenedor</th>
+        <th>Límite Máximo</th>
+        <th>Reserva Mínima</th>
+    </tr>
+    <tr>
+        <td>PostgreSQL</td>
+        <td>512 MB</td>
+        <td>256 MB</td>
+    </tr>
+    <tr>
+        <td>Redis</td>
+        <td>128 MB</td>
+        <td>64 MB</td>
+    </tr>
+    <tr>
+        <td>Web (Django)</td>
+        <td>512 MB</td>
+        <td>256 MB</td>
+    </tr>
+    <tr>
+        <td>Celery</td>
+        <td>384 MB</td>
+        <td>192 MB</td>
+    </tr>
+    <tr>
+        <td><strong>TOTAL</strong></td>
+        <td><strong>1.5 GB</strong></td>
+        <td><strong>768 MB</strong></td>
+    </tr>
+</table>
+
+<h3>2.3 Optimizaciones de PostgreSQL</h3>
+<pre>
+shared_buffers=128MB
+effective_cache_size=256MB
+maintenance_work_mem=64MB
+work_mem=4MB
+max_connections=50
+</pre>
+
+<h3>2.4 Optimizaciones de Redis</h3>
+<pre>
+maxmemory 100mb
+maxmemory-policy allkeys-lru
+</pre>
+
+<hr>
+
+<h2>3. Instrucciones de Despliegue</h2>
+
+<h3>3.1 Pasos para el Servidor</h3>
+
+<div class="info">
+    <strong>Ejecutar estos comandos en el servidor:</strong>
+</div>
+
+<pre>
+# 1. Ir al directorio del proyecto
+cd /ruta/al/proyecto
+
+# 2. Hacer pull de los últimos cambios
+git pull origin main
+
+# 3. Parar los contenedores actuales
+docker compose down
+
+# 4. Construir con la nueva configuración
+docker compose -f docker-compose.lightweight.yml build --no-cache
+
+# 5. Levantar los servicios
+docker compose -f docker-compose.lightweight.yml up -d
+
+# 6. Ejecutar migraciones
+docker compose -f docker-compose.lightweight.yml exec web python manage.py migrate
+
+# 7. Recolectar archivos estáticos
+docker compose -f docker-compose.lightweight.yml exec web python manage.py collectstatic --noinput
+
+# 8. Verificar estado
+docker compose -f docker-compose.lightweight.yml ps
+docker stats --no-stream
+</pre>
+
+<h3>3.2 Verificación de Funcionamiento</h3>
+<pre>
+# Ver uso de recursos en tiempo real
+docker stats
+
+# Ver logs de la aplicación
+docker compose -f docker-compose.lightweight.yml logs -f web
+
+# Probar que la aplicación responde
+curl -f http://localhost:80/health/ready/
+</pre>
+
+<hr>
+
+<h2>4. Requisitos de Infraestructura</h2>
+
+<h3>4.1 Opción Recomendada: VM Directa (Sin Virtualización Anidada)</h3>
+<table>
+    <tr>
+        <th>Recurso</th>
+        <th>Mínimo</th>
+        <th>Recomendado</th>
+    </tr>
+    <tr>
+        <td>Tipo de VM</td>
+        <td colspan="2">KVM/QEMU directo sobre bare-metal (NO nested virtualization)</td>
+    </tr>
+    <tr>
+        <td>vCPU</td>
+        <td>2 cores</td>
+        <td>4 cores</td>
+    </tr>
+    <tr>
+        <td>RAM</td>
+        <td>2 GB</td>
+        <td>4 GB</td>
+    </tr>
+    <tr>
+        <td>Disco</td>
+        <td>10 GB SSD</td>
+        <td>20 GB SSD</td>
+    </tr>
+    <tr>
+        <td>Sistema Operativo</td>
+        <td colspan="2">Ubuntu 22.04 LTS o Debian 12</td>
+    </tr>
+</table>
+
+<h3>4.2 Si Solo Hay Virtualización Anidada Disponible</h3>
+<div class="highlight">
+    <strong>⚠️ Con virtualización anidada los requisitos aumentan:</strong>
+    <ul>
+        <li><strong>vCPU:</strong> 4 cores mínimo</li>
+        <li><strong>RAM:</strong> 6-8 GB mínimo</li>
+        <li><strong>El overhead de nested virt consume ~30-40% adicional</strong></li>
+    </ul>
+</div>
+
+<hr>
+
+<h2>5. Proveedores VPS Recomendados</h2>
+
+<p>Si necesitan migrar a una infraestructura sin virtualización anidada:</p>
+
+<table>
+    <tr>
+        <th>Proveedor</th>
+        <th>Plan</th>
+        <th>RAM</th>
+        <th>CPU</th>
+        <th>Precio/mes</th>
+    </tr>
+    <tr>
+        <td>Hetzner Cloud</td>
+        <td>CX21</td>
+        <td>4 GB</td>
+        <td>2 vCPU</td>
+        <td>~€4-5</td>
+    </tr>
+    <tr>
+        <td>Contabo</td>
+        <td>VPS S</td>
+        <td>8 GB</td>
+        <td>4 vCPU</td>
+        <td>~€6</td>
+    </tr>
+    <tr>
+        <td>OVH</td>
+        <td>VPS Starter</td>
+        <td>4 GB</td>
+        <td>2 vCPU</td>
+        <td>~€6</td>
+    </tr>
+    <tr>
+        <td>DigitalOcean</td>
+        <td>Basic Droplet</td>
+        <td>4 GB</td>
+        <td>2 vCPU</td>
+        <td>~$24</td>
+    </tr>
+    <tr>
+        <td>Vultr</td>
+        <td>Cloud Compute</td>
+        <td>4 GB</td>
+        <td>2 vCPU</td>
+        <td>~$20</td>
+    </tr>
+</table>
+
+<hr>
+
+<h2>6. Archivos Modificados en el Repositorio</h2>
+
+<table>
+    <tr>
+        <th>Archivo</th>
+        <th>Descripción</th>
+    </tr>
+    <tr>
+        <td><code>docker-compose.lightweight.yml</code></td>
+        <td>Configuración Docker optimizada para bajo consumo</td>
+    </tr>
+    <tr>
+        <td><code>config/settings_lightweight.py</code></td>
+        <td>Settings Django para modo bajo recursos</td>
+    </tr>
+    <tr>
+        <td><code>core/audit_signals.py</code></td>
+        <td>Signals de auditoría ahora desactivables</td>
+    </tr>
+    <tr>
+        <td><code>docs/DEPLOY_LIGHTWEIGHT.md</code></td>
+        <td>Documentación completa de despliegue</td>
+    </tr>
+</table>
+
+<hr>
+
+<h2>7. Resumen Ejecutivo</h2>
+
+<div class="success">
+    <h3>✅ Acciones Completadas (lado desarrollo)</h3>
+    <ul>
+        <li>Configuración Docker optimizada creada y subida</li>
+        <li>Límites de memoria configurados por contenedor</li>
+        <li>Reducción de workers de 8+5 a 2+1</li>
+        <li>PostgreSQL y Redis optimizados para bajo consumo</li>
+        <li>Documentación técnica completa</li>
+    </ul>
+</div>
+
+<div class="highlight">
+    <h3>📋 Acciones Pendientes (lado servidor)</h3>
+    <ol>
+        <li>Hacer <code>git pull</code> para obtener los cambios</li>
+        <li>Ejecutar <code>docker compose -f docker-compose.lightweight.yml up -d</code></li>
+        <li>Verificar que el consumo baja a ~1.5-2 GB</li>
+        <li><strong>Si sigue con problemas:</strong> Migrar a VM directa (sin virtualización anidada)</li>
+    </ol>
+</div>
+
+<div class="info">
+    <h3>📊 Resultado Esperado</h3>
+    <table>
+        <tr>
+            <th>Métrica</th>
+            <th>Antes</th>
+            <th>Después</th>
+        </tr>
+        <tr>
+            <td>RAM</td>
+            <td>4-6 GB</td>
+            <td>1.5-2 GB</td>
+        </tr>
+        <tr>
+            <td>Procesos</td>
+            <td>20+</td>
+            <td>8</td>
+        </tr>
+        <tr>
+            <td>Contenedores</td>
+            <td>6</td>
+            <td>4</td>
+        </tr>
+    </table>
+</div>
+
+<hr>
+
+<p style="text-align: center; color: #666; margin-top: 40px;">
+    <em>Documento generado el 11 de Febrero de 2026</em><br>
+    <strong>Repositorio:</strong> https://github.com/Aesgard-lab/New_crm
+</p>
+
+</body>
+</html>

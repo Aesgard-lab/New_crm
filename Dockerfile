@@ -86,5 +86,5 @@ RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Comando por defecto: Gunicorn
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# Comando por defecto: Gunicorn (preload ahorra RAM compartiendo código entre workers)
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--preload", "--max-requests", "1000", "--max-requests-jitter", "100"]

@@ -78,6 +78,14 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = 50
 CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_TASK_SEND_SENT_EVENT = False
 
+# NO guardar resultado de tareas en BD (ahorra escrituras a PostgreSQL)
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_RESULT_BACKEND = None
+
+# Limitar tiempo de tareas
+CELERY_TASK_TIME_LIMIT = 180  # 3 min hard kill
+CELERY_TASK_SOFT_TIME_LIMIT = 150  # 2.5 min warning
+
 # ==============================================
 # LOGGING MÍNIMO
 # ==============================================
