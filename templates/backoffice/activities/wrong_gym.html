@@ -1,0 +1,34 @@
+{% extends 'backoffice/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow text-center">
+            <div class="card-body py-5">
+                <i class="feather icon-alert-triangle text-warning display-1 mb-4"></i>
+                <h3 class="card-title">Actividad en otro Gimnasio</h3>
+                <p class="card-text lead mb-4">
+                    La actividad <strong>{{ activity.name }}</strong> pertenece al gimnasio
+                    <strong>{{ activity.gym.name }}</strong>.
+                </p>
+                <p class="text-muted mb-4">
+                    Tu sesión actual está en <strong>{{ request.gym.name }}</strong>.
+                    Para editar esta actividad, debes cambiar de gimnasio.
+                </p>
+
+                <form action="{% url 'switch_gym' activity.gym.id %}" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="feather icon-refresh-cw me-2"></i>
+                        Cambiar a {{ activity.gym.name }}
+                    </button>
+                    <a href="{% url 'activity_list' %}" class="btn btn-outline-secondary btn-lg ms-2">
+                        Cancelar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

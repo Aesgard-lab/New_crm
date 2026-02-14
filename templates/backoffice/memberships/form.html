@@ -1,4 +1,5 @@
 {% extends "backoffice/base.html" %}
+{% load l10n %}
 
 {% block page_title %}
 <div>{{ title }}</div>
@@ -9,7 +10,7 @@
 <form method="post" enctype="multipart/form-data" class="max-w-6xl mx-auto" novalidate>
     {% csrf_token %}
 
-    {% if form.errors or formset.errors %}
+    {% if form.errors or formset.errors or formset.non_form_errors %}
     <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-xl">
         <div class="flex">
             <div class="flex-shrink-0">
@@ -23,16 +24,35 @@
                 <h3 class="text-sm leading-5 font-medium text-red-800">
                     Hay errores en el formulario
                 </h3>
-                <div class="mt-2 text-sm leading-5 text-red-700">
-                    {{ form.errors }}
-                    {{ formset.non_form_errors }}
-                    <ul>
-                        {% for form in formset %}
-                        {% for error in form.errors.values %}
-                        <li>{{ error }}</li>
-                        {% endfor %}
-                        {% endfor %}
-                    </ul>
+                <div class="mt-2 text-sm leading-5 text-red-700 space-y-1">
+                    {# Errores del formulario principal #}
+                    {% for field in form %}
+                        {% if field.errors %}
+                        <p>• <strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</p>
+                        {% endif %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                    <p>• {{ error }}</p>
+                    {% endfor %}
+                    {# Errores del formset (reglas de acceso) #}
+                    {% for nfe in formset.non_form_errors %}
+                    <p>• {{ nfe }}</p>
+                    {% endfor %}
+                    {% for rule_form in formset %}
+                        {% if rule_form.errors %}
+                        <div class="mt-1 pl-3 border-l-2 border-red-300">
+                            <p class="font-medium">Regla de acceso {{ forloop.counter }}:</p>
+                            {% for error in rule_form.non_field_errors %}
+                            <p class="ml-2">→ {{ error }}</p>
+                            {% endfor %}
+                            {% for field_name, errors in rule_form.errors.items %}
+                                {% if field_name != '__all__' %}
+                                <p class="ml-2">→ <strong>{{ field_name }}:</strong> {{ errors|join:", " }}</p>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -53,9 +73,25 @@
                 {{ form.description }}
             </div>
             <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-2">
+                    Notas del Recibo
+                    <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-600 text-[10px] cursor-help" title="Este texto aparecerá en el ticket y factura cuando se venda este plan">?</span>
+                </label>
+                {{ form.receipt_notes }}
+                <p class="text-[10px] text-slate-400 mt-1">Aparecerá impreso en el ticket/factura del cliente al comprar este plan</p>
+            </div>
+            <div class="col-span-2">
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Imagen</label>
                 <input type="file" name="image"
                     class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 transition-colors" />
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                    Código de Barras
+                </label>
+                {{ form.barcode }}
+                <p class="text-[10px] text-slate-400 mt-1">Para venta rápida en TPV escaneando el código</p>
             </div>
         </div>
 
@@ -67,7 +103,7 @@
                 {{ form.base_price }}
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Impuestos (%)</label>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Impuesto Principal</label>
                 {{ form.tax_rate }}
             </div>
             <div>
@@ -75,26 +111,51 @@
                 {{ form.price_strategy }}
             </div>
 
-            <div class="bg-slate-900 rounded-xl p-3 flex flex-col justify-center shadow-lg shadow-slate-900/10 text-white relative">
+            <div class="rounded-xl p-3 flex flex-col justify-center shadow-lg text-white relative" style="background-color: var(--brand-color); box-shadow: 0 10px 15px -3px color-mix(in srgb, var(--brand-color) 20%, transparent);">
                 <div class="flex items-baseline justify-between gap-2">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">PVP Cuota</span>
+                    <span class="text-[10px] uppercase font-bold tracking-wider" style="color: rgba(255,255,255,0.7);">PVP Cuota</span>
                     <div class="text-lg font-bold leading-none">
                         <span id="finalPriceDisplay">0.00</span>€
                     </div>
                 </div>
                 <!-- Matrícula y Total (solo si está activada) -->
                 <template x-if="hasEnrollmentFee && enrollmentFee > 0">
-                    <div class="mt-2 pt-2 border-t border-slate-700 space-y-1">
+                    <div class="mt-2 pt-2 space-y-1" style="border-top: 1px solid rgba(255,255,255,0.25);">
                         <div class="flex items-baseline justify-between gap-2">
-                            <span class="text-[9px] text-amber-400 uppercase font-bold">+ Matrícula</span>
-                            <span class="text-sm font-bold text-amber-400" x-text="enrollmentFeeDisplay + '€'"></span>
+                            <span class="text-[9px] text-amber-300 uppercase font-bold">+ Matrícula</span>
+                            <span class="text-sm font-bold text-amber-300" x-text="enrollmentFeeDisplay + '€'"></span>
                         </div>
-                        <div class="flex items-baseline justify-between gap-2 pt-1 border-t border-slate-600">
-                            <span class="text-[9px] text-emerald-400 uppercase font-bold">Total Alta</span>
-                            <span class="text-sm font-bold text-emerald-400" x-text="totalFirstPayment + '€'"></span>
+                        <div class="flex items-baseline justify-between gap-2 pt-1" style="border-top: 1px solid rgba(255,255,255,0.15);">
+                            <span class="text-[9px] uppercase font-bold" style="color: rgba(255,255,255,0.9);">Total Alta</span>
+                            <span class="text-sm font-bold" style="color: rgba(255,255,255,0.95);" x-text="totalFirstPayment + '€'"></span>
                         </div>
                     </div>
                 </template>
+            </div>
+        </div>
+
+        <!-- Impuestos Adicionales (colapsable) -->
+        <div x-data="{ showExtra: false }" class="mt-2">
+            <button type="button" @click="showExtra = !showExtra"
+                class="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+                <svg class="w-3.5 h-3.5 transition-transform" :class="showExtra && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                Impuestos adicionales
+                {% if form.additional_tax_rates.value %}
+                    <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold">{{ form.additional_tax_rates.value|length }}</span>
+                {% endif %}
+            </button>
+            <div x-show="showExtra" x-collapse class="mt-2 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <p class="text-[10px] text-slate-400 mb-2">Selecciona impuestos adicionales que se aplican junto al principal (ej: recargos locales, tasas municipales)</p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                    {% for checkbox in form.additional_tax_rates %}
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-white rounded px-2 py-1 transition-colors">
+                            {{ checkbox.tag }}
+                            <span class="text-slate-600">{{ checkbox.choice_label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
@@ -142,7 +203,7 @@
             </div>
 
             <!-- Additional Options -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div class="bg-white rounded-lg p-3 border border-slate-200">
                     <label class="flex items-center gap-2 cursor-pointer">
                         {{ form.prorate_first_month }}
@@ -151,6 +212,14 @@
                             <p class="text-[10px] text-slate-400 mt-0.5">Ajustar primer cobro proporcionalmente</p>
                         </div>
                     </label>
+                </div>
+                <div class="bg-white rounded-lg p-3 border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-2">
+                        Día de apertura de programación
+                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-600 text-[10px] cursor-help" title="Día del mes en que se abren las reservas del siguiente periodo. Ej: el día 25 se abren las reservas del mes siguiente.">?</span>
+                    </label>
+                    {{ form.scheduling_open_day }}
+                    <p class="text-[10px] text-slate-400 mt-0.5">Vacío = sin restricción</p>
                 </div>
                 <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border-2 border-green-200">
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -161,6 +230,34 @@
                         </div>
                     </label>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Fecha de Activación -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm mb-4">
+            <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Fecha de Activación de la Opción de Precio
+                <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-600 text-[10px] cursor-help" title="Define cuándo comienza a contar la membresía después de la compra">?</span>
+            </h3>
+            <div class="space-y-3">
+                {% for radio in form.activation_mode %}
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:border-blue-300 transition-colors">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        {{ radio.tag }}
+                        <div>
+                            <span class="text-sm font-medium text-slate-700">{{ radio.choice_label }}</span>
+                            {% if radio.data.value == 'ON_FIRST_VISIT' %}
+                            <p class="text-[10px] text-slate-400 mt-0.5">La membresía no se activa hasta que el cliente haga su primera visita/check-in</p>
+                            {% elif radio.data.value == 'ON_SPECIFIC_DATE' %}
+                            <p class="text-[10px] text-slate-400 mt-0.5">Se selecciona manualmente una fecha al asignar la membresía</p>
+                            {% endif %}
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
             </div>
         </div>
         
@@ -417,32 +514,24 @@
                         <th class="px-3 py-2 w-1/4">Servicio (Cat / Específico)</th>
                         <th class="px-3 py-2 w-20">Cant.</th>
                         <th class="px-3 py-2 w-28">Periodo</th>
-                        <th class="px-3 py-2 w-16">Límites</th>
+                        <th class="px-3 py-2 w-20">Límite</th>
+                        <th class="px-3 py-2 w-28">Per. Límite</th>
+                        <th class="px-3 py-2 w-10">⚙️</th>
                         <th class="px-3 py-2 w-10">Eliminar</th>
                     </tr>
                 </thead>
                 <tbody id="access-rules-body">
-                    <!-- Contract -->
-                    <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-6">
-                        <h3 class="text-lg font-bold text-slate-800 mb-4">Contrato y Términos</h3>
-
-                        <div class="mb-4">
-                            <label
-                                class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                                {{ form.contract_required }}
-                                <span class="text-sm font-medium text-slate-700">Requiere firma de contrato al
-                                    contratar</span>
-                            </label>
-                        </div>
-
-                        <div x-show="true" class="space-y-2">
-                            <label class="block text-sm font-bold text-slate-700">Contenido del Contrato</label>
-                            {{ form.contract_content }}
-                            <p class="text-xs text-slate-500">Este texto se mostrará al cliente y deberá
-                                aceptarlo/firmarlo para completar la contratación.</p>
-                        </div>
-                    </div>
-
+                    {% if not formset.forms %}
+                    <tr id="empty-rules-placeholder">
+                        <td colspan="8" class="text-center py-8 text-slate-400">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            <p class="text-sm font-medium">No hay reglas de acceso configuradas</p>
+                            <p class="text-xs mt-1">Pulsa "Añadir otra regla" para definir qué actividades y servicios incluye esta cuota</p>
+                        </td>
+                    </tr>
+                    {% endif %}
                     <!-- Access Rules (Dynamic Formset) -->
                     {% for rule_form in formset %}
                     <tr class="border-b border-slate-100 rule-row {% if rule_form.DELETE.value %}hidden{% endif %}" x-data="{ showLimits: false }">
@@ -471,11 +560,13 @@
                         </td>
                         <td class="px-3 py-3 align-top pt-8">{{ rule_form.quantity }}</td>
                         <td class="px-3 py-3 align-top pt-8">{{ rule_form.period }}</td>
+                        <td class="px-3 py-3 align-top pt-8">{{ rule_form.usage_limit }}</td>
+                        <td class="px-3 py-3 align-top pt-8">{{ rule_form.usage_limit_period }}</td>
                         <td class="px-3 py-3 align-top pt-8 text-center">
                             <button type="button" @click="showLimits = !showLimits" 
                                 class="text-slate-400 hover:text-slate-600 transition-colors" 
                                 :class="{'text-blue-600': showLimits}"
-                                title="Configurar límites de reserva">
+                                title="Configurar restricciones avanzadas">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -498,17 +589,13 @@
                     </tr>
                     <!-- Fila expandible con límites de reserva -->
                     <tr x-show="showLimits" x-transition class="bg-blue-50/50 border-b border-slate-200">
-                        <td colspan="6" class="px-4 py-3">
-                            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
-                                <div>
-                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Día</label>
-                                    {{ rule_form.max_per_day }}
-                                    <span class="text-[9px] text-slate-400">0 = sin límite</span>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Semana</label>
-                                    {{ rule_form.max_per_week }}
-                                    <span class="text-[9px] text-slate-400">0 = sin límite</span>
+                        <td colspan="8" class="px-4 py-3">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div class="flex items-center pt-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        {{ rule_form.no_consecutive_days }}
+                                        <span class="text-xs text-slate-600">Sin Consecutivos</span>
+                                    </label>
                                 </div>
                                 <div>
                                     <label class="block text-[10px] text-slate-500 uppercase mb-1">Simultáneas</label>
@@ -521,9 +608,24 @@
                                     <span class="text-[9px] text-slate-400">Máx días antes</span>
                                 </div>
                                 <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Hora Desde</label>
+                                    {{ rule_form.access_time_start }}
+                                    <span class="text-[9px] text-slate-400">Ej: 07:00</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Hora Hasta</label>
+                                    {{ rule_form.access_time_end }}
+                                    <span class="text-[9px] text-slate-400">Ej: 14:00</span>
+                                </div>
+                                <div>
                                     <label class="block text-[10px] text-slate-500 uppercase mb-1">Prioridad</label>
                                     {{ rule_form.booking_priority }}
                                     <span class="text-[9px] text-slate-400">Mayor = antes</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 uppercase mb-1">Acceso Anticipado</label>
+                                    {{ rule_form.early_access_hours }}
+                                    <span class="text-[9px] text-slate-400">Horas antes de apertura</span>
                                 </div>
                                 <div class="flex items-center pt-4">
                                     <label class="flex items-center gap-2 cursor-pointer">
@@ -545,6 +647,29 @@
                 </svg>
                 Añadir otra regla / concepto
             </button>
+        </div>
+    </div>
+
+    <!-- CONTRACT SECTION (separated from access rules) -->
+    <div class="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm space-y-4">
+        <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Contrato y Términos
+        </h3>
+
+        <div>
+            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                {{ form.contract_required }}
+                <span class="text-sm font-medium text-slate-700">Requiere firma de contrato al contratar</span>
+            </label>
+        </div>
+
+        <div class="space-y-2">
+            <label class="block text-sm font-bold text-slate-700">Contenido del Contrato</label>
+            {{ form.contract_content }}
+            <p class="text-xs text-slate-500">Este texto se mostrará al cliente y deberá aceptarlo/firmarlo para completar la contratación.</p>
         </div>
     </div>
 
@@ -587,11 +712,13 @@
             </td>
             <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.quantity }}</td>
             <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.period }}</td>
+            <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.usage_limit }}</td>
+            <td class="px-3 py-3 align-top pt-8">{{ formset.empty_form.usage_limit_period }}</td>
             <td class="px-3 py-3 align-top pt-8 text-center">
                 <button type="button" @click="showLimits = !showLimits" 
                     class="text-slate-400 hover:text-slate-600 transition-colors limits-toggle-btn" 
                     :class="{'text-blue-600': showLimits}"
-                    title="Configurar límites de reserva">
+                    title="Configurar restricciones avanzadas">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -613,17 +740,13 @@
         </tr>
         <!-- Fila expandible con límites de reserva (empty form) -->
         <tr x-show="showLimits" x-transition class="bg-blue-50/50 border-b border-slate-200 limits-row">
-            <td colspan="6" class="px-4 py-3">
-                <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
-                    <div>
-                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Día</label>
-                        {{ formset.empty_form.max_per_day }}
-                        <span class="text-[9px] text-slate-400">0 = sin límite</span>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Máx/Semana</label>
-                        {{ formset.empty_form.max_per_week }}
-                        <span class="text-[9px] text-slate-400">0 = sin límite</span>
+            <td colspan="8" class="px-4 py-3">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="flex items-center pt-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            {{ formset.empty_form.no_consecutive_days }}
+                            <span class="text-xs text-slate-600">Sin Consecutivos</span>
+                        </label>
                     </div>
                     <div>
                         <label class="block text-[10px] text-slate-500 uppercase mb-1">Simultáneas</label>
@@ -636,9 +759,24 @@
                         <span class="text-[9px] text-slate-400">Máx días antes</span>
                     </div>
                     <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Hora Desde</label>
+                        {{ formset.empty_form.access_time_start }}
+                        <span class="text-[9px] text-slate-400">Ej: 07:00</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Hora Hasta</label>
+                        {{ formset.empty_form.access_time_end }}
+                        <span class="text-[9px] text-slate-400">Ej: 14:00</span>
+                    </div>
+                    <div>
                         <label class="block text-[10px] text-slate-500 uppercase mb-1">Prioridad</label>
                         {{ formset.empty_form.booking_priority }}
                         <span class="text-[9px] text-slate-400">Mayor = antes</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase mb-1">Acceso Anticipado</label>
+                        {{ formset.empty_form.early_access_hours }}
+                        <span class="text-[9px] text-slate-400">Horas antes de apertura</span>
                     </div>
                     <div class="flex items-center pt-4">
                         <label class="flex items-center gap-2 cursor-pointer">
@@ -671,15 +809,18 @@
         // Price Calculator component (for top price box)
         Alpine.data('priceCalculator', () => ({
             hasEnrollmentFee: {{ form.has_enrollment_fee.value|yesno:'true,false' }},
-            enrollmentFee: {{ form.enrollment_fee.value|default:'0' }},
+            enrollmentFee: {{ form.enrollment_fee.value|default:'0'|unlocalize }},
             enrollmentFeeDisplay: '0.00',
             totalFirstPayment: '0.00',
             
             init() {
+                // Leer estado real del checkbox del DOM
+                const enrollmentCheckbox = document.getElementById('id_has_enrollment_fee');
+                this.hasEnrollmentFee = enrollmentCheckbox ? enrollmentCheckbox.checked : false;
+                
                 this.calculate();
                 
                 // Listen to all relevant changes
-                const enrollmentCheckbox = document.querySelector('[name="has_enrollment_fee"]');
                 const enrollmentInput = document.querySelector('[name="enrollment_fee"]');
                 const enrollmentTaxSelect = document.querySelector('[name="enrollment_fee_tax_rate"]');
                 const enrollmentStrategySelect = document.querySelector('[name="enrollment_fee_price_strategy"]');
@@ -687,13 +828,19 @@
                 const taxRateSelect = document.querySelector('[name="tax_rate"]');
                 const strategySelect = document.querySelector('[name="price_strategy"]');
                 
-                // Watch checkbox changes
+                // Watch checkbox changes (native event)
                 if (enrollmentCheckbox) {
                     enrollmentCheckbox.addEventListener('change', () => {
                         this.hasEnrollmentFee = enrollmentCheckbox.checked;
                         this.calculate();
                     });
                 }
+                
+                // Listen for cross-component event from enrollment section
+                window.addEventListener('enrollment-fee-changed', () => {
+                    this.hasEnrollmentFee = enrollmentCheckbox ? enrollmentCheckbox.checked : false;
+                    this.calculate();
+                });
                 
                 // Watch all inputs
                 [enrollmentInput, enrollmentTaxSelect, enrollmentStrategySelect, basePriceInput, taxRateSelect, strategySelect].forEach(el => {
@@ -732,10 +879,14 @@
         
         // Enrollment Fee Section component
         Alpine.data('enrollmentFeeSection', () => ({
-            hasEnrollmentFee: {{ form.has_enrollment_fee.value|yesno:'true,false' }},
+            hasEnrollmentFee: false,
             enrollmentFeeDisplay: '0.00',
             
             init() {
+                // Leer estado real del checkbox del DOM (evita problemas de locale/rendering)
+                const cb = document.getElementById('id_has_enrollment_fee');
+                this.hasEnrollmentFee = cb ? cb.checked : false;
+                
                 this.calculate();
                 
                 const enrollmentInput = document.querySelector('[name="enrollment_fee"]');
@@ -847,6 +998,10 @@
 
                 tbody.appendChild(newRow);
                 totalFormsInput.value = formIdx + 1;
+                
+                // Ocultar placeholder de "No hay reglas"
+                const placeholder = document.getElementById('empty-rules-placeholder');
+                if (placeholder) placeholder.remove();
             });
         }
 

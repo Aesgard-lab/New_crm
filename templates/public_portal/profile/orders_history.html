@@ -70,10 +70,16 @@
                         {% if item.item_type == 'PRODUCT' %}🛍️
                         {% elif item.item_type == 'MEMBERSHIP' %}💳
                         {% elif item.item_type == 'SERVICE' %}✨
+                        {% elif 'Cuota de Inscripción' in item.description %}🎫
                         {% else %}📦{% endif %}
                     </div>
                     <div class="flex-1">
-                        <div class="font-medium text-slate-900">{{ item.name }}</div>
+                        <div class="font-medium text-slate-900">
+                            {{ item.name|default:item.description }}
+                            {% if 'Cuota de Inscripción' in item.description %}
+                                <span class="ml-2 px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-semibold">Matrícula</span>
+                            {% endif %}
+                        </div>
                         <div class="text-sm text-slate-500">x{{ item.quantity }}</div>
                     </div>
                     <div class="font-semibold">{{ item.total_price|floatformat:2 }}€</div>

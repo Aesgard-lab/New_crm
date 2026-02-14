@@ -32,4 +32,7 @@ urlpatterns = [
     # Deferred Orders (Ventas Diferidas)
     path('api/deferred/<int:order_id>/charge/', api.deferred_order_charge, name='api_deferred_order_charge'),
     path('api/deferred/<int:order_id>/cancel/', api.deferred_order_cancel, name='api_deferred_order_cancel'),
+    
+    # Public verification (QR scan)
+    path('verify/<uuid:token>/', views.order_verify, name='order_verify'),
 ]

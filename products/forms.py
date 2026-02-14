@@ -27,9 +27,9 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = [
-            'name', 'barcode', 'barcode_type', 'sku', 'category', 'description', 'image',
+            'name', 'barcode', 'barcode_type', 'sku', 'category', 'description', 'receipt_notes', 'image',
             'cost_price', 'supplier_name', 'supplier_reference',
-            'base_price', 'tax_rate', 'price_strategy',
+            'base_price', 'tax_rate', 'additional_tax_rates', 'price_strategy',
             'track_stock', 'stock_quantity', 'low_stock_threshold',
             'is_active', 'is_visible_online'
         ]
@@ -48,6 +48,7 @@ class ProductForm(forms.ModelForm):
             }),
             'category': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
             'description': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'rows': 3}),
+            'receipt_notes': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'rows': 3, 'placeholder': 'Ej: Producto no retornable. Conservar en frío.'}),
             
             # Financials
             'cost_price': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'step': '0.01'}),
@@ -56,6 +57,7 @@ class ProductForm(forms.ModelForm):
             
             'base_price': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'step': '0.01'}),
             'tax_rate': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'additional_tax_rates': forms.CheckboxSelectMultiple(attrs={'class': 'space-y-1'}),
             'price_strategy': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             
             # Stock
@@ -123,7 +125,9 @@ class ProductForm(forms.ModelForm):
         
         if gym:
             self.fields['category'].queryset = ProductCategory.objects.filter(gym=gym)
-            self.fields['tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
+            tax_qs = TaxRate.objects.filter(gym=gym)
+            self.fields['tax_rate'].queryset = tax_qs
+            self.fields['additional_tax_rates'].queryset = tax_qs
 
             # Franchise Propagation Logic
             is_owner = user and gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())

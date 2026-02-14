@@ -1,11 +1,14 @@
 """
-Signals para el sistema de valoraciones de clases.
+Signals para el sistema de valoraciones de clases y activación de membresías.
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender='clients.ClientVisit')
@@ -108,3 +111,55 @@ def award_points_for_review(sender, instance, created, **kwargs):
         )
     except Exception as e:
         print(f"Error otorgando puntos por review: {e}")
+
+
+@receiver(post_save, sender='activities.SessionCheckin')
+def activate_pending_membership_on_first_visit(sender, instance, created, **kwargs):
+    """
+    Activa membresías con modo ON_FIRST_VISIT cuando el cliente
+    hace su primer check-in.
+    """
+    if not created:
+        return
+
+    client = instance.client
+    if not client:
+        return
+
+    from clients.models import ClientMembership
+
+    pending_memberships = ClientMembership.objects.filter(
+        client=client,
+        status=ClientMembership.Status.PENDING,
+        plan__activation_mode='ON_FIRST_VISIT',
+    ).select_related('plan')
+
+    today = timezone.now().date()
+
+    for membership in pending_memberships:
+        plan = membership.plan
+        if not plan:
+            continue
+
+        # Calcular fecha de fin a partir de hoy
+        end_date = None
+        if plan.pack_validity_days:
+            end_date = today + timedelta(days=plan.pack_validity_days)
+        elif plan.frequency_unit == 'MONTH':
+            end_date = today + timedelta(days=30 * plan.frequency_amount)
+        elif plan.frequency_unit == 'YEAR':
+            end_date = today + timedelta(days=365 * plan.frequency_amount)
+        elif plan.frequency_unit == 'WEEK':
+            end_date = today + timedelta(days=7 * plan.frequency_amount)
+        else:  # DAY
+            end_date = today + timedelta(days=plan.frequency_amount)
+
+        membership.start_date = today
+        membership.end_date = end_date
+        membership.status = ClientMembership.Status.ACTIVE
+        membership.save(update_fields=['start_date', 'end_date', 'status'])
+
+        logger.info(
+            f"Membresía #{membership.id} activada por primera visita "
+            f"(cliente: {client}, plan: {plan.name})"
+        )

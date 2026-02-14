@@ -119,6 +119,9 @@ class RegistrationConfigView(views.APIView):
         })
 
 
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+
 class RegisterClientView(views.APIView):
     """
     POST /api/registration/register/
@@ -150,6 +153,14 @@ class RegisterClientView(views.APIView):
         last_name = data.get('last_name', '').strip()
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
+        
+        # Validate password strength
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            return Response({
+                'error': list(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
         phone_number = data.get('phone_number', '').strip()
         custom_field_values = data.get('custom_fields', {})
         
@@ -265,6 +276,7 @@ class RegisterClientView(views.APIView):
         # Note about email verification (handled separately)
         if portal_settings.require_email_verification:
             response_data['requires_email_verification'] = True
-            # TODO: Send verification email
+            # TODO: SECURITY - Implement email verification sending (e.g. via Celery task) 
+            # and prevent login until verified if require_email_verification is True.
         
         return Response(response_data, status=status.HTTP_201_CREATED)

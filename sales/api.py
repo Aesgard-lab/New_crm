@@ -1,6 +1,5 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
-from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
@@ -16,7 +15,10 @@ from accounts.decorators import require_gym_permission
 from memberships.models import MembershipPlan
 import json
 import datetime
+import logging
 from django.shortcuts import get_object_or_404
+
+logger = logging.getLogger(__name__)
 
 @require_gym_permission('sales.view_sale')
 def get_client_cards(request, client_id):
@@ -41,7 +43,7 @@ def get_client_cards(request, client_id):
                 'display': f"💳 {card.card.brand.upper()} **** {card.card.last4}"
             })
     except Exception as e:
-        print(f"Error fetching Stripe cards: {e}")
+        logger.exception("Error fetching Stripe cards")
     
     # 2. Redsys Cards
     from finance.models import ClientRedsysToken
@@ -186,8 +188,9 @@ def order_delete(request, order_id):
             'message': f'Ticket eliminado correctamente: {order_info}'
         })
     except Exception as e:
+        logger.exception(f"Error deleting order {order_id}")
         return JsonResponse({
-            'error': f'Error al eliminar: {str(e)}'
+            'error': 'Error interno al eliminar el ticket'
         }, status=500)
 
 
@@ -567,7 +570,8 @@ def order_update(request, order_id):
         order.save()
         return JsonResponse({'success': True, 'message': 'Venta actualizada'})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception(f"Error updating order {order_id}")
+        return JsonResponse({'error': 'Error al actualizar la venta'}, status=400)
 
 @require_http_methods(["POST"])
 @require_gym_permission('sales.change_sale')
@@ -602,8 +606,8 @@ def order_generate_invoice(request, order_id):
 
         return JsonResponse({'success': True, 'message': msg, 'invoice_number': order.invoice_number})
     except Exception as e:
-        print(e)
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception(f"Error generating invoice for order {order_id}")
+        return JsonResponse({'error': 'Error al generar la factura'}, status=400)
 
 @require_http_methods(["POST"])
 @require_gym_permission('sales.view_sale')
@@ -624,12 +628,17 @@ def order_send_ticket(request, order_id):
         if not email:
             return JsonResponse({'error': 'Email requerido'}, status=400)
         
+        # Build absolute base URL for QR verification
+        base_url = request.build_absolute_uri('/').rstrip('/')
+        
         # Render email template
         html_content = render_to_string('emails/ticket_receipt.html', {
             'order': order,
             'gym': gym,
             'items': order.items.all(),
-            'payments': order.payments.all()
+            'payments': order.payments.all(),
+            'qr_image_url': order.get_qr_image_url(base_url),
+            'verification_url': f"{base_url}{order.get_verification_path()}",
         })
         
         send_email(
@@ -641,10 +650,11 @@ def order_send_ticket(request, order_id):
         )
         
         return JsonResponse({'success': True, 'message': f'Ticket enviado a {email}'})
-    except (NoEmailConfigurationError, EmailLimitExceededError) as e:
-        return JsonResponse({'error': f'No se puede enviar email: {str(e)}'}, status=400)
+    except (NoEmailConfigurationError, EmailLimitExceededError):
+        return JsonResponse({'error': 'No se puede enviar el email. Verifique la configuración de correo.'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception(f"Error sending ticket for order {order_id}")
+        return JsonResponse({'error': 'Error al enviar el ticket'}, status=500)
 
 from decimal import Decimal
 
@@ -709,7 +719,7 @@ def search_products(request):
                 'sku': p.sku or ''
             })
         except Exception as e:
-            print(f"Error prod {p.id}: {e}")
+            logger.exception(f"Error loading product {p.id}")
 
     # Search Services
     services = Service.objects.filter(gym=gym, is_active=True)
@@ -742,7 +752,9 @@ def search_products(request):
                 'name': plan.name,
                 'price': float(plan.final_price),
                 'image': plan.image.url if plan.image else None,
-                'category': 'Cuota / Plan'
+                'category': 'Cuota / Plan',
+                'has_enrollment_fee': bool(getattr(plan, 'has_enrollment_fee', False)),
+                'enrollment_fee': float(getattr(plan, 'final_enrollment_fee', 0)),
             })
         except Exception:
             pass
@@ -877,7 +889,12 @@ def process_sale(request):
             obj_id = item['id']
             obj_type = item['type']
             qty = int(item['qty'])
-            
+
+            # Skip enrollment_fee items from frontend — the backend adds them
+            # automatically when processing the parent membership item (below)
+            if obj_type == 'enrollment_fee':
+                continue
+
             discount_info = item.get('discount', {})
             disc_type = discount_info.get('type', 'fixed')
             disc_val = Decimal(str(discount_info.get('value', 0) or 0))
@@ -888,10 +905,10 @@ def process_sale(request):
                 obj = Service.objects.get(pk=obj_id, gym=gym)
             else:
                 obj = MembershipPlan.objects.get(pk=obj_id, gym=gym)
-            
-            unit_price = obj.final_price 
+
+            unit_price = obj.final_price
             base_total = unit_price * qty
-            
+
             item_discount = Decimal(0)
             if disc_val > 0:
                 if disc_type == 'percent':
@@ -899,18 +916,23 @@ def process_sale(request):
                     item_discount = base_total * (disc_val / 100)
                 else:
                     item_discount = disc_val
-            
+
             if item_discount > base_total:
                 item_discount = base_total
-                
+
             final_subtotal = base_total - item_discount
 
             # Calculate Base and Tax (Assuming tax-inclusive prices)
             # Base = Total / (1 + Rate)
-            item_tax_rate_decimal = Decimal(0)
-            if obj.tax_rate:
-                item_tax_rate_decimal = obj.tax_rate.rate_percent / Decimal(100)
-            
+            # Use total_tax_rate_percent if available (MembershipPlan), else single tax_rate
+            if hasattr(obj, 'total_tax_rate_percent'):
+                combined_tax_percent = obj.total_tax_rate_percent
+            elif hasattr(obj, 'tax_rate') and obj.tax_rate:
+                combined_tax_percent = obj.tax_rate.rate_percent
+            else:
+                combined_tax_percent = Decimal(0)
+            item_tax_rate_decimal = combined_tax_percent / Decimal(100)
+
             # Prevent division by zero or weirdness
             item_base = final_subtotal / (Decimal(1) + item_tax_rate_decimal)
             item_tax = final_subtotal - item_base
@@ -925,16 +947,44 @@ def process_sale(request):
                 quantity=qty,
                 unit_price=unit_price,
                 subtotal=final_subtotal,
-                tax_rate=obj.tax_rate.rate_percent if obj.tax_rate else 0,
-                discount_amount=item_discount
+                tax_rate=combined_tax_percent,
+                discount_amount=item_discount,
+                notes=getattr(obj, 'receipt_notes', '') or ''
             )
-            
+
             total_amount += final_subtotal
             total_discount += item_discount
-            
+
             # Update order totals (in-memory)
             order.total_base += item_base
             order.total_tax += item_tax
+
+            # --- ENROLLMENT FEE LOGIC ---
+            # If this is a MembershipPlan and has enrollment fee, add as separate OrderItem
+            if obj_type == 'membership' and hasattr(obj, 'has_enrollment_fee') and obj.has_enrollment_fee and obj.enrollment_fee > 0:
+                # Enrollment fee is always qty=1 (one-time per plan sale)
+                enrollment_fee = obj.final_enrollment_fee
+                enrollment_fee_tax = obj.enrollment_fee_tax_rate.rate_percent if obj.enrollment_fee_tax_rate else Decimal(0)
+                enrollment_fee_tax_decimal = enrollment_fee_tax / Decimal(100)
+                # Calculate base and tax (assume tax included)
+                enrollment_base = enrollment_fee / (Decimal(1) + enrollment_fee_tax_decimal) if enrollment_fee_tax_decimal > 0 else enrollment_fee
+                enrollment_tax = enrollment_fee - enrollment_base
+                OrderItem.objects.create(
+                    order=order,
+                    content_type=ct,
+                    object_id=obj.id,
+                    description=f"Cuota de Inscripción - {obj.name}",
+                    quantity=1,
+                    unit_price=enrollment_fee,
+                    subtotal=enrollment_fee,
+                    tax_rate=enrollment_fee_tax,
+                    discount_amount=Decimal(0),
+                    notes="Cuota de inscripción/matrícula"
+                )
+                total_amount += enrollment_fee
+                # Update order totals (in-memory)
+                order.total_base += enrollment_base
+                order.total_tax += enrollment_tax
 
         # 4. Create Payments (handle mixed) - Skip for deferred orders
         total_paid = Decimal(0)
@@ -1059,10 +1109,64 @@ def process_sale(request):
         order.total_discount = total_discount
         order.save()
         
+        # 5. Auto-assign memberships if any membership plans were sold
+        if client and order.status == 'PAID':
+            _auto_assign_memberships_from_order(order, client, gym)
+        
         return JsonResponse({'success': True, 'order_id': order.id})
     except Exception as e:
-        print(e)
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception("Error processing sale")
+        return JsonResponse({'error': 'Error interno al procesar la venta'}, status=500)
+
+def _auto_assign_memberships_from_order(order, client, gym):
+    """
+    Después de una venta pagada, auto-asigna las membresías vendidas al cliente.
+    Respeta el activation_mode del plan:
+    - ON_SALE: activa inmediatamente
+    - ON_FIRST_VISIT: crea como PENDING, se activa en primer check-in
+    - ON_SPECIFIC_DATE: si start_date es futura, crea como PENDING
+    """
+    from clients.services import ClientService, MembershipAssignData
+    from clients.models import ClientMembership
+    
+    ct_plan = ContentType.objects.get_for_model(MembershipPlan)
+    membership_items = order.items.filter(content_type=ct_plan)
+    
+    if not membership_items.exists():
+        return
+    
+    service = ClientService(gym)
+    
+    for item in membership_items:
+        try:
+            plan = MembershipPlan.objects.get(pk=item.object_id, gym=gym)
+        except MembershipPlan.DoesNotExist:
+            continue
+        
+        # Verificar si ya tiene membresía activa de este plan (evitar duplicados)
+        already_has = ClientMembership.objects.filter(
+            client=client,
+            plan=plan,
+            status__in=['ACTIVE', 'PENDING'],
+        ).exists()
+        
+        if already_has:
+            continue
+        
+        try:
+            data = MembershipAssignData(
+                plan_id=plan.id,
+                start_date=date.today(),
+            )
+            membership = service.assign_membership(client.id, data)
+            
+            # Log para trazabilidad
+            print(f"[POS] Auto-assigned membership '{plan.name}' to client {client.id} "
+                  f"(status={membership.status}, order={order.id})")
+        except Exception as e:
+            # No romper la venta si falla la asignación
+            print(f"[POS] Error auto-assigning membership '{plan.name}' to client {client.id}: {e}")
+
 
 def send_invoice_email(order, email):
     """
@@ -1072,12 +1176,20 @@ def send_invoice_email(order, email):
     from core.email_service import send_email, NoEmailConfigurationError, EmailLimitExceededError
     
     try:
+        # Build base URL from ALLOWED_HOSTS or fallback
+        from django.conf import settings as django_settings
+        hosts = getattr(django_settings, 'ALLOWED_HOSTS', [])
+        domain = next((h for h in hosts if h and h != '*' and h != 'localhost'), '')
+        base_url = f"https://{domain}" if domain else ''
+        
         # 1. Render HTML
         html_content = render_to_string('emails/invoice.html', {
             'order': order,
             'gym': order.gym,
             'items': order.items.all(),
-            'payments': order.payments.all()
+            'payments': order.payments.all(),
+            'qr_image_url': order.get_qr_image_url(base_url),
+            'verification_url': f"{base_url}{order.get_verification_path()}",
         })
         
         # 2. Send Email using unified service
@@ -1116,6 +1228,18 @@ def subscription_charge(request, pk):
         gym = request.gym
         membership = get_object_or_404(ClientMembership, pk=pk, client__gym=gym)
         client = membership.client
+        
+        # Validar que la membresía no esté PENDING (activation_mode ON_FIRST_VISIT/ON_SPECIFIC_DATE)
+        if membership.status == 'PENDING':
+            activation_info = ""
+            if membership.plan and membership.plan.activation_mode == 'ON_FIRST_VISIT':
+                activation_info = " Se activará cuando el cliente haga su primera visita/check-in."
+            elif membership.plan and membership.plan.activation_mode == 'ON_SPECIFIC_DATE':
+                activation_info = f" Se activará en la fecha de inicio: {membership.start_date}."
+            return JsonResponse({
+                'error': f'Esta membresía está pendiente de activación. No se puede cobrar aún.{activation_info}',
+                'error_code': 'MEMBERSHIP_PENDING'
+            }, status=400)
 
         import json
         
@@ -1222,7 +1346,8 @@ def subscription_charge(request, pk):
             description=f"Cuota: {membership.name}",
             quantity=1,
             unit_price=amount,
-            subtotal=amount
+            subtotal=amount,
+            notes=getattr(membership.plan, 'receipt_notes', '') or '' if membership.plan else ''
         )
         
         # 3. Attempt Charge
@@ -1260,7 +1385,8 @@ def subscription_charge(request, pk):
                  else:
                      error_msg = "Error Redsys"
              except Exception as e:
-                 error_msg = str(e)
+                 logger.exception("Error charging via Redsys")
+                 error_msg = 'Error al procesar el cobro con tarjeta'
 
         elif provider == 'manual':
              success = True
@@ -1283,8 +1409,12 @@ def subscription_charge(request, pk):
             order.save()
             
             # Extend Membership
-            # Look up plan by name to get frequency
-            plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
+            # Use the plan FK directly (not name-based lookup)
+            plan = membership.plan
+            if not plan:
+                # Fallback: try name-based lookup (legacy memberships without plan FK)
+                plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
+            
             if plan:
                 # Add frequency
                 from dateutil.relativedelta import relativedelta
@@ -1340,9 +1470,8 @@ def subscription_charge(request, pk):
 
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception("Error processing subscription charge")
+        return JsonResponse({'error': 'Error interno al procesar el cobro'}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -1437,7 +1566,8 @@ def order_update_status(request, order_id):
             'new_status': new_status
         })
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception(f"Error updating order status {order_id}")
+        return JsonResponse({'error': 'Error al actualizar el estado'}, status=400)
 
 
 @require_gym_permission('sales.charge')
@@ -1483,6 +1613,16 @@ def bulk_subscription_charge(request):
                 membership = ClientMembership.objects.get(pk=membership_id, client__gym=gym)
                 client = membership.client
                 amount = membership.price
+                
+                # Saltar membresías PENDING (no se cobran hasta activarse)
+                if membership.status == 'PENDING':
+                    results['failed'].append({
+                        'membership_id': membership_id,
+                        'client_name': f"{client.first_name} {client.last_name}",
+                        'reason': 'Membresía pendiente de activación'
+                    })
+                    results['failed_count'] += 1
+                    continue
                 
                 if amount <= 0:
                     results['failed'].append({
@@ -1551,7 +1691,8 @@ def bulk_subscription_charge(request):
                     description=f"Cuota: {membership.name}",
                     quantity=1,
                     unit_price=amount,
-                    subtotal=amount
+                    subtotal=amount,
+                    notes=getattr(membership.plan, 'receipt_notes', '') or '' if membership.plan else ''
                 )
                 
                 # Attempt charge
@@ -1585,7 +1726,8 @@ def bulk_subscription_charge(request):
                         else:
                             error_msg = "Error Redsys"
                     except Exception as e:
-                        error_msg = str(e)
+                        logger.exception("Error charging via Redsys (bulk)")
+                        error_msg = 'Error al procesar el cobro con tarjeta'
                 
                 if success:
                     OrderPayment.objects.create(
@@ -1598,7 +1740,9 @@ def bulk_subscription_charge(request):
                     order.save()
                     
                     # Extend membership
-                    plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
+                    plan = membership.plan
+                    if not plan:
+                        plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
                     if plan:
                         from dateutil.relativedelta import relativedelta
                         if plan.frequency_unit == 'MONTH':
@@ -1658,19 +1802,19 @@ def bulk_subscription_charge(request):
                 })
                 results['failed_count'] += 1
             except Exception as e:
+                logger.exception(f"Error processing membership {membership_id} in bulk charge")
                 results['failed'].append({
                     'membership_id': membership_id,
                     'client_name': 'Error',
-                    'reason': str(e)
+                    'reason': 'Error interno al procesar el cobro'
                 })
                 results['failed_count'] += 1
         
         return JsonResponse(results)
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception("Error in bulk subscription charge")
+        return JsonResponse({'error': 'Error interno al procesar cobros masivos'}, status=500)
 
 
 # ============================================
@@ -1768,9 +1912,8 @@ def deferred_order_charge(request, order_id):
         })
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception(f"Error charging deferred order {order_id}")
+        return JsonResponse({'error': 'Error interno al procesar el cobro diferido'}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -1790,7 +1933,8 @@ def deferred_order_cancel(request, order_id):
         return JsonResponse({'success': True, 'message': 'Venta diferida cancelada correctamente'})
         
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception(f"Error cancelling deferred order {order_id}")
+        return JsonResponse({'error': 'Error al cancelar la venta diferida'}, status=500)
 
 
 # ============================================
@@ -1829,7 +1973,9 @@ def subscription_cancel(request, pk):
             from memberships.models import MembershipPlan
             from dateutil.relativedelta import relativedelta
             
-            plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
+            plan = membership.plan
+            if not plan:
+                plan = MembershipPlan.objects.filter(gym=gym, name=membership.name).first()
             
             if plan:
                 if plan.frequency_unit == 'MONTH':
@@ -1890,6 +2036,5 @@ def subscription_cancel(request, pk):
             })
             
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.exception(f"Error cancelling subscription {pk}")
+        return JsonResponse({'error': 'Error al cancelar la suscripción'}, status=500)

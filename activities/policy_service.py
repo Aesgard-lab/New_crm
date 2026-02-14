@@ -79,6 +79,17 @@ class MembershipAccessService:
         return list(rules)
     
     @classmethod
+    def get_early_access_hours(cls, client, activity: Activity) -> int:
+        """
+        Retorna las horas de acceso anticipado que tiene el cliente
+        según la mejor PlanAccessRule de sus membresías activas.
+        """
+        rules = cls.get_access_rules_for_activity(client, activity)
+        if not rules:
+            return 0
+        return max(r.early_access_hours for r in rules)
+    
+    @classmethod
     def check_booking_limits(cls, client, session: ActivitySession) -> PolicyValidationResult:
         """
         Verifica si el cliente cumple con los límites de reserva de su membresía.
@@ -109,7 +120,48 @@ class MembershipAccessService:
         now = timezone.now()
         today = now.date()
         
-        # === VERIFICAR LÍMITE POR DÍA ===
+        # === VERIFICAR LÍMITE DE USO (campo combinado) ===
+        if best_rule.usage_limit > 0 and best_rule.usage_limit_period:
+            session_date = session.start_datetime.date()
+            
+            if best_rule.usage_limit_period == 'PER_DAY':
+                date_start = session_date
+                date_end = session_date
+                limit_label = "día"
+                limit_type = "daily"
+            elif best_rule.usage_limit_period == 'PER_WEEK':
+                date_start = session_date - timedelta(days=session_date.weekday())
+                date_end = date_start + timedelta(days=6)
+                limit_label = "semana"
+                limit_type = "weekly"
+            elif best_rule.usage_limit_period == 'PER_MONTH':
+                date_start = session_date.replace(day=1)
+                if session_date.month == 12:
+                    date_end = session_date.replace(year=session_date.year + 1, month=1, day=1) - timedelta(days=1)
+                else:
+                    date_end = session_date.replace(month=session_date.month + 1, day=1) - timedelta(days=1)
+                limit_label = "mes"
+                limit_type = "monthly"
+            else:
+                date_start = date_end = None
+            
+            if date_start is not None:
+                bookings_count = ActivitySessionBooking.objects.filter(
+                    client=client,
+                    session__start_datetime__date__gte=date_start,
+                    session__start_datetime__date__lte=date_end,
+                    session__activity__gym=activity.gym,
+                    status='CONFIRMED'
+                ).count()
+                
+                if bookings_count >= best_rule.usage_limit:
+                    return PolicyValidationResult(
+                        False,
+                        f"Has alcanzado el límite de {best_rule.usage_limit} reservas para este {limit_label}",
+                        {'limit_type': limit_type, 'limit': best_rule.usage_limit, 'current': bookings_count}
+                    )
+        
+        # === Fallback: verificar campos legacy max_per_day/week/month ===
         if best_rule.max_per_day > 0:
             session_date = session.start_datetime.date()
             bookings_today = ActivitySessionBooking.objects.filter(
@@ -118,7 +170,6 @@ class MembershipAccessService:
                 session__activity__gym=activity.gym,
                 status='CONFIRMED'
             ).count()
-            
             if bookings_today >= best_rule.max_per_day:
                 return PolicyValidationResult(
                     False,
@@ -126,13 +177,10 @@ class MembershipAccessService:
                     {'limit_type': 'daily', 'limit': best_rule.max_per_day, 'current': bookings_today}
                 )
         
-        # === VERIFICAR LÍMITE POR SEMANA ===
         if best_rule.max_per_week > 0:
-            # Calcular inicio y fin de la semana de la sesión
             session_date = session.start_datetime.date()
             week_start = session_date - timedelta(days=session_date.weekday())
             week_end = week_start + timedelta(days=6)
-            
             bookings_week = ActivitySessionBooking.objects.filter(
                 client=client,
                 session__start_datetime__date__gte=week_start,
@@ -140,12 +188,55 @@ class MembershipAccessService:
                 session__activity__gym=activity.gym,
                 status='CONFIRMED'
             ).count()
-            
             if bookings_week >= best_rule.max_per_week:
                 return PolicyValidationResult(
                     False,
                     f"Has alcanzado el límite de {best_rule.max_per_week} reservas para esta semana",
                     {'limit_type': 'weekly', 'limit': best_rule.max_per_week, 'current': bookings_week}
+                )
+        
+        if best_rule.max_per_month > 0:
+            session_date = session.start_datetime.date()
+            month_start = session_date.replace(day=1)
+            if session_date.month == 12:
+                month_end = session_date.replace(year=session_date.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                month_end = session_date.replace(month=session_date.month + 1, day=1) - timedelta(days=1)
+            bookings_month = ActivitySessionBooking.objects.filter(
+                client=client,
+                session__start_datetime__date__gte=month_start,
+                session__start_datetime__date__lte=month_end,
+                session__activity__gym=activity.gym,
+                status='CONFIRMED'
+            ).count()
+            if bookings_month >= best_rule.max_per_month:
+                return PolicyValidationResult(
+                    False,
+                    f"Has alcanzado el límite de {best_rule.max_per_month} reservas para este mes",
+                    {'limit_type': 'monthly', 'limit': best_rule.max_per_month, 'current': bookings_month}
+                )
+        
+        # === VERIFICAR DÍAS CONSECUTIVOS ===
+        if best_rule.no_consecutive_days:
+            session_date = session.start_datetime.date()
+            # Verificar si hay reservas el día anterior o el día siguiente
+            day_before = session_date - timedelta(days=1)
+            day_after = session_date + timedelta(days=1)
+            
+            has_adjacent = ActivitySessionBooking.objects.filter(
+                client=client,
+                session__activity__gym=activity.gym,
+                status='CONFIRMED'
+            ).filter(
+                Q(session__start_datetime__date=day_before) |
+                Q(session__start_datetime__date=day_after)
+            ).exists()
+            
+            if has_adjacent:
+                return PolicyValidationResult(
+                    False,
+                    "Tu plan no permite reservar en días consecutivos. Deja al menos un día de descanso entre sesiones.",
+                    {'limit_type': 'no_consecutive'}
                 )
         
         # === VERIFICAR RESERVAS SIMULTÁNEAS ===
@@ -173,6 +264,26 @@ class MembershipAccessService:
                     f"Solo puedes reservar hasta {best_rule.advance_booking_days} días en el futuro",
                     {'limit_type': 'advance_days', 'max_days': best_rule.advance_booking_days}
                 )
+        
+        # === VERIFICAR FRANJA HORARIA ===
+        if best_rule.access_time_start or best_rule.access_time_end:
+            session_time = session.start_datetime.time()
+            if best_rule.access_time_start and session_time < best_rule.access_time_start:
+                return PolicyValidationResult(
+                    False,
+                    f"Tu plan solo permite reservar a partir de las {best_rule.access_time_start.strftime('%H:%M')}",
+                    {'limit_type': 'access_time', 'allowed_from': str(best_rule.access_time_start)}
+                )
+            if best_rule.access_time_end and session_time >= best_rule.access_time_end:
+                return PolicyValidationResult(
+                    False,
+                    f"Tu plan solo permite reservar antes de las {best_rule.access_time_end.strftime('%H:%M')}",
+                    {'limit_type': 'access_time', 'allowed_until': str(best_rule.access_time_end)}
+                )
+        
+        # === NOTA: scheduling_open_day fue migrado al sistema de early_access_hours ===
+        # La apertura de reservas ahora se gestiona desde ActivityPolicy (ventana de reserva)
+        # y PlanAccessRule.early_access_hours (privilegio de acceso anticipado por plan).
         
         # === VERIFICAR CANTIDAD TOTAL (BONOS) ===
         if best_rule.quantity > 0:
@@ -339,21 +450,40 @@ class BookingPolicyService:
             )
         
         # 2. Verificar ventana de reserva según política
+        #    La ActivityPolicy define CUÁNDO abre la reserva para todos.
+        #    PlanAccessRule.early_access_hours otorga un PRIVILEGIO de acceso anticipado.
         if policy:
             booking_opens_at = cls._calculate_booking_open_time(session, policy)
             
             if booking_opens_at and now < booking_opens_at:
-                time_until_open = booking_opens_at - now
-                if time_until_open.days > 0:
-                    msg = f"Las reservas abren en {time_until_open.days} días"
-                else:
-                    hours = time_until_open.seconds // 3600
-                    msg = f"Las reservas abren en {hours} horas"
-                return PolicyValidationResult(
-                    False,
-                    msg,
-                    {'opens_at': booking_opens_at.isoformat()}
+                # Verificar si el cliente tiene privilegio de acceso anticipado
+                early_hours = MembershipAccessService.get_early_access_hours(
+                    client, session.activity
                 )
+                adjusted_opens_at = booking_opens_at
+                if early_hours > 0:
+                    adjusted_opens_at = booking_opens_at - timedelta(hours=early_hours)
+                
+                if now < adjusted_opens_at:
+                    time_until_open = adjusted_opens_at - now
+                    if time_until_open.days > 0:
+                        msg = f"Las reservas abren en {time_until_open.days} días"
+                    else:
+                        hours = time_until_open.seconds // 3600
+                        minutes = (time_until_open.seconds % 3600) // 60
+                        if hours > 0:
+                            msg = f"Las reservas abren en {hours}h {minutes}min"
+                        else:
+                            msg = f"Las reservas abren en {minutes} minutos"
+                    return PolicyValidationResult(
+                        False,
+                        msg,
+                        {
+                            'opens_at': adjusted_opens_at.isoformat(),
+                            'general_opens_at': booking_opens_at.isoformat(),
+                            'early_access_hours': early_hours,
+                        }
+                    )
         
         # 3. Verificar capacidad
         confirmed_count = ActivitySessionBooking.objects.filter(
@@ -416,19 +546,12 @@ class BookingPolicyService:
     
     @classmethod
     def _calculate_booking_open_time(cls, session: ActivitySession, policy: ActivityPolicy) -> Optional[datetime]:
-        """Calcula cuándo se abre la reserva según el modo de política"""
-        if policy.booking_window_mode == 'RELATIVE_START':
-            # X horas antes del inicio
-            return session.start_datetime - timedelta(hours=policy.booking_window_value)
-        
-        elif policy.booking_window_mode == 'FIXED_TIME':
-            # X días antes a hora fija
-            session_date = session.start_datetime.date()
-            open_date = session_date - timedelta(days=policy.booking_window_value)
-            open_time = policy.booking_time_release or datetime.min.time()
-            return timezone.make_aware(datetime.combine(open_date, open_time))
-        
-        return None
+        """
+        Calcula cuándo se abre la reserva según el modo de política.
+        Delega al método del modelo que ya soporta los 4 modos:
+        OPEN, RELATIVE_START, FIXED_TIME, WEEKLY_FIXED.
+        """
+        return policy.get_booking_opens_at(session.start_datetime)
     
     @staticmethod
     def _get_waitlist_position(session: ActivitySession) -> int:
@@ -634,11 +757,11 @@ class CancellationPolicyService:
             return
         
         if policy.waitlist_mode == 'AUTO_PROMOTE':
-            # Promover al primero en la lista
+            # Promover al primero en la lista (VIPs primero, luego por orden de llegada)
             next_in_line = WaitlistEntry.objects.filter(
                 session=session,
                 status='WAITING'
-            ).order_by('joined_at').first()
+            ).order_by('-is_vip', 'joined_at').first()
             
             if next_in_line:
                 WaitlistPolicyService.promote_from_waitlist(next_in_line)
@@ -648,6 +771,41 @@ class WaitlistPolicyService:
     """
     Servicio para gestionar listas de espera.
     """
+    
+    @staticmethod
+    def _is_client_vip(client, session: ActivitySession, policy: Optional[ActivityPolicy]) -> bool:
+        """
+        Determina si el cliente tiene prioridad VIP según la política de la actividad.
+        
+        Un cliente es VIP si:
+        - Su membresía activa está en policy.vip_membership_plans, o
+        - Pertenece a un grupo en policy.vip_groups
+        """
+        if not policy:
+            return False
+        
+        # Verificar planes VIP
+        if policy.vip_membership_plans.exists():
+            from clients.models import ClientMembership
+            today = timezone.now().date()
+            has_vip_plan = ClientMembership.objects.filter(
+                client=client,
+                plan__in=policy.vip_membership_plans.all(),
+                status='ACTIVE',
+                start_date__lte=today,
+            ).filter(
+                Q(end_date__gte=today) | Q(end_date__isnull=True)
+            ).exists()
+            if has_vip_plan:
+                return True
+        
+        # Verificar grupos VIP
+        if policy.vip_groups.exists():
+            client_group_ids = client.groups.values_list('id', flat=True)
+            if policy.vip_groups.filter(id__in=client_group_ids).exists():
+                return True
+        
+        return False
     
     @classmethod
     def join_waitlist(cls, session: ActivitySession, client) -> PolicyValidationResult:
@@ -698,17 +856,25 @@ class WaitlistPolicyService:
                 "Ya tienes una reserva confirmada para esta clase"
             )
         
+        # Determinar si el cliente es VIP según la política
+        is_vip = cls._is_client_vip(client, session, policy)
+        
         # Crear entrada en lista de espera
         entry = WaitlistEntry.objects.create(
             session=session,
             client=client,
-            status='WAITING'
+            gym=session.gym,
+            status='WAITING',
+            is_vip=is_vip,
         )
         
         position = WaitlistEntry.objects.filter(
             session=session,
             status='WAITING',
             joined_at__lte=entry.joined_at
+        ).exclude(
+            # Los VIP que entraron después no cuentan para la posición visible
+            is_vip=True, joined_at__gt=entry.joined_at
         ).count()
         
         return PolicyValidationResult(

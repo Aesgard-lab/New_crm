@@ -19,15 +19,11 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     
     # Calendar Feed (público, para suscripción desde apps de calendario)
+    # SECURITY TODO: Implement token expiration or rotation mechanism
     path("calendar/feed/<str:token>.ics", calendar_feed, name="calendar_feed"),
     
-    # API Documentation (OpenAPI / Swagger)
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    
-    # Admin Django
-    path("admin/", admin.site.urls),
+    # Admin Django (ruta ofuscada para evitar ataques automatizados)
+    path("backoffice-admin/", admin.site.urls),
 
     # PWA Offline page
     path("offline/", TemplateView.as_view(template_name="offline.html"), name="offline"),
@@ -73,3 +69,10 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else settings.STATIC_ROOT)
+    # API Documentation only accessible in DEBUG mode (SECURITY: prevents schema exposure in production)
+    urlpatterns += [
+        path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+        path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+        path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    ]
+

@@ -13,8 +13,14 @@ Vistas sin autenticación (o autenticación de cliente) para:
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse, HttpResponse
+from django_ratelimit.decorators import ratelimit
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+import logging
+
+logger = logging.getLogger(__name__)
 from django.utils import timezone
 from django.contrib import messages
 from django.db.models import Q
@@ -45,6 +51,7 @@ def get_gym_by_slug(slug):
 # BÚSQUEDA DE GIMNASIOS
 # ===========================
 
+@require_http_methods(["GET"])
 def gym_search_landing(request):
     """Página de búsqueda de gimnasios - Landing principal del portal público"""
     query = request.GET.get('q', '').strip()
@@ -86,6 +93,7 @@ def gym_search_landing(request):
 # LANDING PAGE DEL GYM
 # ===========================
 
+@require_http_methods(["GET"])
 def public_gym_home(request, slug):
     """Página principal del portal público del gimnasio"""
     gym, settings = get_gym_by_slug(slug)
@@ -1347,6 +1355,7 @@ def public_shop(request, slug):
 # AUTO-REGISTRO DE CLIENTES
 # ===========================
 
+@require_http_methods(["GET", "POST"])
 def public_register(request, slug):
     """Auto-registro de clientes (si está habilitado)"""
     gym, settings = get_gym_by_slug(slug)
@@ -1482,7 +1491,8 @@ def public_register(request, slug):
                 return redirect('public_schedule', slug=slug)
             
         except Exception as e:
-            messages.error(request, f'Error al crear la cuenta: {str(e)}')
+            logger.exception("Error creating client account")
+            messages.error(request, 'Error al crear la cuenta. Por favor, inténtelo de nuevo.')
     
     context = {
         'gym': gym,
@@ -1499,6 +1509,7 @@ def public_register(request, slug):
 # LOGIN DE CLIENTES
 # ===========================
 
+@require_http_methods(["GET", "POST"])
 def public_login(request, slug):
     """Login para clientes"""
     gym, settings = get_gym_by_slug(slug)
@@ -2083,7 +2094,8 @@ def public_process_advance_payment(request, slug):
             })
             
     except Exception as e:
-        return JsonResponse({'error': f'Error al procesar el pago: {str(e)}'}, status=500)
+        logger.exception("Error processing generic payment")
+        return JsonResponse({'error': 'Error al procesar el pago'}, status=500)
 
 
 @login_required
@@ -2149,7 +2161,8 @@ def public_checkout_membership(request, slug, membership_id):
                 return redirect('public_my_memberships', slug=slug)
                 
         except Exception as e:
-            messages.error(request, f'Error al procesar el pago: {str(e)}')
+            logger.exception("Error processing membership checkout payment")
+            messages.error(request, 'Error al procesar el pago. Por favor, inténtelo de nuevo.')
             return redirect('public_checkout_membership', slug=slug, membership_id=membership_id)
     
     context = {
@@ -2299,7 +2312,7 @@ def public_my_qr(request, slug):
 
 
 @login_required
-@csrf_exempt
+@login_required
 def public_checkin_process(request, slug):
     """Procesa el check-in escaneando QR de sesión"""
     if request.method != 'POST':
@@ -2352,7 +2365,8 @@ def public_checkin_process(request, slug):
         else:
             return JsonResponse({'error': 'Token QR inválido o expirado'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception("Error in public checkin QR")
+        return JsonResponse({'error': 'Error interno al procesar el check-in'}, status=500)
 
 
 # ===========================
@@ -2417,7 +2431,6 @@ def public_document_detail(request, slug, document_id):
 
 
 @login_required
-@csrf_exempt
 def public_document_sign(request, slug, document_id):
     """Firmar un documento digitalmente"""
     if request.method != 'POST':
@@ -2465,6 +2478,8 @@ def public_document_sign(request, slug, document_id):
 # RECUPERAR CONTRASEÑA
 # ===========================
 
+@ratelimit(key='ip', rate='3/h', method='POST', block=True)
+@require_http_methods(["GET", "POST"])
 def public_forgot_password(request, slug):
     """Solicitar recuperación de contraseña"""
     gym, settings = get_gym_by_slug(slug)
@@ -2556,8 +2571,11 @@ def public_reset_password(request, slug, token):
         password = request.POST.get('password', '')
         password_confirm = request.POST.get('password_confirm', '')
         
-        if not password or len(password) < 8:
-            messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+        try:
+            validate_password(password, user=user)
+        except ValidationError as e:
+            for error in e.messages:
+                messages.error(request, error)
             return redirect('public_reset_password', slug=slug, token=token)
         
         if password != password_confirm:

@@ -270,13 +270,35 @@ class ClientService:
             else:  # DAY
                 end_date = data.start_date + timedelta(days=plan.frequency_amount)
         
-        # Crear membresía
+        # Determinar estado inicial según el modo de activación del plan
+        initial_status = "ACTIVE"
+        effective_start_date = data.start_date
+        
+        if plan.activation_mode == 'ON_FIRST_VISIT':
+            # La membresía queda pendiente hasta la primera visita/check-in
+            initial_status = "PENDING"
+            effective_start_date = None  # Se establecerá en el primer check-in
+            end_date = None  # Se calculará desde la primera visita
+        elif plan.activation_mode == 'ON_SPECIFIC_DATE':
+            # Si la fecha de inicio es futura, dejar como pendiente
+            from django.utils import timezone
+            if data.start_date > timezone.now().date():
+                initial_status = "PENDING"
+        
+        # Crear membresía con todos los campos del plan
         membership = ClientMembership.objects.create(
             client=client,
             plan=plan,
-            start_date=data.start_date,
+            gym=self.gym,
+            name=plan.name,
+            price=plan.final_price,
+            is_recurring=plan.is_recurring,
+            start_date=effective_start_date or data.start_date,
             end_date=end_date,
-            status="ACTIVE",
+            status=initial_status,
+            current_period_start=effective_start_date or data.start_date if initial_status == 'ACTIVE' else None,
+            current_period_end=end_date if initial_status == 'ACTIVE' else None,
+            next_billing_date=end_date if initial_status == 'ACTIVE' and plan.is_recurring else None,
         )
         
         # Activar cliente si estaba como lead

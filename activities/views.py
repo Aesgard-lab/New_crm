@@ -102,7 +102,28 @@ def activity_create(request):
 @require_gym_permission('activities.change_activity')
 def activity_edit(request, pk):
     gym = request.gym
-    activity = get_object_or_404(Activity, pk=pk, gym=gym)
+    
+    try:
+        activity = Activity.objects.get(pk=pk, gym=gym)
+    except Activity.DoesNotExist:
+        # Check if activity exists globally
+        from django.http import Http404
+        try:
+            global_activity = Activity.objects.get(pk=pk)
+        except Activity.DoesNotExist:
+            raise Http404("No Activity matches the given query.")
+            
+        # Check if user has access to that gym
+        from accounts.services import user_gym_ids
+        allowed_gyms = user_gym_ids(request.user)
+        
+        if global_activity.gym_id in allowed_gyms:
+            return render(request, 'backoffice/activities/wrong_gym.html', {
+                'activity': global_activity,
+            })
+        
+        # User doesn't have access or it's a real 404 for them
+        raise Http404("No Activity matches the given query.")
     
     if request.method == 'POST':
         form = ActivityForm(request.POST, request.FILES, instance=activity, gym=gym, user=request.user)

@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from organizations.models import Gym
 from finance.models import CashSession, PaymentMethod
 from clients.models import Client
+import uuid
 
 class Order(models.Model):
     STATS_CHOICES = (
@@ -44,6 +45,14 @@ class Order(models.Model):
     
     internal_notes = models.TextField(_("Nota Interna"), blank=True)
     invoice_number = models.CharField(_("Número de Factura"), max_length=50, blank=True, null=True, unique=True)
+    verification_token = models.UUIDField(
+        _("Token de Verificación"),
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+        help_text=_("Identificador único para el QR de verificación del recibo/factura")
+    )
     
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_orders')
 
@@ -78,6 +87,20 @@ class Order(models.Model):
         )['total'] or 0
         self.total_refunded = total
         self.save(update_fields=['total_refunded'])
+    
+    def get_verification_path(self):
+        """Ruta relativa de verificación del documento."""
+        return f"/sales/verify/{self.verification_token}/"
+    
+    def get_qr_image_url(self, base_url=''):
+        """
+        URL de la imagen QR generada por quickchart.io (funciona en emails HTML).
+        base_url: dominio completo, ej: https://app.tudominio.com
+        """
+        import urllib.parse
+        verify_url = f"{base_url}{self.get_verification_path()}"
+        encoded = urllib.parse.quote_plus(verify_url)
+        return f"https://quickchart.io/qr?text={encoded}&size=200&margin=1"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
@@ -89,6 +112,11 @@ class OrderItem(models.Model):
     
     description = models.CharField(_("Descripción"), max_length=255)
     quantity = models.PositiveIntegerField(_("Cantidad"), default=1)
+    notes = models.TextField(
+        _("Notas del Recibo"),
+        blank=True,
+        help_text=_("Notas que aparecen en el ticket/factura para este artículo")
+    )
     
     unit_price = models.DecimalField(_("Precio Unitario"), max_digits=10, decimal_places=2)
     tax_rate = models.DecimalField(_("Impuesto (%)"), max_digits=5, decimal_places=2, default=0.00)

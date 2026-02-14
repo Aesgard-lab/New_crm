@@ -48,7 +48,9 @@ def log_superadmin_action(action_type, description):
                     )
                 except Exception as e:
                     # Don't fail the request if logging fails
-                    print(f"Failed to log superadmin action: {e}")
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to log superadmin action: {e}")
             
             return response
         return wrapper

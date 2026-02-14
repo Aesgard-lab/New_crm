@@ -2,6 +2,7 @@
 Shop views for the mobile app API
 Allows clients to browse products and request info
 """
+import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -9,6 +10,8 @@ from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
 
 from clients.models import Client
+
+logger = logging.getLogger(__name__)
 
 
 class ShopView(APIView):
@@ -162,7 +165,8 @@ class ShopView(APIView):
         except Client.DoesNotExist:
             return Response({'error': 'Cliente no encontrado'}, status=404)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            logger.exception("Error loading shop data")
+            return Response({'error': 'Error interno del servidor'}, status=500)
 
 
 class RequestInfoView(APIView):
@@ -196,7 +200,8 @@ class RequestInfoView(APIView):
         except Client.DoesNotExist:
             return Response({'error': 'Cliente no encontrado'}, status=404)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            logger.exception("Error processing info request")
+            return Response({'error': 'Error interno del servidor'}, status=500)
 
 
 class ScheduleMembershipChangeView(APIView):
@@ -308,7 +313,8 @@ class ScheduleMembershipChangeView(APIView):
             })
             
         except Exception as e:
-            return Response({'error': str(e)}, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Error scheduling membership change")
+            return Response({'error': 'Error interno del servidor'}, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def delete(self, request):
         """Cancel a scheduled membership change"""
@@ -341,4 +347,6 @@ class ScheduleMembershipChangeView(APIView):
                 }, status=http_status.HTTP_404_NOT_FOUND)
                 
         except Exception as e:
-            return Response({'error': str(e)}, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Error cancelling scheduled change")
+            return Response({'error': 'Error interno del servidor'}, status=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
+

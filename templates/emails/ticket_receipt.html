@@ -123,7 +123,12 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.description }}</td>
+                    <td>
+                        {{ item.description }}
+                        {% if item.notes %}
+                        <div style="font-size: 11px; color: #6b7280; margin-top: 3px; font-style: italic;">{{ item.notes }}</div>
+                        {% endif %}
+                    </td>
                     <td>{{ item.quantity }}</td>
                     <td class="amount">{{ item.subtotal }}€</td>
                 </tr>
@@ -136,6 +141,18 @@
         <p style="margin: 0; font-size: 14px; opacity: 0.8;">Total</p>
         <span>{{ order.total_amount }}€</span>
     </div>
+
+    <!-- QR de Verificación -->
+    {% if qr_image_url %}
+    <div style="text-align: center; margin: 20px 0; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;">
+        <a href="{{ verification_url }}" style="text-decoration: none; color: inherit;">
+            <img src="{{ qr_image_url }}" alt="QR de verificación" width="130" height="130" style="border-radius: 6px;">
+        </a>
+        <p style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+            Escanea para verificar este ticket
+        </p>
+    </div>
+    {% endif %}
 
     <div class="footer">
         <p>Gracias por tu compra</p>

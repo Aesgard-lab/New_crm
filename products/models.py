@@ -189,6 +189,11 @@ class Product(models.Model):
     name = models.CharField(_("Nombre del Producto"), max_length=100)
     category = models.ForeignKey(ProductCategory, on_delete=models.SET_NULL, null=True, blank=True)
     description = models.TextField(_("Descripción"), blank=True)
+    receipt_notes = models.TextField(
+        _("Notas del Recibo"),
+        blank=True,
+        help_text=_("Texto que aparecerá en el ticket/factura cuando se venda este producto")
+    )
     image = models.ImageField(upload_to='product_images/', null=True, blank=True)
     
     # === CÓDIGOS DE BARRAS Y SKU ===
@@ -202,7 +207,14 @@ class Product(models.Model):
     # Financials
     cost_price = models.DecimalField(_("Precio de Compra (Sin IVA)"), max_digits=10, decimal_places=2, default=0)
     base_price = models.DecimalField(_("Precio de Venta"), max_digits=10, decimal_places=2)
-    tax_rate = models.ForeignKey(TaxRate, on_delete=models.SET_NULL, null=True, blank=True)
+    tax_rate = models.ForeignKey(TaxRate, on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name=_("Impuesto Principal"), related_name='products_primary')
+    additional_tax_rates = models.ManyToManyField(
+        TaxRate, blank=True,
+        verbose_name=_("Impuestos Adicionales"),
+        related_name='products_additional',
+        help_text=_("Impuestos adicionales que se aplican junto al principal")
+    )
     price_strategy = models.CharField(_("Estrategia de Precio"), max_length=20, choices=PRICE_STRATEGY, default='TAX_INCLUDED')
     
     # Supplier Info
@@ -300,10 +312,18 @@ class Product(models.Model):
         super().save(*args, **kwargs)
     
     @property
+    def total_tax_rate_percent(self):
+        """Suma de todos los impuestos (principal + adicionales) en porcentaje."""
+        total = self.tax_rate.rate_percent if self.tax_rate else 0
+        for tr in self.additional_tax_rates.all():
+            total += tr.rate_percent
+        return total
+    
+    @property
     def final_price(self):
-        if not self.tax_rate:
+        rate = self.total_tax_rate_percent / 100
+        if rate == 0:
             return self.base_price
-        rate = self.tax_rate.rate_percent / 100
         if self.price_strategy == 'TAX_EXCLUDED':
             return self.base_price * (1 + rate)
         return self.base_price

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verificación de Documento - {{ gym.name }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 480px; width: 100%; overflow: hidden; }
+        .header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 28px 24px; text-align: center; }
+        .header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .header p { font-size: 12px; opacity: 0.7; }
+        .verified-badge { display: inline-flex; align-items: center; gap: 6px; background: #059669; color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 12px; }
+        .verified-badge svg { width: 16px; height: 16px; }
+        .body { padding: 24px; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #64748b; }
+        .info-value { color: #0f172a; font-weight: 600; }
+        .items-title { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px; }
+        .item { display: flex; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 4px; font-size: 13px; }
+        .item-name { color: #334155; }
+        .item-price { color: #0f172a; font-weight: 600; }
+        .total-box { background: #0f172a; color: white; padding: 16px; border-radius: 12px; margin-top: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .total-label { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em; }
+        .total-amount { font-size: 22px; font-weight: 700; }
+        .footer { text-align: center; padding: 16px 24px 24px; color: #94a3b8; font-size: 11px; }
+        .status-paid { color: #059669; }
+        .status-pending { color: #d97706; }
+        .status-cancelled { color: #dc2626; }
+        .refund-note { background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 8px; font-size: 12px; margin-top: 12px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            {% if gym.logo %}
+                <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" style="max-height: 40px; margin-bottom: 8px; border-radius: 6px;">
+            {% endif %}
+            <h1>{{ gym.commercial_name|default:gym.name }}</h1>
+            <p>Documento verificado electrónicamente</p>
+            <div class="verified-badge">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                Documento auténtico
+            </div>
+        </div>
+        
+        <div class="body">
+            <div class="info-row">
+                <span class="info-label">Tipo</span>
+                <span class="info-value">{% if order.invoice_number %}Factura{% else %}Ticket de compra{% endif %}</span>
+            </div>
+            {% if order.invoice_number %}
+            <div class="info-row">
+                <span class="info-label">Nº Factura</span>
+                <span class="info-value">{{ order.invoice_number }}</span>
+            </div>
+            {% endif %}
+            <div class="info-row">
+                <span class="info-label">Nº Ticket</span>
+                <span class="info-value">#{{ order.id }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Fecha</span>
+                <span class="info-value">{{ order.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Estado</span>
+                <span class="info-value status-{{ order.status|lower }}">{{ order.get_status_display }}</span>
+            </div>
+            {% if order.client %}
+            <div class="info-row">
+                <span class="info-label">Cliente</span>
+                <span class="info-value">{{ order.client.first_name }} {{ order.client.last_name|first }}.</span>
+            </div>
+            {% endif %}
+
+            <p class="items-title">Detalle</p>
+            {% for item in items %}
+            <div class="item">
+                <span class="item-name">{{ item.quantity }}x {{ item.description }}</span>
+                <span class="item-price">{{ item.subtotal|floatformat:2 }}€</span>
+            </div>
+            {% endfor %}
+
+            {% if order.total_discount > 0 %}
+            <div class="info-row" style="margin-top: 8px;">
+                <span class="info-label">Descuento</span>
+                <span class="info-value" style="color: #059669;">-{{ order.total_discount|floatformat:2 }}€</span>
+            </div>
+            {% endif %}
+
+            <div class="total-box">
+                <div>
+                    <div class="total-label">Total</div>
+                </div>
+                <div class="total-amount">{{ order.total_amount|floatformat:2 }}€</div>
+            </div>
+
+            {% if order.has_partial_refund or order.is_fully_refunded %}
+            <div class="refund-note">
+                ⚠️ Este documento tiene una devolución de {{ order.total_refunded|floatformat:2 }}€
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="footer">
+            <p>{{ gym.commercial_name|default:gym.name }}{% if gym.tax_id %} · CIF: {{ gym.tax_id }}{% endif %}</p>
+            {% if gym.address %}<p>{{ gym.address }}{% if gym.city %}, {{ gym.city }}{% endif %}</p>{% endif %}
+            <p style="margin-top: 8px;">ID verificación: {{ order.verification_token }}</p>
+        </div>
+    </div>
+</body>
+</html>

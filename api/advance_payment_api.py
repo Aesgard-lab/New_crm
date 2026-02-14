@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db import transaction
+import logging
 from datetime import timedelta
 from decimal import Decimal
 
@@ -196,5 +197,5 @@ def process_advance_payment(request):
     except Exception as e:
         return Response({
             'success': False,
-            'error': f'Error inesperado al procesar el pago: {str(e)}'
+            'error': 'Error inesperado al procesar el pago'
         }, status=500)

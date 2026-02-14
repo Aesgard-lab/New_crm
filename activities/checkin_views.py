@@ -35,7 +35,9 @@ security_logger = logging.getLogger('django.security')
 
 def get_secret_key():
     """Obtiene la clave secreta para generar tokens QR"""
-    return getattr(settings, 'SECRET_KEY', 'fallback-secret-key')
+    if not hasattr(settings, 'SECRET_KEY') or not settings.SECRET_KEY:
+        raise ValueError("Django SECRET_KEY is not configured!")
+    return settings.SECRET_KEY
 
 
 def generate_qr_token(session_id: int, timestamp: int) -> str:
@@ -48,7 +50,7 @@ def generate_qr_token(session_id: int, timestamp: int) -> str:
         get_secret_key().encode(),
         message.encode(),
         hashlib.sha256
-    ).hexdigest()[:16]
+    ).hexdigest()[:32]
     return f"{session_id}:{timestamp}:{signature}"
 
 
