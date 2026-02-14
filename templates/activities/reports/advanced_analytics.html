@@ -1,217 +1,42 @@
 {% extends "backoffice/base.html" %}
 {% load static analytics_tags %}
+{% load sanitize_tags %}
 
 {% block title %}Analytics Avanzados - {{ gym.name }}{% endblock %}
 
 {% block extra_css %}
+{% include "backoffice/analytics/partials/_analytics_css.html" %}
 <style>
-    :root {
-        --analytics-primary: #0f172a;
-        --analytics-secondary: #334155;
-        --analytics-accent: #3b82f6;
-        --analytics-accent-light: #60a5fa;
-        --analytics-success: #059669;
-        --analytics-warning: #d97706;
-        --analytics-danger: #dc2626;
-        --analytics-muted: #64748b;
-        --analytics-light: #f1f5f9;
-        --analytics-border: #e2e8f0;
-    }
-    
-    .analytics-page {
-        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-        min-height: 100vh;
-        padding-bottom: 3rem;
-    }
-    
-    /* Header */
-    .analytics-header {
-        background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid var(--analytics-border);
-    }
-    
-    .analytics-header h1 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--analytics-primary);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 0.5rem;
-    }
-    
-    .analytics-header h1 .icon {
-        font-size: 2rem;
-    }
-    
-    .analytics-header .subtitle {
-        color: var(--analytics-muted);
-        font-size: 0.95rem;
-    }
-    
-    .back-link {
-        color: var(--analytics-muted);
-        text-decoration: none;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: color 0.2s;
-    }
-    
-    .back-link:hover {
-        color: var(--analytics-accent);
-    }
-    
-    /* Info Box */
-    .info-box {
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-        border: 1px solid #bfdbfe;
-        border-radius: 12px;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-    }
-    
-    .info-box-icon {
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-    
-    .info-box-content strong {
-        color: var(--analytics-primary);
-    }
-    
-    .info-box-content p {
-        margin: 0;
-        color: var(--analytics-secondary);
-        font-size: 0.9rem;
-    }
-    
-    /* Filter Card */
-    .filter-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid var(--analytics-border);
-    }
-    
-    .filter-card .form-label {
-        font-weight: 600;
-        color: var(--analytics-secondary);
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 6px;
-    }
-    
-    .filter-card .form-control {
-        border-radius: 8px;
-        border: 1px solid var(--analytics-border);
-        padding: 10px 14px;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-    }
-    
-    .filter-card .form-control:focus {
-        border-color: var(--analytics-accent);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .btn-analyze {
-        background: var(--analytics-primary);
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        color: white;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s;
-    }
-    
-    .btn-analyze:hover {
-        background: var(--analytics-secondary);
-        color: white;
-        transform: translateY(-1px);
-    }
-    
-    /* Section Card */
-    .section-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid var(--analytics-border);
-    }
-    
-    .section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.25rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--analytics-border);
-    }
-    
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--analytics-primary);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 0;
-    }
-    
-    .section-title .icon {
-        font-size: 1.25rem;
-    }
-    
-    .section-subtitle {
-        color: var(--analytics-muted);
-        font-size: 0.85rem;
-        margin: 0;
-    }
-    
-    /* Lead Time Bars - Diseño más sobrio */
+    /* Custom styles for Advanced Analytics specific components */
+
+    /* Lead Time Bars */
     .lead-time-item {
         display: grid;
         grid-template-columns: 100px 1fr 90px;
         align-items: center;
         gap: 16px;
         padding: 14px 0;
-        border-bottom: 1px solid var(--analytics-light);
+        border-bottom: 1px solid #f1f5f9;
     }
-    
+
     .lead-time-item:last-child {
         border-bottom: none;
     }
-    
+
     .lead-time-label {
         font-weight: 600;
-        color: var(--analytics-secondary);
+        color: #475569;
         font-size: 0.9rem;
     }
-    
+
     .lead-time-bar-container {
-        height: 28px;
-        background: var(--analytics-light);
+        height: 24px;
+        background: #f1f5f9;
         border-radius: 6px;
         overflow: hidden;
         position: relative;
     }
-    
+
     .lead-time-bar {
         height: 100%;
         border-radius: 6px;
@@ -220,368 +45,239 @@
         justify-content: flex-end;
         padding-right: 10px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: white;
         transition: width 0.6s ease;
         min-width: fit-content;
     }
-    
-    .lead-time-bar.primary { background: var(--analytics-accent); }
-    .lead-time-bar.secondary { background: #6366f1; }
-    .lead-time-bar.tertiary { background: #8b5cf6; }
-    .lead-time-bar.quaternary { background: #a78bfa; }
-    
+
+    .lead-time-bar.primary {
+        background: var(--brand-color);
+    }
+
+    .lead-time-bar.secondary {
+        background: #6366f1;
+    }
+
+    .lead-time-bar.tertiary {
+        background: #8b5cf6;
+    }
+
+    .lead-time-bar.quaternary {
+        background: #a78bfa;
+    }
+
     .lead-time-count {
         font-size: 0.85rem;
-        color: var(--analytics-muted);
+        color: #64748b;
         text-align: right;
     }
-    
-    /* Insight Box */
-    .insight-box {
-        background: var(--analytics-light);
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-        margin-top: 1.25rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-    }
-    
-    .insight-box .icon {
-        font-size: 1.1rem;
-    }
-    
-    .insight-box p {
-        margin: 0;
-        font-size: 0.9rem;
-        color: var(--analytics-secondary);
-    }
-    
+
     /* Day Cards Grid */
     .days-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 12px;
     }
-    
+
     @media (max-width: 992px) {
         .days-grid {
             grid-template-columns: repeat(4, 1fr);
         }
     }
-    
+
     @media (max-width: 576px) {
         .days-grid {
             grid-template-columns: repeat(2, 1fr);
         }
     }
-    
+
     .day-card {
-        background: var(--analytics-light);
+        background: #f8fafc;
         border-radius: 12px;
-        padding: 1.25rem 1rem;
+        padding: 1.25rem 0.5rem;
         text-align: center;
         transition: all 0.2s;
         border: 2px solid transparent;
     }
-    
+
     .day-card:hover {
-        border-color: var(--analytics-accent);
+        border-color: var(--brand-color);
         transform: translateY(-2px);
     }
-    
+
     .day-card.best-day {
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-        border-color: var(--analytics-accent);
+        background: white;
+        border-color: var(--brand-color);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    
+
     .day-name {
         font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--analytics-muted);
+        font-weight: 700;
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 8px;
     }
-    
+
     .day-value {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 800;
-        color: var(--analytics-primary);
+        color: #1e293b;
         line-height: 1;
     }
-    
+
     .day-label {
         font-size: 0.7rem;
-        color: var(--analytics-muted);
+        color: #94a3b8;
         margin-top: 4px;
     }
-    
+
     .day-sessions {
-        font-size: 0.75rem;
-        color: var(--analytics-muted);
+        font-size: 0.7rem;
+        color: #94a3b8;
         margin-top: 8px;
+        border-top: 1px solid #e2e8f0;
         padding-top: 8px;
-        border-top: 1px solid var(--analytics-border);
     }
-    
-    /* Predictor Form */
-    .predictor-form {
-        background: var(--analytics-light);
-        border-radius: 12px;
-        padding: 1.5rem;
-    }
-    
-    .btn-predict {
-        background: linear-gradient(135deg, var(--analytics-accent) 0%, #2563eb 100%);
-        border: none;
-        border-radius: 10px;
-        padding: 12px 28px;
-        font-weight: 600;
-        color: white;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s;
-    }
-    
-    .btn-predict:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        color: white;
-    }
-    
+
     /* Prediction Result */
     .prediction-result {
-        background: linear-gradient(135deg, var(--analytics-primary) 0%, var(--analytics-secondary) 100%);
+        background: linear-gradient(135deg, var(--brand-color) 0%, #1e293b 100%);
         color: white;
         padding: 2rem;
         border-radius: 12px;
         text-align: center;
         margin-top: 1.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
-    
-    .prediction-result h4 {
-        font-size: 1rem;
-        opacity: 0.9;
-        margin-bottom: 0.5rem;
-    }
-    
-    .prediction-value {
-        font-size: 3rem;
-        font-weight: 800;
-        margin: 1rem 0;
-    }
-    
+
     .prediction-confidence {
         display: inline-block;
-        padding: 6px 16px;
-        background: rgba(255,255,255,0.15);
+        padding: 4px 12px;
         border-radius: 20px;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-    }
-    
-    .prediction-range {
         font-size: 0.85rem;
-        opacity: 0.8;
-        margin-top: 1rem;
+        margin-top: 0.5rem;
+        font-weight: 600;
     }
-    
+
     /* Retention List */
-    .retention-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
     .retention-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 1rem;
-        background: var(--analytics-light);
-        border-radius: 10px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
         margin-bottom: 10px;
         transition: all 0.2s;
     }
-    
+
     .retention-item:hover {
         transform: translateX(4px);
+        border-color: var(--brand-color);
     }
-    
-    .retention-activity {
-        font-weight: 600;
-        color: var(--analytics-primary);
-        font-size: 1rem;
-    }
-    
-    .retention-stats {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-    
-    .retention-stat {
-        text-align: center;
-    }
-    
-    .retention-stat-label {
-        font-size: 0.7rem;
-        color: var(--analytics-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-    
-    .retention-stat-value {
-        font-weight: 700;
-        color: var(--analytics-secondary);
-        font-size: 1rem;
-    }
-    
-    .retention-rate {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--analytics-accent);
-        min-width: 70px;
-        text-align: right;
-    }
-    
+
     .retention-badge {
         padding: 5px 12px;
         border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
     }
-    
-    .retention-excellent { background: #dcfce7; color: #166534; }
-    .retention-good { background: #dbeafe; color: #1e40af; }
-    .retention-fair { background: #fef3c7; color: #92400e; }
-    .retention-poor { background: #fee2e2; color: #991b1b; }
-    
-    /* Recommendations */
-    .recommendations-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
+
+    .retention-excellent {
+        background: #dcfce7;
+        color: #166534;
     }
-    
-    @media (max-width: 768px) {
-        .recommendations-grid {
-            grid-template-columns: 1fr;
-        }
+
+    .retention-good {
+        background: #dbeafe;
+        color: #1e40af;
     }
-    
+
+    .retention-fair {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .retention-poor {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
     .recommendation-card {
-        background: var(--analytics-light);
+        background: #f8fafc;
         border-radius: 12px;
-        padding: 1.25rem;
-        border-left: 4px solid var(--analytics-accent);
-    }
-    
-    .recommendation-card h5 {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: var(--analytics-primary);
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .recommendation-card p {
-        font-size: 0.85rem;
-        color: var(--analytics-secondary);
-        margin: 0;
-        line-height: 1.5;
-    }
-    
-    /* Chart Container */
-    .chart-container {
-        position: relative;
-        height: 350px;
-        margin-top: 1.5rem;
-    }
-    
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 2.5rem 2rem;
-        color: var(--analytics-muted);
-    }
-    
-    .empty-state-icon {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-        opacity: 0.4;
+        padding: 1.5rem;
+        border-left: 4px solid var(--brand-color);
+        height: 100%;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="analytics-page">
-    <div class="container-fluid py-4">
-        
+    <div class="analytics-container">
+
         <!-- Header -->
         <div class="analytics-header">
-            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-                <div>
-                    <h1>
-                        <span class="icon">📊</span>
-                        Analytics Avanzados y Predictivos
-                    </h1>
-                    <p class="subtitle">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }} · Análisis de {{ days_count|default:"90" }} días</p>
-                </div>
-                <a href="{% url 'analytics_dashboard' %}" class="back-link">
-                    ← Volver al Dashboard
-                </a>
+            <div>
+                <h1 class="analytics-title">
+                    <span class="icon-box"
+                        style="width: 40px; height: 40px; font-size: 1.25rem; margin-bottom: 0;">📊</span>
+                    Analytics Avanzados
+                </h1>
+                <p class="analytics-subtitle">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }} · Análisis de
+                    {{ days_count|default:"90" }} días</p>
             </div>
+            <a href="{% url 'analytics_dashboard' %}" class="btn-secondary">
+                ← Volver al Dashboard
+            </a>
         </div>
 
         <!-- Info Box -->
-        <div class="info-box">
-            <span class="info-box-icon">💡</span>
-            <div class="info-box-content">
-                <strong>Analytics Avanzados</strong>
-                <p>Análisis basado en datos históricos para identificar patrones de comportamiento, predecir tendencias futuras y optimizar tus operaciones.</p>
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-4">
+            <span class="text-2xl">💡</span>
+            <div>
+                <strong class="text-blue-900 block mb-1">Insights Inteligentes</strong>
+                <p class="text-blue-800 text-sm m-0">
+                    Análisis basado en datos históricos para identificar patrones de comportamiento, predecir tendencias
+                    futuras y optimizar tus operaciones.
+                </p>
             </div>
         </div>
 
         <!-- Filtros -->
-        <form method="get" class="filter-card">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label">Fecha Inicio</label>
-                    <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Fecha Fin</label>
-                    <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn-analyze w-100">
-                        🔄 Actualizar Análisis
-                    </button>
-                </div>
+        <form method="get" class="analytics-filters">
+            <div class="filter-group">
+                <label class="filter-label">Fecha Inicio</label>
+                <input type="date" name="start_date" class="filter-input" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Fecha Fin</label>
+                <input type="date" name="end_date" class="filter-input" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            <div class="self-end" style="flex: 0 0 auto;">
+                <button type="submit" class="btn-brand">
+                    🔄 Actualizar Análisis
+                </button>
             </div>
         </form>
 
         <!-- Booking Lead Time -->
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <h3 class="section-title">
-                        <span class="icon">⏱️</span>
-                        Anticipación de Reservas
-                    </h3>
-                    <p class="section-subtitle">¿Con cuánta anticipación reservan tus clientes?</p>
-                </div>
-            </div>
-            
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="text-xl">⏱️</span> Anticipación de Reservas
+            </h3>
+            <p class="text-slate-500 text-sm mb-6">¿Con cuánta anticipación reservan tus clientes?</p>
+
             {% if booking_lead_time and booking_lead_time.distribution %}
-                {% with dist=booking_lead_time.distribution total=booking_lead_time.distribution.same_day|add:booking_lead_time.distribution.days_1_3|add:booking_lead_time.distribution.days_4_7|add:booking_lead_time.distribution.days_8_plus %}
-                {% if total > 0 %}
+            {% with dist=booking_lead_time.distribution %}
+            {% with total=dist.same_day|add:dist.days_1_3|add:dist.days_4_7|add:dist.days_8_plus %}
+            {% if total > 0 %}
+            <div class="space-y-1">
                 <div class="lead-time-item">
                     <div class="lead-time-label">Mismo día</div>
                     <div class="lead-time-bar-container">
@@ -592,7 +288,7 @@
                     </div>
                     <div class="lead-time-count">{{ dist.same_day }} reservas</div>
                 </div>
-                
+
                 <div class="lead-time-item">
                     <div class="lead-time-label">1-3 días</div>
                     <div class="lead-time-bar-container">
@@ -603,7 +299,7 @@
                     </div>
                     <div class="lead-time-count">{{ dist.days_1_3 }} reservas</div>
                 </div>
-                
+
                 <div class="lead-time-item">
                     <div class="lead-time-label">4-7 días</div>
                     <div class="lead-time-bar-container">
@@ -614,7 +310,7 @@
                     </div>
                     <div class="lead-time-count">{{ dist.days_4_7 }} reservas</div>
                 </div>
-                
+
                 <div class="lead-time-item">
                     <div class="lead-time-label">8+ días</div>
                     <div class="lead-time-bar-container">
@@ -625,94 +321,83 @@
                     </div>
                     <div class="lead-time-count">{{ dist.days_8_plus }} reservas</div>
                 </div>
-                
-                <div class="insight-box">
-                    <span class="icon">💡</span>
-                    <p>
-                        <strong>Insight:</strong>
-                        {% if booking_lead_time.avg_lead_days < 1 %}
-                            La mayoría reserva el mismo día. Considera notificaciones push y recordatorios de última hora para llenar clases.
-                        {% elif booking_lead_time.avg_lead_days < 3 %}
-                            Tus clientes planifican con 1-3 días de anticipación. Los emails 24-48h antes son efectivos.
-                        {% else %}
-                            Tienes clientes organizados que planifican con anticipación. Ofrece beneficios por reservas tempranas.
-                        {% endif %}
-                        Promedio: <strong>{{ booking_lead_time.avg_lead_days }} días</strong> de anticipación.
-                    </p>
+            </div>
+
+            <div class="mt-6 bg-slate-50 p-4 rounded-xl border border-slate-100 flex gap-3">
+                <span class="text-xl">💡</span>
+                <div class="text-sm text-slate-600 m-0">
+                    <strong>Insight:</strong>
+                    {% if booking_lead_time.avg_lead_days < 1 %} La gran mayoría reserva el mismo día. Considera
+                        notificaciones push de última hora. {% elif booking_lead_time.avg_lead_days < 3 %} Tus clientes
+                        planifican con 1-3 días de anticipación. Emails 24-48h antes funcionan bien. {% else %} Tienes
+                        clientes organizados que planifican con anticipación. {% endif %} Promedio: <strong>{{
+                        booking_lead_time.avg_lead_days }} días</strong> de anticipación.
                 </div>
-                {% endif %}
-                {% endwith %}
+            </div>
+            {% endif %}
+            {% endwith %}
+            {% endwith %}
             {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <p>No hay suficientes datos de reservas para este análisis</p>
-                </div>
+            <div class="text-center py-12 text-slate-400">
+                <div class="text-4xl mb-3">📭</div>
+                <p>No hay suficientes datos de reservas para este análisis.</p>
+            </div>
             {% endif %}
         </div>
 
         <!-- Patrones Estacionales -->
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <h3 class="section-title">
-                        <span class="icon">📅</span>
-                        Patrones por Día de la Semana
-                    </h3>
-                    <p class="section-subtitle">Asistencia promedio según el día</p>
-                </div>
-            </div>
-            
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="text-xl">📅</span> Patrones por Día de la Semana
+            </h3>
+            <p class="text-slate-500 text-sm mb-6">Asistencia promedio según el día</p>
+
             {% if seasonal_patterns %}
-                {% with best_day=seasonal_patterns|first %}
-                <div class="days-grid">
-                    {% for pattern in seasonal_patterns %}
-                    <div class="day-card {% if forloop.first %}best-day{% endif %}">
-                        <div class="day-name">{{ pattern.day_name }}</div>
-                        <div class="day-value">{{ pattern.avg_attendance|floatformat:1|default:"0" }}</div>
-                        <div class="day-label">promedio</div>
-                        <div class="day-sessions">{{ pattern.sessions }} sesiones</div>
-                    </div>
-                    {% endfor %}
+            {% with best_day=seasonal_patterns|first %}
+            <div class="days-grid mb-8">
+                {% for pattern in seasonal_patterns %}
+                <div class="day-card {% if forloop.first %}best-day{% endif %}">
+                    <div class="day-name">{{ pattern.day_name }}</div>
+                    <div class="day-value">{{ pattern.avg_attendance|floatformat:1|default:"0" }}</div>
+                    <div class="day-label">promedio</div>
+                    <div class="day-sessions">{{ pattern.sessions }} sesiones</div>
                 </div>
-                {% endwith %}
-                
-                <div class="chart-container">
-                    <canvas id="seasonalChart"></canvas>
-                </div>
+                {% endfor %}
+            </div>
+            {% endwith %}
+
+            <div class="chart-wrapper h-[300px]">
+                <canvas id="seasonalChart"></canvas>
+            </div>
             {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">📊</div>
-                    <p>No hay suficientes datos de sesiones para analizar patrones</p>
-                </div>
+            <div class="text-center py-12 text-slate-400">
+                <div class="text-4xl mb-3">📊</div>
+                <p>No hay suficientes datos de sesiones para analizar patrones.</p>
+            </div>
             {% endif %}
         </div>
 
         <!-- Predictor de Asistencia -->
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <h3 class="section-title">
-                        <span class="icon">🎯</span>
-                        Predictor de Asistencia
-                    </h3>
-                    <p class="section-subtitle">Estima la asistencia basada en datos históricos</p>
-                </div>
-            </div>
-            
-            <form id="predictionForm" class="predictor-form">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Actividad</label>
-                        <select id="activity_id" class="form-control" required>
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="text-xl">🎯</span> Predictor de Asistencia
+            </h3>
+            <p class="text-slate-500 text-sm mb-6">Estima la asistencia futura basada en datos históricos</p>
+
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <form id="predictionForm" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div class="md:col-span-4">
+                        <label class="filter-label">Actividad</label>
+                        <select id="activity_id" class="filter-input w-full" required>
                             <option value="">Seleccionar actividad</option>
                             {% for activity in activities %}
-                                <option value="{{ activity.id }}">{{ activity.name }}</option>
+                            <option value="{{ activity.id }}">{{ activity.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Día de la Semana</label>
-                        <select id="day_of_week" class="form-control" required>
+                    <div class="md:col-span-3">
+                        <label class="filter-label">Día de la Semana</label>
+                        <select id="day_of_week" class="filter-input w-full" required>
                             <option value="2">Lunes</option>
                             <option value="3">Martes</option>
                             <option value="4">Miércoles</option>
@@ -722,169 +407,140 @@
                             <option value="1">Domingo</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Hora</label>
-                        <select id="hour" class="form-control" required>
+                    <div class="md:col-span-3">
+                        <label class="filter-label">Hora</label>
+                        <select id="hour" class="filter-input w-full" required>
                             {% for h in hours_list %}
-                                <option value="{{ h }}">{{ h }}:00</option>
+                            <option value="{{ h }}">{{ h }}:00</option>
                             {% empty %}
-                                <option value="6">06:00</option>
-                                <option value="7">07:00</option>
-                                <option value="8">08:00</option>
-                                <option value="9">09:00</option>
-                                <option value="10">10:00</option>
-                                <option value="11">11:00</option>
-                                <option value="12">12:00</option>
-                                <option value="13">13:00</option>
-                                <option value="14">14:00</option>
-                                <option value="15">15:00</option>
-                                <option value="16">16:00</option>
-                                <option value="17">17:00</option>
-                                <option value="18">18:00</option>
-                                <option value="19">19:00</option>
-                                <option value="20">20:00</option>
-                                <option value="21">21:00</option>
-                                <option value="22">22:00</option>
+                            <option value="9">09:00</option>
+                            <option value="18">18:00</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn-predict w-100">
+                    <div class="md:col-span-2">
+                        <button type="submit" class="btn-brand w-full justify-center">
                             🔮 Predecir
                         </button>
                     </div>
-                </div>
-            </form>
-            
+                </form>
+            </div>
+
             <div id="predictionResult" style="display: none;"></div>
         </div>
 
         <!-- Retención por Clase -->
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <h3 class="section-title">
-                        <span class="icon">🔄</span>
-                        Retención por Actividad
-                    </h3>
-                    <p class="section-subtitle">Porcentaje de clientes que repiten cada clase</p>
-                </div>
-            </div>
-            
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="text-xl">🔄</span> Retención por Actividad
+            </h3>
+            <p class="text-slate-500 text-sm mb-6">Porcentaje de clientes que repiten la misma clase</p>
+
             {% if member_retention %}
-            <ul class="retention-list">
-                {% for retention in member_retention %}
-                <li class="retention-item">
-                    <div class="retention-activity">{{ retention.activity__name }}</div>
-                    <div class="retention-stats">
-                        <div class="retention-stat">
-                            <div class="retention-stat-label">Total</div>
-                            <div class="retention-stat-value">{{ retention.total_clients }}</div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <div class="space-y-3">
+                        {% for retention in member_retention|slice:":8" %}
+                        <div class="retention-item">
+                            <span class="font-bold text-slate-700">{{ retention.activity__name }}</span>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right hidden sm:block">
+                                    <div class="text-xs text-slate-400 uppercase tracking-wider">Repiten</div>
+                                    <div class="font-bold text-slate-600">{{ retention.repeat_clients }}/{{
+                                        retention.total_clients }}</div>
+                                </div>
+                                <div class="flex flex-col items-end min-w-[80px]">
+                                    <span class="text-xl font-extrabold text-[var(--brand-color)]">{{
+                                        retention.repeat_rate|floatformat:0 }}%</span>
+                                    {% with rate=retention.repeat_rate %}
+                                    {% if rate >= 70 %}
+                                    <span class="retention-badge retention-excellent">Excelente</span>
+                                    {% elif rate >= 50 %}
+                                    <span class="retention-badge retention-good">Bueno</span>
+                                    {% elif rate >= 30 %}
+                                    <span class="retention-badge retention-fair">Regular</span>
+                                    {% else %}
+                                    <span class="retention-badge retention-poor">Bajo</span>
+                                    {% endif %}
+                                    {% endwith %}
+                                </div>
+                            </div>
                         </div>
-                        <div class="retention-stat">
-                            <div class="retention-stat-label">Repiten</div>
-                            <div class="retention-stat-value">{{ retention.repeat_clients }}</div>
-                        </div>
-                        <div class="retention-rate">{{ retention.repeat_rate|floatformat:0 }}%</div>
-                        {% with rate=retention.repeat_rate %}
-                            {% if rate >= 70 %}
-                                <span class="retention-badge retention-excellent">Excelente</span>
-                            {% elif rate >= 50 %}
-                                <span class="retention-badge retention-good">Bueno</span>
-                            {% elif rate >= 30 %}
-                                <span class="retention-badge retention-fair">Regular</span>
-                            {% else %}
-                                <span class="retention-badge retention-poor">Bajo</span>
-                            {% endif %}
-                        {% endwith %}
+                        {% endfor %}
                     </div>
-                </li>
-                {% endfor %}
-            </ul>
-            
-            <div class="chart-container">
-                <canvas id="retentionChart"></canvas>
+                </div>
+                <div class="chart-wrapper h-[400px]">
+                    <canvas id="retentionChart"></canvas>
+                </div>
             </div>
             {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <p>No hay suficientes datos de retención disponibles</p>
-                </div>
+            <div class="text-center py-12 text-slate-400">
+                <div class="text-4xl mb-3">📭</div>
+                <p>No hay suficientes datos de retención disponibles.</p>
+            </div>
             {% endif %}
         </div>
 
         <!-- Recomendaciones -->
-        <div class="section-card">
-            <div class="section-header">
-                <h3 class="section-title">
-                    <span class="icon">💡</span>
-                    Recomendaciones Basadas en Datos
-                </h3>
-            </div>
-            
-            <div class="recommendations-grid">
-                <div class="recommendation-card">
-                    <h5>📊 Optimiza Horarios</h5>
-                    <p>
+        <div class="analytics-card bg-gradient-to-br from-slate-800 to-slate-900 text-white border-0">
+            <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <span class="text-xl">💡</span> Recomendaciones Basadas en Datos
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="recommendation-card bg-white/10 border-l-4 border-blue-400 backdrop-blur-sm">
+                    <h5 class="font-bold text-white mb-2 flex items-center gap-2">📊 Optimiza Horarios</h5>
+                    <p class="text-blue-100 text-sm">
                         {% if seasonal_patterns %}
-                            Concentra tus clases más populares en los días con mayor asistencia promedio para maximizar la ocupación.
+                        Concentra tus clases más populares en los días con mayor asistencia promedio para maximizar la
+                        ocupación.
                         {% else %}
-                            Analiza tus patrones de asistencia para identificar los mejores horarios.
+                        Analiza tus patrones de asistencia para identificar los mejores horarios.
                         {% endif %}
                     </p>
                 </div>
-                <div class="recommendation-card">
-                    <h5>🎯 Marketing Dirigido</h5>
-                    <p>
-                        {% if booking_lead_time.avg_lead_days < 2 %}
-                            Tus clientes deciden a última hora. Usa notificaciones push y SMS para llenar plazas vacías.
-                        {% else %}
-                            Tus clientes planifican con anticipación. Los emails semanales con el horario serán efectivos.
-                        {% endif %}
-                    </p>
+                <div class="recommendation-card bg-white/10 border-l-4 border-purple-400 backdrop-blur-sm">
+                    <h5 class="font-bold text-white mb-2 flex items-center gap-2">🎯 Marketing Dirigido</h5>
+                    <p class="text-purple-100 text-sm">
+                        {% if booking_lead_time.avg_lead_days < 2 %} Tus clientes deciden a última hora. Usa
+                            notificaciones push y SMS para llenar plazas vacías. {% else %} Tus clientes planifican con
+                            anticipación. Los emails semanales con el horario serán efectivos. {% endif %} </p>
                 </div>
-                <div class="recommendation-card">
-                    <h5>🔄 Mejora Retención</h5>
-                    <p>
+                <div class="recommendation-card bg-white/10 border-l-4 border-amber-400 backdrop-blur-sm">
+                    <h5 class="font-bold text-white mb-2 flex items-center gap-2">🔄 Mejora Retención</h5>
+                    <p class="text-amber-100 text-sm">
                         {% if member_retention %}
-                            Identifica las clases con baja retención y realiza encuestas de satisfacción para entender qué mejorar.
+                        Identifica las clases con baja retención y realiza encuestas de satisfacción para entender qué
+                        mejorar.
                         {% else %}
-                            Mide la retención regularmente para identificar oportunidades de mejora continua.
+                        Mide la retención regularmente para identificar oportunidades de mejora continua.
                         {% endif %}
                     </p>
                 </div>
-                <div class="recommendation-card">
-                    <h5>📈 Capacidad Óptima</h5>
-                    <p>
-                        Usa el predictor para ajustar la capacidad de tus clases y evitar tanto sobreventa como subutilización.
+                <div class="recommendation-card bg-white/10 border-l-4 border-emerald-400 backdrop-blur-sm">
+                    <h5 class="font-bold text-white mb-2 flex items-center gap-2">📈 Capacidad Óptima</h5>
+                    <p class="text-emerald-100 text-sm">
+                        Usa el predictor para ajustar la capacidad de tus clases. Si la confianza es alta, ajusta cupos
+                        dinámicamente.
                     </p>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{% load sanitize_tags %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // Colores sobrios para gráficas
-    const chartColors = {
-        primary: '#3b82f6',
-        primaryLight: 'rgba(59, 130, 246, 0.1)',
-        secondary: '#64748b',
-        success: '#059669',
-        warning: '#d97706',
-        danger: '#dc2626',
-        muted: '#94a3b8'
-    };
-    
+    const brandColor = getComputedStyle(document.documentElement).getPropertyValue('--brand-color').trim() || '#0f172a';
+
     // Gráfica de Patrones Estacionales
     {% if seasonal_patterns %}
     const seasonalCtx = document.getElementById('seasonalChart').getContext('2d');
-    const seasonalData = {{ seasonal_patterns|safe_json }};
-    
+    const seasonalData = {{ seasonal_patterns| safe_json }};
+
     new Chart(seasonalCtx, {
         type: 'line',
         data: {
@@ -892,12 +548,12 @@
             datasets: [{
                 label: 'Asistencia Promedio',
                 data: seasonalData.map(d => d.avg_attendance || 0),
-                borderColor: chartColors.primary,
-                backgroundColor: chartColors.primaryLight,
+                borderColor: brandColor,
+                backgroundColor: 'rgba(15, 23, 42, 0.05)',
                 tension: 0.4,
                 fill: true,
                 pointRadius: 6,
-                pointBackgroundColor: chartColors.primary,
+                pointBackgroundColor: brandColor,
                 pointBorderColor: 'white',
                 pointBorderWidth: 2,
                 pointHoverRadius: 8
@@ -907,45 +563,36 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                },
-                title: {
-                    display: true,
-                    text: 'Tendencia de Asistencia por Día',
-                    font: { size: 14, weight: '600' },
-                    color: '#1e293b',
-                    padding: { bottom: 20 }
-                }
+                legend: { display: false },
+                title: { display: false }
             },
             scales: {
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#64748b' }
+                    ticks: { font: { size: 11 } }
                 },
                 y: {
                     beginAtZero: true,
                     grid: { color: '#f1f5f9' },
-                    ticks: { color: '#64748b' }
+                    ticks: { font: { size: 11 } }
                 }
             }
         }
     });
     {% endif %}
-    
+
     // Gráfica de Retención
     {% if member_retention %}
     const retentionCtx = document.getElementById('retentionChart').getContext('2d');
-    const retentionData = {{ member_retention|safe_json }};
-    
-    // Función para determinar color según tasa
+    const retentionData = {{ member_retention| safe_json }};
+
     function getRetentionColor(rate) {
-        if (rate >= 70) return chartColors.success;
-        if (rate >= 50) return chartColors.primary;
-        if (rate >= 30) return chartColors.warning;
-        return chartColors.danger;
+        if (rate >= 70) return '#10b981'; // emerald-500
+        if (rate >= 50) return '#3b82f6'; // blue-500
+        if (rate >= 30) return '#f59e0b'; // amber-500
+        return '#ef4444'; // red-500
     }
-    
+
     new Chart(retentionCtx, {
         type: 'bar',
         data: {
@@ -961,104 +608,92 @@
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            indexAxis: 'y',
             plugins: {
                 legend: { display: false },
-                title: {
-                    display: true,
-                    text: 'Tasa de Retención por Actividad (%)',
-                    font: { size: 14, weight: '600' },
-                    color: '#1e293b',
-                    padding: { bottom: 20 }
-                },
+                title: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
-                            return `Retención: ${context.raw.toFixed(1)}%`;
-                        }
+                        label: function (context) { return `Retención: ${context.raw.toFixed(1)}%`; }
                     }
                 }
             },
             scales: {
                 x: {
-                    grid: { display: false },
-                    ticks: { color: '#64748b', maxRotation: 45 }
+                    grid: { color: '#f1f5f9' },
+                    ticks: { callback: function (value) { return value + '%'; } },
+                    max: 100
                 },
                 y: {
-                    beginAtZero: true,
-                    max: 100,
-                    grid: { color: '#f1f5f9' },
-                    ticks: {
-                        color: '#64748b',
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
+                    grid: { display: false }
                 }
             }
         }
     });
     {% endif %}
-    
+
     // Predictor de Asistencia
-    document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+    document.getElementById('predictionForm').addEventListener('submit', async function (e) {
         e.preventDefault();
-        
+
         const activityId = document.getElementById('activity_id').value;
         const dayOfWeek = document.getElementById('day_of_week').value;
         const hour = document.getElementById('hour').value;
-        
+
         if (!activityId) {
             alert('Por favor selecciona una actividad');
             return;
         }
-        
+
         const btn = this.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
-        btn.innerHTML = '⏳ Analizando...';
+        btn.innerHTML = '⏳ Calculando...';
         btn.disabled = true;
-        
+
         try {
             const response = await fetch(
                 `/activities/api/analytics/predict/?activity_id=${activityId}&day_of_week=${dayOfWeek}&hour=${hour}`
             );
             const data = await response.json();
-            
+
             // Determinar color de confianza
-            let confidenceText, confidenceClass;
+            let confidenceText, confidenceStyle;
             if (data.confidence === 'high') {
-                confidenceText = 'Alta confianza';
-                confidenceClass = 'background: rgba(5, 150, 105, 0.2); color: #059669;';
+                confidenceText = 'Confianza Alta';
+                confidenceStyle = 'background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2);';
             } else if (data.confidence === 'medium') {
-                confidenceText = 'Confianza media';
-                confidenceClass = 'background: rgba(217, 119, 6, 0.2); color: #d97706;';
+                confidenceText = 'Confianza Media';
+                confidenceStyle = 'background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2);';
             } else {
-                confidenceText = 'Confianza baja';
-                confidenceClass = 'background: rgba(220, 38, 38, 0.2); color: #dc2626;';
+                confidenceText = 'Confianza Baja';
+                confidenceStyle = 'background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2);';
             }
-            
-            // Mostrar resultado con diseño sobrio
+
+            // Mostrar resultado
             const resultDiv = document.getElementById('predictionResult');
             resultDiv.style.display = 'block';
             resultDiv.innerHTML = `
-                <div class="prediction-result">
-                    <h4>${data.activity_name || 'Actividad seleccionada'}</h4>
-                    <div class="prediction-value">${(data.predicted_attendance || 0).toFixed(0)} personas</div>
-                    <div style="opacity: 0.8; font-size: 0.9rem;">
-                        Basado en ${data.historical_sessions || 0} sesiones históricas similares
-                    </div>
-                    <div class="prediction-confidence" style="${confidenceClass}">
+                <div class="prediction-result mt-4">
+                    <div class="text-sm opacity-80 mb-2 uppercase tracking-wider">${data.activity_name || 'Actividad'}</div>
+                    <div class="text-4xl font-extrabold mb-1">${(data.predicted_attendance || 0).toFixed(0)}</div>
+                    <div class="text-sm mb-4">personas estimadas</div>
+                    
+                    <div class="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4" style="${confidenceStyle.replace('background:', 'background: rgba(255,255,255,0.2) !important;').replace('color:', 'color: white !important;').replace('border:', '')}">
                         ${confidenceText}
                     </div>
-                    <div class="prediction-range">
-                        Rango esperado: ${data.min_attendance || 0} - ${data.max_attendance || 0} personas
+                    
+                    <div class="text-xs opacity-70">
+                        Basado en ${data.historical_sessions || 0} sesiones históricas
+                        <br>
+                        Rango probable: ${data.min_attendance || 0} - ${data.max_attendance || 0}
                     </div>
                 </div>
             `;
-            
+
             resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (error) {
             console.error('Error:', error);
-            alert('Error al obtener la predicción. Verifica que existan datos históricos.');
+            alert('Error al obtener la predicción.');
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;

@@ -1,0 +1,257 @@
+<style>
+    /* 
+     * Shared Analytics CSS 
+     * Uniform style for Activity, Staff, and Advanced reports.
+     */
+
+    /* --- LAYOUT & CONTAINERS --- */
+    .analytics-page {
+        background-color: #f8fafc;
+        /* slate-50 */
+        min-height: 100vh;
+        padding-bottom: 3rem;
+    }
+
+    .analytics-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    /* Cards */
+    .analytics-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        /* slate-200 */
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .analytics-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+    }
+
+    /* --- HEADERS --- */
+    .analytics-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .analytics-title {
+        font-size: 1.875rem;
+        /* 3xl */
+        font-weight: 800;
+        color: #1e293b;
+        /* slate-800 */
+        letter-spacing: -0.025em;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .analytics-subtitle {
+        color: #64748b;
+        /* slate-500 */
+        font-size: 0.95rem;
+        margin-top: 0.25rem;
+        font-weight: 500;
+    }
+
+    /* --- FILTERS --- */
+    .analytics-filters {
+        background: white;
+        padding: 1.25rem;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        /* slate-500 */
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.05em;
+    }
+
+    .filter-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        /* slate-300 */
+        font-size: 0.95rem;
+        color: #334155;
+        /* slate-700 */
+        transition: all 0.2s;
+        background-color: #f8fafc;
+    }
+
+    .filter-input:focus {
+        outline: none;
+        border-color: var(--brand-color);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-color) 10%, transparent);
+        background-color: white;
+    }
+
+    /* --- KPIs --- */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid #e2e8f0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--brand-color);
+        opacity: 0.5;
+    }
+
+    .kpi-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1.1;
+    }
+
+    .kpi-trend {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .kpi-trend.positive {
+        color: #10b981;
+    }
+
+    .kpi-trend.negative {
+        color: #ef4444;
+    }
+
+    .kpi-trend.neutral {
+        color: #64748b;
+    }
+
+    /* --- TABLES --- */
+    .analytics-table-container {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .analytics-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .analytics-table th {
+        background: #f1f5f9;
+        /* slate-100 */
+        color: #475569;
+        /* slate-600 */
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        padding: 1rem 1.5rem;
+        text-align: left;
+        letter-spacing: 0.05em;
+    }
+
+    .analytics-table td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+    }
+
+    .analytics-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .analytics-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* --- CHART CONTAINERS --- */
+    .chart-wrapper {
+        position: relative;
+        height: 350px;
+        width: 100%;
+    }
+
+    /* --- UTILS --- */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-brand {
+        background-color: color-mix(in srgb, var(--brand-color) 10%, transparent);
+        color: var(--brand-color);
+    }
+
+    /* Icon box for decorative icons */
+    .icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        background: color-mix(in srgb, var(--brand-color) 5%, transparent);
+        color: var(--brand-color);
+        margin-bottom: 1rem;
+    }
+</style>

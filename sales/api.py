@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
+from core.decorators import safe_api_view
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
@@ -21,6 +22,7 @@ from django.shortcuts import get_object_or_404
 logger = logging.getLogger(__name__)
 
 @require_gym_permission('sales.view_sale')
+@safe_api_view
 def get_client_cards(request, client_id):
     """
     Returns list of saved cards for a client (Stripe + Redsys)
@@ -43,7 +45,8 @@ def get_client_cards(request, client_id):
                 'display': f"💳 {card.card.brand.upper()} **** {card.card.last4}"
             })
     except Exception as e:
-        logger.exception("Error fetching Stripe cards")
+        logger.error(f"Error fetching Stripe cards: {e}")
+        # Don't fail the whole request, just log and continue
     
     # 2. Redsys Cards
     from finance.models import ClientRedsysToken
@@ -65,7 +68,14 @@ def order_detail_json(request, order_id):
     Returns order details as JSON for inline expansion in client profile.
     """
     gym = request.gym
-    order = get_object_or_404(Order, id=order_id, gym=gym)
+    order = get_object_or_404(
+        Order.objects.prefetch_related(
+            'items', 
+            'payments__payment_method'
+        ), 
+        id=order_id, 
+        gym=gym
+    )
     
     items = [{
         'id': item.id,
@@ -798,325 +808,306 @@ def search_clients(request):
     
     return JsonResponse({'results': results})
 
+from core.decorators import safe_api_view
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
+
 @transaction.atomic
 @require_gym_permission('sales.add_sale')
-@require_http_methods(["POST"])
+@require_POST
+@safe_api_view
 def process_sale(request):
-    try:
-        data = json.loads(request.body)
-        gym = request.gym
-        user = request.user
-        
-        # 1. Helper: Validate Data
-        client_id = data.get('client_id')
-        items = data.get('items', [])
-        # 'payments' list of { method_id: 1, amount: 50 }
-        payments = data.get('payments', [])
-        # Legacy support for single payment_method_id
-        payment_method_id = data.get('payment_method_id') 
+    data = json.loads(request.body)
+    gym = request.gym
+    user = request.user
+    
+    # 1. Helper: Validate Data
+    client_id = data.get('client_id')
+    items = data.get('items', [])
+    # 'payments' list of { method_id: 1, amount: 50 }
+    payments = data.get('payments', [])
+    # Legacy support for single payment_method_id
+    payment_method_id = data.get('payment_method_id') 
 
-        action = data.get('action') 
-        
-        # Deferred Payment Fields
-        is_deferred = data.get('is_deferred', False)
-        scheduled_payment_date = data.get('scheduled_payment_date')
-        auto_charge = data.get('auto_charge', False)
-        deferred_notes = data.get('deferred_notes', '')
-        
-        if not items:
-            return JsonResponse({'error': 'El carrito está vacío'}, status=400)
+    action = data.get('action') 
+    
+    # Deferred Payment Fields
+    is_deferred = data.get('is_deferred', False)
+    scheduled_payment_date = data.get('scheduled_payment_date')
+    auto_charge = data.get('auto_charge', False)
+    deferred_notes = data.get('deferred_notes', '')
+    
+    if not items:
+        # Instead of manually returning JsonResponse, we can raise ValidationError
+        # but the original code returned 400. Let's stick to simple returns for logic checks
+        # or raise ValidationError which safe_api_view handles as 400.
+        raise ValidationError({'items': 'El carrito está vacío'})
 
-        # 2. Create Order
-        client = None
-        if client_id:
-            client = Client.objects.filter(gym=gym, pk=client_id).first()
+    # 2. Create Order
+    client = None
+    if client_id:
+        client = Client.objects.filter(gym=gym, pk=client_id).first()
 
-        # Custom Date/Time
-        created_at_val = None
-        if data.get('date') and data.get('time'):
-            try:
-                from datetime import datetime as dt
-                created_at_str = f"{data['date']} {data['time']}"
-                created_at_val = dt.strptime(created_at_str, "%Y-%m-%d %H:%M")
-            except ValueError:
-                pass # Ignore invalid format, use auto_now_add logic (actually need to set explicit if we want to override)
-        
-        # Custom Staff
-        sale_user = user
-        if data.get('staff_id'):
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            try:
-                sale_user = User.objects.get(id=data['staff_id'], gym_memberships__gym=gym)
-            except User.DoesNotExist:
-                pass
+    # Custom Date/Time
+    created_at_val = None
+    if data.get('date') and data.get('time'):
+        try:
+            from datetime import datetime as dt
+            created_at_str = f"{data['date']} {data['time']}"
+            created_at_val = dt.strptime(created_at_str, "%Y-%m-%d %H:%M")
+        except ValueError:
+            pass 
+    
+    # Custom Staff
+    sale_user = user
+    if data.get('staff_id'):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            sale_user = User.objects.get(id=data['staff_id'], gym_memberships__gym=gym)
+        except User.DoesNotExist:
+            pass
 
-        # Determine initial status
-        initial_status = 'DEFERRED' if is_deferred else 'PAID'
-        
-        order = Order.objects.create(
-            gym=gym,
-            client=client,
-            created_by=sale_user,
-            status=initial_status, 
-            total_amount=0
-        )
-        
-        # Handle deferred payment fields
-        if is_deferred and scheduled_payment_date:
-            try:
+    # Determine initial status
+    initial_status = 'DEFERRED' if is_deferred else 'PAID'
+    
+    order = Order.objects.create(
+        gym=gym,
+        client=client,
+        created_by=sale_user,
+        status=initial_status, 
+        total_amount=0
+    )
+    
+    # Handle deferred payment fields
+    if is_deferred and scheduled_payment_date:
+        try:
+            import datetime
+            # Check if it's already a date object or string
+            if isinstance(scheduled_payment_date, str):
                 order.scheduled_payment_date = datetime.datetime.strptime(scheduled_payment_date, '%Y-%m-%d').date()
-            except:
-                order.scheduled_payment_date = None
-            order.auto_charge = auto_charge
-            order.deferred_notes = deferred_notes
-            order.save()
-        
-        if created_at_val:
-            order.created_at = created_at_val
-            order.save() # Needed because auto_now_add might have set it to now
-
-        # Normalizar acumuladores monetarios a Decimal para evitar mezclas float/Decimal
-        order.total_base = Decimal(0)
-        order.total_tax = Decimal(0)
-
-
-        total_amount = Decimal(0)
-        total_discount = Decimal(0)
-
-        # 3. Create Items
-        for item in items:
-            obj_id = item['id']
-            obj_type = item['type']
-            qty = int(item['qty'])
-
-            # Skip enrollment_fee items from frontend — the backend adds them
-            # automatically when processing the parent membership item (below)
-            if obj_type == 'enrollment_fee':
-                continue
-
-            discount_info = item.get('discount', {})
-            disc_type = discount_info.get('type', 'fixed')
-            disc_val = Decimal(str(discount_info.get('value', 0) or 0))
-
-            if obj_type == 'product':
-                obj = Product.objects.get(pk=obj_id, gym=gym)
-            elif obj_type == 'service':
-                obj = Service.objects.get(pk=obj_id, gym=gym)
             else:
-                obj = MembershipPlan.objects.get(pk=obj_id, gym=gym)
+                order.scheduled_payment_date = scheduled_payment_date
+        except:
+            order.scheduled_payment_date = None
+        order.auto_charge = auto_charge
+        order.deferred_notes = deferred_notes
+        order.save()
+    
+    if created_at_val:
+        order.created_at = created_at_val
+        order.save() 
 
-            unit_price = obj.final_price
-            base_total = unit_price * qty
+    # Normalizar acumuladores
+    order.total_base = Decimal(0)
+    order.total_tax = Decimal(0)
 
-            item_discount = Decimal(0)
-            if disc_val > 0:
-                if disc_type == 'percent':
-                    if disc_val > 100: disc_val = 100
-                    item_discount = base_total * (disc_val / 100)
-                else:
-                    item_discount = disc_val
+    total_amount = Decimal(0)
+    total_discount = Decimal(0)
 
-            if item_discount > base_total:
-                item_discount = base_total
+    # 3. Create Items
+    for item in items:
+        obj_id = item['id']
+        obj_type = item['type']
+        qty = int(item['qty'])
 
-            final_subtotal = base_total - item_discount
+        if obj_type == 'enrollment_fee':
+            continue
 
-            # Calculate Base and Tax (Assuming tax-inclusive prices)
-            # Base = Total / (1 + Rate)
-            # Use total_tax_rate_percent if available (MembershipPlan), else single tax_rate
-            if hasattr(obj, 'total_tax_rate_percent'):
-                combined_tax_percent = obj.total_tax_rate_percent
-            elif hasattr(obj, 'tax_rate') and obj.tax_rate:
-                combined_tax_percent = obj.tax_rate.rate_percent
+        discount_info = item.get('discount', {})
+        disc_type = discount_info.get('type', 'fixed')
+        disc_val = Decimal(str(discount_info.get('value', 0) or 0))
+
+        if obj_type == 'product':
+            obj = Product.objects.get(pk=obj_id, gym=gym)
+        elif obj_type == 'service':
+            obj = Service.objects.get(pk=obj_id, gym=gym)
+        else:
+            obj = MembershipPlan.objects.get(pk=obj_id, gym=gym)
+
+        unit_price = obj.final_price
+        base_total = unit_price * qty
+
+        item_discount = Decimal(0)
+        if disc_val > 0:
+            if disc_type == 'percent':
+                if disc_val > 100: disc_val = 100
+                item_discount = base_total * (disc_val / 100)
             else:
-                combined_tax_percent = Decimal(0)
-            item_tax_rate_decimal = combined_tax_percent / Decimal(100)
+                item_discount = disc_val
 
-            # Prevent division by zero or weirdness
-            item_base = final_subtotal / (Decimal(1) + item_tax_rate_decimal)
-            item_tax = final_subtotal - item_base
+        if item_discount > base_total:
+            item_discount = base_total
 
-            ct = ContentType.objects.get_for_model(obj)
+        final_subtotal = base_total - item_discount
 
-            newItem = OrderItem.objects.create(
+        # Calculate Base and Tax
+        if hasattr(obj, 'total_tax_rate_percent'):
+            combined_tax_percent = obj.total_tax_rate_percent
+        elif hasattr(obj, 'tax_rate') and obj.tax_rate:
+            combined_tax_percent = obj.tax_rate.rate_percent
+        else:
+            combined_tax_percent = Decimal(0)
+        item_tax_rate_decimal = combined_tax_percent / Decimal(100)
+
+        # Prevent division by zero
+        item_base = final_subtotal / (Decimal(1) + item_tax_rate_decimal)
+        item_tax = final_subtotal - item_base
+
+        ct = ContentType.objects.get_for_model(obj)
+
+        newItem = OrderItem.objects.create(
+            order=order,
+            content_type=ct,
+            object_id=obj.id,
+            description=obj.name,
+            quantity=qty,
+            unit_price=unit_price,
+            subtotal=final_subtotal,
+            tax_rate=combined_tax_percent,
+            discount_amount=item_discount,
+            notes=getattr(obj, 'receipt_notes', '') or ''
+        )
+
+        total_amount += final_subtotal
+        total_discount += item_discount
+
+        order.total_base += item_base
+        order.total_tax += item_tax
+
+        # --- ENROLLMENT FEE LOGIC ---
+        if obj_type == 'membership' and hasattr(obj, 'has_enrollment_fee') and obj.has_enrollment_fee and obj.enrollment_fee > 0:
+            enrollment_fee = obj.final_enrollment_fee
+            enrollment_fee_tax = obj.enrollment_fee_tax_rate.rate_percent if obj.enrollment_fee_tax_rate else Decimal(0)
+            enrollment_fee_tax_decimal = enrollment_fee_tax / Decimal(100)
+            
+            enrollment_base = enrollment_fee / (Decimal(1) + enrollment_fee_tax_decimal) if enrollment_fee_tax_decimal > 0 else enrollment_fee
+            enrollment_tax = enrollment_fee - enrollment_base
+            
+            OrderItem.objects.create(
                 order=order,
                 content_type=ct,
                 object_id=obj.id,
-                description=obj.name,
-                quantity=qty,
-                unit_price=unit_price,
-                subtotal=final_subtotal,
-                tax_rate=combined_tax_percent,
-                discount_amount=item_discount,
-                notes=getattr(obj, 'receipt_notes', '') or ''
+                description=f"Cuota de Inscripción - {obj.name}",
+                quantity=1,
+                unit_price=enrollment_fee,
+                subtotal=enrollment_fee,
+                tax_rate=enrollment_fee_tax,
+                discount_amount=Decimal(0),
+                notes="Cuota de inscripción/matrícula"
             )
+            total_amount += enrollment_fee
+            order.total_base += enrollment_base
+            order.total_tax += enrollment_tax
 
-            total_amount += final_subtotal
-            total_discount += item_discount
-
-            # Update order totals (in-memory)
-            order.total_base += item_base
-            order.total_tax += item_tax
-
-            # --- ENROLLMENT FEE LOGIC ---
-            # If this is a MembershipPlan and has enrollment fee, add as separate OrderItem
-            if obj_type == 'membership' and hasattr(obj, 'has_enrollment_fee') and obj.has_enrollment_fee and obj.enrollment_fee > 0:
-                # Enrollment fee is always qty=1 (one-time per plan sale)
-                enrollment_fee = obj.final_enrollment_fee
-                enrollment_fee_tax = obj.enrollment_fee_tax_rate.rate_percent if obj.enrollment_fee_tax_rate else Decimal(0)
-                enrollment_fee_tax_decimal = enrollment_fee_tax / Decimal(100)
-                # Calculate base and tax (assume tax included)
-                enrollment_base = enrollment_fee / (Decimal(1) + enrollment_fee_tax_decimal) if enrollment_fee_tax_decimal > 0 else enrollment_fee
-                enrollment_tax = enrollment_fee - enrollment_base
-                OrderItem.objects.create(
-                    order=order,
-                    content_type=ct,
-                    object_id=obj.id,
-                    description=f"Cuota de Inscripción - {obj.name}",
-                    quantity=1,
-                    unit_price=enrollment_fee,
-                    subtotal=enrollment_fee,
-                    tax_rate=enrollment_fee_tax,
-                    discount_amount=Decimal(0),
-                    notes="Cuota de inscripción/matrícula"
-                )
-                total_amount += enrollment_fee
-                # Update order totals (in-memory)
-                order.total_base += enrollment_base
-                order.total_tax += enrollment_tax
-
-        # 4. Create Payments (handle mixed) - Skip for deferred orders
-        total_paid = Decimal(0)
-        
-        # For deferred orders, skip payment processing
-        if is_deferred:
-            # No payments needed, just save the totals
-            order.total_amount = total_amount
-            order.total_discount = total_discount
-            order.save()
-            
-            return JsonResponse({
-                'success': True, 
-                'order_id': order.id,
-                'deferred': True,
-                'message': f'Venta diferida guardada. Fecha de cobro: {scheduled_payment_date}'
-            })
-        
-        # Process Payments (only for non-deferred orders)
-        payments_valid = True
-        
-        for p in payments:
-            method_id = p.get('method_id')
-            amount = Decimal(str(p.get('amount', 0) or 0))
-            
-            stripe_pm_id = p.get('stripe_payment_method_id') # Legacy/Stripe specific
-            
-            # New params for unified cards
-            provider = p.get('provider') # 'stripe' or 'redsys'
-            payment_token = p.get('payment_token') # The ID (pm_... or DB ID for Redsys)
-            
-            # Normalize inputs
-            if stripe_pm_id and not provider:
-                provider = 'stripe'
-                payment_token = stripe_pm_id
-            
-            # Get Method Name (Cash, Card, etc)
-            # Get Method Name (Cash, Card, etc)
-            try:
-                method = PaymentMethod.objects.get(id=method_id)
-            except:
-                # If using integration, maybe method provided is invalid?
-                # Try to find a generic "Card" method
-                if provider: # stripe or redsys
-                    method = PaymentMethod.objects.filter(name__icontains='tarjeta', gym=gym).first()
-                    if not method:
-                        method = PaymentMethod.objects.filter(name__icontains='stripe', gym=gym).first()
-                    if not method:
-                         # Fallback to ANY active method if we have no choice (better than crash?)
-                         # Or create one?
-                         method = PaymentMethod.objects.filter(gym=gym, is_active=True).exclude(name__icontains='efectivo').first()
-                         if not method:
-                             method = PaymentMethod.objects.filter(gym=gym, is_active=True).first()
-                             
-                if not method:
-                     # Critical failure if we can't find a method
-                     # But don't crash yet, let valid validation handle it or create dummy?
-                     # We must have a method.
-                     raise Exception("No se encontró un método de pago válido en la configuración")
-                
-            transaction_id = None
-            
-            # Integrations
-            if provider == 'stripe' and payment_token:
-                 from finance.stripe_utils import charge_client
-                 success, result = charge_client(client, amount, payment_token)
-                 if success:
-                     transaction_id = result # It's the PaymentIntent ID
-                 else:
-                     payments_valid = False
-                     break
-                     
-            elif provider == 'redsys' and payment_token:
-                 from finance.redsys_utils import get_redsys_client
-                 from finance.models import ClientRedsysToken
-                 
-                 # Retrieve Token
-                 try:
-                     redsys_db_token = ClientRedsysToken.objects.get(id=payment_token, client=client)
-                     redsys_client = get_redsys_client(gym)
-                     
-                     if not redsys_client:
-                          raise Exception("Redsys not configured")
-                          
-                     # Generate unique order id for THIS charge
-                     from finance.views_redsys import generate_order_id
-                     order_id = generate_order_id()
-                     
-                     success, result = redsys_client.charge_request(order_id, amount, redsys_db_token.token, f"Order {order.id}")
-                     
-                     if success:
-                         transaction_id = order_id # Or result.get('Ds_Order')
-                     else:
-                         # fail
-                         raise Exception(result)
-                         
-                 except Exception as e:
-                     print(f"Redsys Charge Error: {e}")
-                     payments_valid = False
-                     break
-            
-            OrderPayment.objects.create(
-                order=order,
-                payment_method=method,
-                amount=amount,
-                transaction_id=transaction_id
-            )
-            total_paid += amount
-            
-        if not payments_valid:
-             order.status = 'CANCELLED' # Or failed
-             order.save()
-             return JsonResponse({'error': 'Error procesando el pago con tarjeta'}, status=400)
-             
-        # Check Total
-        if total_paid >= total_amount:
-            order.status = 'PAID'
-        elif total_paid > 0:
-            order.status = 'PARTIAL'
-            
+    # 4. Create Payments
+    total_paid = Decimal(0)
+    
+    if is_deferred:
         order.total_amount = total_amount
         order.total_discount = total_discount
         order.save()
         
-        # 5. Auto-assign memberships if any membership plans were sold
-        if client and order.status == 'PAID':
-            _auto_assign_memberships_from_order(order, client, gym)
+        return JsonResponse({
+            'success': True, 
+            'order_id': order.id,
+            'deferred': True,
+            'message': f'Venta diferida guardada. Fecha de cobro: {scheduled_payment_date}'
+        })
+    
+    payments_valid = True
+    
+    for p in payments:
+        method_id = p.get('method_id')
+        amount = Decimal(str(p.get('amount', 0) or 0))
         
-        return JsonResponse({'success': True, 'order_id': order.id})
-    except Exception as e:
-        logger.exception("Error processing sale")
-        return JsonResponse({'error': 'Error interno al procesar la venta'}, status=500)
+        stripe_pm_id = p.get('stripe_payment_method_id')
+        provider = p.get('provider')
+        payment_token = p.get('payment_token')
+        
+        if stripe_pm_id and not provider:
+            provider = 'stripe'
+            payment_token = stripe_pm_id
+        
+        try:
+            method = PaymentMethod.objects.get(id=method_id)
+        except:
+            if provider:
+                method = PaymentMethod.objects.filter(name__icontains='tarjeta', gym=gym).first()
+                if not method:
+                    method = PaymentMethod.objects.filter(name__icontains='stripe', gym=gym).first()
+                if not method:
+                     method = PaymentMethod.objects.filter(gym=gym, is_active=True).exclude(name__icontains='efectivo').first()
+                     if not method:
+                         method = PaymentMethod.objects.filter(gym=gym, is_active=True).first()
+            if not method:
+                 raise ValidationError("No se encontró un método de pago válido")
+            
+        transaction_id = None
+        
+        # Integrations
+        if provider == 'stripe' and payment_token:
+             from finance.stripe_utils import charge_client
+             success, result = charge_client(client, amount, payment_token)
+             if success:
+                 transaction_id = result
+             else:
+                 payments_valid = False
+                 break
+                 
+        elif provider == 'redsys' and payment_token:
+             from finance.redsys_utils import get_redsys_client
+             from finance.models import ClientRedsysToken
+             
+             try:
+                 redsys_db_token = ClientRedsysToken.objects.get(id=payment_token, client=client)
+                 redsys_client = get_redsys_client(gym)
+                 
+                 if not redsys_client:
+                      raise ValidationError("Redsys not configured")
+                      
+                 from finance.views_redsys import generate_order_id
+                 order_id = generate_order_id()
+                 
+                 success, result = redsys_client.charge_request(order_id, amount, redsys_db_token.token, f"Order {order.id}")
+                 
+                 if success:
+                     transaction_id = order_id
+                 else:
+                     raise ValidationError(str(result))
+                     
+             except Exception as e:
+                 logger.error(f"Redsys Charge Error: {e}")
+                 payments_valid = False
+                 break
+        
+        OrderPayment.objects.create(
+            order=order,
+            payment_method=method,
+            amount=amount,
+            transaction_id=transaction_id
+        )
+        total_paid += amount
+        
+    if not payments_valid:
+         order.status = 'CANCELLED'
+         order.save()
+         return JsonResponse({'error': 'Error procesando el pago con tarjeta'}, status=400)
+         
+    if total_paid >= total_amount:
+        order.status = 'PAID'
+    elif total_paid > 0:
+        order.status = 'PARTIAL'
+        
+    order.total_amount = total_amount
+    order.total_discount = total_discount
+    order.save()
+    
+    if client and order.status == 'PAID':
+        _auto_assign_memberships_from_order(order, client, gym)
+    
+    return JsonResponse({'success': True, 'order_id': order.id})
 
 def _auto_assign_memberships_from_order(order, client, gym):
     """

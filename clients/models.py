@@ -62,12 +62,12 @@ class Client(models.Model):
     )
 
     # Estado
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.LEAD)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.LEAD, db_index=True)
 
     # Datos principales
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150, blank=True)
-    email = models.EmailField(blank=True, null=True) # Opcional en Lead, obligatorio si tiene usuario
+    email = models.EmailField(blank=True, null=True, db_index=True) # Opcional en Lead, obligatorio si tiene usuario
     phone_number = models.CharField(max_length=50, blank=True)
     
     # Datos secundarios
@@ -83,7 +83,7 @@ class Client(models.Model):
         verbose_name="Especificar otro documento",
         help_text="Indica el tipo de documento si seleccionaste 'Otro'"
     )
-    dni = models.CharField(max_length=20, blank=True, help_text="DNI/NIE/Pasaporte")
+    dni = models.CharField(max_length=20, blank=True, help_text="DNI/NIE/Pasaporte", db_index=True)
     birth_date = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=2, choices=Gender.choices, default=Gender.NOT_SPECIFIED)
     address = models.TextField(blank=True)
@@ -131,7 +131,7 @@ class Client(models.Model):
     extra_data = models.JSONField(default=dict, blank=True) # Ej: {"como_nos_conocio": "Google"}
 
     # Stripe Integration
-    stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, help_text="ID de cliente en Stripe (cus_...)")
+    stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, help_text="ID de cliente en Stripe (cus_...)", db_index=True)
     
     # Payment Gateway Preference
     GATEWAY_PREFERENCE_CHOICES = [
@@ -185,7 +185,7 @@ class Client(models.Model):
         help_text="Crédito acumulado por referidos"
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -601,9 +601,9 @@ class ClientMembership(models.Model):
     
     name = models.CharField(max_length=150) # Ej: "Plan Anual", "Bono 10"
     start_date = models.DateField()
-    end_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
     is_recurring = models.BooleanField(default=True)
     
     # Billing dates for recurring memberships

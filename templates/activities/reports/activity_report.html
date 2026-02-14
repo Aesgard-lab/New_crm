@@ -1,509 +1,334 @@
 {% extends "backoffice/base.html" %}
 {% load static analytics_tags %}
+{% load sanitize_tags %}
 
 {% block title %}Reporte de Actividades - {{ gym.name }}{% endblock %}
 
 {% block extra_css %}
+{% include "backoffice/analytics/partials/_analytics_css.html" %}
 <style>
-    .report-container {
-        background: white;
-        border-radius: 8px;
-        padding: 24px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 24px;
+    /* Specific styles for Activity Report */
+    .trend-up {
+        color: #10b981;
     }
-    
-    .activity-card {
-        background: white;
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 16px;
-        transition: all 0.3s;
+
+    .trend-down {
+        color: #ef4444;
     }
-    
-    .activity-card:hover {
-        border-color: var(--brand-color, #007bff);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+
+    .trend-neutral {
+        color: #64748b;
     }
-    
-    .activity-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-    
-    .activity-name {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #333;
-    }
-    
-    .activity-category {
-        display: inline-block;
-        padding: 4px 12px;
-        background: var(--brand-color, #007bff);
-        color: white;
-        border-radius: 12px;
-        font-size: 0.85rem;
-    }
-    
-    .stats-row {
+
+    /* Heatmap styles */
+    .heatmap-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 16px;
-        margin-top: 16px;
-    }
-    
-    .stat-box {
-        text-align: center;
-        padding: 12px;
-        background: #f8f9fa;
-        border-radius: 6px;
-    }
-    
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: var(--brand-color, #007bff);
-    }
-    
-    .stat-label {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 4px;
-    }
-    
-    .occupancy-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 6px;
-    }
-    
-    .occupancy-high { background: #28a745; }
-    .occupancy-medium { background: #ffc107; }
-    .occupancy-low { background: #dc3545; }
-    
-    .chart-container {
-        position: relative;
-        height: 400px;
-        margin: 20px 0;
-    }
-    
-    .time-slot-grid {
-        display: grid;
-        grid-template-columns: 80px repeat(7, 1fr);
+        grid-template-columns: 60px repeat(7, 1fr);
         gap: 4px;
-        margin: 20px 0;
+        overflow-x: auto;
     }
-    
-    .time-slot-header {
-        background: #f8f9fa;
-        padding: 8px;
-        text-align: center;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-    
-    .time-slot-cell {
-        padding: 12px 8px;
-        text-align: center;
-        background: #f8f9fa;
+
+    .heatmap-cell {
+        aspect-ratio: 2/1;
         border-radius: 4px;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .time-slot-cell:hover {
-        transform: scale(1.05);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-    
-    .cross-pattern-list {
-        list-style: none;
-        padding: 0;
-    }
-    
-    .cross-pattern-item {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        padding: 12px;
-        background: #f8f9fa;
-        border-radius: 6px;
-        margin-bottom: 8px;
+        justify-content: center;
+        font-size: 0.75rem;
+        color: #1e293b;
+        transition: all 0.2s;
+        position: relative;
     }
-    
-    .cross-pattern-classes {
-        font-weight: 600;
-    }
-    
-    .cross-pattern-count {
-        background: var(--brand-color, #007bff);
+
+    .heatmap-cell:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e293b;
         color: white;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-weight: bold;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        z-index: 10;
+        pointer-events: none;
+        margin-bottom: 4px;
     }
-    
-    .filter-bar {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 24px;
+
+    .intensity-0 {
+        background-color: #f1f5f9;
+        color: #94a3b8;
     }
-    
-    .room-card {
-        background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
+
+    .intensity-1 {
+        background-color: #dbeafe;
+        color: #1e40af;
     }
-    
-    .room-name {
+
+    .intensity-2 {
+        background-color: #93c5fd;
+        color: #1e3a8a;
+    }
+
+    .intensity-3 {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .intensity-4 {
+        background-color: #2563eb;
+        color: white;
+    }
+
+    .intensity-5 {
+        background-color: #1d4ed8;
+        color: white;
+    }
+
+    .day-header {
+        text-align: center;
         font-weight: 600;
-        font-size: 1.1rem;
-        margin-bottom: 8px;
+        font-size: 0.85rem;
+        color: #64748b;
+        padding-bottom: 8px;
     }
-    
-    .room-stats {
+
+    .time-label {
+        font-size: 0.75rem;
+        color: #64748b;
         display: flex;
-        gap: 20px;
-        font-size: 0.9rem;
-        color: #6c757d;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 8px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1">🎯 Reporte de Actividades</h1>
-            <p class="text-muted">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}</p>
-        </div>
-        <div>
-            <a href="{% url 'analytics_dashboard' %}" class="btn btn-outline-secondary">
-                ← Volver al Dashboard
-            </a>
-            <a href="{% url 'export_report_csv' %}?type=activities&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
-               class="btn btn-success">
-                📥 Exportar CSV
-            </a>
-        </div>
-    </div>
+<div class="analytics-page">
+    <div class="analytics-container">
 
-    <!-- Filtros -->
-    <form method="get" class="filter-bar">
-        <div class="row">
-            <div class="col-md-3">
-                <label>Fecha Inicio</label>
-                <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+        <!-- Header -->
+        <div class="analytics-header">
+            <div>
+                <h1 class="analytics-title">
+                    <span class="icon-box"
+                        style="width: 40px; height: 40px; font-size: 1.25rem; margin-bottom: 0;">💪</span>
+                    Reporte de Actividades
+                </h1>
+                <p class="analytics-subtitle">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}</p>
             </div>
-            <div class="col-md-3">
-                <label>Fecha Fin</label>
-                <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+            <div class="flex gap-3">
+                <a href="{% url 'analytics_dashboard' %}" class="btn-secondary">
+                    ← Volver al Dashboard
+                </a>
+                <a href="{% url 'export_report_csv' %}?type=activities&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}"
+                    class="btn-brand">
+                    📥 Exportar CSV
+                </a>
             </div>
-            <div class="col-md-3">
-                <label>Actividad</label>
-                <select name="activity_id" class="form-control">
+        </div>
+
+        <!-- Filtros -->
+        <form method="get" class="analytics-filters">
+            <div class="filter-group">
+                <label class="filter-label">Fecha Inicio</label>
+                <input type="date" name="start_date" class="filter-input" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Fecha Fin</label>
+                <input type="date" name="end_date" class="filter-input" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            <div class="filter-group" style="flex: 2;">
+                <label class="filter-label">Actividad</label>
+                <select name="activity_id" class="filter-input">
                     <option value="">-- Todas las actividades --</option>
                     {% for activity in activities %}
-                        <option value="{{ activity.id }}" {% if activity.id|stringformat:"s" == selected_activity_id %}selected{% endif %}>
-                            {{ activity.name }}
-                        </option>
+                    {% with aid=activity.id|stringformat:"s" %}
+                    <option value="{{ activity.id }}" {% if aid == selected_activity_id %}selected{% endif %}>
+                        {{ activity.name }}
+                    </option>
+                    {% endwith %}
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <label>Período</label>
-                <select name="period" class="form-control">
+            <div class="filter-group">
+                <label class="filter-label">Período</label>
+                <select name="period" class="filter-input">
                     <option value="daily" {% if period == 'daily' %}selected{% endif %}>Diario</option>
                     <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Semanal</option>
                     <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Mensual</option>
                 </select>
             </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
+            <div>
+                <button type="submit" class="btn-brand"
+                    style="height: 42px; width: 42px; padding: 0; display: flex; align-items: center; justify-content: center;">
                     🔍
                 </button>
             </div>
-        </div>
-    </form>
+        </form>
 
-    <!-- Top Actividades -->
-    <div class="report-container">
-        <h3 class="h5 mb-4">⭐ Top 15 Actividades Más Populares</h3>
-        
-        {% for activity in popular_activities %}
-        <div class="activity-card">
-            <div class="activity-header">
-                <div>
-                    <div class="activity-name">{{ activity.activity__name }}</div>
-                    {% if activity.activity__category__name %}
-                        <span class="activity-category">{{ activity.activity__category__name }}</span>
-                    {% endif %}
-                </div>
-                <div>
-                    {% with occ=activity.occupancy_rate %}
-                        <span class="occupancy-indicator {% if occ >= 80 %}occupancy-high{% elif occ >= 50 %}occupancy-medium{% else %}occupancy-low{% endif %}"></span>
-                        <strong>{{ occ|floatformat:1 }}% ocupación</strong>
-                    {% endwith %}
-                </div>
-            </div>
-            
-            <div class="stats-row">
-                <div class="stat-box">
-                    <div class="stat-value">{{ activity.sessions_count }}</div>
-                    <div class="stat-label">Sesiones</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">{{ activity.total_attendance }}</div>
-                    <div class="stat-label">Asistencia</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">{{ activity.avg_attendance|floatformat:1 }}</div>
-                    <div class="stat-label">Promedio</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">
-                        {% if activity.avg_rating %}
-                            ⭐ {{ activity.avg_rating|floatformat:1 }}
-                        {% else %}
-                            -
-                        {% endif %}
+        <!-- Top Actividades -->
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">⭐ Top 15 Actividades Más Populares</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for activity in popular_activities %}
+                <div
+                    class="border border-slate-200 rounded-xl p-4 hover:border-[var(--brand-color)] transition-colors bg-white shadow-sm">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="font-bold text-slate-800 text-lg">{{ forloop.counter }}. {{ activity.name }}</div>
+                        <span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
+                            {{ activity.percent_total|floatformat:1 }}%
+                        </span>
                     </div>
-                    <div class="stat-label">Rating</div>
+
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-slate-50 p-2 rounded-lg">
+                            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total</div>
+                            <div class="font-bold text-slate-800 text-lg">{{ activity.total_attendance }}</div>
+                        </div>
+                        <div class="bg-slate-50 p-2 rounded-lg">
+                            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Promedio</div>
+                            <div class="font-bold text-slate-800 text-lg">{{ activity.avg_attendance|floatformat:1 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full text-center py-8 text-slate-400">
+                    No hay datos de actividades en este período
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Gráfica de Tendencia -->
+            <div class="analytics-card mb-0">
+                <h3 class="text-lg font-bold text-slate-800 mb-2">📈 Tendencia de Participación</h3>
+                <p class="text-slate-500 text-sm mb-4">Evolución de la asistencia en el tiempo</p>
+                <div class="chart-wrapper">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Distribución por Horario -->
+            <div class="analytics-card mb-0">
+                <h3 class="text-lg font-bold text-slate-800 mb-2">⏰ Distribución Horaria</h3>
+                <p class="text-slate-500 text-sm mb-4">Asistencia promedio por hora del día</p>
+                <div class="chart-wrapper">
+                    <canvas id="hourlyChart"></canvas>
                 </div>
             </div>
         </div>
-        {% empty %}
-        <p class="text-center text-muted">No hay datos disponibles para este período</p>
-        {% endfor %}
-    </div>
 
-    <!-- Tendencias (si hay actividad seleccionada) -->
-    {% if selected_activity_id and activity_trends %}
-    <div class="report-container">
-        <h3 class="h5 mb-4">📈 Tendencia de Asistencia</h3>
-        <div class="chart-container">
-            <canvas id="activityTrendChart"></canvas>
-        </div>
-    </div>
-    {% endif %}
+        <!-- Mapa de Calor Semanal -->
+        <div class="analytics-card">
+            <h3 class="text-lg font-bold text-slate-800 mb-2">🔥 Mapa de Calor Semanal</h3>
+            <p class="text-slate-500 text-sm mb-6">Intensidad de ocupación por día y hora</p>
 
-    <!-- Gráfica de Comparativa -->
-    <div class="report-container">
-        <h3 class="h5 mb-4">📊 Comparativa de Actividades</h3>
-        <div class="chart-container">
-            <canvas id="activitiesComparisonChart"></canvas>
-        </div>
-    </div>
+            <div class="heatmap-grid">
+                <!-- Header Row -->
+                <div></div>
+                {% for day in days_of_week %}
+                <div class="day-header">{{ day }}</div>
+                {% endfor %}
 
-    <!-- Performance por Time Slot -->
-    <div class="report-container">
-        <h3 class="h5 mb-4">⏰ Performance por Horario</h3>
-        <p class="text-muted small mb-3">Asistencia promedio por día y hora</p>
-        
-        {% if time_slot_performance %}
-        <div style="overflow-x: auto;">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Hora</th>
-                        <th>Lun</th>
-                        <th>Mar</th>
-                        <th>Mié</th>
-                        <th>Jue</th>
-                        <th>Vie</th>
-                        <th>Sáb</th>
-                        <th>Dom</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for slot in time_slot_performance %}
-                    <tr>
-                        <td><strong>{{ slot.hour }}:00</strong></td>
-                        {% for day in "2345671"|make_list %}
-                            <td style="background-color: rgba(54, 162, 235, 0.1); text-align: center;">
-                                {{ slot.avg_attendance|floatformat:1|default:"-" }}
-                            </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted text-center">No hay datos de time slots disponibles</p>
-        {% endif %}
-    </div>
-
-    <!-- Utilización de Salas -->
-    <div class="report-container">
-        <h3 class="h5 mb-4">🏢 Utilización de Salas</h3>
-        
-        {% for room in room_utilization %}
-        <div class="room-card">
-            <div class="room-name">
-                {% if room.room__name %}
-                    🚪 {{ room.room__name }}
-                {% else %}
-                    🚪 Sin sala asignada
-                {% endif %}
-            </div>
-            <div class="room-stats">
-                <span><strong>{{ room.sessions_count }}</strong> sesiones</span>
-                <span><strong>{{ room.total_attendance }}</strong> asistencias totales</span>
-                <span><strong>{{ room.avg_attendance|floatformat:1 }}</strong> promedio/sesión</span>
-            </div>
-            <div class="progress mt-2" style="height: 24px;">
-                <div class="progress-bar" 
-                     role="progressbar" 
-                     style="width: {{ room.sessions_count|div:20 }}%;"
-                     aria-valuenow="{{ room.sessions_count }}" 
-                     aria-valuemin="0" 
-                     aria-valuemax="100">
-                    {{ room.sessions_count }} sesiones
+                <!-- Time Rows -->
+                {% for hour in hours_range %}
+                <div class="time-label">{{ hour }}:00</div>
+                {% for day_idx in "0123456"|make_list %}
+                {% with cell_data=heatmap_data|get_heatmap_cell:day_idx|get_heatmap_cell:hour %}
+                <div class="heatmap-cell intensity-{{ cell_data.intensity }}"
+                    data-tooltip="{{ cell_data.count }} reservas">
+                    {% if cell_data.count > 0 %}{{ cell_data.count }}{% endif %}
                 </div>
+                {% endwith %}
+                {% endfor %}
+                {% endfor %}
             </div>
         </div>
-        {% empty %}
-        <p class="text-muted text-center">No hay datos de salas disponibles</p>
-        {% endfor %}
-    </div>
 
-    <!-- Patrones de Asistencia Cruzada -->
-    <div class="report-container">
-        <h3 class="h5 mb-4">🔄 Patrones de Asistencia Cruzada</h3>
-        <p class="text-muted small mb-3">Clases que comparten más clientes</p>
-        
-        <ul class="cross-pattern-list">
-            {% for pattern in cross_class_patterns %}
-            <li class="cross-pattern-item">
-                <div class="cross-pattern-classes">
-                    {{ pattern.activity1__name }} + {{ pattern.activity2__name }}
-                </div>
-                <div>
-                    <span class="cross-pattern-count">{{ pattern.shared_clients }}</span>
-                    <span class="text-muted small">clientes en común</span>
-                </div>
-            </li>
-            {% empty %}
-            <li class="text-center text-muted">No hay patrones de asistencia cruzada</li>
-            {% endfor %}
-        </ul>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{% load sanitize_tags %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // Gráfica de comparativa de actividades
-    const activitiesCtx = document.getElementById('activitiesComparisonChart').getContext('2d');
-    const activitiesData = {{ popular_activities|safe_json }};
-    
-    new Chart(activitiesCtx, {
-        type: 'bar',
-        data: {
-            labels: activitiesData.map(a => a.activity__name),
-            datasets: [
-                {
-                    label: 'Asistencia Total',
-                    data: activitiesData.map(a => a.total_attendance),
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Ocupación %',
-                    data: activitiesData.map(a => a.occupancy_rate),
-                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Asistencia Total'
-                    }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    max: 100,
-                    title: {
-                        display: true,
-                        text: 'Ocupación %'
-                    },
-                    grid: {
-                        drawOnChartArea: false
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Comparativa de Actividades'
-                }
-            }
-        }
-    });
-    
-    // Gráfica de tendencia (si existe)
-    {% if activity_trends %}
-    const trendCtx = document.getElementById('activityTrendChart').getContext('2d');
-    const trendData = {{ activity_trends|safe_json }};
-    
+    const brandColor = getComputedStyle(document.documentElement).getPropertyValue('--brand-color').trim() || '#0f172a';
+
+    // --- Trend Chart ---
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    const trendData = {{ trend_data| safe }};
+
     new Chart(trendCtx, {
         type: 'line',
         data: {
-            labels: trendData.map(t => t.period),
-            datasets: [
-                {
-                    label: 'Asistencia Total',
-                    data: trendData.map(t => t.total_attendance),
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                },
-                {
-                    label: 'Promedio por Sesión',
-                    data: trendData.map(t => t.avg_attendance),
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }
-            ]
+            labels: trendData.labels,
+            datasets: [{
+                label: 'Asistencia Total',
+                data: trendData.values,
+                borderColor: brandColor,
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: brandColor
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Tendencia de Asistencia en el Tiempo'
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false }
                 }
             }
         }
     });
-    {% endif %}
+
+    // --- Hourly Chart ---
+    const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+    const hourlyData = {{ hourly_distribution| safe }};
+
+    new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: hourlyData.labels,
+            datasets: [{
+                label: 'Promedio Asistencia',
+                data: hourlyData.values,
+                backgroundColor: brandColor,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 </script>
 {% endblock %}

@@ -26,7 +26,7 @@ class Order(models.Model):
     created_at = models.DateTimeField(_("Fecha Creación"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Última Actualización"), auto_now=True)
     
-    status = models.CharField(_("Estado"), max_length=20, choices=STATS_CHOICES, default='PENDING')
+    status = models.CharField(_("Estado"), max_length=20, choices=STATS_CHOICES, default='PENDING', db_index=True)
     
     # Totals (Denormalized for easy querying)
     total_base = models.DecimalField(_("Total Base"), max_digits=10, decimal_places=2, default=0.00)
@@ -44,7 +44,7 @@ class Order(models.Model):
         help_text=_("Razón o comentarios sobre por qué se difirió el pago"))
     
     internal_notes = models.TextField(_("Nota Interna"), blank=True)
-    invoice_number = models.CharField(_("Número de Factura"), max_length=50, blank=True, null=True, unique=True)
+    invoice_number = models.CharField(_("Número de Factura"), max_length=50, blank=True, null=True, unique=True, db_index=True)
     verification_token = models.UUIDField(
         _("Token de Verificación"),
         default=uuid.uuid4,

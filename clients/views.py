@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+# from django.db.models import Q  <-- Removed unused import
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -109,217 +109,43 @@ def clients_list(request):
         if not gym:
             return redirect("home")
 
-    clients = Client.objects.filter(gym=gym).prefetch_related("tags").select_related("wallet")
-
+    # Extract parameters for context and filtering
     query = request.GET.get("q", "").strip()
-    if query:
-        clients = clients.filter(
-            Q(first_name__icontains=query)
-            | Q(last_name__icontains=query)
-            | Q(email__icontains=query)
-            | Q(phone_number__icontains=query)
-        )
-
-    # Filtro de estado (multi-select)
     statuses = request.GET.getlist("status")
-    if statuses and 'all' not in statuses:
-        # Separar estado "UNPAID" (impagado) de los estados normales
-        normal_statuses = [s for s in statuses if s != 'UNPAID']
-        has_unpaid_filter = 'UNPAID' in statuses
-        
-        if normal_statuses and has_unpaid_filter:
-            # Combinar: clientes con esos estados O clientes con membresía impagada
-            clients = clients.filter(
-                Q(status__in=normal_statuses) | 
-                Q(memberships__status='PENDING_PAYMENT')
-            ).distinct()
-        elif has_unpaid_filter:
-            # Solo impagados: clientes con membresía pendiente de pago
-            clients = clients.filter(memberships__status='PENDING_PAYMENT').distinct()
-        elif normal_statuses:
-            # Solo estados normales
-            clients = clients.filter(status__in=normal_statuses)
-    
-    # Legacy support para status único
-    status = request.GET.get("status_single", "all")
-    if status and status != "all" and not statuses:
-        clients = clients.filter(status=status)
-
-    selected_tags = request.GET.getlist("tags")
-    if selected_tags:
-        clients = clients.filter(tags__id__in=selected_tags)
-
-    # Filtro de tipo de cliente (multi-select)
-    companies = request.GET.getlist("company")
-    if companies and 'all' not in companies:
-        company_q = Q()
-        if 'company' in companies:
-            company_q |= Q(is_company_client=True)
-        if 'individual' in companies:
-            company_q |= Q(is_company_client=False)
-        clients = clients.filter(company_q)
-
-    # Filtro por pasarela de pago (multi-select)
     gateways = request.GET.getlist("gateway")
-    if gateways and 'all' not in gateways:
-        gateway_q = Q()
-        if 'stripe' in gateways:
-            gateway_q |= Q(preferred_gateway='STRIPE') | Q(stripe_customer_id__isnull=False)
-        if 'redsys' in gateways:
-            gateway_q |= Q(preferred_gateway='REDSYS') | Q(redsys_tokens__isnull=False)
-        if 'auto' in gateways:
-            gateway_q |= Q(preferred_gateway='AUTO', stripe_customer_id__isnull=True)
-        clients = clients.filter(gateway_q).distinct()
-    
-    # Legacy support
-    gateway = request.GET.get("gateway_single", "all")
-    if gateway and gateway != "all" and not gateways:
-        if gateway == "stripe":
-            clients = clients.filter(Q(preferred_gateway='STRIPE') | Q(stripe_customer_id__isnull=False))
-        elif gateway == "redsys":
-            clients = clients.filter(Q(preferred_gateway='REDSYS') | Q(redsys_tokens__isnull=False)).distinct()
-        elif gateway == "auto":
-            clients = clients.filter(preferred_gateway='AUTO', stripe_customer_id__isnull=True).exclude(redsys_tokens__isnull=False)
-    
-    # Filtro por género (multi-select)
     genders = request.GET.getlist("gender")
-    if genders and 'all' not in genders:
-        clients = clients.filter(gender__in=genders)
-    
-    # Legacy gender
-    gender = request.GET.get("gender_single", "all")
-    if gender and gender != "all" and not genders:
-        clients = clients.filter(gender=gender)
-    
-    # === FILTRO DE SALDO DE MONEDERO ===
     wallet_balance = request.GET.getlist("wallet_balance")
-    if wallet_balance and 'all' not in wallet_balance:
-        from finance.models import ClientWallet
-        wallet_q = Q()
-        if 'positive' in wallet_balance:
-            wallet_q |= Q(wallet__balance__gt=0)
-        if 'negative' in wallet_balance:
-            wallet_q |= Q(wallet__balance__lt=0)
-        if 'zero' in wallet_balance:
-            wallet_q |= Q(wallet__balance=0)
-        if 'no_wallet' in wallet_balance:
-            wallet_q |= Q(wallet__isnull=True)
-        clients = clients.filter(wallet_q)
-
-    # === FILTRO POR TIPO DE CUOTA (multi-select) ===
+    companies = request.GET.getlist("company")
     membership_plans_filter = request.GET.getlist("membership_plan")
-    if membership_plans_filter and 'all' not in membership_plans_filter:
-        clients = clients.filter(memberships__plan_id__in=membership_plans_filter).distinct()
-    
-    # === FILTRO POR SERVICIO (multi-select) ===
     services_filter = request.GET.getlist("service")
-    if services_filter and 'all' not in services_filter:
-        from activities.models import SessionBooking
-        clients = clients.filter(
-            Q(session_bookings__session__service_id__in=services_filter) |
-            Q(memberships__plan__services__id__in=services_filter)
-        ).distinct()
-    
-    # === FILTRO POR PRODUCTO (multi-select) ===
     products_filter = request.GET.getlist("product")
-    if products_filter and 'all' not in products_filter:
-        clients = clients.filter(orders__items__product_id__in=products_filter).distinct()
-    
-    # === FILTRO POR ORIGEN DE ALTA (multi-select) ===
     created_froms = request.GET.getlist("created_from")
-    if created_froms and 'all' not in created_froms:
-        clients = clients.filter(created_from__in=created_froms)
-
-    # === FILTROS DE FECHA ===
-    # Fecha de alta entre
+    
+    # Legacy singles
+    status = request.GET.get("status_single", "all")
+    selected_tags = request.GET.getlist("tags")
+    gateway = request.GET.get("gateway_single", "all")
+    gender = request.GET.get("gender_single", "all")
+    
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
-    if date_from:
-        clients = clients.filter(created_at__date__gte=date_from)
-    if date_to:
-        clients = clients.filter(created_at__date__lte=date_to)
     
-    # === FILTROS DE ENGAGEMENT ===
-    from django.db.models import Max
-    from datetime import timedelta
-    
-    # Días sin asistir
     days_no_visit = request.GET.get('days_no_visit', '')
-    if days_no_visit and days_no_visit.isdigit():
-        days = int(days_no_visit)
-        threshold_date = timezone.now().date() - timedelta(days=days)
-        # Clientes cuya última visita fue antes de la fecha umbral o no tienen visitas
-        clients = clients.annotate(
-            last_visit_date=Max('visits__date')
-        ).filter(
-            Q(last_visit_date__lt=threshold_date) | Q(last_visit_date__isnull=True)
-        )
-    
-    # Días sin reservar
     days_no_booking = request.GET.get('days_no_booking', '')
-    if days_no_booking and days_no_booking.isdigit():
-        days = int(days_no_booking)
-        threshold_date = timezone.now().date() - timedelta(days=days)
-        clients = clients.annotate(
-            last_booking_date=Max('session_bookings__created_at')
-        ).filter(
-            Q(last_booking_date__date__lt=threshold_date) | Q(last_booking_date__isnull=True)
-        )
-    
-    # Membresía expira en X días
     membership_expires_days = request.GET.get('membership_expires_days', '')
-    if membership_expires_days and membership_expires_days.isdigit():
-        days = int(membership_expires_days)
-        threshold_date = timezone.now().date() + timedelta(days=days)
-        clients = clients.filter(
-            memberships__status='ACTIVE',
-            memberships__end_date__lte=threshold_date,
-            memberships__end_date__gte=timezone.now().date()
-        ).distinct()
     
-    # === FILTROS DE FECHA DE BAJA ===
     cancelled_from = request.GET.get('cancelled_from', '')
     cancelled_to = request.GET.get('cancelled_to', '')
-    if cancelled_from:
-        clients = clients.filter(memberships__status='CANCELLED', memberships__updated_at__date__gte=cancelled_from).distinct()
-    if cancelled_to:
-        clients = clients.filter(memberships__status='CANCELLED', memberships__updated_at__date__lte=cancelled_to).distinct()
-    
-    # === FILTRO DE EXCEDENCIA ACTIVA ===
     has_active_pause = request.GET.get('has_active_pause', '')
-    if has_active_pause == 'yes':
-        today = timezone.now().date()
-        clients = clients.filter(
-            memberships__pauses__status='ACTIVE',
-            memberships__pauses__start_date__lte=today,
-            memberships__pauses__end_date__gte=today
-        ).distinct()
-    elif has_active_pause == 'no':
-        today = timezone.now().date()
-        clients = clients.exclude(
-            memberships__pauses__status='ACTIVE',
-            memberships__pauses__start_date__lte=today,
-            memberships__pauses__end_date__gte=today
-        )
     
-    # === FILTRO DE NO-SHOWS ===
-    from django.db.models import Count
     min_no_shows = request.GET.get('min_no_shows', '')
-    if min_no_shows and min_no_shows.isdigit():
-        min_count = int(min_no_shows)
-        clients = clients.annotate(
-            noshow_count=Count('visits', filter=Q(visits__status='NOSHOW'))
-        ).filter(noshow_count__gte=min_count)
-    
-    # === FILTRO TIENE APP (basado en app_access_count > 0) ===
     has_app_filter = request.GET.getlist('has_app')
-    if has_app_filter and 'all' not in has_app_filter:
-        app_q = Q()
-        if 'yes' in has_app_filter:
-            app_q |= Q(app_access_count__gt=0)
-        if 'no' in has_app_filter:
-            app_q |= Q(app_access_count=0) | Q(app_access_count__isnull=True)
-        clients = clients.filter(app_q)
+
+    clients = Client.objects.filter(gym=gym).prefetch_related("tags", "redsys_tokens").select_related("wallet")
+
+    # Use the new Service for filtering
+    from .services import ClientFilterService
+    clients = ClientFilterService.filter_clients(clients, request.GET)
 
     custom_fields = list(
         ClientField.objects.filter(gym=gym, is_active=True)

@@ -40,11 +40,22 @@ class CurrentGymMiddleware:
             current_gym_id = default_gym_id(user)
             request.session["current_gym_id"] = current_gym_id
             
-        # Attach the actual Gym object to the request
         from organizations.models import Gym
-        try:
-            request.gym = Gym.objects.get(pk=current_gym_id)
-            
+        from django.core.cache import cache
+
+        cache_key = f"gym_instance_{current_gym_id}"
+        gym = cache.get(cache_key)
+
+        if not gym:
+            try:
+                gym = Gym.objects.get(pk=current_gym_id)
+                cache.set(cache_key, gym, timeout=300) # Cache 5 mins
+            except Gym.DoesNotExist:
+                gym = None
+
+        request.gym = gym
+
+        if request.gym:
             # Siempre sincronizar el idioma del gimnasio con la sesión
             if hasattr(request.gym, 'language') and request.gym.language:
                 gym_language = request.gym.language
@@ -52,7 +63,5 @@ class CurrentGymMiddleware:
                 translation.activate(gym_language)
                 request.session[LANGUAGE_SESSION_KEY] = gym_language
                 request.LANGUAGE_CODE = gym_language
-        except Gym.DoesNotExist:
-            request.gym = None
 
         return self.get_response(request)
