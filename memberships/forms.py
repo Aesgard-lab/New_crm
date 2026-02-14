@@ -10,13 +10,14 @@ class MembershipPlanForm(forms.ModelForm):
     class Meta:
         model = MembershipPlan
         fields = [
-            'name', 'description', 'image', 'base_price', 'tax_rate', 'price_strategy',
+            'name', 'description', 'receipt_notes', 'image', 'barcode', 'base_price', 'tax_rate', 'additional_tax_rates', 'price_strategy',
             'is_recurring', 'is_membership', 
             'frequency_amount', 'frequency_unit',
+            'activation_mode',
             # Enrollment fee / Matrícula
             'has_enrollment_fee', 'enrollment_fee', 'enrollment_fee_tax_rate', 'enrollment_fee_price_strategy', 'enrollment_fee_waivable', 'enrollment_fee_channel',
             'contract_required', 'contract_content', # Contract
-            'prorate_first_month',
+            'prorate_first_month', 'scheduling_open_day',
             # Pause fields
             'allow_pause', 'pause_fee', 'pause_min_days', 'pause_max_days', 
             'pause_max_per_year', 'pause_advance_notice_days',
@@ -28,8 +29,11 @@ class MembershipPlanForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]'}),
             'description': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'rows': 3}),
+            'receipt_notes': forms.Textarea(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'rows': 3, 'placeholder': 'Ej: Válido solo en horario de mañanas. No acumulable con otras promociones.'}),
+            'barcode': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200 focus:border-[var(--brand-color)]', 'placeholder': 'Ej: 8400001234567'}),
             'base_price': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             'tax_rate': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'additional_tax_rates': forms.CheckboxSelectMultiple(attrs={'class': 'space-y-1'}),
             'price_strategy': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             
             # Flexible Cycle
@@ -37,6 +41,8 @@ class MembershipPlanForm(forms.ModelForm):
             'frequency_unit': forms.Select(attrs={'class': 'w-full rounded-xl border-slate-200'}),
             
             'pack_validity_days': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200'}),
+            'activation_mode': forms.RadioSelect(attrs={'class': 'text-[var(--brand-color)] focus:ring-[var(--brand-color)]'}),
+            'scheduling_open_day': forms.NumberInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'min': '1', 'max': '28', 'placeholder': 'Ej: 1'}),
             
             # Enrollment Fee / Matrícula
             'has_enrollment_fee': forms.CheckboxInput(attrs={'class': 'w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500'}),
@@ -75,6 +81,15 @@ class MembershipPlanForm(forms.ModelForm):
             'eligibility_badge_text': forms.TextInput(attrs={'class': 'w-full rounded-xl border-slate-200', 'placeholder': '🎁 Solo Nuevos'}),
         }
     
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Siempre limpiar el flag legacy: el nuevo sistema eligibility_criteria es la fuente de verdad
+        instance.is_new_client_only = False
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+    
     propagate_to_gyms = forms.ModelMultipleChoiceField(
         queryset=Gym.objects.none(),
         required=False,
@@ -88,8 +103,10 @@ class MembershipPlanForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if gym:
-            self.fields['tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
-            self.fields['enrollment_fee_tax_rate'].queryset = TaxRate.objects.filter(gym=gym)
+            tax_qs = TaxRate.objects.filter(gym=gym)
+            self.fields['tax_rate'].queryset = tax_qs
+            self.fields['additional_tax_rates'].queryset = tax_qs
+            self.fields['enrollment_fee_tax_rate'].queryset = tax_qs
 
             # Franchise Propagation Logic
             is_owner = user and gym.franchise and (user.is_superuser or user in gym.franchise.owners.all())
@@ -105,8 +122,10 @@ class PlanAccessRuleForm(forms.ModelForm):
         fields = [
             'activity_category', 'activity', 'service_category', 'service', 
             'quantity', 'period',
-            'max_per_day', 'max_per_week', 'max_simultaneous',
-            'advance_booking_days', 'booking_priority', 'allow_waitlist'
+            'usage_limit', 'usage_limit_period',
+            'no_consecutive_days', 'max_simultaneous',
+            'advance_booking_days', 'access_time_start', 'access_time_end',
+            'booking_priority', 'early_access_hours', 'allow_waitlist'
         ]
         widgets = {
             'activity_category': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm target-selector', 'data-type': 'activity_cat'}),
@@ -118,46 +137,98 @@ class PlanAccessRuleForm(forms.ModelForm):
             'quantity': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0 = Ilimitado', 'min': '0'}),
             'period': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm'}),
             
-            # Nuevos campos de restricciones
-            'max_per_day': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
-            'max_per_week': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            # Límite de uso combinado
+            'usage_limit': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'usage_limit_period': forms.Select(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm'}),
+            
+            # Restricciones avanzadas
+            'no_consecutive_days': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-amber-600'}),
             'max_simultaneous': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
             'advance_booking_days': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'access_time_start': forms.TimeInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'type': 'time'}),
+            'access_time_end': forms.TimeInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'type': 'time'}),
             'booking_priority': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
+            'early_access_hours': forms.NumberInput(attrs={'class': 'w-full rounded-lg border-slate-200 text-sm', 'placeholder': '0', 'min': '0'}),
             'allow_waitlist': forms.CheckboxInput(attrs={'class': 'rounded border-slate-300 text-blue-600'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['quantity'].help_text = None
-        # Make targeting fields optional in the form logic (we'll validate that at least one is present in clean)
+        # Make targeting fields optional (validated in clean)
         self.fields['activity_category'].required = False
         self.fields['activity'].required = False
         self.fields['service_category'].required = False
         self.fields['service'].required = False
         
+        # Campos numéricos con default en el modelo → no requeridos en el form
+        # Evita "Este campo es requerido" en filas nuevas/vacías
+        for fname in ['quantity', 'usage_limit', 'max_simultaneous',
+                      'advance_booking_days', 'booking_priority', 'early_access_hours']:
+            self.fields[fname].required = False
+        
         # Labels más cortos para la tabla
-        self.fields['max_per_day'].label = "Máx/Día"
-        self.fields['max_per_week'].label = "Máx/Semana"
+        self.fields['usage_limit'].label = "Límite"
+        self.fields['usage_limit_period'].label = "Per. Límite"
+        self.fields['no_consecutive_days'].label = "Sin Consecutivos"
         self.fields['max_simultaneous'].label = "Simultáneas"
         self.fields['advance_booking_days'].label = "Días Antelación"
+        self.fields['access_time_start'].label = "Hora Desde"
+        self.fields['access_time_end'].label = "Hora Hasta"
         self.fields['booking_priority'].label = "Prioridad"
+        self.fields['early_access_hours'].label = "Acceso Anticipado (h)"
         self.fields['allow_waitlist'].label = "Waitlist"
 
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data or cleaned_data.get('DELETE'):
             return cleaned_data
-            
-        # Check if at least one target is selected
+        
+        # Aplicar defaults para campos numéricos vacíos
+        defaults = {
+            'quantity': 0, 'usage_limit': 0, 'max_simultaneous': 0,
+            'advance_booking_days': 0, 'booking_priority': 0, 'early_access_hours': 0,
+        }
+        for field, default in defaults.items():
+            if cleaned_data.get(field) is None:
+                cleaned_data[field] = default
+        
+        # Comprobar si hay al menos un target seleccionado
         targets = [
             cleaned_data.get('activity_category'),
             cleaned_data.get('activity'),
             cleaned_data.get('service_category'),
             cleaned_data.get('service')
         ]
+        
         if not any(targets):
-            raise forms.ValidationError("Debes seleccionar al menos una Actividad o Servicio.")
+            # Si además no hay datos significativos → fila vacía, marcar para eliminar
+            has_data = (
+                cleaned_data.get('quantity', 0) > 0 or
+                cleaned_data.get('usage_limit', 0) > 0
+            )
+            if has_data:
+                raise forms.ValidationError(
+                    "Has configurado cantidades pero no has seleccionado ninguna Actividad o Servicio. "
+                    "Selecciona al menos una o elimina esta fila."
+                )
+            # Fila vacía sin datos → marcar para borrar silenciosamente
+            cleaned_data['DELETE'] = True
+            return cleaned_data
+        
+        # Validar coherencia del límite de uso
+        usage_limit = cleaned_data.get('usage_limit', 0) or 0
+        usage_limit_period = cleaned_data.get('usage_limit_period', '')
+        
+        if usage_limit > 0 and not usage_limit_period:
+            raise forms.ValidationError(
+                "Has indicado un Límite de uso pero falta seleccionar el periodo "
+                "(Por Día, Por Semana o Por Mes) en la columna 'Per. Límite'."
+            )
+        if usage_limit == 0 and usage_limit_period:
+            # Limpiar el periodo si no hay límite — no tiene sentido
+            cleaned_data['usage_limit_period'] = ''
+        
         return cleaned_data
 
 PlanAccessRuleFormSet = inlineformset_factory(

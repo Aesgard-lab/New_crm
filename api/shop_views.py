@@ -89,6 +89,11 @@ class ShopView(APIView):
                     'is_eligible': is_eligible,
                     'ineligible_reason': reason if not is_eligible else '',
                     'badge_text': plan.get_badge_text() if plan.has_eligibility_restriction() else '',
+                    # Enrollment fee / Matrícula
+                    'has_enrollment_fee': plan.has_enrollment_fee,
+                    'enrollment_fee': str(plan.final_enrollment_fee) if plan.has_enrollment_fee else '0.00',
+                    'enrollment_fee_channel': plan.enrollment_fee_channel if plan.has_enrollment_fee else '',
+                    'first_payment_total': str(plan.first_payment_total) if plan.has_enrollment_fee else '',
                 }
                 plans.append(plan_data)
             

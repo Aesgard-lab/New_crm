@@ -12,25 +12,28 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
     {% for item in plans %}
     {% with plan=item.plan is_eligible=item.is_eligible show_badge=item.show_badge ineligible_reason=item.ineligible_reason %}
-    <div class="bg-white rounded-2xl border-2 {% if plan.is_recurring %}border-[var(--brand-color)]{% else %}border-slate-200{% endif %} shadow-lg hover:shadow-xl transition-shadow relative {% if not is_eligible %}opacity-75{% endif %}">
-        
+    <div
+        class="bg-white rounded-2xl border-2 {% if plan.is_recurring %}border-[var(--brand-color)]{% else %}border-slate-200{% endif %} shadow-lg hover:shadow-xl transition-shadow relative {% if not is_eligible %}opacity-75{% endif %}">
+
         <!-- Badge de Oferta Solo Nuevos -->
         {% if show_badge %}
         <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-            <span class="inline-block bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+            <span
+                class="inline-block bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
                 {{ show_badge }}
             </span>
         </div>
         {% endif %}
-        
+
         <!-- Header -->
-        <div class="p-6 {% if plan.is_recurring %}brand-bg text-white{% else %}bg-slate-50{% endif %} {% if show_badge %}pt-8{% endif %}">
+        <div
+            class="p-6 {% if plan.is_recurring %}brand-bg text-white{% else %}bg-slate-50{% endif %} {% if show_badge %}pt-8{% endif %}">
             {% if plan.image %}
             <img src="{{ plan.image.url }}" alt="{{ plan.name }}" class="w-full h-32 object-cover rounded-xl mb-4">
             {% endif %}
-            
+
             <h3 class="text-2xl font-bold mb-2">{{ plan.name }}</h3>
-            
+
             {% if plan.is_recurring %}
             <div class="flex items-baseline gap-2">
                 <span class="text-4xl font-bold">{{ plan.final_price|floatformat:2 }}€</span>
@@ -42,14 +45,35 @@
                 <span class="text-sm text-slate-600">{{ t.bonus }}</span>
             </div>
             {% endif %}
+
+            {% if plan.has_enrollment_fee %}
+            <div
+                class="mt-2 inline-flex items-center gap-1.5 bg-white/20 {% if not plan.is_recurring %}bg-amber-50 border border-amber-200{% endif %} rounded-lg px-3 py-1">
+                <svg class="w-4 h-4 {% if plan.is_recurring %}text-white/80{% else %}text-amber-600{% endif %}"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                    </path>
+                </svg>
+                <span
+                    class="text-sm {% if plan.is_recurring %}text-white/90{% else %}text-amber-700{% endif %} font-medium">
+                    Matrícula: {{ plan.final_enrollment_fee|floatformat:2 }}€
+                </span>
+            </div>
+            <div class="mt-1.5">
+                <span class="text-xs {% if plan.is_recurring %}text-white/70{% else %}text-slate-500{% endif %}">
+                    Primer pago: {{ plan.first_payment_total|floatformat:2 }}€
+                </span>
+            </div>
+            {% endif %}
         </div>
-        
+
         <!-- Body -->
         <div class="p-6">
             {% if plan.description %}
             <p class="text-sm text-slate-600 mb-4">{{ plan.description|linebreaksbr }}</p>
             {% endif %}
-            
+
             <!-- Características -->
             <div class="space-y-2 mb-6">
                 {% if plan.is_recurring %}
@@ -67,16 +91,17 @@
                     <span>{{ t.valid_for }} {{ plan.pack_validity_days }} {{ t.days }}</span>
                 </div>
                 {% endif %}
-                
+
                 {% if plan.allow_pause %}
                 <div class="flex items-start gap-2 text-sm">
                     <svg class="w-5 h-5 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    <span>{{ t.pauses_allowed }} ({{ plan.pause_min_days }}-{{ plan.pause_max_days }} {{ t.days }})</span>
+                    <span>{{ t.pauses_allowed }} ({{ plan.pause_min_days }}-{{ plan.pause_max_days }} {{ t.days
+                        }})</span>
                 </div>
                 {% endif %}
-                
+
                 <!-- Accesos -->
                 {% for rule in plan.access_rules.all %}
                 <div class="flex items-start gap-2 text-sm">
@@ -85,48 +110,51 @@
                     </svg>
                     <span>
                         {% if rule.quantity == 0 %}
-                            {{ t.unlimited_access }}
+                        {{ t.unlimited_access }}
                         {% else %}
-                            {{ rule.quantity }} {{ t.sessions_count }}
+                        {{ rule.quantity }} {{ t.sessions_count }}
                         {% endif %}
                         {% if rule.activity %}
-                            - {{ rule.activity.name }}
+                        - {{ rule.activity.name }}
                         {% elif rule.activity_category %}
-                            - {{ rule.activity_category.name }}
+                        - {{ rule.activity_category.name }}
                         {% elif rule.service %}
-                            - {{ rule.service.name }}
+                        - {{ rule.service.name }}
                         {% elif rule.service_category %}
-                            - {{ rule.service_category.name }}
+                        - {{ rule.service_category.name }}
                         {% endif %}
                     </span>
                 </div>
                 {% endfor %}
             </div>
-            
+
             <!-- Botón de Compra -->
             {% if not is_eligible %}
             <!-- No elegible para esta oferta -->
             <div class="text-center">
-                <button disabled class="block w-full bg-slate-300 text-slate-500 font-bold py-3 rounded-xl cursor-not-allowed">
+                <button disabled
+                    class="block w-full bg-slate-300 text-slate-500 font-bold py-3 rounded-xl cursor-not-allowed">
                     <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
                     </svg>
                     {{ t.not_available }}
                 </button>
                 <p class="text-xs text-amber-600 mt-2 font-medium">{{ ineligible_reason }}</p>
             </div>
             {% elif user.is_authenticated %}
-            <a href="{% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}" 
-               class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
+            <a href="{% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}"
+                class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
                 {{ t.buy_plan }}
             </a>
             {% else %}
-            <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}" 
-               class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
+            <a href="{% url 'public_login' slug=settings.public_slug %}?next={% url 'public_plan_purchase' slug=settings.public_slug plan_id=plan.id %}"
+                class="block w-full text-center brand-bg text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
                 {{ t.buy_plan }}
             </a>
             {% endif %}
-            
+
             {% if plan.contract_required %}
             <p class="text-xs text-slate-500 mt-2 text-center">
                 📋 {{ t.contract_required }}
@@ -142,10 +170,10 @@
     <div class="text-6xl mb-4">💳</div>
     <h3 class="text-xl font-bold text-slate-900 mb-2">{{ t.no_plans_available }}</h3>
     <p class="text-slate-600">{{ t.contact_gym_info }}</p>
-    
+
     {% if gym.phone %}
-    <a href="tel:{{ gym.phone }}" 
-       class="inline-block mt-6 brand-bg text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity">
+    <a href="tel:{{ gym.phone }}"
+        class="inline-block mt-6 brand-bg text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity">
         📞 {{ t.call_to }} {{ gym.phone }}
     </a>
     {% endif %}
@@ -155,18 +183,18 @@
 <!-- FAQs o Información Adicional -->
 <div class="mt-16 bg-slate-50 rounded-2xl p-8 border border-slate-100">
     <h2 class="text-2xl font-bold text-slate-900 mb-6">{{ t.have_questions }}</h2>
-    
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
             <h3 class="font-bold text-slate-900 mb-2">💳 {{ t.payment_methods }}</h3>
             <p class="text-sm text-slate-600">{{ t.payment_secure }}</p>
         </div>
-        
+
         <div>
             <h3 class="font-bold text-slate-900 mb-2">🔄 {{ t.cancellations_title }}</h3>
             <p class="text-sm text-slate-600">{{ t.cancellations_desc }}</p>
         </div>
-        
+
         <div>
             <h3 class="font-bold text-slate-900 mb-2">📞 {{ t.contact }}</h3>
             <p class="text-sm text-slate-600">
@@ -174,7 +202,7 @@
                 {% if gym.email %}Email: {{ gym.email }}{% endif %}
             </p>
         </div>
-        
+
         <div>
             <h3 class="font-bold text-slate-900 mb-2">📍 {{ t.location }}</h3>
             <p class="text-sm text-slate-600">

@@ -335,6 +335,47 @@ class _ShopScreenState extends State<ShopScreen>
                 ),
               ],
             ),
+            // Enrollment fee / Matrícula
+            if (plan['has_enrollment_fee'] == true &&
+                plan['enrollment_fee'] != null &&
+                plan['enrollment_fee'] != '0.00' &&
+                plan['enrollment_fee'] != '0') ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.description_outlined, size: 16, color: Colors.white.withOpacity(0.8)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Matrícula: ${plan['enrollment_fee']}€',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (plan['first_payment_total'] != null &&
+                  plan['first_payment_total'] != '')
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Primer pago: ${plan['first_payment_total']}€',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),

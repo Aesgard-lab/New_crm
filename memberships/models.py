@@ -17,11 +17,32 @@ class MembershipPlan(models.Model):
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='membership_plans')
     name = models.CharField(_("Nombre del Plan"), max_length=100)
     description = models.TextField(_("Descripción"), blank=True)
+    receipt_notes = models.TextField(
+        _("Notas del Recibo"),
+        blank=True,
+        help_text=_("Texto que aparecerá en el ticket/factura cuando se venda este plan")
+    )
     image = models.ImageField(upload_to='membership_images/', null=True, blank=True)
+    
+    # Barcode (para escaneo rápido en TPV)
+    barcode = models.CharField(
+        _("Código de Barras"),
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text=_("Código de barras para venta rápida en TPV")
+    )
     
     # Financials
     base_price = models.DecimalField(_("Precio Base"), max_digits=10, decimal_places=2)
-    tax_rate = models.ForeignKey(TaxRate, on_delete=models.SET_NULL, null=True, blank=True)
+    tax_rate = models.ForeignKey(TaxRate, on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name=_("Impuesto Principal"), related_name='membership_plans_primary')
+    additional_tax_rates = models.ManyToManyField(
+        TaxRate, blank=True,
+        verbose_name=_("Impuestos Adicionales"),
+        related_name='membership_plans_additional',
+        help_text=_("Impuestos adicionales que se aplican junto al principal (ej: recargos locales)")
+    )
     price_strategy = models.CharField(max_length=20, default='TAX_INCLUDED', choices=[
         ('TAX_INCLUDED', _("Impuestos Incluidos")),
         ('TAX_EXCLUDED', _("Impuestos Excluidos")),
@@ -35,8 +56,28 @@ class MembershipPlan(models.Model):
     # Pack Settings
     pack_validity_days = models.IntegerField(_("Días de Validez"), null=True, blank=True)
     
+    # Activation Mode
+    ACTIVATION_MODES = [
+        ('ON_SALE', _("En el día de la venta")),
+        ('ON_FIRST_VISIT', _("En la primera visita del cliente")),
+        ('ON_SPECIFIC_DATE', _("En una fecha específica (manual)")),
+    ]
+    activation_mode = models.CharField(
+        _("Fecha de Activación"),
+        max_length=20,
+        choices=ACTIVATION_MODES,
+        default='ON_SALE',
+        help_text=_("Define cuándo se activa la membresía tras la compra")
+    )
+    
     # Options
     prorate_first_month = models.BooleanField(_("Prorratear primer mes"), default=True)
+    scheduling_open_day = models.PositiveIntegerField(
+        _("Día de apertura de programación"),
+        null=True,
+        blank=True,
+        help_text=_("Día del mes en que se abren las reservas del siguiente periodo (vacío = sin restricción)")
+    )
     display_order = models.IntegerField(default=0)
     
     # Visibility / Reporting
@@ -192,10 +233,18 @@ class MembershipPlan(models.Model):
         return self.name
     
     @property
+    def total_tax_rate_percent(self):
+        """Suma de todos los impuestos (principal + adicionales) en porcentaje."""
+        total = self.tax_rate.rate_percent if self.tax_rate else 0
+        for tr in self.additional_tax_rates.all():
+            total += tr.rate_percent
+        return total
+    
+    @property
     def final_price(self):
-        if not self.tax_rate:
+        rate = self.total_tax_rate_percent / 100
+        if rate == 0:
             return self.base_price
-        rate = self.tax_rate.rate_percent / 100
         if self.price_strategy == 'TAX_EXCLUDED':
             return self.base_price * (1 + rate)
         return self.base_price
@@ -219,6 +268,14 @@ class MembershipPlan(models.Model):
         rate = self.enrollment_fee_tax_rate.rate_percent / 100
         # Calcular el impuesto incluido en el precio
         return self.enrollment_fee - (self.enrollment_fee / (1 + rate))
+    
+    @property
+    def first_payment_total(self):
+        """Total del primer pago: cuota + matrícula (para transparencia al cliente)"""
+        total = self.final_price
+        if self.has_enrollment_fee:
+            total += self.final_enrollment_fee
+        return total
         
     def get_frequency_display_custom(self):
         unit_label = dict(self.FREQUENCY_UNITS).get(self.frequency_unit, '')
@@ -378,6 +435,13 @@ class PlanAccessRule(models.Model):
         ('PER_WEEK', _("Por Semana")),
     ]
     
+    LIMIT_PERIODS = [
+        ('', _("Sin límite")),
+        ('PER_DAY', _("Por Día")),
+        ('PER_WEEK', _("Por Semana")),
+        ('PER_MONTH', _("Por Mes")),
+    ]
+    
     plan = models.ForeignKey(MembershipPlan, on_delete=models.CASCADE, related_name='access_rules')
     
     # Targets: Can be broadly (Category) or Specific (Activity/Service)
@@ -400,6 +464,21 @@ class PlanAccessRule(models.Model):
         default='PER_CYCLE'
     )
     
+    # === LÍMITE DE USO (combinado: cantidad + periodo) ===
+    usage_limit = models.PositiveIntegerField(
+        _("Límite de uso"),
+        default=0,
+        help_text=_("Máximo de usos permitidos en el periodo seleccionado. 0 = sin límite")
+    )
+    usage_limit_period = models.CharField(
+        _("Periodo del límite"),
+        max_length=20,
+        choices=LIMIT_PERIODS,
+        default='',
+        blank=True,
+        help_text=_("Periodo sobre el que aplica el límite de uso")
+    )
+    
     # === RESTRICCIONES DE RESERVA (NUEVO) ===
     max_per_day = models.PositiveIntegerField(
         _("Máx. reservas por día"),
@@ -411,6 +490,18 @@ class PlanAccessRule(models.Model):
         _("Máx. reservas por semana"),
         default=0,
         help_text=_("0 = Sin límite semanal")
+    )
+    
+    max_per_month = models.PositiveIntegerField(
+        _("Máx. reservas por mes"),
+        default=0,
+        help_text=_("0 = Sin límite mensual")
+    )
+    
+    no_consecutive_days = models.BooleanField(
+        _("No permite días consecutivos"),
+        default=False,
+        help_text=_("Impide que el cliente reserve o asista en días seguidos")
     )
     
     max_simultaneous = models.PositiveIntegerField(
@@ -432,11 +523,35 @@ class PlanAccessRule(models.Model):
         help_text=_("Cuántos días en el futuro puede reservar (0 = usar config. global)")
     )
     
-    # === PRIORIDAD (Para planes premium) ===
+    # === RESTRICCIÓN DE FRANJA HORARIA ===
+    access_time_start = models.TimeField(
+        _("Hora de acceso desde"),
+        null=True,
+        blank=True,
+        help_text=_("Hora desde la que se permite reservar/asistir (vacío = sin restricción)")
+    )
+    access_time_end = models.TimeField(
+        _("Hora de acceso hasta"),
+        null=True,
+        blank=True,
+        help_text=_("Hora hasta la que se permite reservar/asistir (vacío = sin restricción)")
+    )
+    
+    # === PRIORIDAD Y ACCESO ANTICIPADO (Para planes premium) ===
     booking_priority = models.PositiveIntegerField(
         _("Prioridad de reserva"),
         default=0,
         help_text=_("Mayor número = más prioridad (para desempate en waitlist)")
+    )
+    
+    early_access_hours = models.PositiveIntegerField(
+        _("Horas de acceso anticipado"),
+        default=0,
+        help_text=_(
+            "Horas antes de la apertura normal en que este plan puede reservar. "
+            "Ej: si la actividad abre reservas 48h antes y este campo es 24, "
+            "los clientes con este plan pueden reservar 72h antes."
+        )
     )
     
     # === PERMITE LISTA DE ESPERA ===
@@ -463,14 +578,33 @@ class PlanAccessRule(models.Model):
     def get_restrictions_display(self):
         """Devuelve un resumen legible de las restricciones"""
         parts = []
-        if self.max_per_day > 0:
-            parts.append(f"Máx {self.max_per_day}/día")
-        if self.max_per_week > 0:
-            parts.append(f"Máx {self.max_per_week}/semana")
+        # Nuevo campo combinado
+        if self.usage_limit > 0 and self.usage_limit_period:
+            period_labels = {'PER_DAY': 'día', 'PER_WEEK': 'semana', 'PER_MONTH': 'mes'}
+            label = period_labels.get(self.usage_limit_period, self.usage_limit_period)
+            parts.append(f"Máx {self.usage_limit}/{label}")
+        else:
+            # Legacy fields (solo si no hay campo combinado)
+            if self.max_per_day > 0:
+                parts.append(f"Máx {self.max_per_day}/día")
+            if self.max_per_week > 0:
+                parts.append(f"Máx {self.max_per_week}/semana")
+            if self.max_per_month > 0:
+                parts.append(f"Máx {self.max_per_month}/mes")
+        if self.no_consecutive_days:
+            parts.append("Sin días consecutivos")
         if self.max_simultaneous > 0:
             parts.append(f"Máx {self.max_simultaneous} simultáneas")
         if self.advance_booking_days > 0:
             parts.append(f"Reservar hasta {self.advance_booking_days} días antes")
+        if self.access_time_start and self.access_time_end:
+            parts.append(f"Horario: {self.access_time_start.strftime('%H:%M')} - {self.access_time_end.strftime('%H:%M')}")
+        elif self.access_time_start:
+            parts.append(f"Desde las {self.access_time_start.strftime('%H:%M')}")
+        elif self.access_time_end:
+            parts.append(f"Hasta las {self.access_time_end.strftime('%H:%M')}")
+        if self.early_access_hours > 0:
+            parts.append(f"Acceso anticipado: {self.early_access_hours}h")
         return " • ".join(parts) if parts else "Sin restricciones adicionales"
 
 
